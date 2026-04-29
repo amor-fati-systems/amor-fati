@@ -429,7 +429,9 @@ object OpenEconEconomics:
       newCorpBondYield: Rate,
       corpBondDefaultLoss: PLN,
   )(using p: SimParams): InsuranceResult =
-    val unempRate     = in.w.unemploymentRate(in.s2.employed)
+    val laborForce    = in.s2.newDemographics.workingAgePop.max(1)
+    val employed      = Math.max(0, Math.min(in.s2.employed, laborForce))
+    val unempRate     = Share.One - Share.fraction(employed, laborForce)
     // Insurance remains anchored to the reconciled labor state carried by s2.
     // Unlike social payroll funds, moving premiums to the opening payroll
     // boundary would require changing both Insurance.step and runtime emission.

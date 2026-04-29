@@ -1,9 +1,11 @@
 package com.boombustgroup.amorfati.engine.economics
 
 import com.boombustgroup.amorfati.FixedPointSpecSupport.*
+import com.boombustgroup.amorfati.{Generators, TestFirmState}
 import com.boombustgroup.amorfati.agents.*
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.SimulationMonth.ExecutionMonth
+import com.boombustgroup.amorfati.engine.SocialState
 import com.boombustgroup.amorfati.init.{InitRandomness, WorldInit}
 import com.boombustgroup.amorfati.types.*
 import org.scalatest.flatspec.AnyFlatSpec
@@ -48,12 +50,67 @@ class LaborEconomicsSpec extends AnyFlatSpec with Matchers:
     decimal(result.wageGrowth).isNaN shouldBe false
   }
 
+  it should "index nominal wage pressure to anchored expected inflation" in {
+    val zeroExpected   = world.copy(
+      mechanisms = world.mechanisms.copy(
+        expectations = world.mechanisms.expectations.copy(expectedInflation = Rate.Zero),
+      ),
+    )
+    val targetExpected = world.copy(
+      mechanisms = world.mechanisms.copy(
+        expectations = world.mechanisms.expectations.copy(expectedInflation = p.monetary.targetInfl),
+      ),
+    )
+
+    val zeroResult   = LaborEconomics.compute(zeroExpected, firms, households, s1)
+    val targetResult = LaborEconomics.compute(targetExpected, firms, households, s1)
+
+    targetResult.newWage should be > zeroResult.newWage
+    targetResult.wageGrowth should be > zeroResult.wageGrowth
+  }
+
+  it should "add wage pressure when unemployment is below NAIRU" in {
+    val laborForce = 1000
+
+    val pressure = LaborEconomics.nairuWagePressure(laborForce, employed = 980)
+
+    pressure should be > Coefficient.Zero
+    decimal(pressure) shouldBe BigDecimal("0.0018") +- BigDecimal("0.0001")
+    LaborEconomics.nairuWagePressure(laborForce, employed = 900) shouldBe Coefficient.Zero
+  }
+
   it should "compress aggregate hiring plans when labor demand exceeds available labor" in {
     LaborEconomics.operationalHiringSlackFactor(laborDemand = 120000, availableLabor = 80000) should be < Share.One
   }
 
   it should "leave hiring plans unchanged when labor demand fits available labor" in {
     LaborEconomics.operationalHiringSlackFactor(laborDemand = 60000, availableLabor = 80000) shouldBe Share.One
+  }
+
+  it should "exclude retirees from aggregate labor supply when computing hiring slack" in {
+    val laborForce       = 100
+    val retired          = 100
+    val constrainedWorld = Generators.testWorld(
+      totalPopulation = laborForce,
+      employed = 95,
+      marketWage = PLN(8000),
+      reservationWage = PLN(4666),
+      social = SocialState.zero.copy(
+        demographics = SocialSecurity.DemographicsState(retirees = retired, workingAgePop = laborForce, monthlyRetirements = 0),
+      ),
+    )
+    val laborHeavyFirms  = (0 until 100).map: id =>
+      TestFirmState(FirmId(id), tech = TechState.Traditional(150), initialSize = 150)
+    val constrainedS1    = s1.copy(
+      lendingBaseRate = constrainedWorld.nbp.referenceRate,
+      resWage = constrainedWorld.householdMarket.reservationWage,
+      baseMinWage = constrainedWorld.gov.minWageLevel,
+      updatedMinWagePriceLevel = constrainedWorld.priceLevel,
+    )
+    val result           = LaborEconomics.compute(constrainedWorld, laborHeavyFirms.toVector, Vector.empty, constrainedS1)
+
+    result.employed should be <= laborForce
+    result.operationalHiringSlack should be < Share.One
   }
 
   it should "reconcile post-firm labor demand and realized employment from post-step state" in {

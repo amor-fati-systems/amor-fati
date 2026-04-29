@@ -243,7 +243,7 @@ object FirmEconomics:
     val issuerSettledLedger = bonded.ledgerFinancialState.copy(
       firms = CorporateBondOwnership.clearDefaultedIssuerDebt(bonded.ledgerFinancialState.firms, npl.defaultedBondFirmIds),
     )
-    val markupInfl          = CalvoPricing.aggregateMarkupInflation(calvoFirms, intermediate.firms).annualize
+    val markupInfl          = CalvoPricing.aggregateMarkupInflation(calvoFirms, intermediate.firms, stepIn.w.real.productivityIndex).annualize
     assembleOutput(
       fp,
       bonded,
@@ -590,6 +590,7 @@ object FirmEconomics:
         ioMatrix = p.io.matrix,
         columnSums = p.io.columnSums,
         scale = p.io.scale,
+        productivityIndex = in.w.real.productivityIndex,
       ),
     )
     val adjustedStocks = financialStocks
@@ -600,25 +601,24 @@ object FirmEconomics:
 
   // ---- Phase 5: Labor market + immigration ----
 
-  /** Run labor market: separate displaced workers, match unemployed to
-    * vacancies (skill-ranked), update wages, process immigration flows.
+  /** Run labor market: separate displaced workers, process immigration flows,
+    * match available workers to vacancies (skill-ranked), update wages.
     */
   private def processLaborMarket(
       ioFirms: Vector[Firm.State],
       in: StepInput,
       rng: RandomStream,
   )(using p: SimParams): LaborMarketResult =
-    val afterSep     = LaborMarket.separations(in.s3.updatedHouseholds, in.firms, ioFirms)
-    val searchResult = LaborMarket.jobSearch(afterSep, ioFirms, in.s2.newWage, rng, in.s2.regionalWages)
-    val postWages    = LaborMarket.updateWages(searchResult.households, ioFirms, in.s2.newWage)
+    val afterSep       = LaborMarket.separations(in.s3.updatedHouseholds, in.firms, ioFirms)
+    val afterRemoval   = Immigration.removeReturnMigrants(afterSep, in.s2.newImmig.monthlyOutflow)
+    val startId        = afterRemoval.map(_.id.toInt).maxOption.getOrElse(-1) + 1
+    val newImmigrants  = Immigration.spawnImmigrantPopulation(in.s2.newImmig.monthlyInflow, startId, rng)
+    val availableLabor = afterRemoval ++ newImmigrants.households
+    val searchResult   = LaborMarket.jobSearch(availableLabor, ioFirms, in.s2.newWage, rng, in.s2.regionalWages)
+    val postWages      = LaborMarket.updateWages(searchResult.households, ioFirms, in.s2.newWage)
+    val newStocksById  = newImmigrants.households.zip(newImmigrants.financialStocks).map((household, stocks) => household.id -> stocks).toMap
 
-    val afterRemoval    = Immigration.removeReturnMigrants(postWages, in.s2.newImmig.monthlyOutflow)
-    val startId         = afterRemoval.map(_.id.toInt).maxOption.getOrElse(-1) + 1
-    val newImmigrants   = Immigration.spawnImmigrantPopulation(in.s2.newImmig.monthlyInflow, startId, rng)
-    val finalHouseholds = afterRemoval ++ newImmigrants.households
-    val newStocksById   = newImmigrants.households.zip(newImmigrants.financialStocks).map((household, stocks) => household.id -> stocks).toMap
-
-    LaborMarketResult(finalHouseholds, searchResult.crossSectorHires, newStocksById)
+    LaborMarketResult(postWages, searchResult.crossSectorHires, newStocksById)
 
   // ---- Phase 6: NPL and interest income ----
 

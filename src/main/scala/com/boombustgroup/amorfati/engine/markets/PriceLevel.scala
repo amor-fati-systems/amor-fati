@@ -7,8 +7,8 @@ import com.boombustgroup.amorfati.types.*
   *
   * Three channels: demand-pull (positive output-gap proxy via demandMult, with
   * partial downside pass-through under slack), cost-push (positive wage growth
-  * pass-through), and import push (exchange rate deviation × import
-  * propensity).
+  * pass-through), and import push (exchange-rate deviation plus broad import
+  * cost pressure, scaled by import propensity).
   *
   * A soft floor at −1.5%/month with 30% pass-through approximates downward
   * nominal rigidity (cf. Bewley 1999). These are calibration choices, not
@@ -47,21 +47,23 @@ object PriceLevel:
       demandMult: Multiplier,
       wageGrowth: Coefficient,
       exRateDeviation: ExchangeRateShock,
+      importCostIndex: PriceIndex = PriceIndex.Base,
   )(using p: SimParams): Result =
     val demandGap                  = demandMult.deviationFromOne
     val demandPull: Coefficient    =
       if demandGap >= Coefficient.Zero then demandGap * DemandPullWeight
       else demandGap * DemandPullWeight * DemandSlackPassThrough
     val costPush: Coefficient      = wageGrowth.max(Coefficient.Zero) * CostPushWeight
+    val importCostPressure         = importCostIndex.toMultiplier.deviationFromOne.max(Coefficient.Zero)
     val rawImportPush: Coefficient =
-      exRateDeviation.max(ExchangeRateShock.Zero).toCoefficient * p.forex.importPropensity * ImportPushWeight
+      (exRateDeviation.max(ExchangeRateShock.Zero).toCoefficient + importCostPressure) * p.forex.importPropensity * ImportPushWeight
     val importPush: Coefficient    = rawImportPush.min(p.openEcon.importPushCap.toCoefficient)
 
     val rawMonthly: Coefficient = demandPull + costPush + importPush
     val monthly: Coefficient    = softFloor(rawMonthly)
     val annualized: Rate        = monthly.toRate.annualize
     val smoothed: Rate          = expectedInflation * (Share.One - SmoothingLambda) + annualized * SmoothingLambda
-    val newPrice: PriceIndex    = prevPrice.applyGrowth(monthly).max(MinPriceLevel)
+    val newPrice: PriceIndex    = prevPrice.applyGrowth(smoothed.monthly.toCoefficient).max(MinPriceLevel)
     Result(
       inflation = smoothed,
       priceLevel = newPrice,

@@ -40,7 +40,8 @@ case class World(
     social.demographics.workingAgePop.max(1)
 
   def unemploymentRate(employed: Int): Share =
-    Share.One - Share.fraction(employed, laborForcePopulation)
+    val laborForce = laborForcePopulation
+    Share.One - Share.fraction(Math.max(0, Math.min(employed, laborForce)), laborForce)
 
   def cachedMonthlyGdpProxy: PLN = flows.monthlyGdpProxy
 
@@ -117,14 +118,15 @@ object ExternalState:
 
 /** Real economy state — physical and wealth structure. */
 case class RealState(
-    housing: HousingMarket.State,             // price index, mortgage stock, regional sub-markets
-    sectoralMobility: SectoralMobility.State, // cross-sector hires, quits, mobility rate
-    grossInvestment: PLN = PLN.Zero,          // aggregate GFCF by firms
-    aggGreenInvestment: PLN = PLN.Zero,       // green investment (renewables, energy efficiency)
-    aggGreenCapital: PLN = PLN.Zero,          // green capital stock across all firms
-    etsPrice: Multiplier = Multiplier.Zero,   // EU ETS allowance price (EUR/tCO2)
-    automationRatio: Share = Share.Zero,      // share of Automated firms
-    hybridRatio: Share = Share.Zero,          // share of Hybrid firms
+    housing: HousingMarket.State,                   // price index, mortgage stock, regional sub-markets
+    sectoralMobility: SectoralMobility.State,       // cross-sector hires, quits, mobility rate
+    grossInvestment: PLN = PLN.Zero,                // aggregate GFCF by firms
+    aggGreenInvestment: PLN = PLN.Zero,             // green investment (renewables, energy efficiency)
+    aggGreenCapital: PLN = PLN.Zero,                // green capital stock across all firms
+    etsPrice: Multiplier = Multiplier.Zero,         // EU ETS allowance price (EUR/tCO2)
+    productivityIndex: Multiplier = Multiplier.One, // baseline real productivity trend multiplier
+    automationRatio: Share = Share.Zero,            // share of Automated firms
+    hybridRatio: Share = Share.Zero,                // share of Hybrid firms
 )
 object RealState:
   val zero: RealState = RealState(
@@ -196,7 +198,7 @@ object DecisionSignals:
   */
 case class PipelineState(
     sectorDemandMult: Vector[Multiplier],       // per-sector demand multipliers from S4
-    sectorDemandPressure: Vector[Multiplier],   // uncapped demand/capacity ratios for hiring
+    sectorDemandPressure: Vector[Multiplier],   // persistent sector demand/capacity pressure signal
     sectorHiringSignal: Vector[Multiplier],     // smoothed sector hiring signal used by firm labor planning
     fiscalRuleSeverity: Int = 0,                // 0=none, 1=SRW, 2=SGP, 3=Art86_55, 4=Art216_60
     govSpendingCutRatio: Share = Share.Zero,    // fraction of raw spending cut by fiscal rules

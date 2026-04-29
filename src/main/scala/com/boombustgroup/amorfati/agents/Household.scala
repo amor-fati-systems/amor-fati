@@ -173,6 +173,29 @@ object Household:
       totalConsumerDefault: PLN,     // aggregate consumer loan defaults
       totalConsumerPrincipal: PLN,   // aggregate consumer loan principal repaid
   ):
+    def withFlowTotalsFrom(flowTotals: Aggregates): Aggregates =
+      copy(
+        totalIncome = flowTotals.totalIncome,
+        consumption = flowTotals.consumption,
+        domesticConsumption = flowTotals.domesticConsumption,
+        importConsumption = flowTotals.importConsumption,
+        retrainingAttempts = flowTotals.retrainingAttempts,
+        retrainingSuccesses = flowTotals.retrainingSuccesses,
+        totalRent = flowTotals.totalRent,
+        totalDebtService = flowTotals.totalDebtService,
+        totalUnempBenefits = flowTotals.totalUnempBenefits,
+        totalDepositInterest = flowTotals.totalDepositInterest,
+        crossSectorHires = flowTotals.crossSectorHires,
+        voluntaryQuits = flowTotals.voluntaryQuits,
+        totalRemittances = flowTotals.totalRemittances,
+        totalPit = flowTotals.totalPit,
+        totalSocialTransfers = flowTotals.totalSocialTransfers,
+        totalConsumerDebtService = flowTotals.totalConsumerDebtService,
+        totalConsumerOrigination = flowTotals.totalConsumerOrigination,
+        totalConsumerDefault = flowTotals.totalConsumerDefault,
+        totalConsumerPrincipal = flowTotals.totalConsumerPrincipal,
+      )
+
     def unemploymentRate(totalPopulation: Int): Share =
       if totalPopulation <= 0 then Share.Zero
       else Share.fraction(totalPopulation - employed, totalPopulation)
@@ -199,29 +222,57 @@ object Household:
 
   object Init:
 
-    /** Create individual households with multi-bank assignment. A
-      * NAIRU-fraction of households start as Unemployed(0) so the economy
-      * initializes near steady state rather than overheated.
+    /** Create individual households with multi-bank assignment. Firm job slots
+      * are initialized as employed households; the NAIRU stock is added as
+      * unemployed labor-force participants outside those firm slots, so
+      * baseline unemployment does not create artificial same-month vacancies.
       */
     def create(randomness: InitRandomness.HouseholdStreams, firms: Vector[Firm.State])(using p: SimParams): Population =
-      val hhCount     = firms.map(Firm.workerCount).sum
-      val hhNetwork   = Network.wattsStrogatz(hhCount, p.household.socialK, p.household.socialP, randomness.network)
-      val initialized = initialize(hhCount, firms, hhNetwork, randomness.attributes)
+      val employedSlots = firms.map(Firm.workerCount).sum
+      val nUnemployed   = initialUnemployedCount(employedSlots)
+      val totalCount    = employedSlots + nUnemployed
+      val hhNetwork     = Network.wattsStrogatz(totalCount, p.household.socialK, p.household.socialP, randomness.network)
+      val initialized   = initialize(employedSlots, firms, hhNetwork, randomness.attributes)
       // Assign households to same bank as their employer
-      val banked      = initialized.households.map: h =>
+      val banked        = initialized.households.map: h =>
         h.status match
           case HhStatus.Employed(fid, _, _) if fid.toInt < firms.length => h.copy(bankId = firms(fid.toInt).bankId)
           case _                                                        => h
-      // Set NAIRU fraction as unemployed — prevents overheated init
-      val nUnemployed = p.monetary.nairu.applyTo(hhCount)
-      val toUnemploy  = randomness.initialUnemployment.shuffle(banked.indices.toVector).take(nUnemployed).toSet
-      val households  = banked.zipWithIndex.map: (h, i) =>
-        if toUnemploy.contains(i) then
-          h.status match
-            case HhStatus.Employed(_, sector, _) => h.copy(status = HhStatus.Unemployed(0), lastSectorIdx = sector)
-            case _                               => h
-        else h
-      Population(households, initialized.financialStocks)
+      val unemployed    = initializeUnemployed(employedSlots, nUnemployed, firms, hhNetwork, randomness.attributes, randomness.initialUnemployment)
+      Population(banked ++ unemployed.map(_.state), initialized.financialStocks ++ unemployed.map(_.financialStocks))
+
+    private def initialUnemployedCount(employedSlots: Int)(using p: SimParams): Int =
+      if employedSlots <= 0 || p.monetary.nairu <= Share.Zero then 0
+      else
+        val employedShareRaw = (Share.One - p.monetary.nairu).toLong
+        val total            =
+          ((BigInt(employedSlots) * BigInt(FixedPointBase.Scale)) + BigInt(employedShareRaw - 1L)) / BigInt(employedShareRaw)
+        Math.max(0, total.toInt - employedSlots)
+
+    private def initializeUnemployed(
+        startId: Int,
+        count: Int,
+        firms: Vector[Firm.State],
+        socialNetwork: Array[Array[Int]],
+        attributeRng: RandomStream,
+        sectorRng: RandomStream,
+    )(using p: SimParams): Vector[SampledHousehold] =
+      if count <= 0 then Vector.empty
+      else
+        val living = firms.filter(Firm.isAlive)
+        require(living.nonEmpty, "Household.Init.create requires at least one living firm to seed unemployed workers")
+        (0 until count)
+          .map: offset =>
+            val firm    = living(sectorRng.nextInt(living.length))
+            val sampled = sampleHousehold(startId + offset, firm, firm.sector, socialNetwork, attributeRng)
+            sampled.copy(
+              state = sampled.state.copy(
+                status = HhStatus.Unemployed(0),
+                bankId = firm.bankId,
+                lastSectorIdx = firm.sector,
+              ),
+            )
+          .toVector
 
     /** Initialize households, all employed, assigned proportionally to firm
       * sizes.
@@ -468,10 +519,12 @@ object Household:
     if !p.labor.voluntarySearchProb.sampleBelow(rng) then return (status, 0)
     val targetSector      =
       SectoralMobility.selectTargetSector(status.sectorIdx.toInt, sectorWages, sectorVacancies, p.labor.frictionMatrix, p.labor.vacancyWeight, rng)
+    if sectorVacancies(targetSector) <= 0 then return (status, 0)
     val targetAvgWage     = sectorWages(targetSector)
-    val wageThresholdMult = Multiplier.One + p.labor.voluntaryWageThreshold.toMultiplier
-    if targetAvgWage <= status.wage * wageThresholdMult then return (status, 0)
     val friction          = p.labor.frictionMatrix(status.sectorIdx.toInt)(targetSector)
+    val frictionNetWage   = targetAvgWage * SectoralMobility.crossSectorWagePenalty(friction)
+    val wageThresholdMult = Multiplier.One + p.labor.voluntaryWageThreshold.toMultiplier
+    if frictionNetWage <= status.wage * wageThresholdMult then return (status, 0)
     if friction < p.labor.adjacentFrictionMax then (HhStatus.Unemployed(0), 1)
     else
       val rp = SectoralMobility.frictionAdjustedParams(friction, p.labor.frictionDurationMult, p.labor.frictionCostMult)
@@ -684,12 +737,15 @@ object Household:
     if distressMonths >= p.household.bankruptcyDistressMonths then resolveBankruptcy(f, distressMonths)
     else resolveSurvival(f, sectorWages, sectorVacancies, rng, distressMonths)
 
-  /** Bankruptcy branch: write off consumer debt, zero equity. */
+  /** Personal-insolvency branch: write off consumer debt and equity without
+    * removing the household from the labor force.
+    */
   private def resolveBankruptcy(f: MonthlyFlows, distressMonths: Int): HhMonthlyResult =
     // Consumer credit stock is reduced earlier by the same-month debt-service
     // amount carried in credit.updatedDebt. Default the remaining balance, not
     // a principal-only reconstruction, so bankruptcy stays aligned with the
     // stock identity used by BankingEconomics/SFC.
+    val _             = distressMonths
     val ccDefaultAmt  = f.credit.updatedDebt
     val creditWithDef = f.credit.copy(defaultAmt = ccDefaultAmt, updatedDebt = PLN.Zero)
     val financial     = FinancialStocks(
@@ -700,8 +756,8 @@ object Household:
     )
     HhMonthlyResult(
       newState = f.hh.copy(
-        status = HhStatus.Bankrupt,
-        financialDistressMonths = distressMonths,
+        status = f.newStatus,
+        financialDistressMonths = 0,
       ),
       income = f.income,
       benefit = f.benefit,

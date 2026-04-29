@@ -44,6 +44,21 @@ object Immigration:
   def computeOutflow(immigrantStock: Int)(using p: SimParams): Int =
     p.immigration.returnRate.applyTo(immigrantStock).max(0)
 
+  def computeOutflow(immigrantStock: Int, immigrantUnempRate: Share)(using p: SimParams): Int =
+    val stressRate = ((immigrantUnempRate - p.immigration.returnUnempThreshold).max(Share.Zero) * p.immigration.returnUnempSensitivity).toShare
+    (p.immigration.returnRate + stressRate).applyTo(immigrantStock).max(0).min(immigrantStock)
+
+  def immigrantUnemploymentRate(households: Iterable[Household.State]): Share =
+    var immigrants = 0
+    var unemployed = 0
+    households.foreach: h =>
+      if h.isImmigrant then
+        immigrants += 1
+        h.status match
+          case _: HhStatus.Unemployed => unemployed += 1
+          case _                      =>
+    if immigrants <= 0 then Share.Zero else Share.fraction(unemployed, immigrants)
+
   /** Total remittance outflow from immigrant HH. Remittances = employed
     * immigrant wages × remittance rate.
     */
@@ -60,7 +75,8 @@ object Immigration:
     SectorIdx(Distributions.cdfSample(p.immigration.sectorShares, rng))
 
   /** Spawn new immigrant households with their opening ledger financial stock.
-    * They start as Unemployed(0) and are matched in the next jobSearch round.
+    * They start as Unemployed(0); the caller decides which jobSearch round can
+    * match them.
     */
   def spawnImmigrantPopulation(count: Int, startId: Int, rng: RandomStream)(using p: SimParams): Household.Population =
     val sampled = (0 until count).map { i =>
@@ -109,13 +125,22 @@ object Immigration:
   def spawnImmigrants(count: Int, startId: Int, rng: RandomStream)(using p: SimParams): Vector[Household.State] =
     spawnImmigrantPopulation(count, startId, rng).households
 
-  /** Remove returning migrants from household vector. Removes oldest immigrants
-    * (lowest ids among immigrants).
+  /** Remove returning migrants from household vector. Jobless migrants return
+    * first, then oldest remaining immigrants.
     */
   def removeReturnMigrants(households: Vector[Household.State], count: Int): Vector[Household.State] =
     if count <= 0 then households
     else
-      val immigrantIds = households.filter(_.isImmigrant).map(_.id).sorted.take(count).toSet
+      val immigrantIds = households
+        .filter(_.isImmigrant)
+        .sortBy: h =>
+          val employedRank = h.status match
+            case _: HhStatus.Unemployed => 0
+            case _                      => 1
+          (employedRank, h.id.toInt)
+        .map(_.id)
+        .take(count)
+        .toSet
       households.filterNot(h => immigrantIds.contains(h.id))
 
   /** Full monthly step: compute inflow, outflow, remittances, update state. */
@@ -126,7 +151,7 @@ object Immigration:
       unempRate: Share,
   )(using SimParams): State =
     val inflow      = computeInflow(wage, unempRate)
-    val outflow     = computeOutflow(prev.immigrantStock)
+    val outflow     = computeOutflow(prev.immigrantStock, immigrantUnemploymentRate(households))
     val newStock    = (prev.immigrantStock + inflow - outflow).max(0)
     val remittances = computeRemittances(households)
     State(newStock, inflow, outflow, remittances)

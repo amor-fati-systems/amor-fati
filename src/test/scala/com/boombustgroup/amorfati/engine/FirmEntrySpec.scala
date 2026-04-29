@@ -392,18 +392,18 @@ class FirmEntrySpec extends AnyFlatSpec with Matchers:
       accumulatedLoss = PLN.Zero,
     )
 
-  "Net creation" should "produce zero new firms when unemployment <= NAIRU" in {
+  "Net creation" should "produce zero new firms when unemployment is at NAIRU" in {
     val firms  = mkFirms(100)
     val rng    = RandomStream.seeded(42)
-    val result = runEntry(firms, BigDecimal("0.04"), rng)
+    val result = runEntry(firms, BigDecimal("0.05"), rng)
     result.netBirths shouldBe 0
     result.firms.length shouldBe firms.length
   }
 
-  "Replacement entry" should "recreate some dead firms even when unemployment <= NAIRU" in {
+  "Replacement entry" should "recreate some dead firms when net entry is neutral" in {
     val firms  = mkFirms(20) ++ Vector(mkDeadFirm(20), mkDeadFirm(21), mkDeadFirm(22), mkDeadFirm(23))
     val rng    = RandomStream.seeded(42)
-    val result = runEntry(firms, BigDecimal("0.04"), rng)
+    val result = runEntry(firms, BigDecimal("0.05"), rng)
     result.netBirths shouldBe 0
     result.births should be > 0
     result.newFirmIds.size shouldBe result.births
@@ -414,7 +414,7 @@ class FirmEntrySpec extends AnyFlatSpec with Matchers:
   it should "preserve vector length when only replacements occur" in {
     val firms  = mkFirms(20) ++ Vector(mkDeadFirm(20), mkDeadFirm(21))
     val rng    = RandomStream.seeded(42)
-    val result = runEntry(firms, BigDecimal("0.04"), rng)
+    val result = runEntry(firms, BigDecimal("0.05"), rng)
     result.netBirths shouldBe 0
     result.firms.length shouldBe firms.length
   }
@@ -509,6 +509,12 @@ class FirmEntrySpec extends AnyFlatSpec with Matchers:
     result.netBirths.should(be > 0)
   }
 
+  it should "allow expansionary net entry in a tight labor market when hiring slack remains available" in {
+    val firms  = mkFirms(1000)
+    val result = runEntry(firms, BigDecimal("0.03"), RandomStream.seeded(42), inflation = Rate.decimal(3, 2), expectedInflation = Rate.decimal(25, 3))
+    result.netBirths.should(be > 0)
+  }
+
   it should "preserve existing firms unchanged" in {
     val firms  = mkFirms(100)
     val rng    = RandomStream.seeded(42)
@@ -516,10 +522,10 @@ class FirmEntrySpec extends AnyFlatSpec with Matchers:
     result.firms.take(firms.length).map(_.id) shouldBe firms.map(_.id)
   }
 
-  "NetEntryRate" should "default to 0.06" in {
-    p.firm.netEntryRate shouldBe Share.decimal(6, 2)
+  "NetEntryRate" should "default to 0.12" in {
+    p.firm.netEntryRate shouldBe Share.decimal(12, 2)
   }
 
-  "NetEntryMaxMonthly" should "default to 100" in {
-    p.firm.netEntryMaxMonthly shouldBe 100
+  "NetEntryMaxMonthly" should "default to 175" in {
+    p.firm.netEntryMaxMonthly shouldBe 175
   }

@@ -29,9 +29,9 @@ class CentralBankPropertySpec extends AnyFlatSpec with Matchers with ScalaCheckP
   it should "cap fiscal risk premium at 10% even at extreme debtToGdp" in
     forAll(genRate, genDecimal("1.0", "100.0"), genDecimal("0.0", "0.50"), genDecimal("-1e10", "1e10")) {
       (refRate: BigDecimal, debtToGdp: BigDecimal, nbpBondGdpShare: BigDecimal, nfa: BigDecimal) =>
-        val y = Nbp.bondYield(rateBD(refRate), shareBD(debtToGdp), shareBD(nbpBondGdpShare), plnBD(nfa), Rate.Zero)
-        // Fiscal risk <= 0.10, so yield <= refRate + termPremium + 0.10
-        decimal(y) should be <= (refRate + decimal(p.fiscal.govTermPremium) + BigDecimal("0.10") + BigDecimal("0.001"))
+        val y           = Nbp.bondYield(rateBD(refRate), shareBD(debtToGdp), shareBD(nbpBondGdpShare), plnBD(nfa), Rate.Zero)
+        val curveAnchor = refRate.max(decimal(p.fiscal.bundYield)) + decimal(p.fiscal.govTermPremium)
+        decimal(y) should be <= (curveAnchor + BigDecimal("0.10") + BigDecimal("0.001"))
     }
 
   it should "be monotonic in debtToGdp (higher debt -> higher yield)" in

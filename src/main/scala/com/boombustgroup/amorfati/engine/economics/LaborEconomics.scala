@@ -21,11 +21,30 @@ object LaborEconomics:
       val raw = Share.fraction(availableLabor, laborDemand) * p.firm.aggregateLaborSlackBuffer
       raw.clamp(p.firm.aggregateLaborSlackFloor, Share.One)
 
+  private[amorfati] def operationalExpansionSlackFactor(
+      laborDemand: Int,
+      availableLabor: Int,
+      monthlyHiringHeadroom: Int,
+      newLaborInflow: Int,
+  )(using p: SimParams): Share =
+    if monthlyHiringHeadroom <= 0 then Share.One
+    else
+      val expansionPool = Math.max(0, availableLabor - laborDemand) + Math.max(0, newLaborInflow)
+      val raw           = Share.fraction(expansionPool, monthlyHiringHeadroom) * p.firm.aggregateLaborSlackBuffer
+      raw.clamp(Share.Zero, Share.One)
+
   private case class ClearedLaborMarket(
       wage: PLN,
       employed: Int,
       regionalWages: Map[Region, PLN],
   )
+
+  private[amorfati] def nairuWagePressure(laborForcePopulation: Int, employed: Int)(using p: SimParams): Coefficient =
+    if laborForcePopulation <= 0 then Coefficient.Zero
+    else
+      val unemployed       = Math.max(0, laborForcePopulation - employed)
+      val unemploymentRate = Share.fraction(unemployed, laborForcePopulation)
+      (p.monetary.nairu - unemploymentRate).max(Share.Zero).toCoefficient * p.labor.tightLaborWageSensitivity
 
   case class Output(
       newWage: PLN,
@@ -51,16 +70,24 @@ object LaborEconomics:
       households: Vector[Household.State],
       s1: FiscalConstraintEconomics.Output,
   )(using p: SimParams): Output =
-    val living                 = firms.filter(Firm.isAlive)
-    val laborDemand            = living.map(f => Firm.workerCount(f)).sum
-    val cleared                = clearLaborMarket(w, s1.resWage, laborDemand)
-    val availableLabor         = LaborMarket.laborSupplyAtWage(cleared.wage, s1.resWage, w.derivedTotalPopulation)
-    val operationalHiringSlack = operationalHiringSlackFactor(laborDemand, availableLabor)
+    val living           = firms.filter(Firm.isAlive)
+    val laborDemand      = living.map(f => Firm.workerCount(f)).sum
+    val laborForce       = w.laborForcePopulation
+    val observedEmployed = Household.countEmployed(households)
+    val cleared          = clearLaborMarket(w, s1.resWage, laborDemand, laborForce, observedEmployed)
+    val availableLabor   = LaborMarket.laborSupplyAtWage(cleared.wage, s1.resWage, laborForce)
 
     // Immigration
-    val unempRateForImmig = w.unemploymentRate(cleared.employed)
-    val newImmig          = Immigration.step(w.external.immigration, households, cleared.wage, unempRateForImmig)
-    val netMigration      = newImmig.monthlyInflow - newImmig.monthlyOutflow
+    val unempRateForImmig      = w.unemploymentRate(cleared.employed)
+    val newImmig               = Immigration.step(w.external.immigration, households, cleared.wage, unempRateForImmig)
+    val netMigration           = newImmig.monthlyInflow - newImmig.monthlyOutflow
+    val hiringHeadroom         = living.map(f => Firm.monthlyHiringHeadroom(Firm.workerCount(f))).sum
+    val operationalHiringSlack = operationalExpansionSlackFactor(
+      laborDemand = cleared.employed,
+      availableLabor = availableLabor,
+      monthlyHiringHeadroom = hiringHeadroom,
+      newLaborInflow = newImmig.monthlyInflow,
+    )
 
     // Demographics
     val newDemographics = SocialSecurity.demographicsStep(w.social.demographics, cleared.employed, netMigration)
@@ -104,10 +131,12 @@ object LaborEconomics:
       postHouseholds: Vector[Household.State],
   )(using p: SimParams): Output =
     val postLaborDemand    = postLiving.map(Firm.workerCount).sum
-    val cleared            = clearLaborMarket(w, s1.resWage, postLaborDemand)
+    val postLaborForce     = pre.newDemographics.workingAgePop.max(1)
     val realizedEmployment = Household.countEmployed(postHouseholds)
+    val cleared            = clearLaborMarket(w, s1.resWage, postLaborDemand, postLaborForce, realizedEmployment)
     val employedCap        = Math.min(realizedEmployment, pre.newDemographics.workingAgePop)
-    val postAvailableLabor = LaborMarket.laborSupplyAtWage(cleared.wage, s1.resWage, w.derivedTotalPopulation)
+    val postAvailableLabor = LaborMarket.laborSupplyAtWage(cleared.wage, s1.resWage, postLaborForce)
+    val postHiringHeadroom = postLiving.map(f => Firm.monthlyHiringHeadroom(Firm.workerCount(f))).sum
     val newNfz             = SocialSecurity.nfzStep(
       employedCap,
       cleared.wage,
@@ -119,7 +148,12 @@ object LaborEconomics:
       employed = employedCap,
       laborDemand = postLaborDemand,
       wageGrowth = wageGrowthFrom(w.householdMarket.marketWage, cleared.wage),
-      operationalHiringSlack = operationalHiringSlackFactor(postLaborDemand, postAvailableLabor),
+      operationalHiringSlack = operationalExpansionSlackFactor(
+        laborDemand = employedCap,
+        availableLabor = postAvailableLabor,
+        monthlyHiringHeadroom = postHiringHeadroom,
+        newLaborInflow = 0,
+      ),
       newNfz = newNfz,
       living = postLiving,
       regionalWages = cleared.regionalWages,
@@ -129,24 +163,32 @@ object LaborEconomics:
       w: World,
       resWage: PLN,
       laborDemand: Int,
+      laborForcePopulation: Int,
+      observedEmployed: Int,
   )(using p: SimParams): ClearedLaborMarket =
     val (rawWage, rawEmployed, regWages) =
-      val rc          = RegionalClearing.clear(w.regionalWages, resWage, laborDemand, w.derivedTotalPopulation)
-      val natEmployed = LaborMarket.employmentAtWage(rc.nationalWage, resWage, laborDemand, w.derivedTotalPopulation)
+      val rc          = RegionalClearing.clear(w.regionalWages, resWage, laborDemand, laborForcePopulation)
+      val natEmployed = LaborMarket.employmentAtWage(rc.nationalWage, resWage, laborDemand, laborForcePopulation)
       (rc.nationalWage, natEmployed, rc.regionalWages)
 
     val wageAfterExp =
-      val expInflGap      = (w.mechanisms.expectations.expectedInflation - p.monetary.targetInfl).max(Rate.Zero).toCoefficient
-      val expWagePressure = (p.labor.expWagePassthrough * expInflGap) / 12
-      resWage.max(rawWage * expWagePressure.growthMultiplier)
+      val expectedNominalInflation = w.mechanisms.expectations.expectedInflation.max(Rate.Zero).toCoefficient
+      val expWagePressure          = (p.labor.expWagePassthrough * expectedNominalInflation) / 12
+      val tightnessWagePressure    = nairuWagePressure(laborForcePopulation, Math.max(rawEmployed, observedEmployed))
+      val expectedWage             = rawWage * expWagePressure.growthMultiplier
+      val tightnessFloor           = w.householdMarket.marketWage * tightnessWagePressure.growthMultiplier
+      resWage.max(expectedWage.max(tightnessFloor))
+
+    val productivityWage =
+      wageAfterExp * p.firm.productivityGrowth.monthly.growthMultiplier
 
     val newWage =
       val aggDensity =
         p.sectorDefs.zipWithIndex.map((s, i) => s.share * p.labor.unionDensity(i)).foldLeft(Share.Zero)(_ + _)
-      val decline    = w.householdMarket.marketWage - wageAfterExp
-      resWage.max(wageAfterExp + decline * p.labor.unionRigidity * aggDensity)
+      val decline    = w.householdMarket.marketWage - productivityWage
+      resWage.max(productivityWage + decline * p.labor.unionRigidity * aggDensity)
 
-    val employed = Math.min(rawEmployed, w.social.demographics.workingAgePop)
+    val employed = Math.min(rawEmployed, laborForcePopulation)
 
     ClearedLaborMarket(newWage, employed, regWages)
 

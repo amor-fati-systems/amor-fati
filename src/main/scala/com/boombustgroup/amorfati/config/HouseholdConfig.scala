@@ -90,8 +90,8 @@ import com.boombustgroup.amorfati.types.*
 case class HouseholdConfig(
     baseWage: PLN = PLN(8266),
     baseReservationWage: PLN = PLN(4666),
-    mpc: Share = Share.decimal(82, 2),
-    laborSupplySteepness: Coefficient = Coefficient(8),
+    mpc: Share = Share.decimal(92, 2),
+    laborSupplySteepness: Coefficient = Coefficient(4),
     wageAdjSpeed: Coefficient = Coefficient.decimal(12, 2),
     // Household count (defaults to totalPopulation — set in SimParams.defaults)
     count: Int = 100000,
@@ -107,11 +107,11 @@ case class HouseholdConfig(
     rentStd: PLN = PLN(400),
     rentFloor: PLN = PLN(800),
     // MPC distribution
-    mpcAlpha: Coefficient = Coefficient.decimal(82, 1),
-    mpcBeta: Coefficient = Coefficient.decimal(18, 1),
+    mpcAlpha: Coefficient = Coefficient.decimal(92, 1),
+    mpcBeta: Coefficient = Coefficient.decimal(8, 1),
     // State-dependent MPC (Carroll 1997 buffer-stock)
     bufferTargetMonths: Multiplier = Multiplier(6),             // target savings = 6 months of income
-    bufferSensitivity: Coefficient = Coefficient.decimal(4, 1), // MPC adjustment strength (0 = static, 1 = fully responsive)
+    bufferSensitivity: Coefficient = Coefficient.decimal(2, 1), // MPC adjustment strength (0 = static, 1 = fully responsive)
     mpcUnemployedBoost: Share = Share.decimal(10, 2),           // MPC uplift when unemployed (desperate spending)
     bufferProtectedShare: Share = Share.decimal(50, 2),         // protected share of target buffer under stress
     bufferExcessDrawdownRate: Share = Share.decimal(20, 2),     // monthly drawdown rate for savings above target buffer

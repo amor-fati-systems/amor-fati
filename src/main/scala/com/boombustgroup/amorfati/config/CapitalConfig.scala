@@ -22,6 +22,11 @@ import com.boombustgroup.amorfati.types.*
   *   share of capital investment that is imported (import leakage)
   * @param adjustSpeed
   *   monthly speed of capital stock adjustment toward target
+  * @param demandExpansionSensitivity
+  *   target-capital uplift per unit of persistent excess demand pressure
+  * @param investmentCreditShare
+  *   share of cash-unfunded desired physical investment eligible for bank
+  *   credit
   * @param prodElast
   *   capital share α in CES production function (also Cobb-Douglas when σ≈1)
   * @param costReplace
@@ -44,11 +49,13 @@ import com.boombustgroup.amorfati.types.*
   *   cost of replacing spoiled inventory as fraction of revenue
   */
 case class CapitalConfig(
-    // Physical capital (GUS F-01 2024)
-    klRatios: Vector[PLN] = Vector(PLN(120000), PLN(250000), PLN(80000), PLN(200000), PLN(150000), PLN(180000)),
+    // Physical capital (GUS F-01 2024; #461 K/GDP calibration)
+    klRatios: Vector[PLN] = Vector(PLN(180000), PLN(375000), PLN(120000), PLN(300000), PLN(225000), PLN(270000)),
     depRates: Vector[Rate] = Vector(Rate.decimal(15, 2), Rate.decimal(8, 2), Rate.decimal(10, 2), Rate.decimal(7, 2), Rate.decimal(5, 2), Rate.decimal(8, 2)),
-    importShare: Share = Share.decimal(35, 2),
-    adjustSpeed: Coefficient = Coefficient.decimal(10, 2),
+    importShare: Share = Share.decimal(18, 2),
+    adjustSpeed: Coefficient = Coefficient.decimal(18, 2),
+    demandExpansionSensitivity: Coefficient = Coefficient.decimal(40, 2),
+    investmentCreditShare: Share = Share.One,
     prodElast: Share = Share.decimal(30, 2),
     costReplace: Share = Share.decimal(50, 2),
     // Inventories (GUS 2024)

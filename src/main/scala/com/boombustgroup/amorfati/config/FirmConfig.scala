@@ -12,6 +12,8 @@ import com.boombustgroup.amorfati.types.*
   * @param baseRevenue
   *   monthly revenue per worker before demand shocks (PLN, calibrated to GUS
   *   F-01 2024)
+  * @param productivityGrowth
+  *   baseline annual firm productivity trend
   * @param otherCosts
   *   fixed non-wage monthly cost per worker (materials, rent, utilities)
   * @param aiCapex
@@ -56,6 +58,13 @@ import com.boombustgroup.amorfati.types.*
   * @param aggregateLaborSlackFloor
   *   lower bound on aggregate hiring slack factor, preventing total freeze of
   *   labor adjustment in overheated states
+  * @param laborAdjustSpeed
+  *   monthly partial adjustment speed toward the desired workforce target
+  * @param hiringWorkingCapitalMonths
+  *   wage-month runway available to profitable incumbents when financing
+  *   incremental hires
+  * @param startupHiringWorkingCapitalMonths
+  *   wage-month runway available to startups while staffing toward their target
   * @param digiDrift
   *   monthly exogenous DR drift for all firms
   * @param digiInvestCost
@@ -84,6 +93,7 @@ import com.boombustgroup.amorfati.types.*
 case class FirmConfig(
     // Production & costs
     baseRevenue: PLN = PLN(180000),
+    productivityGrowth: Rate = Rate.decimal(85, 3),
     otherCosts: PLN = PLN(16667),
     aiCapex: PLN = PLN(1200000),
     hybridCapex: PLN = PLN(350000),
@@ -91,7 +101,7 @@ case class FirmConfig(
     hybridOpex: PLN = PLN(12000),
     autoSkeletonCrew: Int = 2,
     hybridReadinessMin: Share = Share.decimal(20, 2),
-    fullAiReadinessMin: Share = Share.decimal(35, 2),
+    fullAiReadinessMin: Share = Share.decimal(55, 2),
     demandPassthrough: Share = Share.decimal(40, 2),
     // Entry
     entryRate: Share = Share.decimal(2, 2),
@@ -113,8 +123,8 @@ case class FirmConfig(
     aggregateLaborSlackBuffer: Share = Share.decimal(105, 2),
     aggregateLaborSlackFloor: Share = Share.decimal(50, 2),
     // Net entry (dynamic vector growth when unemployment > NAIRU)
-    netEntryRate: Share = Share.decimal(6, 2),                  // monthly net births as fraction of living firms, scaled by unemployment gap
-    netEntryMaxMonthly: Int = 100,                              // hard cap on net births per month (prevents vector explosion)
+    netEntryRate: Share = Share.decimal(12, 2),                 // monthly net births as fraction of living firms, scaled by cyclical entry signal
+    netEntryMaxMonthly: Int = 175,                              // hard cap on net births per month (prevents vector explosion)
     // Digitalization
     digiDrift: Share = Share.decimal(1, 3),
     digiInvestCost: PLN = PLN(50000),
@@ -123,6 +133,8 @@ case class FirmConfig(
     digiInvestBaseProb: Share = Share.decimal(8, 2),
     // Labor adjustment (smooth hiring/firing)
     laborAdjustSpeed: Coefficient = Coefficient.decimal(15, 2), // monthly partial adjustment toward target (λ)
+    hiringWorkingCapitalMonths: Multiplier = Multiplier(3),
+    startupHiringWorkingCapitalMonths: Multiplier = Multiplier(4),
     severanceMonths: Multiplier = Multiplier(2),                // months of wage per fired worker (Kodeks Pracy)
     minWorkersRetained: Int = 3,                                // hard floor on workforce
     // Network / demonstration effects
@@ -130,9 +142,14 @@ case class FirmConfig(
     networkRewireP: Share = Share.decimal(10, 2),
     demoEffectThresh: Share = Share.decimal(40, 2),
     demoEffectBoost: Share = Share.decimal(15, 2),
-    adoptionRampMonths: Int = 36,
+    adoptionRampMonths: Int = 60,
     sigmaLambda: Coefficient = Coefficient(0),
     sigmaCapMult: Multiplier = Multiplier(3),
 ):
   require(entrySectorBarriers.length == 6, s"entrySectorBarriers must have 6 sectors: ${entrySectorBarriers.length}")
   require(adoptionRampMonths > 0, s"adoptionRampMonths must be positive: $adoptionRampMonths")
+  require(hiringWorkingCapitalMonths >= Multiplier.Zero, s"hiringWorkingCapitalMonths must be non-negative: $hiringWorkingCapitalMonths")
+  require(
+    startupHiringWorkingCapitalMonths >= Multiplier.Zero,
+    s"startupHiringWorkingCapitalMonths must be non-negative: $startupHiringWorkingCapitalMonths",
+  )

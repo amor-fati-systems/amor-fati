@@ -87,11 +87,17 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     "UnempBenefitSpend",
     "OutputGap",
     "EffectivePitRate",
+    "GovTaxRevenue",
+    "GovDividendRevenue",
+    "GovTotalRevenue",
+    "GovRevenueToGdp",
     "SocialTransferSpend",
     "GovCurrentSpend",
     "GovCapitalSpendDomestic",
     "GovDomesticBudgetDemand",
     "GovDomesticBudgetOutlays",
+    "GovDeficit",
+    "GovOutlaysToGdp",
     "EuProjectCapitalTotal",
     "PublicCapitalStock",
     "EuCofinancingDomestic",
@@ -205,6 +211,9 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     "VoluntaryQuits",
     "AggCapitalStock",
     "GrossInvestment",
+    "TotalGrossFixedCapitalFormation",
+    "PrivateGrossInvestmentToGdp",
+    "GrossFixedCapitalFormationToGdp",
     "CapitalDepreciation",
     "AggInventoryStock",
     "InventoryChange",
@@ -296,7 +305,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     MetricValue.fromRaw((value / summon[SimParams].gdpRatio.toMultiplier).toLong)
 
   "McTimeseriesSchema" should "expose the stable schema contract" in {
-    McTimeseriesSchema.nCols shouldBe 248
+    McTimeseriesSchema.nCols shouldBe 257
     McTimeseriesSchema.colNames.toVector shouldBe expectedColNames
   }
 
@@ -334,6 +343,73 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     valueAt(row, "Health_Output") shouldBe polandScale(PLN(40))
     valueAt(row, "Public_Output") shouldBe polandScale(PLN(50))
     valueAt(row, "Agri_Output") shouldBe polandScale(PLN(60))
+  }
+
+  it should "emit annualized deficit-to-GDP consistently with fiscal rules" in {
+    val world = init.world.copy(
+      gov = init.world.gov.copy(monthly = init.world.gov.monthly.copy(deficit = PLN(3))),
+      flows = init.world.flows.copy(
+        monthlyGdpProxy = PLN(100),
+        sectorOutputs = Vector.fill(summon[SimParams].sectorDefs.length)(PLN.Zero),
+      ),
+    )
+    val row   = computeRow(world)
+
+    valueAt(row, "DeficitToGdp") shouldBe MetricValue.fromRaw(Share.decimal(3, 2).toLong)
+  }
+
+  it should "emit ready fiscal revenue and outlay diagnostics" in {
+    val world = init.world.copy(
+      gov = init.world.gov.copy(
+        monthly = init.world.gov.monthly.copy(
+          taxRevenue = PLN(30),
+          govDividendRevenue = PLN(5),
+          deficit = PLN(4),
+          unempBenefitSpend = PLN.Zero,
+          socialTransferSpend = PLN.Zero,
+          govCurrentSpend = PLN(20),
+          govCapitalSpend = PLN(10),
+          debtServiceSpend = PLN(2),
+          euCofinancing = PLN.Zero,
+        ),
+      ),
+      flows = init.world.flows.copy(
+        monthlyGdpProxy = PLN(100),
+        sectorOutputs = Vector.fill(summon[SimParams].sectorDefs.length)(PLN.Zero),
+      ),
+    )
+    val row   = computeRow(world)
+
+    valueAt(row, "GovTaxRevenue") shouldBe polandScale(PLN(30))
+    valueAt(row, "GovDividendRevenue") shouldBe polandScale(PLN(5))
+    valueAt(row, "GovTotalRevenue") shouldBe polandScale(PLN(35))
+    valueAt(row, "GovDeficit") shouldBe polandScale(PLN(4))
+    valueAt(row, "GovRevenueToGdp") shouldBe MetricValue.fromRaw(Share.decimal(35, 2).toLong)
+    valueAt(row, "GovOutlaysToGdp") shouldBe MetricValue.fromRaw(Share.decimal(32, 2).toLong)
+  }
+
+  it should "emit total GFCF and investment-to-GDP ratios" in {
+    val world = init.world.copy(
+      gov = init.world.gov.copy(
+        monthly = init.world.gov.monthly.copy(
+          govCapitalSpend = PLN(3),
+          euProjectCapital = PLN(5),
+        ),
+      ),
+      real = init.world.real.copy(
+        grossInvestment = PLN(10),
+        aggGreenInvestment = PLN(2),
+      ),
+      flows = init.world.flows.copy(
+        monthlyGdpProxy = PLN(100),
+        sectorOutputs = Vector.fill(summon[SimParams].sectorDefs.length)(PLN.Zero),
+      ),
+    )
+    val row   = computeRow(world)
+
+    valueAt(row, "TotalGrossFixedCapitalFormation") shouldBe polandScale(PLN(20))
+    valueAt(row, "PrivateGrossInvestmentToGdp") shouldBe MetricValue.fromRaw(Share.decimal(10, 2).toLong)
+    valueAt(row, "GrossFixedCapitalFormationToGdp") shouldBe MetricValue.fromRaw(Share.decimal(20, 2).toLong)
   }
 
   it should "reject malformed sector output vectors before output indexing" in {

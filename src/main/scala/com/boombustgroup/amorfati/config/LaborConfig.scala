@@ -42,6 +42,10 @@ import com.boombustgroup.amorfati.types.*
   *   inflation deviation threshold for credibility loss (pp)
   * @param expWagePassthrough
   *   pass-through of inflation expectations to wage demands
+  * @param tightLaborWageSensitivity
+  *   monthly wage-pressure sensitivity when observed unemployment is below
+  *   NAIRU; separate from the generic wage adjustment speed to avoid converting
+  *   temporary labor-market tightness into an excessive wage-cost spiral
   * @param expBondSensitivity
   *   sensitivity of bond yields to inflation expectations
   */
@@ -68,7 +72,8 @@ case class LaborConfig(
     expCredibilityInit: Share = Share.decimal(80, 2),
     expCredibilitySpeed: Coefficient = Coefficient.decimal(5, 2),
     expCredibilityThreshold: Rate = Rate.decimal(2, 2),
-    expWagePassthrough: Coefficient = Coefficient.decimal(50, 2),
+    expWagePassthrough: Coefficient = Coefficient.decimal(75, 2),
+    tightLaborWageSensitivity: Coefficient = Coefficient.decimal(6, 2),
     expBondSensitivity: Coefficient = Coefficient.decimal(50, 2),
 ):
   require(unionDensity.length == 6, s"unionDensity must have 6 sectors: ${unionDensity.length}")

@@ -45,9 +45,8 @@ object FiscalBudget:
     * month, a fraction `1/govAvgMaturityMonths` of the portfolio matures and is
     * refinanced at the current market yield. New deficit issuance also enters
     * at current yield. The weighted coupon converges gradually to market yield
-    * — a +5pp yield shock at 54-month average maturity takes ~4.5 years to
-    * fully pass through to debt service, matching the actual MF flat redemption
-    * profile (Strategia zarządzania długiem sektora finansów publicznych 2024).
+    * — a yield shock passes through over the configured debt-portfolio maturity
+    * instead of instantly, matching the MF flat redemption profile.
     *
     * Calibration: MF budgetary law structure 2024, GUS public finance
     * statistics, NBP government securities data.

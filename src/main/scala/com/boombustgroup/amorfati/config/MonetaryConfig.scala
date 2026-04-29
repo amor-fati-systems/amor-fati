@@ -19,7 +19,7 @@ import com.boombustgroup.amorfati.types.*
   * @param targetInfl
   *   NBP inflation target (NBP: 2.5% +/- 1pp)
   * @param neutralRate
-  *   long-run neutral real interest rate (estimated)
+  *   long-run neutral policy-rate anchor (estimated)
   * @param taylorAlpha
   *   Taylor rule coefficient on inflation gap
   * @param taylorBeta
@@ -60,13 +60,13 @@ import com.boombustgroup.amorfati.types.*
 case class MonetaryConfig(
     initialRate: Rate = Rate.decimal(575, 4),
     targetInfl: Rate = Rate.decimal(25, 3),
-    neutralRate: Rate = Rate.decimal(4, 2),
-    taylorAlpha: Coefficient = Coefficient.decimal(15, 1),
+    neutralRate: Rate = Rate.decimal(3, 2),
+    taylorAlpha: Coefficient = Coefficient.decimal(12, 1),
     taylorBeta: Coefficient = Coefficient.decimal(8, 1),
     taylorInertia: Share = Share.decimal(70, 2),
     rateFloor: Rate = Rate.decimal(1, 3),
     rateCeiling: Rate = Rate.decimal(15, 2),
-    maxRateChange: Rate = Rate(0),
+    maxRateChange: Rate = Rate.decimal(25, 4),
     nairu: Share = Share.decimal(5, 2),
     taylorDelta: Coefficient = Coefficient.decimal(5, 1),
     reserveRateMult: Share = Share.decimal(5, 1),

@@ -61,6 +61,27 @@ class PriceEquityEconomicsSpec extends AnyFlatSpec with Matchers:
     contribution shouldBe expected
   }
 
+  "GdpAccounting.publicCapitalCapacityBoost" should "translate net public capital into an output-capacity boost" in {
+    val base    = GdpAccounting.publicCapitalCapacityBoost(PLN(1200000000), PLN(1200000000), PLN(100000000))
+    val boosted = GdpAccounting.publicCapitalCapacityBoost(PLN(1400000000), PLN(1200000000), PLN(100000000))
+
+    base shouldBe Multiplier.One
+    boosted should be > Multiplier.One
+    boosted shouldBe Multiplier.decimal(1025, 3)
+  }
+
+  "DemandEconomics.compute" should "carry lagged EU project capital into domestic investment demand" in {
+    val euProjectCapital = PLN(120000000)
+    val withEuProject    = w.copy(
+      gov = w.gov.copy(monthly = w.gov.monthly.copy(euProjectCapital = euProjectCapital)),
+    )
+
+    val base   = DemandEconomics.compute(w, s2.employed, s2.living, s3.domesticCons)
+    val withEu = DemandEconomics.compute(withEuProject, s2.employed, s2.living, s3.domesticCons)
+
+    withEu.laggedInvestDemand shouldBe base.laggedInvestDemand + euProjectCapital * (Share.One - summon[SimParams].capital.importShare)
+  }
+
   "PriceEquityEconomics.compute" should "increase direct SOE dividend extraction when the fiscal deficit is higher" in {
     val prevGdp           = w.cachedMonthlyGdpProxy.max(PLN(1))
     val thresholdDeficit  = prevGdp * summon[SimParams].soe.dividendFiscalThreshold
@@ -91,6 +112,19 @@ class PriceEquityEconomicsSpec extends AnyFlatSpec with Matchers:
     )
 
     inflatedDemand.gdp shouldBe base.gdp
+  }
+
+  it should "split EU-funded public capital between domestic GFCF and investment imports" in {
+    val result = runPriceStep(w, s5)
+
+    result.domesticGFCF shouldBe
+      s5.sumGrossInvestment * (Share.One - summon[SimParams].capital.importShare) +
+      s5.sumGreenInvestment * (Share.One - summon[SimParams].climate.greenImportShare) +
+      result.euProjectCapital * (Share.One - summon[SimParams].capital.importShare)
+    result.investmentImports shouldBe
+      s5.sumGrossInvestment * summon[SimParams].capital.importShare +
+      s5.sumGreenInvestment * summon[SimParams].climate.greenImportShare +
+      result.euProjectCapital * summon[SimParams].capital.importShare
   }
 
   it should "fail fast when sectorMults does not match the configured sector count" in {

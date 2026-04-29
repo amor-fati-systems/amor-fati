@@ -5,8 +5,8 @@ import com.boombustgroup.amorfati.types.*
 /** Shadow economy and tax evasion: counter-cyclical informal sector dynamics.
   *
   * Models the Polish informal economy (Schneider 2023: 20-25% of GDP) with
-  * 4-channel tax evasion: firm-level CIT evasion, and aggregate VAT/PIT/excise
-  * evasion scaled by per-sector shadow shares. The informal share is
+  * 4-channel tax leakage: firm-level CIT leakage, and aggregate VAT/PIT/excise
+  * leakage scaled by per-sector shadow shares. The informal share is
   * counter-cyclical — rises with unemployment (lagged, smoothed). Affects SFC
   * Identity 3 (government budget).
   *
@@ -36,10 +36,10 @@ import com.boombustgroup.amorfati.types.*
 case class InformalConfig(
     sectorShares: Vector[Share] =
       Vector(Share.decimal(5, 2), Share.decimal(15, 2), Share.decimal(30, 2), Share.decimal(20, 2), Share.decimal(2, 2), Share.decimal(35, 2)),
-    citEvasion: Share = Share.decimal(80, 2),
-    vatEvasion: Share = Share.decimal(90, 2),
-    pitEvasion: Share = Share.decimal(85, 2),
-    exciseEvasion: Share = Share.decimal(70, 2),
+    citEvasion: Share = Share.decimal(50, 2),
+    vatEvasion: Share = Share.decimal(30, 2),
+    pitEvasion: Share = Share.decimal(40, 2),
+    exciseEvasion: Share = Share.decimal(30, 2),
     unempThreshold: Rate = Rate.decimal(5, 2),
     cyclicalSens: Coefficient = Coefficient.decimal(50, 2),
     smoothing: Coefficient = Coefficient.decimal(92, 2),

@@ -765,8 +765,7 @@ Government bond yield is:
 
 ```text
 bondYield =
-  referenceRate
-  + termPremium
+  max(referenceRate + termPremium, bundYield + termPremium)
   + fiscalRisk(debtToGdp)
   - qeCompression(nbpBondHoldings / GDP)
   - foreignDemandDiscount(if NFA > 0)
@@ -777,6 +776,26 @@ QE activates near the lower bound when realized or expected inflation is below
 target by the configured threshold. QE purchases are requested by NBP but
 settled through the bond waterfall, so actual sold bonds leave banks and enter
 NBP holdings exactly.
+
+The SGP fiscal correction applies to discretionary government purchases after
+subtracting lagged non-purchase outlays from the 3% deficit path:
+
+```text
+prevNonPurchaseSpend =
+  max(prevRevenue + prevDeficit - prevGovSpend, 0)
+
+maxDiscretionarySpend =
+  max(prevRevenue + monthlyGdp * sgpDeficitLimit - prevNonPurchaseSpend, 0)
+
+deficitOvershootScale =
+  max(deficitToGdp / sgpDeficitLimit, 1)
+
+sgpMonthlyCorrection =
+  min((sgpCorrectionSpeed / 12) * deficitOvershootScale, 1)
+
+sgpAdjustedSpend =
+  spending - (spending - maxDiscretionarySpend) * sgpMonthlyCorrection
+```
 
 FX intervention buys or sells EUR when the exchange rate leaves the tolerance
 band around the base rate. EUR purchases inject PLN reserves; EUR sales drain

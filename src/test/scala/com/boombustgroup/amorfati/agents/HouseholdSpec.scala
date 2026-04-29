@@ -205,7 +205,7 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
     updated(0).financialDistressMonths shouldBe 1
   }
 
-  it should "bankrupt household after persistent deep distress" in {
+  it should "resolve persistent deep distress without removing the household from the labor force" in {
     val rng     = RandomStream.seeded(42)
     val hh      = mkHousehold(
       0,
@@ -214,7 +214,23 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
       rent = PLN(1800),
     ).copy(financialDistressMonths = p.household.bankruptcyDistressMonths - 1)
     val updated = step(Vector(hh), mkWorld(), PLN(8000), PLN(4666), Share.decimal(4, 1), rng).households
-    updated(0).status shouldBe HhStatus.Bankrupt
+    updated(0).status shouldBe HhStatus.Unemployed(2)
+    updated(0).financialDistressMonths shouldBe 0
+  }
+
+  it should "preserve employment when resolving household financial insolvency" in {
+    val rng = RandomStream.seeded(42)
+    val hh  = mkHousehold(
+      0,
+      HhStatus.Employed(FirmId(0), SectorIdx(0), PLN(8000)),
+      savings = PLN(-50000),
+      rent = PLN(1800),
+    ).copy(financialDistressMonths = p.household.bankruptcyDistressMonths - 1)
+
+    val updated = step(Vector(hh), mkWorld(), PLN(8000), PLN(4666), Share.decimal(4, 1), rng).households
+
+    updated(0).status shouldBe a[HhStatus.Employed]
+    updated(0).financialDistressMonths shouldBe 0
   }
 
   it should "default the remaining consumer credit balance after same-month debt service on bankruptcy" in {
@@ -243,7 +259,8 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
 
     val result = step(Vector(hh), world, PLN(8000), PLN(4666), Share.decimal(4, 1), rng)
 
-    result.households.head.status shouldBe HhStatus.Bankrupt
+    result.households.head.status shouldBe HhStatus.Unemployed(2)
+    result.households.head.financialDistressMonths shouldBe 0
     result.financialStocks.head.consumerLoan shouldBe PLN.Zero
     result.aggregates.totalConsumerDebtService shouldBe expectedDebtService
     result.aggregates.totalConsumerDefault shouldBe expectedDefault
@@ -261,6 +278,35 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
     val updated = step(Vector(hh), mkWorld(), PLN(8000), PLN(4666), Share.decimal(4, 1), rng).households
     updated(0).status shouldBe a[HhStatus.Employed]
     updated(0).financialDistressMonths shouldBe 0
+  }
+
+  it should "not enter voluntary retraining when the target sector has no vacancies" in {
+    val rng       = RandomStream.seeded(42)
+    val hhs       = (0 until 500).map: id =>
+      mkHousehold(
+        id,
+        HhStatus.Employed(FirmId(0), SectorIdx(0), PLN(5000)),
+        savings = PLN(100000),
+        rent = PLN(1800),
+      )
+    val stocks    = hhs.map(_ => TestHouseholdState.financial(savings = PLN(100000))).toVector
+    val wages     = Some(Vector(PLN(5000), PLN(25000), PLN(24000), PLN(23000), PLN(22000), PLN(21000)))
+    val vacancies = Some(Vector.fill(p.sectorDefs.length)(0))
+
+    val result = Household.step(
+      hhs.toVector,
+      stocks,
+      mkWorld(),
+      PLN(8000),
+      PLN(4666),
+      Share.decimal(4, 1),
+      rng,
+      sectorWages = wages,
+      sectorVacancies = vacancies,
+    )
+
+    result.households.foreach(_.status shouldBe a[HhStatus.Employed])
+    result.aggregates.voluntaryQuits shouldBe 0
   }
 
   it should "return None for perBankHhFlows when bankRates not provided" in {
@@ -373,6 +419,27 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
     val pitTax         = Household.computeMonthlyPit(plnBD(grossIncome))
     // totalIncome = grossIncome - PIT + socialTransfer (0 children → no transfer)
     decimal(agg.totalIncome) shouldBe (decimal(plnBD(grossIncome - decimal(pitTax))) +- decimal(PLN(20)))
+  }
+
+  it should "preserve monthly flow totals when recomputing snapshot aggregates" in {
+    val rng       = RandomStream.seeded(42)
+    val household = mkHousehold(9900, HhStatus.Employed(FirmId(0), SectorIdx(0), PLN(9000)), savings = PLN(100000), bankId = 0)
+    val flowAgg   = step(Vector(household), mkWorld(), PLN(9000), PLN(4666), Share.decimal(4, 1), rng).aggregates
+    val snapshot  = computeAggregates(
+      Vector(household.copy(status = HhStatus.Unemployed(0))),
+      PLN(9000),
+      PLN(4666),
+      Share.decimal(4, 1),
+      retrainingAttempts = 0,
+      retrainingSuccesses = 0,
+    ).withFlowTotalsFrom(flowAgg)
+
+    flowAgg.totalPit should be > PLN.Zero
+    snapshot.employed shouldBe 0
+    snapshot.unemployed shouldBe 1
+    snapshot.totalIncome shouldBe flowAgg.totalIncome
+    snapshot.totalPit shouldBe flowAgg.totalPit
+    snapshot.consumption shouldBe flowAgg.consumption
   }
 
   it should "accumulate per-bank flows correctly for 2 banks" in {

@@ -67,14 +67,15 @@ source. Missing or weak provenance is marked explicitly with searchable tokens:
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `household.baseWage` | `8266` | PLN/month | Code note: GUS 2024 | Mean monthly gross wage | Direct | `HouseholdConfig` | `CODE_NOTE_EMPIRICAL` |
 | `household.baseReservationWage` | `4666` | PLN/month | Code note: 2025 minimum wage / legal act | Minimum acceptable wage | Direct | `HouseholdConfig` | `EMPIRICAL` |
-| `household.mpc` | `0.82` | share | UNKNOWN_SOURCE | Aggregate mean MPC | Direct | `HouseholdConfig` | `UNKNOWN_SOURCE` |
-| `household.mpcAlpha`, `household.mpcBeta` | `8.2`, `1.8` | beta params | UNKNOWN_SOURCE | Heterogeneous MPC distribution | Beta draw | `HouseholdConfig` | `TUNED_NEEDS_VALIDATION` |
+| `household.mpc` | `0.92` | share | #461 demand-side calibration | Aggregate mean MPC supporting Poland 2026 consumption-led growth | Direct | `HouseholdConfig` | `TUNED_NEEDS_VALIDATION` |
+| `household.mpcAlpha`, `household.mpcBeta` | `9.2`, `0.8` | beta params | #461 demand-side calibration | Heterogeneous MPC distribution centered on stronger private-consumption channel | Beta draw | `HouseholdConfig` | `TUNED_NEEDS_VALIDATION` |
 | `household.savingsMu`, `household.savingsSigma` | `9.6`, `1.2` | log PLN params | UNKNOWN_SOURCE | Initial savings distribution | Lognormal draw | `HouseholdConfig` | `UNKNOWN_SOURCE` |
 | `household.debtFraction` | `0.40` | share | Code note: BIK 2024 | Household positive debt share | Bernoulli init | `HouseholdConfig` | `CODE_NOTE_EMPIRICAL` |
 | `household.debtMu`, `household.debtSigma` | `10.5`, `1.5` | log PLN params | UNKNOWN_SOURCE | Initial debt distribution | Lognormal draw | `HouseholdConfig` | `UNKNOWN_SOURCE` |
 | `household.rentMean`, `rentStd`, `rentFloor` | `1800`, `400`, `800` | PLN/month | Code note: Otodom/NBP 2024 | Rent distribution | Truncated normal draw | `HouseholdConfig` | `CODE_NOTE_EMPIRICAL` |
 | `household.bufferTargetMonths` | `6.0` | months | Carroll-style buffer-stock model | Target liquid buffer | Direct | `HouseholdConfig` | `ASSUMED` |
-| `household.bufferSensitivity` | `0.4` | coefficient | UNKNOWN_SOURCE | MPC response to buffer gap | Direct | `HouseholdConfig` | `TUNED_NEEDS_VALIDATION` |
+| `household.laborSupplySteepness` | `4.0` | coefficient | #461 labor-market calibration | Labor-supply response steepness; calibrated so wage clearing supports strong 2026 growth without forcing persistent labor shedding | Direct | `HouseholdConfig` | `TUNED_NEEDS_VALIDATION` |
+| `household.bufferSensitivity` | `0.2` | coefficient | #461 calibration | MPC response to buffer gap | Direct | `HouseholdConfig` | `TUNED_NEEDS_VALIDATION` |
 | `household.mpcUnemployedBoost` | `0.10` | share | UNKNOWN_SOURCE | Extra MPC while unemployed | Direct | `HouseholdConfig` | `TUNED_NEEDS_VALIDATION` |
 | `household.skillDecayRate` | `0.02` | monthly share | UNKNOWN_SOURCE | Skill decay under unemployment | Direct | `HouseholdConfig` | `TUNED_NEEDS_VALIDATION` |
 | `household.scarringRate`, `scarringCap`, `scarringOnset` | `0.02`, `0.50`, `3` | share/months | Literature note in code | Long-run unemployment scarring | Direct | `HouseholdConfig` | `TUNED_NEEDS_VALIDATION` |
@@ -95,40 +96,45 @@ source. Missing or weak provenance is marked explicitly with searchable tokens:
 | `labor.unionRigidity` | `0.50` | share | UNKNOWN_SOURCE | Downward nominal wage rigidity | Direct | `LaborConfig` | `TUNED_NEEDS_VALIDATION` |
 | `labor.expLambda` | `0.70` | coefficient | Code note: Carroll 2003 | Adaptive expectations speed | Direct | `LaborConfig` | `TUNED_NEEDS_VALIDATION` |
 | `labor.expCredibilityInit` | `0.80` | share | UNKNOWN_SOURCE | Initial NBP credibility | Direct | `LaborConfig` | `TUNED_NEEDS_VALIDATION` |
+| `labor.expWagePassthrough`, `tightLaborWageSensitivity` | `0.75`, `0.06` | coefficient | #461 GDP-growth calibration | Nominal wage-setting pass-through from anchored expected inflation, plus a separately calibrated wage-pressure response when observed unemployment is below NAIRU; split after 48m runs showed the earlier shared-speed floor created a wage-cost spiral and later labor shedding | Monthly transform plus unemployment-below-NAIRU wage pressure | `LaborConfig`, `LaborEconomics` | `TUNED_NEEDS_VALIDATION` |
 | `social.zusContribRate`, `zusEmployeeRate` | `0.1952`, `0.1371` | annual rate/share | Code note: Social insurance law | ZUS payroll contribution rates | Direct | `SocialConfig` | `EMPIRICAL` |
 | `social.zusBasePension` | `3500` | PLN/month | Code note: ZUS 2024 | Average pension payment | Direct | `SocialConfig` | `CODE_NOTE_EMPIRICAL` |
 | `social.nfzContribRate` | `0.09` | rate | Code note: health-care law | NFZ contribution rate | Direct | `SocialConfig` | `EMPIRICAL` |
-| `social.nfzPerCapitaCost` | `1250` | PLN/month | Code note: NFZ 2024 | Health spending per capita | Direct | `SocialConfig` | `CODE_NOTE_EMPIRICAL` |
+| `social.nfzPerCapitaCost` | `500` | PLN/month | #461 pension-stock recalibration | Health spending per effective capita after activating initial retirees; avoids double-counting retiree health demand in NFZ subvention | Direct, with `nfzAgingElasticity` | `SocialConfig` | `TUNED_NEEDS_VALIDATION` |
 | `social.ppkEmployeeRate`, `ppkEmployerRate` | `0.02`, `0.015` | rate | Code note: PPK law | PPK contribution rates | Direct | `SocialConfig` | `EMPIRICAL` |
 | `social.eduShares` | `[0.08, 0.25, 0.30, 0.37]` | share | Code note: GUS LFS 2024 | Education composition | CDF draw | `SocialConfig` | `CODE_NOTE_EMPIRICAL` |
-| `social.demInitialRetirees` | `0` | agents | Explicit startup simplification | Retiree stock built from flows during simulation | Direct | `SocialConfig`, `SimParams` | `PLACEHOLDER` |
+| `social.demInitialRetirees` | `pop.firmsCount * pop.workersPerFirm / 3` | agents | #461 pension-consumption/GDP calibration | Effective initial retiree stock; pension payments feed aggregate household consumption so the Poland demand channel includes retiree income | Derived in `SimParams.defaults`; consumed by `HouseholdIncomeEconomics` via ZUS pension flow | `SocialConfig`, `SimParams`, `HouseholdIncomeEconomics` | `TUNED_NEEDS_VALIDATION` |
 
 ## Firm Production, Entry, Capital, And Climate
 
 | Parameter | Value | Unit | Source / provenance | Empirical target | Transformation | Owner module | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `firm.baseRevenue` | `180000` | PLN/month/worker | Code note: GUS F-01 2024 | Revenue per worker before demand shocks | Direct, unscaled | `FirmConfig` | `CODE_NOTE_EMPIRICAL` |
+| `firm.productivityGrowth` | `0.085` | annual rate | #461 calibration | Baseline real productivity/catch-up trend needed to keep output-based GDP in Poland 2026 growth band after labor-market staffing reconciliation | `.monthly` in use | `FirmConfig` | `TUNED_NEEDS_VALIDATION` |
 | `firm.otherCosts` | `16667` | PLN/month/worker | UNKNOWN_SOURCE | Fixed non-wage operating cost | Direct, unscaled | `FirmConfig` | `UNKNOWN_SOURCE` |
 | `firm.aiCapex` | `1200000` | PLN/firm | UNKNOWN_SOURCE | Full automation capex | Direct | `FirmConfig` | `TUNED_NEEDS_VALIDATION` |
 | `firm.hybridCapex` | `350000` | PLN/firm | UNKNOWN_SOURCE | Hybrid automation capex | Direct | `FirmConfig` | `TUNED_NEEDS_VALIDATION` |
 | `firm.aiOpex`, `firm.hybridOpex` | `30000`, `12000` | PLN/month/firm | UNKNOWN_SOURCE | AI/hybrid operating cost | Direct | `FirmConfig` | `TUNED_NEEDS_VALIDATION` |
-| `firm.hybridReadinessMin`, `fullAiReadinessMin` | `0.20`, `0.35` | share | UNKNOWN_SOURCE | Digital readiness adoption thresholds | Direct | `FirmConfig` | `TUNED_NEEDS_VALIDATION` |
+| `firm.hybridReadinessMin`, `fullAiReadinessMin` | `0.20`, `0.55` | share | #461 calibration | Digital readiness adoption thresholds | Direct | `FirmConfig` | `TUNED_NEEDS_VALIDATION` |
 | `firm.entryRate` | `0.02` | monthly share | Code note: GUS CEIDG 2024 | Base vacant-slot entry rate | Direct | `FirmConfig` | `CODE_NOTE_EMPIRICAL` |
 | `firm.entrySectorBarriers` | `[0.8, 0.6, 1.2, 0.5, 0.1, 0.7]` | coefficient by sector | Code note: GUS CEIDG/KRS 2024 | Entry barriers | Direct | `FirmConfig` | `CODE_NOTE_EMPIRICAL` |
 | `firm.entryAiThreshold`, `entryAiProb` | `0.15`, `0.20` | share | UNKNOWN_SOURCE | AI-native entrant trigger/probability | Direct | `FirmConfig` | `TUNED_NEEDS_VALIDATION` |
 | `firm.entryStartupCash` | `50000` | PLN | UNKNOWN_SOURCE | Entrant liquidity | Direct | `FirmConfig` | `UNKNOWN_SOURCE` |
 | `firm.replacementEntryRate` | `0.35` | monthly share | UNKNOWN_SOURCE | Replacement of dead firm slots | Direct | `FirmConfig` | `TUNED_NEEDS_VALIDATION` |
-| `firm.netEntryRate` | `0.06` | monthly share | UNKNOWN_SOURCE | Expansionary net births | Direct | `FirmConfig` | `TUNED_NEEDS_VALIDATION` |
+| `firm.netEntryRate`, `netEntryMaxMonthly` | `0.12`, `175` | monthly share / firms | #461 labor/GDP calibration | Expansionary net births under cyclical entry signal; raised after 48m runs showed unemployment persisted because the firm-birth channel was too weak to absorb labor-market slack in years 3-4 | Direct | `FirmConfig`, `FirmEntry` | `TUNED_NEEDS_VALIDATION` |
+| `firm.laborAdjustSpeed`, `hiringWorkingCapitalMonths`, `startupHiringWorkingCapitalMonths` | `0.15`, `3`, `4` | monthly share / wage-months | #461 GDP-growth calibration | Firm hiring absorption and payroll working-capital runway; avoids under-absorbing labor supply when order books are positive | Direct in firm workforce decision | `FirmConfig`, `Firm` | `TUNED_NEEDS_VALIDATION` |
 | `firm.digiDrift` | `0.001` | monthly share | UNKNOWN_SOURCE | Exogenous digital readiness drift | Direct | `FirmConfig` | `TUNED_NEEDS_VALIDATION` |
 | `firm.digiInvestCost`, `digiInvestBoost` | `50000`, `0.05` | PLN/share | UNKNOWN_SOURCE | Discretionary digital investment | Direct | `FirmConfig` | `TUNED_NEEDS_VALIDATION` |
 | `firm.networkK`, `networkRewireP` | `6`, `0.10` | degree/share | Network design assumption | Watts-Strogatz firm network | Direct | `FirmConfig` | `ASSUMED` |
 | `firm.demoEffectThresh`, `demoEffectBoost` | `0.40`, `0.15` | share | UNKNOWN_SOURCE | Peer adoption demonstration effect | Direct | `FirmConfig` | `TUNED_NEEDS_VALIDATION` |
-| `firm.adoptionRampMonths` | `36` | months | UNKNOWN_SOURCE | Adoption willingness ramp | Direct | `FirmConfig` | `TUNED_NEEDS_VALIDATION` |
+| `firm.adoptionRampMonths` | `60` | months | #461 calibration | Adoption willingness ramp | Direct | `FirmConfig` | `TUNED_NEEDS_VALIDATION` |
 | `firm.sigmaLambda` | `0.0` | coefficient | Scenario switch | Arthur-style sigma learning off by default | Direct | `FirmConfig` | `POLICY_SCENARIO` |
-| `capital.klRatios` | `[120000, 250000, 80000, 200000, 150000, 180000]` | PLN/worker | Code note: GUS F-01 2024 | Sector capital-labor ratios | Direct | `CapitalConfig` | `CODE_NOTE_EMPIRICAL` |
+| `capital.klRatios` | `[180000, 375000, 120000, 300000, 225000, 270000]` | PLN/worker | GUS F-01 2024 note + #461 K/GDP calibration | Sector capital-labor ratios; lifted after fiscal-investment audit showed private capital stock around 60-66% of GDP and total GFCF below Poland 2024 reference range; investment targets use structural firm scale so temporary headcount cuts do not immediately erase planned capital intensity | Direct via `Firm.capitalPlanningWorkers` | `CapitalConfig`, `Firm` | `TUNED_NEEDS_VALIDATION` |
 | `capital.depRates` | `[0.15, 0.08, 0.10, 0.07, 0.05, 0.08]` | annual rate | Code note: GUS F-01 2024 | Sector depreciation rates | `.monthly` in use | `CapitalConfig` | `CODE_NOTE_EMPIRICAL` |
-| `capital.importShare` | `0.35` | share | UNKNOWN_SOURCE | Import share of investment | Direct | `CapitalConfig` | `UNKNOWN_SOURCE` |
-| `capital.adjustSpeed` | `0.10` | monthly coefficient | UNKNOWN_SOURCE | Capital partial-adjustment speed | Direct | `CapitalConfig` | `TUNED_NEEDS_VALIDATION` |
+| `capital.importShare` | `0.18` | share | #461 GDP-growth calibration | Import share of investment; lowered after runs showed excessive domestic-demand leakage and a widening trade deficit during the 2026-2027 investment window | Direct | `CapitalConfig` | `TUNED_NEEDS_VALIDATION` |
+| `capital.adjustSpeed` | `0.18` | monthly coefficient | #461 fiscal-investment/GDP calibration | Capital partial-adjustment speed; raised after GDP-growth audit showed private GFCF was not offsetting fiscal consolidation | Direct | `CapitalConfig` | `TUNED_NEEDS_VALIDATION` |
+| `capital.demandExpansionSensitivity` | `0.40` | coefficient | #461 GDP-growth calibration | Target-capital uplift under persistent excess demand; raises private investment response in bottleneck sectors during the Poland investment recovery window | Direct | `CapitalConfig` | `TUNED_NEEDS_VALIDATION` |
+| `capital.investmentCreditShare` | `1.0` | share | #461 calibration | Credit-financed share of cash-unfunded desired investment | Direct | `CapitalConfig` | `TUNED_NEEDS_VALIDATION` |
 | `capital.inventoryTargetRatios` | `[0.05, 0.25, 0.15, 0.10, 0.02, 0.30]` | share by sector | Code note: GUS 2024 | Inventory/revenue targets | Direct | `CapitalConfig` | `CODE_NOTE_EMPIRICAL` |
 | `climate.energyCostShares` | `[0.02, 0.10, 0.04, 0.05, 0.03, 0.06]` | share of revenue | Code note: Eurostat/GUS 2023 | Energy burden by sector | Direct | `ClimateConfig` | `CODE_NOTE_EMPIRICAL` |
 | `climate.etsBasePrice` | `80` | EUR/tCO2 | Code note: KOBiZE 2024 | EU ETS starting price | Direct | `ClimateConfig` | `CODE_NOTE_EMPIRICAL` |
@@ -145,28 +151,35 @@ source. Missing or weak provenance is marked explicitly with searchable tokens:
 | `fiscal.exciseRates` | `[0.01, 0.04, 0.03, 0.005, 0.002, 0.02]` | rate by sector | Code note: MF 2024 aggregate | Effective excise rates | Direct | `FiscalConfig` | `CODE_NOTE_EMPIRICAL` |
 | `fiscal.customsDutyRate` | `0.04` | rate | Code note: EU CET/Eurostat TARIC | Average non-EU customs duty | Direct | `FiscalConfig` | `CODE_NOTE_EMPIRICAL` |
 | `fiscal.govBaseSpending` | `58.3e9` | raw PLN/month | Code note: MF 2024 | Government base spending | Scaled by `gdpRatio` | `FiscalConfig`, `SimParams` | `CODE_NOTE_EMPIRICAL` |
+| `fiscal.govWageIndexShare` | `0.75` | share | #461 GDP-growth calibration | Labor-cost indexation of government purchases so public-service demand is not mechanically deflated when wages outpace CPI | CPI/wage blended cost index in `DemandEconomics.computeGovPurchases` | `FiscalConfig`, `DemandEconomics` | `TUNED_NEEDS_VALIDATION` |
+| `fiscal.fofConsWeights`, `fofGovWeights` | `[0.02, 0.18, 0.59, 0.06, 0.07, 0.08]`, `[0.04, 0.08, 0.08, 0.20, 0.58, 0.02]` | sector shares | #461 demand-allocation calibration | Flow-of-funds allocation of household consumption and government purchases; shifted toward slack domestic services/public-health sectors after probe showed excess demand was overallocated to already constrained manufacturing/agriculture | Direct sector allocation | `FiscalConfig`, `DemandEconomics` | `TUNED_NEEDS_VALIDATION` |
 | `fiscal.govInvestShare` | `0.20` | share | Code note: MF 2024 | Capital share of government spending | Direct | `FiscalConfig` | `CODE_NOTE_EMPIRICAL` |
 | `fiscal.govCapitalMultiplier`, `govCurrentMultiplier` | `1.5`, `0.8` | multiplier | Code note: Ilzetzki, Mendoza and Vegh 2013 | Fiscal multipliers | Direct | `FiscalConfig` | `CODE_NOTE_EMPIRICAL` |
 | `fiscal.govInitCapital` | `0` | PLN | Explicit startup simplification | Initial public capital stock | Built from investment flows | `FiscalConfig` | `PLACEHOLDER` |
-| `fiscal.euFundsTotalEur` | `76e9` | EUR | Code note: EC 2021 | 2021-2027 EU allocation | Beta absorption path | `FiscalConfig` | `CODE_NOTE_EMPIRICAL` |
+| `fiscal.euFundsTotalEur`, `euFundsAlpha`, `euFundsBeta` | `110e9`, `2`, `3` | EUR / beta shape | #461 GDP-growth calibration | EU cohesion plus KPO-style investment absorption window, with peak shifted toward the 2026-2027 investment cycle | Beta absorption path | `FiscalConfig`, `EuFunds` | `TUNED_NEEDS_VALIDATION` |
 | `fiscal.euCofinanceRate`, `euCapitalShare` | `0.15`, `0.60` | share | Code note: MFiPR / EU funds | National cofinance and capex split | Direct | `FiscalConfig` | `CODE_NOTE_EMPIRICAL` |
 | `fiscal.minWageTargetRatio` | `0.50` | share | Code note: minimum wage act | Target minimum/average wage ratio | Annual adjustment | `FiscalConfig` | `EMPIRICAL` |
 | `fiscal.govBenefitM1to3`, `govBenefitM4to6` | `1500`, `1200` | PLN/month | Code note: GUS 2024 | Unemployment benefit amounts | Direct | `FiscalConfig` | `CODE_NOTE_EMPIRICAL` |
-| `fiscal.govAvgMaturityMonths` | `54` | months | Code note: MF 2024 | Government debt average maturity | WAM coupon update | `FiscalConfig` | `CODE_NOTE_EMPIRICAL` |
+| `fiscal.govFiscalRiskBeta`, `fiscalRiskBeta55`, `fiscalRiskBeta60` | `0.03`, `0.04`, `0.08` | coefficient | #461 Poland debt-service calibration | Bond-yield sensitivity to public-debt pressure without a 60% debt cliff | Direct | `FiscalConfig`, `Nbp.bondYield` | `TUNED_NEEDS_VALIDATION` |
+| `fiscal.govInitialWeightedCoupon` | `0.04` | annual rate | #461 calibration | Opening weighted coupon on Treasury debt stock | Direct | `FiscalConfig`, `WorldInit` | `TUNED_NEEDS_VALIDATION` |
+| `fiscal.govAvgMaturityMonths` | `69` | months | MF monthly State Treasury debt data, Dec 2025 | Total State Treasury debt average maturity; domestic-only maturity is shorter | WAM coupon update | `FiscalConfig`, `OpenEconEconomics` | `CODE_NOTE_EMPIRICAL` |
 | `fiscal.baseForeignShare`, `maxForeignShare` | `0.35`, `0.55` | share | Code note: NBP SPW holder structure 2024 | Foreign government-bond holdings | Direct | `FiscalConfig` | `CODE_NOTE_EMPIRICAL` |
 | `fiscal.fiscalRuleDebtCeiling` | `0.60` | debt/GDP share | Code note: Polish constitution Art. 216 | Constitutional debt ceiling | Direct | `FiscalConfig` | `EMPIRICAL` |
 | `fiscal.fiscalRuleCautionThreshold` | `0.55` | debt/GDP share | Code note: public finance act Art. 86 | Caution threshold | Direct | `FiscalConfig` | `EMPIRICAL` |
 | `fiscal.sgpDeficitLimit` | `0.03` | deficit/GDP share | Maastricht / SGP | Deficit limit | Direct | `FiscalConfig` | `EMPIRICAL` |
+| `fiscal.sgpCorrectionSpeed` | `0.85` | annual share | #461 Poland EDP/GDP calibration | Gradual excessive-deficit correction speed applied to discretionary purchases after prior non-purchase outlays; monthly speed scales with the deficit overshoot versus the 3% path | Direct | `FiscalConfig`, `FiscalRules` | `TUNED_NEEDS_VALIDATION` |
+| `fiscal.fiscalConsolidationSpeed55`, `fiscalConsolidationSpeed60` | `0.18`, `0.45` | annual share | #461 Poland EDP/GDP calibration | Debt-threshold discretionary-spending consolidation path after 55%/60% debt-to-GDP; softened to avoid excessive GDP drag while retaining a debt-feedback channel | Direct | `FiscalConfig`, `FiscalRules` | `TUNED_NEEDS_VALIDATION` |
 | `fiscal.initGovDebt` | `1600e9` | raw PLN | Code note: MF 2024 | Initial government debt | Scaled by `gdpRatio` | `FiscalConfig`, `SimParams` | `CODE_NOTE_EMPIRICAL` |
 | `fiscal.jstPitShare`, `jstCitShare` | `0.3846`, `0.0671` | share | Code note: JST revenue act | Local-government tax shares | Direct | `FiscalConfig` | `EMPIRICAL` |
 | `fiscal.pitRate1`, `pitRate2`, `pitBracket1Annual` | `0.12`, `0.32`, `120000` | rate/PLN/year | Code note: PIT law 2024 | PIT brackets | Annualized monthly PIT | `FiscalConfig` | `EMPIRICAL` |
 | `fiscal.social800` | `800` | PLN/month/child | Code note: legal act 2023 | 800+ benefit | Direct | `FiscalConfig` | `EMPIRICAL` |
 | `monetary.initialRate` | `0.0575` | annual rate | Code note: NBP 2024 | NBP reference rate | Direct | `MonetaryConfig` | `CODE_NOTE_EMPIRICAL` |
 | `monetary.targetInfl` | `0.025` | annual rate | NBP inflation target | Inflation target | Direct | `MonetaryConfig` | `EMPIRICAL` |
-| `monetary.neutralRate` | `0.04` | annual rate | Estimated in code note | Long-run neutral rate | Direct | `MonetaryConfig` | `TUNED_NEEDS_VALIDATION` |
-| `monetary.taylorAlpha`, `taylorBeta`, `taylorDelta` | `1.5`, `0.8`, `0.5` | coefficients | Taylor-rule convention | Policy reaction coefficients | Direct | `MonetaryConfig` | `TUNED_NEEDS_VALIDATION` |
+| `monetary.neutralRate` | `0.03` | annual rate | #461 calibration | Long-run neutral policy-rate anchor | Direct | `MonetaryConfig` | `TUNED_NEEDS_VALIDATION` |
+| `monetary.taylorAlpha`, `taylorBeta`, `taylorDelta` | `1.2`, `0.8`, `0.5` | coefficients | #461 calibration / Taylor-rule convention | Policy reaction coefficients | Direct | `MonetaryConfig` | `TUNED_NEEDS_VALIDATION` |
 | `monetary.taylorInertia` | `0.70` | share | UNKNOWN_SOURCE | Policy-rate smoothing | Direct | `MonetaryConfig` | `TUNED_NEEDS_VALIDATION` |
 | `monetary.rateFloor`, `rateCeiling` | `0.001`, `0.15` | annual rate | Structural lower/upper bounds | Policy-rate corridor bounds | Direct | `MonetaryConfig` | `ASSUMED` |
+| `monetary.maxRateChange` | `0.0025` | monthly annual-rate step | #461 calibration | Monthly policy-rate adjustment cap | Direct | `MonetaryConfig` | `TUNED_NEEDS_VALIDATION` |
 | `monetary.nairu` | `0.05` | share | Code note: estimated | NAIRU | Direct | `MonetaryConfig` | `TUNED_NEEDS_VALIDATION` |
 | `monetary.reserveRateMult` | `0.5` | share | Code note: NBP 2024 | Reserve remuneration fraction | Direct | `MonetaryConfig` | `CODE_NOTE_EMPIRICAL` |
 | `monetary.depositFacilitySpread`, `lombardSpread` | `0.01`, `0.01` | annual rate | Code note: NBP corridor | Corridor +/- 100 bp | Direct | `MonetaryConfig` | `EMPIRICAL` |
@@ -203,6 +216,7 @@ source. Missing or weak provenance is marked explicitly with searchable tokens:
 | `forex.irpSensitivity`, `exRateAdjSpeed` | `0.15`, `0.02` | coefficient | IRP / FX adjustment model | Exchange-rate response speed | Direct | `ForexConfig` | `TUNED_NEEDS_VALIDATION` |
 | `forex.riskOffShockMonth` | `0` | month | Scenario switch | No baseline risk-off shock | Direct | `ForexConfig` | `POLICY_SCENARIO` |
 | `openEcon.importContent` | `[0.15, 0.50, 0.20, 0.15, 0.05, 0.12]` | share by sector | Code note: GUS supply-use 2024 | Import content of production | Direct | `OpenEconConfig` | `CODE_NOTE_EMPIRICAL` |
+| `priceLevel.importPush` | `FX depreciation + GVC import-cost pressure` | monthly coefficient | #461 inflation audit | Imported inflation pass-through to CPI | Scaled by `forex.importPropensity` and capped by `openEcon.importPushCap` | `PriceLevel`, `PriceEquityEconomics` | `TUNED_NEEDS_VALIDATION` |
 | `openEcon.exportBase` | `138.5e9` | raw PLN/month | Code note: NBP BoP 2024 | Monthly export base | Scaled by `gdpRatio` | `OpenEconConfig`, `SimParams` | `CODE_NOTE_EMPIRICAL` |
 | `openEcon.foreignGdpGrowth` | `0.015` | annual rate | Code note: ECB/IMF projections | Foreign GDP growth | `.monthly` in export rule | `OpenEconConfig` | `CODE_NOTE_EMPIRICAL` |
 | `openEcon.exportPriceElasticity`, `importPriceElasticity` | `0.8`, `0.6` | coefficient | Code note: Marshall-Lerner / Campa-Goldberg | Trade price elasticities | Direct | `OpenEconConfig` | `CODE_NOTE_EMPIRICAL` |
@@ -218,11 +232,14 @@ source. Missing or weak provenance is marked explicitly with searchable tokens:
 | `gvc.exportShares` | `[0.05, 0.55, 0.15, 0.03, 0.02, 0.20]` | share by sector | Code note: GUS 2024 | Sector export shares | Direct | `GvcConfig` | `CODE_NOTE_EMPIRICAL` |
 | `gvc.depth` | `[0.35, 0.75, 0.30, 0.40, 0.10, 0.45]` | share by sector | Code note: WIOD/OECD ICIO | GVC backward linkage | Direct | `GvcConfig` | `CODE_NOTE_EMPIRICAL` |
 | `gvc.foreignInflation`, `foreignGdpGrowth` | `0.02`, `0.015` | annual rate | Code note: ECB/IMF | Foreign inflation/growth | `.monthly` where used | `GvcConfig` | `CODE_NOTE_EMPIRICAL` |
+| `gvc.commodityVolatility`, `commodityMeanReversion` | `0.015`, `0.08` | monthly sigma / share | #461 GDP-growth calibration | No-shock baseline commodity path; explicit `energy-shock` scenario carries crisis dynamics | Mean-reverting stochastic process plus scenario shock | `GvcConfig`, `GvcTrade` | `TUNED_NEEDS_VALIDATION` |
 | `gvc.demandShockMonth`, `commodityShockMonth` | `0`, `0` | month | Scenario switches | No baseline external shocks | Direct | `GvcConfig` | `POLICY_SCENARIO` |
-| `immigration.monthlyRate` | `0.001` | monthly share | UNKNOWN_SOURCE | Base immigration rate | Direct | `ImmigrationConfig` | `UNKNOWN_SOURCE` |
+| `immigration.monthlyRate` | `0.0015` | monthly share | #461 labor/GDP calibration | Base labor-immigration rate; raised to give the Poland baseline a more elastic migrant labor-supply channel under wage pull | Direct | `ImmigrationConfig` | `TUNED_NEEDS_VALIDATION` |
 | `immigration.wageElasticity` | `2.0` | coefficient | Code note: NBP 2023 survey | Wage differential migration response | Direct | `ImmigrationConfig` | `CODE_NOTE_EMPIRICAL` |
 | `immigration.remitRate` | `0.15` | income share | Code note: NBP 2023 | Immigrant remittance outflow | Direct | `ImmigrationConfig` | `CODE_NOTE_EMPIRICAL` |
+| `immigration.returnRate`, `returnUnempThreshold`, `returnUnempSensitivity` | `0.005`, `0.20`, `0.10` | monthly share / coefficient | #461 labor-market calibration | Baseline and unemployment-sensitive return migration | Direct | `ImmigrationConfig`, `Immigration` | `TUNED_NEEDS_VALIDATION` |
 | `immigration.sectorShares` | `[0.05, 0.35, 0.25, 0.05, 0.05, 0.25]` | share by sector | Code note: GUS LFS 2024 | Immigrant sector allocation | CDF draw | `ImmigrationConfig` | `CODE_NOTE_EMPIRICAL` |
+| `immigration.skillMean` | `0.55` | share | #461 labor-market calibration | New immigrant productivity distribution used by job matching | Gaussian draw clamped by education tier | `ImmigrationConfig`, `Immigration` | `TUNED_NEEDS_VALIDATION` |
 | `immigration.initStock` | `0` | agents | Explicit startup simplification | Initial immigrant stock | Immigration accumulates from monthly flows | `ImmigrationConfig` | `PLACEHOLDER` |
 | `remittance.perCapita` | `40` | PLN/person/month | Code note: NBP BoP 2024 | Diaspora remittance inflow | Direct | `RemittanceConfig` | `CODE_NOTE_EMPIRICAL` |
 | `tourism.inboundShare`, `outboundShare` | `0.05`, `0.03` | GDP share | Code note: GUS TSA 2023 / NBP BoP 2023 | Tourism exports/imports | GDP-proportional | `TourismConfig` | `CODE_NOTE_EMPIRICAL` |
@@ -230,6 +247,7 @@ source. Missing or weak provenance is marked explicitly with searchable tokens:
 | `equity.initIndex`, `initMcap` | `2400`, `1.4e12` | index/raw PLN | Code note: GPW 2024 | WIG index and market cap | `initMcap` scaled by `gdpRatio` | `EquityConfig`, `SimParams` | `CODE_NOTE_EMPIRICAL` |
 | `equity.peMean`, `divYield` | `10.0`, `0.057` | scalar/annual rate | Code note: GPW 2024 | Long-run P/E and dividend yield | Direct | `EquityConfig` | `CODE_NOTE_EMPIRICAL` |
 | `equity.foreignShare` | `0.67` | share | Code note: KNF/KDPW 2024 | Foreign ownership share | Direct | `EquityConfig` | `CODE_NOTE_EMPIRICAL` |
+| `equity.listedProfitShare` | `0.10` | share | #461 calibration | Listed-company slice of aggregate modeled firm profits | Direct | `EquityConfig`, `EquityMarket` | `TUNED_NEEDS_VALIDATION` |
 | `corpBond.spread` | `0.025` | annual rate | Code note: RRRF 2024 BBB | Corporate bond spread | Direct | `CorpBondConfig` | `CODE_NOTE_EMPIRICAL` |
 | `corpBond.initStock` | `90e9` | raw PLN | Code note: KNF 2024 | Corporate bonds outstanding | Scaled by `gdpRatio` | `CorpBondConfig`, `SimParams` | `CODE_NOTE_EMPIRICAL` |
 | `corpBond.recovery` | `0.30` | share | UNKNOWN_SOURCE | Corporate bond recovery | Direct | `CorpBondConfig` | `UNKNOWN_SOURCE` |
@@ -252,16 +270,16 @@ source. Missing or weak provenance is marked explicitly with searchable tokens:
 | `regional.housingBarrierThreshold` | `0.7` | share | UNKNOWN_SOURCE | Housing-cost migration barrier | Direct | `RegionalConfig` | `TUNED_NEEDS_VALIDATION` |
 | `pricing.calvoTheta` | `0.15` | monthly share | Code note: Alvarez et al. 2006 | Average EU price duration around 6.7 months | Direct | `PricingConfig` | `CODE_NOTE_EMPIRICAL` |
 | `pricing.baseMarkup` | `1.15` | multiplier | Code note: Polish microdata approximation | Steady-state markup over marginal cost | Direct | `PricingConfig` | `CODE_NOTE_EMPIRICAL` |
-| `pricing.demandSensitivity`, `costPassthrough` | `0.5`, `0.4` | coefficients | UNKNOWN_SOURCE | Markup response to demand and cost shocks | Direct | `PricingConfig` | `TUNED_NEEDS_VALIDATION` |
+| `pricing.demandSensitivity`, `costPassthrough` | `0.10`, `0.4` | coefficients | #461 calibration | Markup response to demand and cost shocks | Direct | `PricingConfig` | `TUNED_NEEDS_VALIDATION` |
 | `pricing.minMarkup`, `maxMarkup` | `0.95`, `1.50` | multiplier | Structural bounds | Markup floor and ceiling | Direct | `PricingConfig` | `ASSUMED` |
 | `io.matrix` | 6x6 matrix | technical coefficients | Code note: GUS supply-use tables 2024 | Inter-sector intermediate demand | Direct | `IoConfig` | `CODE_NOTE_EMPIRICAL` |
 | `io.scale` | `1.0` | multiplier | Sensitivity switch | Full-strength I-O flows by default | Direct | `IoConfig` | `POLICY_SCENARIO` |
 | `informal.sectorShares` | `[0.05, 0.15, 0.30, 0.20, 0.02, 0.35]` | share by sector | Code note: Schneider 2023 | Shadow-economy sector shares | Direct | `InformalConfig` | `CODE_NOTE_EMPIRICAL` |
-| `informal.citEvasion`, `vatEvasion`, `pitEvasion`, `exciseEvasion` | `0.80`, `0.90`, `0.85`, `0.70` | share | UNKNOWN_SOURCE | Tax evasion rates by tax channel | Direct | `InformalConfig` | `TUNED_NEEDS_VALIDATION` |
+| `informal.citEvasion`, `vatEvasion`, `pitEvasion`, `exciseEvasion` | `0.50`, `0.30`, `0.40`, `0.30` | share | #461 calibration | Tax evasion rates by tax channel | Direct | `InformalConfig` | `TUNED_NEEDS_VALIDATION` |
 | `informal.unempThreshold`, `cyclicalSens`, `smoothing` | `0.05`, `0.50`, `0.92` | rate/coefficient | UNKNOWN_SOURCE | Counter-cyclical informal-sector response | Direct | `InformalConfig` | `TUNED_NEEDS_VALIDATION` |
 | `soe.baseDividendMultiplier` | `1.3` | multiplier | Code note: MF | Baseline SOE dividend payout versus private firms | Direct | `SoeConfig` | `CODE_NOTE_EMPIRICAL` |
 | `soe.dividendFiscalThreshold`, `dividendFiscalSensitivity` | `0.03`, `5.0` | share/coefficient | UNKNOWN_SOURCE | Fiscal-pressure dividend response | Direct | `SoeConfig` | `TUNED_NEEDS_VALIDATION` |
-| `soe.firingReduction`, `investmentMultiplier`, `energyPassthrough` | `0.70`, `1.2`, `0.60` | share/multiplier | UNKNOWN_SOURCE | SOE labor buffer, directed investment, energy pass-through | Direct | `SoeConfig` | `TUNED_NEEDS_VALIDATION` |
+| `soe.firingReduction`, `investmentMultiplier`, `energyPassthrough` | `0.70`, `1.2`, `0.60` | share/multiplier | UNKNOWN_SOURCE | SOE labor buffer, directed investment, energy pass-through | Firing buffer applies to standard workforce adjustment and insolvency downsizing | `SoeConfig`, `Firm` | `TUNED_NEEDS_VALIDATION` |
 
 ## Non-Bank Financials And Public Funds
 

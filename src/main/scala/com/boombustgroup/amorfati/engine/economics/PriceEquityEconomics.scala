@@ -4,7 +4,7 @@ import com.boombustgroup.amorfati.agents.*
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.*
 import com.boombustgroup.amorfati.engine.SimulationMonth.ExecutionMonth
-import com.boombustgroup.amorfati.engine.markets.{EquityMarket, PriceLevel}
+import com.boombustgroup.amorfati.engine.markets.{EquityMarket, LaborMarket, PriceLevel}
 import com.boombustgroup.amorfati.engine.mechanisms.{EuFunds, Macroprudential}
 import com.boombustgroup.amorfati.types.*
 
@@ -150,12 +150,17 @@ object PriceEquityEconomics:
 
     val euCofin            = EuFunds.cofinancing(euMonthly)
     val euProjectCapital   = EuFunds.capitalInvestment(euMonthly, euCofin)
+    val publicDomesticGFCF = euProjectCapital * (Share.One - p.capital.importShare)
+    val publicGFCFImports  = euProjectCapital * p.capital.importShare
     val greenDomesticGFCF  = firmStep.sumGreenInvestment * (Share.One - p.climate.greenImportShare)
-    val domesticGFCF       = firmStep.sumGrossInvestment * (Share.One - p.capital.importShare) + greenDomesticGFCF
-    val investmentImports  = firmStep.sumGrossInvestment * p.capital.importShare + firmStep.sumGreenInvestment * p.climate.greenImportShare
+    val domesticGFCF       = firmStep.sumGrossInvestment * (Share.One - p.capital.importShare) + greenDomesticGFCF + publicDomesticGFCF
+    val investmentImports  = firmStep.sumGrossInvestment * p.capital.importShare + firmStep.sumGreenInvestment * p.climate.greenImportShare + publicGFCFImports
     val aggInventoryChange = firmStep.sumInventoryChange
+    val capacityBoost      =
+      w.real.productivityIndex * GdpAccounting.publicCapitalCapacityBoost(w.gov.publicCapitalStock, p.fiscal.govInitCapital, w.cachedMonthlyGdpProxy)
+    val staffedOutputFirms = LaborMarket.syncFirmStaffing(firmStep.ioFirms, firmStep.households)
     val realizedOutputs    =
-      GdpAccounting.realizedSectorOutputs(w.priceLevel, expectedSectorCount, firmStep.ioFirms, s => sectorMults(s))
+      GdpAccounting.realizedSectorOutputs(w.priceLevel, expectedSectorCount, staffedOutputFirms, s => sectorMults(s), capacityBoost)
     val gdp                =
       GdpAccounting.outputBasedMonthlyGdp(realizedOutputs, aggInventoryChange)
 
@@ -181,6 +186,7 @@ object PriceEquityEconomics:
       avgDemandMult,
       wageGrowth,
       exDev,
+      w.external.gvc.importCostIndex,
     )
     // Calvo markup contribution (already annualized Rate from FirmProcessingStep)
     val newInfl  = priceUpd.inflation + firmStep.markupInflation
@@ -196,7 +202,7 @@ object PriceEquityEconomics:
         refRate = w.nbp.referenceRate,
         inflation = newInfl,
         gdpGrowth = gdpGrowthForEquity,
-        firmProfits = firmProfitsPnl,
+        aggregateFirmProfits = firmProfitsPnl,
       ),
     )
     val equityAfterIssuance = EquityMarket.processIssuance(firmStep.sumEquityIssuance, equityAfterIndex)

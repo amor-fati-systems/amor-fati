@@ -13,6 +13,28 @@ class ImmigrationSpec extends AnyFlatSpec with Matchers:
   import com.boombustgroup.amorfati.config.SimParams
   given SimParams = SimParams.defaults
 
+  private def household(id: Int, isImmigrant: Boolean, status: HhStatus): Household.State =
+    TestHouseholdState(
+      HhId(id),
+      PLN(1000),
+      PLN.Zero,
+      PLN(1800),
+      Share.decimal(5, 1),
+      Share(0),
+      Share.decimal(85, 2),
+      status,
+      Array.empty[HhId],
+      bankId = BankId(0),
+      equityWealth = PLN.Zero,
+      lastSectorIdx = SectorIdx(0),
+      isImmigrant = isImmigrant,
+      numDependentChildren = 0,
+      consumerDebt = PLN.Zero,
+      education = 2,
+      taskRoutineness = Share.decimal(5, 1),
+      wageScar = Share.Zero,
+    )
+
   // ---- computeInflow ----
 
   "Immigration.computeRemittances" should "return 0 for non-immigrant households" in {
@@ -212,6 +234,20 @@ class ImmigrationSpec extends AnyFlatSpec with Matchers:
     result.map(_.id) should not contain HhId(2) // second oldest removed
   }
 
+  it should "remove unemployed immigrants before employed return migrants" in {
+    val hhs = Vector(
+      household(1, isImmigrant = true, HhStatus.Employed(FirmId(1), SectorIdx(0), PLN(6000))),
+      household(2, isImmigrant = true, HhStatus.Unemployed(0)),
+      household(3, isImmigrant = true, HhStatus.Employed(FirmId(2), SectorIdx(0), PLN(6000))),
+    )
+
+    val result = Immigration.removeReturnMigrants(hhs, 1)
+
+    result.map(_.id) should contain(HhId(1))
+    result.map(_.id) should not contain HhId(2)
+    result.map(_.id) should contain(HhId(3))
+  }
+
   it should "not remove natives" in {
     val hhs    = Vector(
       TestHouseholdState(
@@ -292,6 +328,31 @@ class ImmigrationSpec extends AnyFlatSpec with Matchers:
     val prev   = Immigration.State(2, 0, 0, PLN.Zero)
     val result = Immigration.step(prev, Vector.empty, PLN(8000), Share.decimal(5, 2))
     result.immigrantStock should be >= 0
+  }
+
+  it should "increase return migration when immigrant unemployment is high" in {
+    val baseOutflow   = Immigration.computeOutflow(1000)
+    val stressOutflow = Immigration.computeOutflow(1000, Share.decimal(80, 2))
+
+    stressOutflow should be > baseOutflow
+  }
+
+  it should "measure immigrant unemployment from immigrant households only" in {
+    val households = Vector(
+      household(1, isImmigrant = true, HhStatus.Unemployed(0)),
+      household(2, isImmigrant = true, HhStatus.Unemployed(0)),
+      household(3, isImmigrant = true, HhStatus.Employed(FirmId(1), SectorIdx(0), PLN(6000))),
+      household(4, isImmigrant = false, HhStatus.Unemployed(0)),
+    )
+
+    Immigration.immigrantUnemploymentRate(households) shouldBe Share.fraction(2, 3)
+  }
+
+  it should "feed jobless immigrant stock into monthly outflow" in {
+    val households = (0 until 100).map(id => household(id, isImmigrant = true, HhStatus.Unemployed(0))).toVector
+    val result     = Immigration.step(Immigration.State(100, 0, 0, PLN.Zero), households, PLN(8000), Share.decimal(5, 2))
+
+    result.monthlyOutflow should be > Immigration.computeOutflow(100)
   }
 
   // ---- Immigration.State.zero ----

@@ -250,11 +250,17 @@ object McTimeseriesSchema:
         if gross > PLN.Zero then agg.totalPit / gross else Scalar.Zero
       },
     ),
+    ColumnDef.macroPln("GovTaxRevenue", ctx => ctx.world.gov.taxRevenue),
+    ColumnDef.macroPln("GovDividendRevenue", ctx => ctx.world.gov.govDividendRevenue),
+    ColumnDef.macroPln("GovTotalRevenue", ctx => ctx.world.gov.totalRevenue),
+    ColumnDef("GovRevenueToGdp", ctx => if ctx.monthlyGdp > PLN.Zero then ctx.world.gov.totalRevenue / ctx.monthlyGdp else Scalar.Zero),
     ColumnDef.macroPln("SocialTransferSpend", ctx => ctx.world.gov.socialTransferSpend),
     ColumnDef.macroPln("GovCurrentSpend", ctx => ctx.world.gov.govCurrentSpend),
     ColumnDef.macroPln("GovCapitalSpendDomestic", ctx => ctx.world.gov.govCapitalSpend),
     ColumnDef.macroPln("GovDomesticBudgetDemand", ctx => ctx.world.gov.domesticBudgetDemand),
     ColumnDef.macroPln("GovDomesticBudgetOutlays", ctx => ctx.world.gov.domesticBudgetOutlays),
+    ColumnDef.macroPln("GovDeficit", ctx => ctx.world.gov.deficit),
+    ColumnDef("GovOutlaysToGdp", ctx => if ctx.monthlyGdp > PLN.Zero then ctx.world.gov.domesticBudgetOutlays / ctx.monthlyGdp else Scalar.Zero),
     ColumnDef.macroPln("EuProjectCapitalTotal", ctx => ctx.world.gov.euProjectCapital),
     ColumnDef.macroPln("PublicCapitalStock", ctx => ctx.world.gov.publicCapitalStock),
     ColumnDef.macroPln("EuCofinancingDomestic", ctx => ctx.world.gov.euCofinancing),
@@ -270,7 +276,7 @@ object McTimeseriesSchema:
     ),
     ColumnDef(
       "DeficitToGdp",
-      ctx => if ctx.monthlyGdp > PLN.Zero then ctx.world.gov.deficit / (ctx.monthlyGdp * 12) else Scalar.Zero,
+      ctx => if ctx.monthlyGdp > PLN.Zero then ctx.world.gov.deficit / ctx.monthlyGdp else Scalar.Zero,
     ),
     ColumnDef("FiscalRuleBinding", ctx => ctx.world.pipeline.fiscalRuleSeverity),
     ColumnDef("GovSpendingCutRatio", ctx => ctx.world.pipeline.govSpendingCutRatio),
@@ -455,6 +461,21 @@ object McTimeseriesSchema:
       // Physical Capital
       ColumnDef.macroPln("AggCapitalStock", ctx => ctx.living.map(f => f.capitalStock).sumPln),
       ColumnDef.macroPln("GrossInvestment", ctx => ctx.world.real.grossInvestment),
+      ColumnDef.macroPln(
+        "TotalGrossFixedCapitalFormation",
+        ctx => ctx.world.real.grossInvestment + ctx.world.real.aggGreenInvestment + ctx.world.gov.govCapitalSpend + ctx.world.gov.euProjectCapital,
+      ),
+      ColumnDef(
+        "PrivateGrossInvestmentToGdp",
+        ctx => if ctx.monthlyGdp > PLN.Zero then ctx.world.real.grossInvestment / ctx.monthlyGdp else Scalar.Zero,
+      ),
+      ColumnDef(
+        "GrossFixedCapitalFormationToGdp",
+        ctx =>
+          if ctx.monthlyGdp > PLN.Zero then
+            (ctx.world.real.grossInvestment + ctx.world.real.aggGreenInvestment + ctx.world.gov.govCapitalSpend + ctx.world.gov.euProjectCapital) / ctx.monthlyGdp
+          else Scalar.Zero,
+      ),
       ColumnDef.macroPln(
         "CapitalDepreciation",
         ctx => ctx.living.map(f => f.capitalStock * ctx.p.capital.depRates(f.sector.toInt).monthly).sumPln,

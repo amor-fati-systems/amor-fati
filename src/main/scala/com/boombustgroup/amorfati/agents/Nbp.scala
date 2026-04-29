@@ -140,8 +140,8 @@ object Nbp:
   // Bond yield
   // ---------------------------------------------------------------------------
 
-  /** Bond yield = refRate + termPremium + fiscalRisk − qeCompression −
-    * foreignDemand + credibilityPremium.
+  /** Bond yield = long-rate anchor + fiscalRisk − qeCompression − foreignDemand
+    * + credibilityPremium.
     */
   def bondYield(
       refRate: Rate,
@@ -150,16 +150,25 @@ object Nbp:
       nfa: PLN,
       credibilityPremium: Rate,
   )(using p: SimParams): Rate =
-    val fiscalRisk     = piecewiseFiscalRisk(debtToGdp)
+    val curveAnchor    = longRateAnchor(refRate)
+    val fiscalRisk     = fiscalRiskPremium(debtToGdp)
     val qeCompress     = QeCompressionCoeff * nbpBondGdpShare
     val foreignDemand  = if nfa > PLN.Zero then ForeignDemandDiscount else Rate.Zero
     val cappedCredPrem = credibilityPremium.min(CredPremiumCap)
-    (refRate + p.fiscal.govTermPremium + fiscalRisk - qeCompress - foreignDemand + cappedCredPrem).max(Rate.Zero).min(BondYieldCap)
+    (curveAnchor + fiscalRisk - qeCompress - foreignDemand + cappedCredPrem).max(Rate.Zero).min(BondYieldCap)
 
-  /** Piecewise fiscal risk premium: steepens at 55% and 60% debt/GDP. base
-    * segment (40%+) + caution segment (55%+) + crisis segment (60%+).
+  /** Domestic policy-rate anchor with a Bund floor for the long end of the
+    * sovereign curve.
     */
-  private def piecewiseFiscalRisk(debtToGdp: Share)(using p: SimParams): Rate =
+  private def longRateAnchor(refRate: Rate)(using p: SimParams): Rate =
+    val domesticCurve = refRate + p.fiscal.govTermPremium
+    val externalCurve = p.fiscal.bundYield + p.fiscal.govTermPremium
+    domesticCurve.max(externalCurve)
+
+  /** Piecewise fiscal risk premium: gradual spread pressure above 40% debt/GDP
+    * with moderate steepening at the domestic 55% and 60% thresholds.
+    */
+  private[amorfati] def fiscalRiskPremium(debtToGdp: Share)(using p: SimParams): Rate =
     val base      = (p.fiscal.govFiscalRiskBeta * (debtToGdp - DebtThreshold).max(Share.Zero)).toMultiplier.toRate
     val caution55 =
       if debtToGdp > p.fiscal.fiscalRuleCautionThreshold then

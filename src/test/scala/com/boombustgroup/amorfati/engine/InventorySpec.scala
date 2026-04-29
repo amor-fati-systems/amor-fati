@@ -203,25 +203,23 @@ class InventorySpec extends AnyFlatSpec with Matchers:
   // Accumulation
   // ==========================================================================
 
-  "Unsold production" should "add to inventory" in {
+  "Demand shortfall" should "lower target inventory rather than adding a capacity residual" in {
     val capacity         = BigDecimal("100000.0")
-    val costFraction     = decimal(p.capital.inventoryCostFraction)
-    val productionValue  = capacity * costFraction
-    val sectorDemandMult = BigDecimal("0.8") // 20% unsold
-    val salesValue       = productionValue * DecimalMath.min(BigDecimal("1.0"), sectorDemandMult)
-    val unsoldValue      = DecimalMath.max(BigDecimal("0.0"), productionValue - salesValue)
-    unsoldValue should be > BigDecimal("0.0")
-    unsoldValue shouldBe productionValue * BigDecimal("0.2") +- BigDecimal("0.01")
+    val targetRatio      = BigDecimal("0.15")
+    val sectorDemandMult = BigDecimal("0.8")
+    val realizedRevenue  = capacity * DecimalMath.min(BigDecimal("1.0"), sectorDemandMult)
+    val targetInv        = realizedRevenue * targetRatio
+
+    targetInv shouldBe capacity * sectorDemandMult * targetRatio +- BigDecimal("0.01")
+    targetInv should be < capacity * targetRatio
   }
 
-  "Excess demand" should "not generate unsold production" in {
+  "Excess demand" should "not lift target inventory above capacity sales" in {
     val capacity         = BigDecimal("100000.0")
-    val costFraction     = decimal(p.capital.inventoryCostFraction)
-    val productionValue  = capacity * costFraction
     val sectorDemandMult = BigDecimal("1.2") // excess demand
-    val salesValue       = productionValue * DecimalMath.min(BigDecimal("1.0"), sectorDemandMult)
-    val unsoldValue      = DecimalMath.max(BigDecimal("0.0"), productionValue - salesValue)
-    unsoldValue shouldBe BigDecimal("0.0")
+    val realizedRevenue  = capacity * DecimalMath.min(BigDecimal("1.0"), sectorDemandMult)
+
+    realizedRevenue shouldBe capacity
   }
 
   // ==========================================================================

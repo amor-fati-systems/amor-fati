@@ -44,15 +44,64 @@ class FiscalRulesSpec extends AnyWordSpec with Matchers:
       decimal(result.constrainedGovPurchases) should be < BigDecimal("200e9")
     }
 
-    "apply SGP when deficit/GDP exceeds 3%" in {
+    "loosen the SRW ceiling when unemployment slack is positive" in {
+      val tight = baseInput.copy(
+        rawGovPurchases = PLN(200000000000L),
+        prevGovSpend = PLN(90000000000L),
+        outputGap = Coefficient.Zero,
+      )
+      val slack = tight.copy(outputGap = Coefficient.decimal(50, 2))
+
+      val tightResult = FiscalRules.constrain(tight)
+      val slackResult = FiscalRules.constrain(slack)
+
+      slackResult.constrainedGovPurchases should be >= tightResult.constrainedGovPurchases
+      slackResult.constrainedGovPurchases should be <= slack.rawGovPurchases
+    }
+
+    "apply gradual SGP correction when deficit/GDP exceeds 3%" in {
       val in     = baseInput.copy(
-        prevDeficit = PLN(120000000000L), // 120e9 / 250e9 = 48% >> 3%
+        prevDeficit = PLN(15000000000L), // 15e9 / 250e9 = 6% > 3%
       )
       val result = FiscalRules.constrain(in)
       decimal(result.status.deficitToGdp) should be > BigDecimal("0.03")
-      // SGP caps at revenue + monthlyGdp × sgpDeficitLimit
-      val sgpCap = BigDecimal("80e9") + BigDecimal("250e9") * BigDecimal("0.03")
-      decimal(result.constrainedGovPurchases) should be <= sgpCap * BigDecimal("1.01") // within tolerance
+      decimal(result.constrainedGovPurchases) should be < decimal(in.rawGovPurchases)
+      decimal(result.constrainedGovPurchases) should be > BigDecimal("0.0")
+    }
+
+    "include prior non-purchase outlays in the SGP discretionary spending path" in {
+      val withDebtService    = baseInput.copy(
+        rawGovPurchases = PLN(120000000000L),
+        prevGovSpend = PLN(90000000000L),
+        prevRevenue = PLN(80000000000L),
+        prevDeficit = PLN(40000000000L),
+      )
+      val withoutDebtService = withDebtService.copy(prevGovSpend = PLN(120000000000L))
+
+      val constrained = FiscalRules.constrain(withDebtService)
+      val looser      = FiscalRules.constrain(withoutDebtService)
+
+      decimal(constrained.constrainedGovPurchases) should be < decimal(looser.constrainedGovPurchases)
+    }
+
+    "scale SGP correction with the deficit overshoot" in {
+      val mildBreach   = baseInput.copy(
+        rawGovPurchases = PLN(120000000000L),
+        prevRevenue = PLN(80000000000L),
+        prevDeficit = PLN(15000000000L), // 6% deficit/GDP
+        prevGovSpend = PLN(95000000000L),
+      )
+      val severeBreach = mildBreach.copy(
+        prevDeficit = PLN(120000000000L), // 48% deficit/GDP
+        prevGovSpend = PLN(200000000000L),
+      )
+
+      val mildResult   = FiscalRules.constrain(mildBreach)
+      val severeResult = FiscalRules.constrain(severeBreach)
+
+      mildResult.status.bindingRule shouldBe 2
+      severeResult.status.bindingRule shouldBe 2
+      decimal(severeResult.constrainedGovPurchases) should be < decimal(mildResult.constrainedGovPurchases)
     }
 
     "apply Art. 86 (55%) consolidation" in {
@@ -63,13 +112,13 @@ class FiscalRulesSpec extends AnyWordSpec with Matchers:
       decimal(result.status.spendingCutRatio) should be > BigDecimal("0.0")
     }
 
-    "force budget balance at Art. 216 (60%)" in {
+    "apply staged consolidation at Art. 216 (60%)" in {
       val in     = baseInput.copy(cumulativeDebt = PLN(1900000000000L)) // 63.3% debt/GDP
       val result = FiscalRules.constrain(in)
       decimal(result.status.debtToGdp) should be > BigDecimal("0.60")
       result.status.bindingRule shouldBe 4
-      // Hard ceiling: cannot exceed revenue
-      decimal(result.constrainedGovPurchases) should be <= decimal(in.prevRevenue)
+      decimal(result.constrainedGovPurchases) should be < decimal(in.rawGovPurchases)
+      decimal(result.constrainedGovPurchases) should be > decimal(in.prevRevenue)
     }
 
     "most restrictive rule wins when multiple bind" in {
@@ -106,7 +155,7 @@ class FiscalRulesSpec extends AnyWordSpec with Matchers:
 
     "have base-only risk at 45% debt/GDP" in {
       val y        = Nbp.bondYield(Rate.decimal(5, 2), Share.decimal(45, 2), Share.Zero, PLN.Zero, Rate.Zero)
-      val baseRisk = BigDecimal("2.0") * BigDecimal("0.05")
+      val baseRisk = BigDecimal("0.03") * BigDecimal("0.05")
       val expected = BigDecimal("0.05") + BigDecimal("0.005") + baseRisk
       decimal(y) shouldBe expected +- BigDecimal("0.001")
     }

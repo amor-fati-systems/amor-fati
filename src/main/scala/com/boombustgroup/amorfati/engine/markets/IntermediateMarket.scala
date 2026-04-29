@@ -30,8 +30,10 @@ object IntermediateMarket:
       ioMatrix: Vector[Vector[Share]],
       columnSums: Vector[Share],
       scale: Multiplier = Multiplier.One,
+      productivityIndex: Multiplier = Multiplier.One,
   ):
     require(scale >= Multiplier.Zero, "IntermediateMarket.Input.scale must be non-negative")
+    require(productivityIndex >= Multiplier.Zero, "IntermediateMarket.Input.productivityIndex must be non-negative")
     require(
       columnSums == ioMatrix.indices.map(j => ioMatrix.map(_(j)).foldLeft(Share.Zero)(_ + _)).toVector,
       "IntermediateMarket.Input.columnSums must match ioMatrix",
@@ -54,7 +56,8 @@ object IntermediateMarket:
     val living      = arr.indices.filter: i =>
       Firm.isAlive(arr(i))
     val grossOutput = Array.fill(arr.length)(PLN.Zero)
-    for i <- living do grossOutput(i) = Firm.computeCapacity(arr(i)) * in.sectorMults(arr(i).sector.toInt) * in.price.toMultiplier
+    for i <- living do
+      grossOutput(i) = Firm.computeEffectiveCapacity(arr(i), in.productivityIndex) * in.sectorMults(arr(i).sector.toInt) * in.price.toMultiplier
 
     // Total gross output per sector (for revenue distribution)
     val sectorOutput = Array.fill(nSectors)(PLN.Zero)

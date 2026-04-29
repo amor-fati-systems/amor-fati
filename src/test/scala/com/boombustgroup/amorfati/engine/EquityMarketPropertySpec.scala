@@ -69,7 +69,7 @@ class EquityMarketPropertySpec extends AnyFlatSpec with Matchers with ScalaCheck
     forAll(genDecimal("1e6", "1e13"), genDecimal("0.0", "1.0")) { (profits, foreignShare) =>
       whenever(foreignShare >= BigDecimal("0.0")) {
         val r             = EquityMarket.computeDividends(plnBD(profits), shareBD(foreignShare), PLN.Zero, Share.Zero)
-        val expectedTotal = plnBD(profits) * Share.decimal(57, 2)
+        val expectedTotal = plnBD(profits) * summon[SimParams].equity.listedProfitShare * Share.decimal(57, 2)
         (r.netDomestic + r.tax + r.foreign) shouldBe expectedTotal
       }
     }
@@ -79,7 +79,7 @@ class EquityMarketPropertySpec extends AnyFlatSpec with Matchers with ScalaCheck
       whenever(foreignShare >= BigDecimal("0.0") && foreignShare <= BigDecimal("1.0")) {
         val baseline = EquityMarket.computeDividends(plnBD(profits), shareBD(foreignShare), PLN.Zero, Share.Zero)
         val withGov  = EquityMarket.computeDividends(plnBD(profits), shareBD(foreignShare), plnBD(profits * soeShare), shareBD(deficitToGdp))
-        val payout   = plnBD(profits) * Share.decimal(57, 2)
+        val payout   = plnBD(profits) * summon[SimParams].equity.listedProfitShare * Share.decimal(57, 2)
 
         withGov.netDomestic shouldBe baseline.netDomestic
         withGov.foreign shouldBe baseline.foreign
@@ -92,13 +92,13 @@ class EquityMarketPropertySpec extends AnyFlatSpec with Matchers with ScalaCheck
   it should "have foreign dividends <= total dividends" in
     forAll(genDecimal("1e6", "1e13"), genFraction) { (profits, foreignShare) =>
       val r     = EquityMarket.computeDividends(plnBD(profits), shareBD(foreignShare), PLN.Zero, Share.Zero)
-      val total = plnBD(profits) * Share.decimal(57, 2)
+      val total = plnBD(profits) * summon[SimParams].equity.listedProfitShare * Share.decimal(57, 2)
       r.foreign should be <= total
     }
 
   it should "have dividend tax <= domestic gross" in
     forAll(genDecimal("1e6", "1e13"), genFraction) { (profits, foreignShare) =>
-      val gross = plnBD(profits) * Share.decimal(57, 2) * (Share.One - shareBD(foreignShare))
+      val gross = plnBD(profits) * summon[SimParams].equity.listedProfitShare * Share.decimal(57, 2) * (Share.One - shareBD(foreignShare))
       val r     = EquityMarket.computeDividends(plnBD(profits), shareBD(foreignShare), PLN.Zero, Share.Zero)
       r.tax should be <= gross
     }

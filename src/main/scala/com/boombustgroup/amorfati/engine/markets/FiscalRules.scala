@@ -50,14 +50,14 @@ object FiscalRules:
     val srwCeiling = computeSrwCeiling(in)
     val afterSrw   = blendSrw(in.rawGovPurchases, srwCeiling)
 
-    // 2. SGP: cap spending if deficit/GDP > 3%
+    // 2. SGP: converge spending toward the 3% deficit path
     val afterSgp = applySgp(afterSrw, in, deficitToGdp)
 
     // 3. Art. 86 (55%): consolidation cut
     val afterArt86 = applyConsolidation55(afterSgp, debtToGdp)
 
-    // 4. Art. 216 (60%): budget must balance
-    val afterArt216 = applyArt216(afterArt86, in, debtToGdp)
+    // 4. Art. 216 (60%): staged consolidation above the constitutional ceiling
+    val afterArt216 = applyArt216(afterArt86, debtToGdp)
 
     // Determine which rule is binding (most restrictive wins)
     val constrained = afterArt216
@@ -72,26 +72,42 @@ object FiscalRules:
     )
 
   /** SRW ceiling: previous spending × (1 + monthly inflation + monthly real cap
-    * − output gap correction).
+    * + cyclical slack allowance).
     */
   private def computeSrwCeiling(in: Input)(using p: SimParams): PLN =
     val monthlyInflation = in.inflation.monthly.toMultiplier
     val monthlyRealCap   = p.fiscal.srwRealGrowthCap.monthly.toMultiplier
-    val gapCorrection    = ((in.outputGap * p.fiscal.srwOutputGapSensitivity).toScalar / 12).toMultiplier
-    in.prevGovSpend * (Multiplier.One + monthlyInflation + monthlyRealCap - gapCorrection)
+    val slackAllowance   = ((in.outputGap * p.fiscal.srwOutputGapSensitivity).max(Coefficient.Zero).toScalar / 12).toMultiplier
+    in.prevGovSpend * (Multiplier.One + monthlyInflation + monthlyRealCap + slackAllowance)
 
   /** Blend raw spending toward SRW ceiling at convergence speed. */
   private def blendSrw(raw: PLN, ceiling: PLN)(using p: SimParams): PLN =
-    val s = p.fiscal.srwCorrectionSpeed.monthly
-    raw * (Share.One - s) + ceiling * s
+    if ceiling >= raw then raw
+    else
+      val s = p.fiscal.srwCorrectionSpeed.monthly
+      raw * (Share.One - s) + ceiling * s
 
-  /** SGP: if annualized deficit/GDP > limit, cap spending at revenue +
-    * allowable deficit.
+  /** SGP: if annualized deficit/GDP > limit, converge gradually toward revenue
+    * + allowable deficit. The EU excessive-deficit process is a multi-year
+    * adjustment path, not an instantaneous monthly spending cap. The correction
+    * speed scales with the size of the deficit overshoot, so a 10% deficit
+    * closes faster than a 4% deficit without imposing a hard spending floor.
     */
   private def applySgp(spending: PLN, in: Input, deficitToGdp: Share)(using p: SimParams): PLN =
     if deficitToGdp > p.fiscal.sgpDeficitLimit then
-      val maxSpend = in.prevRevenue + in.monthlyGdp * p.fiscal.sgpDeficitLimit
-      spending.min(maxSpend)
+      val prevTotalSpend        = in.prevRevenue + in.prevDeficit
+      val prevNonPurchaseSpend  = (prevTotalSpend - in.prevGovSpend).max(PLN.Zero)
+      val allowableDeficit      = in.monthlyGdp * p.fiscal.sgpDeficitLimit
+      val maxDiscretionarySpend = (in.prevRevenue + allowableDeficit - prevNonPurchaseSpend).max(PLN.Zero)
+      if spending > maxDiscretionarySpend then
+        val excess         = spending - maxDiscretionarySpend
+        val deficitGap     = (deficitToGdp - p.fiscal.sgpDeficitLimit).max(Share.Zero)
+        val gapScale       =
+          if p.fiscal.sgpDeficitLimit > Share.Zero then (Share.One.toScalar + deficitGap.ratioTo(p.fiscal.sgpDeficitLimit)).toMultiplier
+          else Multiplier.One
+        val correctionRate = (p.fiscal.sgpCorrectionSpeed.monthly * gapScale).toShare.min(Share.One)
+        spending - excess * correctionRate
+      else spending
     else spending
 
   /** Art. 86 uFP (55%): apply consolidation spending cut. */
@@ -99,11 +115,15 @@ object FiscalRules:
     if debtToGdp > p.fiscal.fiscalRuleCautionThreshold then spending * (Share.One - p.fiscal.fiscalConsolidationSpeed55.monthly)
     else spending
 
-  /** Art. 216 (60%): budget must balance — spending capped at revenue. */
-  private def applyArt216(spending: PLN, in: Input, debtToGdp: Share)(using p: SimParams): PLN =
-    if debtToGdp > p.fiscal.fiscalRuleDebtCeiling then
-      val consolidated = spending * (Share.One - p.fiscal.fiscalConsolidationSpeed60.monthly)
-      consolidated.min(in.prevRevenue) // hard ceiling: cannot exceed revenue
+  /** Art. 216 (60%): staged consolidation above the constitutional ceiling.
+    *
+    * The monthly model applies the rule as a consolidation path rather than an
+    * instantaneous cap to last month's revenue. A hard one-month balance cap is
+    * too procyclical for baseline calibration because central-budget purchases
+    * are decided before current-month revenues are known.
+    */
+  private def applyArt216(spending: PLN, debtToGdp: Share)(using p: SimParams): PLN =
+    if debtToGdp > p.fiscal.fiscalRuleDebtCeiling then spending * (Share.One - p.fiscal.fiscalConsolidationSpeed60.monthly)
     else spending
 
   /** Identify which rule is most restrictive (highest severity binding). */

@@ -151,7 +151,7 @@ object WorldAssemblyEconomics:
       in.s2.living
         .filter(_.sector.toInt == s)
         .foldLeft(PLN.Zero): (acc, f) =>
-          acc + Firm.computeCapacity(f)
+          acc + Firm.computeEffectiveCapacity(f, in.w.real.productivityIndex)
     val priceMult      = in.w.priceLevel.toMultiplier
     val totalFirmRev   = (0 until nSectors).foldLeft(PLN.Zero): (acc, s) =>
       acc + (sectorCapPln(s) * in.s4.sectorMults(s) * priceMult)
@@ -171,7 +171,7 @@ object WorldAssemblyEconomics:
 
     val realizedTaxShadowShare = in.s9.realizedTaxShadowShare
 
-    val laborPopulation = in.w.social.demographics.workingAgePop.max(1)
+    val laborPopulation = in.s2.newDemographics.workingAgePop.max(1)
     val unemp           = Share.One - Share.fraction(in.s2.employed, laborPopulation)
     val target          = ((unemp - p.informal.unempThreshold.toScalar.toShare).max(Share.Zero) * p.informal.cyclicalSens).toShare
     val smoothing       = p.informal.smoothing.toShare
@@ -238,15 +238,17 @@ object WorldAssemblyEconomics:
       val startupAbsorptionRate =
         if startupOpeningsBefore > 0 then Share.fraction(startupHires, startupOpeningsBefore)
         else Share.One
-      val hhAgg                 = Household.computeAggregates(
-        postWages,
-        in.s9.ledgerFinancialState.households.map(LedgerFinancialState.projectHouseholdFinancialStocks),
-        in.s2.newWage,
-        in.s1.resWage,
-        in.s3.importAdj,
-        in.s3.hhAgg.retrainingAttempts,
-        in.s3.hhAgg.retrainingSuccesses,
-      )
+      val hhAgg                 = Household
+        .computeAggregates(
+          postWages,
+          in.s9.ledgerFinancialState.households.map(LedgerFinancialState.projectHouseholdFinancialStocks),
+          in.s2.newWage,
+          in.s1.resWage,
+          in.s3.importAdj,
+          in.s3.hhAgg.retrainingAttempts,
+          in.s3.hhAgg.retrainingSuccesses,
+        )
+        .withFlowTotalsFrom(in.s9.finalHhAgg)
       StartupStaffingResult(staffedFirms, postWages, hhAgg, searchResult.crossSectorHires, startupAbsorptionRate)
 
   private def syncStartupStaffing(
@@ -263,8 +265,8 @@ object WorldAssemblyEconomics:
       if Firm.isInStartup(firm) then
         val filled     = staffedCounts.getOrElse(firm.id, 0).min(firm.startupTargetWorkers)
         val syncedTech = firm.tech match
-          case TechState.Traditional(_) => TechState.Traditional(Math.max(1, filled))
-          case TechState.Hybrid(_, eff) => TechState.Hybrid(Math.max(1, filled), eff)
+          case TechState.Traditional(_) => TechState.Traditional(filled)
+          case TechState.Hybrid(_, eff) => TechState.Hybrid(filled, eff)
           case other                    => other
         firm.copy(startupFilledWorkers = filled, tech = syncedTech)
       else firm
@@ -276,8 +278,9 @@ object WorldAssemblyEconomics:
       fofResidual: PLN,
       informal: InformalResult,
       obs: Observables,
-  ): World =
-    val social = SocialState(
+  )(using p: SimParams): World =
+    val productivityNext = in.w.real.productivityIndex * p.firm.productivityGrowth.monthly.growthMultiplier
+    val social           = SocialState(
       jst = in.s9.newJst,
       zus = in.s2.newZus,
       nfz = in.s2.newNfz,
@@ -285,7 +288,7 @@ object WorldAssemblyEconomics:
       demographics = in.s2.newDemographics,
       earmarked = in.s2.newEarmarked,
     )
-    val world  = World(
+    val world            = World(
       inflation = in.s7.newInfl,
       priceLevel = in.s7.newPrice,
       currentSigmas = in.s7.newSigmas,
@@ -324,6 +327,7 @@ object WorldAssemblyEconomics:
         aggGreenInvestment = in.s5.sumGreenInvestment,
         aggGreenCapital = in.s7.aggGreenCapital,
         etsPrice = obs.etsPrice,
+        productivityIndex = productivityNext,
         automationRatio = in.s7.autoR,
         hybridRatio = in.s7.hybR,
       ),

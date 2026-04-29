@@ -14,12 +14,21 @@ class CentralBankSpec extends AnyFlatSpec with Matchers:
 
   // --- bondYield ---
 
-  "Nbp.bondYield" should "include capped fiscal risk premium" in {
-    // When bond market off, yield = refRate (no risk premium, no QE)
+  "Nbp.bondYield" should "include calibrated fiscal risk premium" in {
     val y = Nbp.bondYield(Rate.decimal(5, 2), Share.decimal(50, 2), Share.Zero, PLN.Zero, Rate.Zero)
-    // debtToGdp=0.50 > 0.40 -> raw fiscalRisk = 2.0 * 0.10 = 0.20, capped at 0.10
-    // yield = 0.05 + 0.005 + 0.10 - 0 - 0 = 0.155
-    decimal(y) shouldBe BigDecimal("0.155") +- BigDecimal("0.001")
+    // debtToGdp=0.50 > 0.40 -> fiscalRisk = 0.03 * 0.10 = 0.003
+    // yield = max(0.05, 0.025) + 0.005 + 0.003 - 0 - 0 = 0.058
+    decimal(y) shouldBe BigDecimal("0.058") +- BigDecimal("0.001")
+  }
+
+  it should "keep Poland-like debt levels below crisis pricing" in {
+    val y = Nbp.bondYield(Rate.decimal(375, 4), Share.decimal(70, 2), Share.Zero, PLN.Zero, Rate.Zero)
+    decimal(y) shouldBe BigDecimal("0.0655") +- BigDecimal("0.001")
+  }
+
+  it should "use Bund as a floor for the long end of the sovereign curve" in {
+    val y = Nbp.bondYield(Rate.decimal(1, 2), Share.decimal(35, 2), Share.Zero, PLN.Zero, Rate.Zero)
+    decimal(y) shouldBe BigDecimal("0.030") +- BigDecimal("0.001")
   }
 
   it should "increase with debtToGdp (fiscal risk premium)" in {
@@ -41,7 +50,6 @@ class CentralBankSpec extends AnyFlatSpec with Matchers:
   }
 
   it should "have a floor at 0" in {
-    // Very high QE compression -> yield should not go negative
     val y = Nbp.bondYield(Rate.decimal(1, 2), Share.decimal(30, 2), Share.decimal(50, 2), PLN(1000), Rate.Zero)
     decimal(y) should be >= BigDecimal("0.0")
   }

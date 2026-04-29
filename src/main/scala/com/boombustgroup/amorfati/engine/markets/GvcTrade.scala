@@ -110,10 +110,12 @@ object GvcTrade:
     val newForeignPrice  = in.prev.foreignPriceIndex.applyGrowth(monthlyInflation.toCoefficient)
     val commodityDrift   = p.gvc.commodityDrift.monthly.toCoefficient
     val commodityNoise   = Coefficient.fromRaw(Distributions.gaussianNoiseRaw(p.gvc.commodityVolatility.toScalar, in.rng))
+    val commodityGap     = in.prev.commodityPriceIndex.ratioTo(PriceIndex.Base).toCoefficient - Coefficient.One
+    val meanReversion    = -(commodityGap * p.gvc.commodityMeanReversion.toCoefficient)
     val commodityShock   =
       if p.gvc.commodityShockMonth > 0 && in.month.toInt == p.gvc.commodityShockMonth then p.gvc.commodityShockMag.toCoefficient
       else Coefficient.Zero
-    val commodityGrowth  = (commodityShock + commodityDrift + commodityNoise).growthMultiplier
+    val commodityGrowth  = (commodityShock + commodityDrift + commodityNoise + meanReversion).growthMultiplier
     val newCommodity     = in.prev.commodityPriceIndex * commodityGrowth
     val newImportCost    = newForeignPrice * newCommodity
     val shockActive      = p.gvc.demandShockMonth > 0 && in.month.toInt >= p.gvc.demandShockMonth

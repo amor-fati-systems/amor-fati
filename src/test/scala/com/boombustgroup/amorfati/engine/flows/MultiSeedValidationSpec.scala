@@ -41,9 +41,7 @@ class MultiSeedValidationSpec extends AnyFlatSpec with Matchers:
       }
 
       val employed = state.households.count(_.status.isInstanceOf[com.boombustgroup.amorfati.agents.HhStatus.Employed])
-      val unemp    =
-        if state.world.derivedTotalPopulation > 0 then BigDecimal(1) - decimal(employed) / decimal(state.world.derivedTotalPopulation)
-        else BigDecimal(0)
+      val unemp    = decimal(state.world.unemploymentRate(employed))
       withClue(s"Seed $seed unemployment=$unemp: ") {
         unemp should be >= BigDecimal("0.03")
         unemp should be <= BigDecimal("0.97")

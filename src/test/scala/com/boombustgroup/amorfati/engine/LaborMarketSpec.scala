@@ -88,6 +88,24 @@ class LaborMarketSpec extends AnyFlatSpec with Matchers:
     result(3).status shouldBe HhStatus.Unemployed(0)
   }
 
+  it should "separate workers when a traditional firm downsizes" in {
+    val prevFirms = Vector(mkFirms(1)(0).copy(tech = TechState.Traditional(4), initialSize = 4))
+    val newFirms  = prevFirms.updated(0, prevFirms(0).copy(tech = TechState.Traditional(2)))
+    val hhs       = Vector(
+      mkHousehold(0, HhStatus.Employed(FirmId(0), SectorIdx(2), PLN(8000)), contractType = ContractType.Permanent),
+      mkHousehold(1, HhStatus.Employed(FirmId(0), SectorIdx(2), PLN(8000)), contractType = ContractType.Zlecenie),
+      mkHousehold(2, HhStatus.Employed(FirmId(0), SectorIdx(2), PLN(8000)), contractType = ContractType.B2B),
+      mkHousehold(3, HhStatus.Employed(FirmId(0), SectorIdx(2), PLN(8000)), contractType = ContractType.B2B),
+    )
+
+    val result = LaborMarket.separations(hhs, prevFirms, newFirms)
+
+    result.count(_.status.isInstanceOf[HhStatus.Employed]) shouldBe 2
+    result.count(_.status == HhStatus.Unemployed(0)) shouldBe 2
+    result(0).status shouldBe a[HhStatus.Employed]
+    result(1).status shouldBe a[HhStatus.Employed]
+  }
+
   it should "retain lowest AI displacement risk first when a firm automates" in {
     val prevFirms = Vector(mkFirms(1)(0).copy(tech = TechState.Traditional(4), initialSize = 4))
     val newFirms  = prevFirms.updated(0, prevFirms(0).copy(tech = TechState.Automated(Multiplier.decimal(15, 1))))

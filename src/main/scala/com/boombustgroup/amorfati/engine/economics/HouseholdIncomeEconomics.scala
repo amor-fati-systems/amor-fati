@@ -49,6 +49,7 @@ object HouseholdIncomeEconomics:
       resWage: PLN,
       newWage: PLN,
       rng: RandomStream,
+      pensionIncome: PLN = PLN.Zero,
   )(using p: SimParams): Output =
     val importAdj =
       (p.forex.importPropensity * p.forex.baseExRate.ratioTo(w.forex.exchangeRate).pow(ImportErElasticity.toScalar)).toShare.clamp(
@@ -56,12 +57,12 @@ object HouseholdIncomeEconomics:
         Share.One,
       )
 
-    val afterSep      = LaborMarket.separations(households, firms, firms)
-    val afterWages    = LaborMarket.updateWages(afterSep, firms, newWage)
-    val bsec          = w.bankingSector
-    val nBanksHh      = banks.length
-    val bankStocks    = ledgerFinancialState.banks.map(LedgerFinancialState.projectBankFinancialStocks)
-    val hhBankRates   = Some(
+    val afterSep        = LaborMarket.separations(households, firms, firms)
+    val afterWages      = LaborMarket.updateWages(afterSep, firms, newWage)
+    val bsec            = w.bankingSector
+    val nBanksHh        = banks.length
+    val bankStocks      = ledgerFinancialState.banks.map(LedgerFinancialState.projectBankFinancialStocks)
+    val hhBankRates     = Some(
       BankRates(
         lendingRates = banks
           .zip(bankStocks)
@@ -72,11 +73,11 @@ object HouseholdIncomeEconomics:
         depositRates = banks.map(_ => Banking.hhDepositRate(w.nbp.referenceRate)),
       ),
     )
-    val eqReturn      = w.financialMarkets.equity.monthlyReturn
-    val secWages      = Some(SectoralMobility.sectorWages(afterWages))
-    val secVacancies  = Some(SectoralMobility.sectorVacancies(afterWages, firms))
-    val openingStocks = ledgerFinancialState.households.map(LedgerFinancialState.projectHouseholdFinancialStocks)
-    val householdStep = Household.step(
+    val eqReturn        = w.financialMarkets.equity.monthlyReturn
+    val secWages        = Some(SectoralMobility.sectorWages(afterWages))
+    val secVacancies    = Some(SectoralMobility.sectorVacancies(afterWages, firms))
+    val openingStocks   = ledgerFinancialState.households.map(LedgerFinancialState.projectHouseholdFinancialStocks)
+    val householdStep   = Household.step(
       afterWages,
       openingStocks,
       w,
@@ -90,17 +91,29 @@ object HouseholdIncomeEconomics:
       secWages,
       secVacancies,
     )
-    val agg           = householdStep.aggregates
+    val agg             = householdStep.aggregates
+    val pensionCons     = pensionIncome * p.household.mpc
+    val pensionImport   = pensionCons * importAdj
+    val pensionDomestic = pensionCons - pensionImport
+    val aggWithPensions =
+      if pensionIncome > PLN.Zero then
+        agg.copy(
+          totalIncome = agg.totalIncome + pensionIncome,
+          consumption = agg.consumption + pensionCons,
+          domesticConsumption = agg.domesticConsumption + pensionDomestic,
+          importConsumption = agg.importConsumption + pensionImport,
+        )
+      else agg
 
     Output(
-      agg.totalIncome,
-      agg.consumption,
-      agg.importConsumption,
-      agg.domesticConsumption,
+      aggWithPensions.totalIncome,
+      aggWithPensions.consumption,
+      aggWithPensions.importConsumption,
+      aggWithPensions.domesticConsumption,
       householdStep.households,
-      agg,
+      aggWithPensions,
       householdStep.perBankFlows,
-      agg.totalPit,
+      aggWithPensions.totalPit,
       importAdj,
       aggUnempBenefit = PLN.Zero,
       ledgerFinancialState = ledgerFinancialState.copy(households = householdStep.financialStocks.map(LedgerFinancialState.householdBalances)),
