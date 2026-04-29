@@ -748,9 +748,13 @@ enters at the current market yield.
 The reference rate follows a smoothed Taylor-type rule:
 
 ```text
+policyInflation =
+  expectedInflationWeight * expectedInflation
+  + (1 - expectedInflationWeight) * inflation
+
 taylorTarget =
   neutralRate
-  + taylorAlpha * (inflation - targetInflation)
+  + taylorAlpha * (policyInflation - targetInflation)
   - taylorDelta * outputGap
   + taylorBeta * exchangeRateChange
 

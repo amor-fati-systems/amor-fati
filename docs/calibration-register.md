@@ -176,7 +176,8 @@ source. Missing or weak provenance is marked explicitly with searchable tokens:
 | `monetary.initialRate` | `0.0575` | annual rate | Code note: NBP 2024 | NBP reference rate | Direct | `MonetaryConfig` | `CODE_NOTE_EMPIRICAL` |
 | `monetary.targetInfl` | `0.025` | annual rate | NBP inflation target | Inflation target | Direct | `MonetaryConfig` | `EMPIRICAL` |
 | `monetary.neutralRate` | `0.03` | annual rate | #461 calibration | Long-run neutral policy-rate anchor | Direct | `MonetaryConfig` | `TUNED_NEEDS_VALIDATION` |
-| `monetary.taylorAlpha`, `taylorBeta`, `taylorDelta` | `1.2`, `0.8`, `0.5` | coefficients | #461 calibration / Taylor-rule convention | Policy reaction coefficients | Direct | `MonetaryConfig` | `TUNED_NEEDS_VALIDATION` |
+| `monetary.taylorAlpha`, `taylorBeta`, `taylorDelta` | `1.2`, `0.8`, `0.1` | coefficients | #461 calibration / Taylor-rule convention | Policy reaction coefficients; unemployment-gap response is intentionally modest to match NBP's inflation-focused reaction pattern | Direct | `MonetaryConfig` | `TUNED_NEEDS_VALIDATION` |
+| `monetary.taylorExpectedInflationWeight` | `0.80` | share | #461 NBP 2025 disinflation calibration | Forward-looking inflation weight in the policy reaction; allows cuts during disinflation when expectations are near target despite elevated current CPI | Direct | `MonetaryConfig`, `Nbp.updateRate` | `TUNED_NEEDS_VALIDATION` |
 | `monetary.taylorInertia` | `0.70` | share | UNKNOWN_SOURCE | Policy-rate smoothing | Direct | `MonetaryConfig` | `TUNED_NEEDS_VALIDATION` |
 | `monetary.rateFloor`, `rateCeiling` | `0.001`, `0.15` | annual rate | Structural lower/upper bounds | Policy-rate corridor bounds | Direct | `MonetaryConfig` | `ASSUMED` |
 | `monetary.maxRateChange` | `0.0025` | monthly annual-rate step | #461 calibration | Monthly policy-rate adjustment cap | Direct | `MonetaryConfig` | `TUNED_NEEDS_VALIDATION` |

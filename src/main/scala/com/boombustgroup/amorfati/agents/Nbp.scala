@@ -97,11 +97,12 @@ object Nbp:
     */
   private def taylorTarget(
       inflation: Rate,
+      expectedInflation: Rate,
       exRateChange: Coefficient,
       employed: Int,
       totalPopulation: Int,
   )(using p: SimParams): Rate =
-    val infGap    = inflation - p.monetary.targetInfl
+    val infGap    = policyInflation(inflation, expectedInflation) - p.monetary.targetInfl
     val unempRate = Share.One - Share.fraction(employed, totalPopulation)
     val nairu     = p.monetary.nairu
 
@@ -111,6 +112,10 @@ object Nbp:
       infGap * p.monetary.taylorAlpha -
       (outputGap * p.monetary.taylorDelta).toMultiplier.toRate + // Coefficient × Coefficient → Rate
       (exRateChange * p.monetary.taylorBeta).toMultiplier.toRate // Coefficient × Coefficient → Rate
+
+  private def policyInflation(inflation: Rate, expectedInflation: Rate)(using p: SimParams): Rate =
+    val expectedWeight = p.monetary.taylorExpectedInflationWeight
+    inflation * (Share.One - expectedWeight) + expectedInflation * expectedWeight
 
   /** Inertia smoothing + max rate change clamping. */
   private def smoothAndClamp(prevRate: Rate, taylor: Rate)(using p: SimParams): Rate =
@@ -133,7 +138,17 @@ object Nbp:
       employed: Int,
       totalPopulation: Int,
   )(using p: SimParams): Rate =
-    val taylor = taylorTarget(inflation, exRateChange, employed, totalPopulation)
+    updateRate(prevRate, inflation, exRateChange, employed, totalPopulation, inflation)
+
+  def updateRate(
+      prevRate: Rate,
+      inflation: Rate,
+      exRateChange: Coefficient,
+      employed: Int,
+      totalPopulation: Int,
+      expectedInflation: Rate,
+  )(using p: SimParams): Rate =
+    val taylor = taylorTarget(inflation, expectedInflation, exRateChange, employed, totalPopulation)
     clampRate(smoothAndClamp(prevRate, taylor))
 
   // ---------------------------------------------------------------------------

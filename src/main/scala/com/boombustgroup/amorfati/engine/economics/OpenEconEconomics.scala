@@ -323,6 +323,7 @@ object OpenEconEconomics:
       exRateChg,
       in.s2.employed,
       in.w.laborForcePopulation,
+      expectedInflation = in.w.mechanisms.expectations.expectedInflation,
     )
     val unempRateForExp = in.w.unemploymentRate(in.s2.employed)
     val newExp          =

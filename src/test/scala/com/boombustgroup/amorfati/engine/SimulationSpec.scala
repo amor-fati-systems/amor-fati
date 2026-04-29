@@ -132,6 +132,19 @@ class SimulationSpec extends AnyFlatSpec with Matchers:
     rate shouldBe Rate.decimal(600, 4)
   }
 
+  it should "look through high current inflation when expectations are anchored" in {
+    val rate = Nbp.updateRate(
+      Rate.decimal(575, 4),
+      Rate.decimal(49, 3),
+      Coefficient.Zero,
+      totalPop * 97 / 100,
+      totalPop,
+      expectedInflation = Rate.decimal(27, 3),
+    )
+
+    decimal(rate).should(be < BigDecimal("0.0575"))
+  }
+
   it should "bound rate between floor and ceiling" in {
     val rateLow = Nbp.updateRate(Rate.decimal(5, 3), Rate.decimal(-50, 2), Coefficient.Zero, totalPop * 95 / 100, totalPop)
     decimal(rateLow).should(be >= decimal(p.monetary.rateFloor))
