@@ -78,7 +78,7 @@ object EquityMarket:
       refRate: Rate,
       inflation: Rate,
       gdpGrowth: Coefficient,
-      firmProfits: PLN,
+      aggregateFirmProfits: PLN,
   )
 
   def step(in: StepInput)(using p: SimParams): State =
@@ -102,8 +102,12 @@ object EquityMarket:
     val indexReturn  = if in.prev.index > PriceIndex.Zero then newIndex.ratioTo(in.prev.index).toMultiplier else Multiplier.One
     val newMarketCap = (in.prev.marketCap * indexReturn).max(PLN.Zero)
 
-    // Earnings yield from firm profits and market cap
-    val annualProfits    = in.firmProfits * 12
+    // The firm population represents the whole economy; GPW valuation should
+    // only observe the listed-company slice of aggregate firm profits.
+    val listedFirmProfits = in.aggregateFirmProfits * p.equity.listedProfitShare
+
+    // Earnings yield from listed firm profits and market cap
+    val annualProfits    = listedFirmProfits * 12
     val newEarningsYield =
       if newMarketCap > PLN.Zero then annualProfits.ratioTo(newMarketCap).toRate.clamp(EarningsYieldFloor, EarningsYieldCap)
       else in.prev.earningsYield
@@ -160,18 +164,19 @@ object EquityMarket:
 
   val DividendResultZero: DividendResult = DividendResult(PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero)
 
-  /** Compute cash dividends from realized profits, not directly from market
-    * valuation.
+  /** Compute cash dividends from the listed-company slice of realized aggregate
+    * firm profits.
     */
   def computeDividends(
-      realizedProfits: PLN,
+      aggregateFirmProfits: PLN,
       foreignShare: Share,
       stateOwnedProfits: PLN,
       deficitToGdp: Share,
   )(using p: SimParams): DividendResult =
-    if realizedProfits <= PLN.Zero then DividendResultZero
+    val listedFirmProfits = aggregateFirmProfits * p.equity.listedProfitShare
+    if listedFirmProfits <= PLN.Zero then DividendResultZero
     else
-      val totalDividends   = realizedProfits * PayoutRatio
+      val totalDividends   = listedFirmProfits * PayoutRatio
       val foreignDividends = totalDividends * foreignShare
       val domesticGross    = totalDividends - foreignDividends
       val dividendTax      = domesticGross * p.equity.divTax
@@ -180,7 +185,7 @@ object EquityMarket:
         else
           val adjustedPayout = (PayoutRatio * StateOwned.dividendMultiplier(deficitToGdp)).toShare.clamp(Share.Zero, Share.One)
           val extraPayout    = (adjustedPayout - PayoutRatio).max(Share.Zero)
-          stateOwnedProfits.min(realizedProfits) * extraPayout
+          (stateOwnedProfits * p.equity.listedProfitShare).min(listedFirmProfits) * extraPayout
       DividendResult(
         netDomestic = domesticGross - dividendTax,
         foreign = foreignDividends,

@@ -30,6 +30,10 @@ import com.boombustgroup.amorfati.types.*
   *   share of tax revenue recycled into spending (automatic stabilizer)
   * @param govAutoStabMult
   *   multiplier for automatic stabilizer response to output gap
+  * @param govWageIndexShare
+  *   share of the government-purchases cost index tied to aggregate wage
+  *   growth; public services are labor-intensive, so CPI-only indexation
+  *   mechanically shrinks real public demand when wages outpace consumer prices
   * @param govInvestShare
   *   share of government spending allocated to capital investment (MF 2024)
   * @param govCapitalMultiplier
@@ -40,9 +44,12 @@ import com.boombustgroup.amorfati.types.*
   * @param govDepreciationRate
   *   annual depreciation rate of public capital stock (GUS F-01)
   * @param govInitCapital
-  *   initial public capital stock (PLN, 0 = built from flow)
+  *   initial public capital stock (PLN, scaled by gdpRatio in
+  *   SimParams.defaults). Existing infrastructure is embedded in baseline firm
+  *   capacity; only net movement around this stock shifts production capacity.
   * @param euFundsTotalEur
-  *   total EU funds allocation 2021-2027 in EUR (EC 2021: 76 mld EUR)
+  *   total EU/KPO-style investment allocation in EUR for the active absorption
+  *   window
   * @param euFundsPeriodMonths
   *   programming period length in months (7 years = 84)
   * @param euFundsStartMonth
@@ -82,16 +89,23 @@ import com.boombustgroup.amorfati.types.*
   * @param govBenefitCoverage
   *   fraction of unemployed receiving benefits (GUS 2024: ~15%)
   * @param govFiscalRiskBeta
-  *   sensitivity of bond spread to debt/GDP ratio
+  *   baseline sensitivity of bond spread to debt/GDP pressure above 40%
   * @param govTermPremium
-  *   term premium on government bonds over policy rate (NBP 2024)
+  *   term/liquidity premium over the long-rate anchor (NBP/MF calibration)
+  * @param govInitialWeightedCoupon
+  *   opening weighted-average coupon on the outstanding Treasury debt stock (MF
+  *   interest-cost calibration)
   * @param govAvgMaturityMonths
-  *   average maturity of government bond portfolio in months (MF 2024: ~4.5
-  *   years = 54 months). Controls yield pass-through speed: each month
-  *   1/avgMaturity of the portfolio matures and is refinanced at current yield.
-  *   The weighted average coupon converges to market yield gradually, not
-  *   instantly. This prevents unrealistic debt service spikes after yield
-  *   shocks — matching the actual MF flat redemption profile.
+  *   average maturity of the total State Treasury debt portfolio in months (MF
+  *   Dec 2025: ~5.75 years = 69 months). Controls yield pass-through speed:
+  *   each month 1/avgMaturity of the portfolio matures and is refinanced at
+  *   current yield. The weighted average coupon converges to market yield
+  *   gradually, not instantly. This prevents unrealistic debt service spikes
+  *   after yield shocks — matching the actual MF flat redemption profile.
+  * @param sgpCorrectionSpeed
+  *   annual convergence speed of the SGP excessive-deficit correction. The
+  *   model applies this to the excess over the 3% deficit path, scaled by the
+  *   deficit overshoot, instead of a one-month hard cap.
   * @param baseForeignShare
   *   baseline foreign holding share of SPW (NBP 2024: ~35%)
   * @param maxForeignShare
@@ -149,6 +163,7 @@ case class FiscalConfig(
     govBaseSpending: PLN = PLN(58300000000L),
     govFiscalRecyclingRate: Share = Share.decimal(85, 2),
     govAutoStabMult: Coefficient = Coefficient(3),
+    govWageIndexShare: Share = Share.decimal(75, 2),
     // Government investment
     govInvestShare: Share = Share.decimal(20, 2),
     govCapitalMultiplier: Multiplier = Multiplier.decimal(15, 1),
@@ -156,11 +171,11 @@ case class FiscalConfig(
     govDepreciationRate: Rate = Rate.decimal(6, 2),
     govInitCapital: PLN = PLN(0),
     // EU Funds
-    euFundsTotalEur: Multiplier = Multiplier(76000000000L),
+    euFundsTotalEur: Multiplier = Multiplier(110000000000L),
     euFundsPeriodMonths: Int = 84,
     euFundsStartMonth: Int = 1,
     euFundsAlpha: Scalar = Scalar(2),
-    euFundsBeta: Scalar = Scalar(5),
+    euFundsBeta: Scalar = Scalar(3),
     euCofinanceRate: Share = Share.decimal(15, 2),
     euCapitalShare: Share = Share.decimal(60, 2),
     // Minimum wage
@@ -170,9 +185,9 @@ case class FiscalConfig(
     minWageConvergenceSpeed: Share = Share.decimal(33, 2),
     // Flow-of-Funds weights (6 sectors)
     fofConsWeights: Vector[Share] =
-      Vector(Share.decimal(2, 2), Share.decimal(22, 2), Share.decimal(53, 2), Share.decimal(6, 2), Share.decimal(7, 2), Share.decimal(10, 2)),
+      Vector(Share.decimal(2, 2), Share.decimal(18, 2), Share.decimal(59, 2), Share.decimal(6, 2), Share.decimal(7, 2), Share.decimal(8, 2)),
     fofGovWeights: Vector[Share] =
-      Vector(Share.decimal(4, 2), Share.decimal(12, 2), Share.decimal(8, 2), Share.decimal(16, 2), Share.decimal(50, 2), Share.decimal(10, 2)),
+      Vector(Share.decimal(4, 2), Share.decimal(8, 2), Share.decimal(8, 2), Share.decimal(20, 2), Share.decimal(58, 2), Share.decimal(2, 2)),
     fofExportShares: Vector[Share] =
       Vector(Share.decimal(7, 2), Share.decimal(52, 2), Share.decimal(12, 2), Share.decimal(2, 2), Share.decimal(3, 2), Share.decimal(24, 2)),
     fofInvestWeights: Vector[Share] =
@@ -183,9 +198,10 @@ case class FiscalConfig(
     govBenefitDuration: Int = 6,
     govBenefitCoverage: Share = Share.decimal(15, 2),
     // Bond market
-    govFiscalRiskBeta: Coefficient = Coefficient(2),
+    govFiscalRiskBeta: Coefficient = Coefficient.decimal(3, 2),
     govTermPremium: Rate = Rate.decimal(5, 3),
-    govAvgMaturityMonths: Int = 54,
+    govInitialWeightedCoupon: Rate = Rate.decimal(4, 2),
+    govAvgMaturityMonths: Int = 69,
     // Bond auction — foreign demand (NBP SPW holder structure 2024)
     baseForeignShare: Share = Share.decimal(35, 2),
     maxForeignShare: Share = Share.decimal(55, 2),
@@ -199,11 +215,12 @@ case class FiscalConfig(
     srwRealGrowthCap: Rate = Rate.decimal(15, 3),                      // SRW: max real growth allowance (CPI + 1.5pp)
     srwCorrectionSpeed: Share = Share.decimal(33, 2),                  // SRW: annual convergence speed toward ceiling
     srwOutputGapSensitivity: Coefficient = Coefficient.decimal(50, 2), // SRW: correction term sensitivity to output gap
-    fiscalConsolidationSpeed55: Share = Share.decimal(10, 2),          // annual spending cut rate at 55% threshold
-    fiscalConsolidationSpeed60: Share = Share.decimal(25, 2),          // annual spending cut rate at 60% threshold
+    sgpCorrectionSpeed: Share = Share.decimal(85, 2),                  // SGP: annual convergence speed toward 3% deficit path
+    fiscalConsolidationSpeed55: Share = Share.decimal(18, 2),          // annual spending cut rate at 55% threshold
+    fiscalConsolidationSpeed60: Share = Share.decimal(45, 2),          // annual spending cut rate at 60% threshold
     sgpDeficitLimit: Share = Share.decimal(3, 2),                      // SGP: 3% deficit/GDP Maastricht limit
-    fiscalRiskBeta55: Coefficient = Coefficient.decimal(35, 1),        // bond yield sensitivity above 55% debt/GDP
-    fiscalRiskBeta60: Coefficient = Coefficient(6),                    // bond yield sensitivity above 60% debt/GDP
+    fiscalRiskBeta55: Coefficient = Coefficient.decimal(4, 2),         // bond yield sensitivity above 55% debt/GDP
+    fiscalRiskBeta60: Coefficient = Coefficient.decimal(8, 2),         // bond yield sensitivity above 60% debt/GDP
     // Government debt (raw — scaled by gdpRatio in SimParams.defaults)
     initGovDebt: PLN = PLN(1600000000000L),
     // JST (local government, Art. 4 Ustawa o dochodach JST)
@@ -225,6 +242,8 @@ case class FiscalConfig(
 ):
   require(citRate >= Rate.Zero && citRate <= Rate(1), s"citRate must be in [0,1]: $citRate")
   require(govBaseSpending >= PLN.Zero, s"govBaseSpending must be non-negative: $govBaseSpending")
+  require(govInitialWeightedCoupon >= Rate.Zero, s"govInitialWeightedCoupon must be non-negative: $govInitialWeightedCoupon")
+  require(sgpCorrectionSpeed >= Share.Zero && sgpCorrectionSpeed <= Share.One, s"sgpCorrectionSpeed must be in [0,1]: $sgpCorrectionSpeed")
   require(initGovDebt >= PLN.Zero, s"initGovDebt must be non-negative: $initGovDebt")
   require(vatRates.length == 6, s"vatRates must have 6 sectors: ${vatRates.length}")
   require(exciseRates.length == 6, s"exciseRates must have 6 sectors: ${exciseRates.length}")

@@ -21,6 +21,10 @@ import com.boombustgroup.amorfati.types.*
   *   fraction of immigrant income sent as remittances (outflow, NBP 2023)
   * @param returnRate
   *   monthly probability of return migration
+  * @param returnUnempThreshold
+  *   immigrant unemployment rate above which return migration accelerates
+  * @param returnUnempSensitivity
+  *   return-rate response to immigrant unemployment above the threshold
   * @param sectorShares
   *   sectoral allocation of new immigrants (6 sectors, GUS LFS 2024)
   * @param skillMean
@@ -31,14 +35,16 @@ import com.boombustgroup.amorfati.types.*
   *   initial immigrant stock at simulation start (number of workers)
   */
 case class ImmigrationConfig(
-    monthlyRate: Share = Share.decimal(1, 3),
+    monthlyRate: Share = Share.decimal(15, 4),
     wageElasticity: Coefficient = Coefficient(2),
     foreignWage: PLN = PLN(4000),
     remitRate: Share = Share.decimal(15, 2),
     returnRate: Share = Share.decimal(5, 3),
+    returnUnempThreshold: Share = Share.decimal(20, 2),
+    returnUnempSensitivity: Coefficient = Coefficient.decimal(10, 2),
     sectorShares: Vector[Share] =
       Vector(Share.decimal(5, 2), Share.decimal(35, 2), Share.decimal(25, 2), Share.decimal(5, 2), Share.decimal(5, 2), Share.decimal(25, 2)),
-    skillMean: Share = Share.decimal(45, 2),
+    skillMean: Share = Share.decimal(55, 2),
     wageDiscount: Share = Share.decimal(20, 2),
     initStock: Int = 0,
 ):

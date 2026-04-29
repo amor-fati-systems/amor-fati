@@ -107,18 +107,32 @@ bridge and baseline analysis have been completed.
 
 | Target | Empirical source and vintage | Empirical value | Model run | Model value | Tolerance / criterion | Status | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| GDP growth | TBD via `docs/data-bridge-national-financial-accounts.md` | TBD | `validation-baseline` | TBD | TBD | `NOT_RUN` | Use `MonthlyGdpProxy` and `AnnualizedGdpProxy`. |
+| GDP growth | Poland 2026 projection band tracked by #461; final source manifest still TBD via `docs/data-bridge-national-financial-accounts.md` | 3.3%-3.7% real YoY | `calibration_issue461-calibrated-final`, 10 seeds, 60 months | m24 real proxy +3.40% YoY; nominal +5.57% YoY | m24 real proxy inside 3.3%-3.7% band | `PASS_BASELINE_PROBE` | Uses `MonthlyGdpProxy / PriceLevel`; CSV values are already Poland-scale. |
 | Inflation | TBD via `docs/data-bridge-national-financial-accounts.md` | TBD | `validation-baseline` | TBD | TBD | `NOT_RUN` | Use `Inflation` and `PriceLevel`. |
 | Unemployment | TBD via `docs/data-bridge-national-financial-accounts.md` | TBD | `validation-baseline` | TBD | TBD | `NOT_RUN` | Include regional dispersion. |
 | Wages | TBD via `docs/data-bridge-national-financial-accounts.md` | TBD | `validation-baseline` | TBD | TBD | `NOT_RUN` | Current output is aggregate market wage. |
 | Credit/GDP | TBD via `docs/data-bridge-national-financial-accounts.md` | TBD | `validation-baseline` | TBD | TBD | `NOT_RUN` | Firm-loan split depends partly on terminal bank summary. |
 | Public debt/GDP | TBD via `docs/data-bridge-national-financial-accounts.md` | TBD | `validation-baseline` | TBD | TBD | `NOT_RUN` | Compare `DebtToGdp` and `Esa2010DebtToGdp`. |
-| Current account | TBD via `docs/data-bridge-national-financial-accounts.md` | TBD | `validation-baseline` | TBD | TBD | `NOT_RUN` | Needs GDP denominator and annualization convention. |
+| Current account | TBD via `docs/data-bridge-national-financial-accounts.md` | TBD | `calibration_issue461-calibrated-final`, 10 seeds, 60 months | m24 current-account/GDP -20.33% | TBD | `FOLLOW_UP` | External-balance calibration remains too weak and should be handled separately from #461. |
 | Firm-size distribution | TBD via `docs/data-bridge-national-financial-accounts.md` | TBD | `validation-baseline` | TBD | TBD | `NOT_RUN` | Use terminal `_firms.csv` firm-size counts and shares. |
 | Bankruptcies | TBD via `docs/data-bridge-national-financial-accounts.md` | TBD | `validation-baseline` | TBD | TBD | `NOT_RUN` | Use firm deaths and household bankruptcy separately. |
 | Bank capital/liquidity | TBD via `docs/data-bridge-national-financial-accounts.md` | TBD | `validation-baseline` | TBD | TBD | `NOT_RUN` | Use minima and terminal bank distribution. |
 | Inequality | TBD via `docs/data-bridge-national-financial-accounts.md` | TBD | `validation-baseline` | TBD | TBD | `NOT_RUN` | Terminal household summary has first-pass measures. |
 | Sectoral output | TBD via `docs/data-bridge-national-financial-accounts.md` | TBD | `validation-baseline` | TBD | TBD | `NOT_RUN` | Use emitted `*_Output` sector columns. |
+
+### Poland Growth Calibration Probe (#461)
+
+Final run: `calibration_issue461-calibrated-final`, 10 seeds, 60 months.
+Real proxy is computed from emitted CSV columns as `MonthlyGdpProxy / PriceLevel`;
+no manual `gdpRatio` rescaling is applied.
+
+| Month | Nominal GDP YoY | Real proxy YoY | Unemployment | Inflation | Private GFCF/GDP | Total capex/GDP | Current account/GDP |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 13 | 21.24% | 13.09% | 6.40% | 4.09% | 16.52% | 23.80% | -18.85% |
+| 24 | 5.57% | 3.40% | 7.46% | 1.16% | 16.03% | 22.01% | -20.33% |
+| 36 | 3.75% | 3.14% | 6.87% | 0.75% | 17.70% | 22.54% | -23.95% |
+| 48 | 3.92% | 3.04% | 6.69% | 0.95% | 19.78% | 23.84% | -26.66% |
+| 60 | 1.36% | 0.64% | 7.37% | 0.44% | 19.81% | 23.54% | -27.89% |
 
 ## Target-Specific Notes
 

@@ -9,9 +9,10 @@ import com.boombustgroup.amorfati.types.*
   * ICIO), with per-sector export shares, GVC depth (backward linkages),
   * differentiated EUR/non-EUR exchange rate pass-through (Campa & Goldberg
   * 2005), foreign demand shocks by sector, supply chain disruption recovery,
-  * and exogenous commodity price dynamics (GBM + shock). Commodity prices feed
-  * into importCostIndex and energy costs — Poland imports ~95% of oil/gas. EU
-  * trade share ~70% of total (GUS/NBP 2024).
+  * and exogenous commodity price dynamics (mean-reverting stochastic process +
+  * scenario shock). Commodity prices feed into importCostIndex and energy costs
+  * — Poland imports ~95% of oil/gas. EU trade share ~70% of total (GUS/NBP
+  * 2024).
   *
   * @param euTradeShare
   *   share of total trade with EU partners (GUS/NBP 2024: ~70%)
@@ -39,7 +40,10 @@ import com.boombustgroup.amorfati.types.*
   * @param commodityDrift
   *   annual commodity price drift (long-run trend, IMF commodity outlook)
   * @param commodityVolatility
-  *   monthly GBM standard deviation (σ) for commodity price noise
+  *   monthly standard deviation (σ) for commodity price noise
+  * @param commodityMeanReversion
+  *   monthly pull back toward the baseline commodity-price anchor; keeps the
+  *   no-shock baseline from behaving like a permanent energy-crisis scenario
   * @param commodityShockMonth
   *   simulation month when commodity price shock hits (0 = no shock)
   * @param commodityShockMag
@@ -62,9 +66,11 @@ case class GvcConfig(
     disruptionRecovery: Share = Share.decimal(5, 2),
     // Commodity prices (Poland imports ~95% of oil/gas)
     commodityDrift: Rate = Rate.decimal(2, 2),
-    commodityVolatility: Sigma = Sigma.decimal(3, 2),
+    commodityVolatility: Sigma = Sigma.decimal(15, 3),
+    commodityMeanReversion: Share = Share.decimal(8, 2),
     commodityShockMonth: Int = 0,
     commodityShockMag: Multiplier = Multiplier.Zero,
 ):
   require(exportShares.length == 6, s"exportShares must have 6 sectors: ${exportShares.length}")
   require(depth.length == 6, s"depth must have 6 sectors: ${depth.length}")
+  require(commodityMeanReversion >= Share.Zero && commodityMeanReversion <= Share.One, s"commodityMeanReversion must be in [0,1]: $commodityMeanReversion")

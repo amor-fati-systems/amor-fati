@@ -2,6 +2,7 @@ package com.boombustgroup.amorfati.accounting
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import com.boombustgroup.amorfati.agents.{Firm, Household}
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.flows.FlowSimulation
 import com.boombustgroup.amorfati.init.{InitRandomness, WorldInit}
@@ -26,6 +27,16 @@ class InitCheckSpec extends AnyFlatSpec with Matchers:
     val errors = InitCheck.validate(runtimeState(result))
     errors shouldBe empty
 
+  it should "initialize firm employment consistently with unemployed households" in:
+    val result          = defaultInit
+    val employed        = Household.countEmployed(result.households)
+    val firmEmployment  = result.firms.filter(Firm.isAlive).map(Firm.workerCount).sum
+    val unemployedShare = result.householdAggregates.unemploymentRate(result.households.length)
+
+    result.householdAggregates.employed shouldBe employed
+    firmEmployment shouldBe employed
+    unemployedShare shouldBe result.world.seedIn.unemploymentRate
+
   it should "have exact bond clearing at raw-unit precision for default init" in:
     val result   = defaultInit
     val snapshot = stockSnapshot(result)
@@ -34,6 +45,13 @@ class InitCheckSpec extends AnyFlatSpec with Matchers:
         snapshot.ppkBondHoldings + snapshot.insuranceGovBondHoldings + snapshot.tfiGovBondHoldings
 
     holdings shouldBe snapshot.bondsOutstanding
+
+  it should "initialize tradable government bonds against the opening debt stock" in:
+    val result = defaultInit
+
+    result.ledgerFinancialState.government.govBondOutstanding shouldBe result.world.gov.cumulativeDebt
+    result.ledgerFinancialState.foreign.govBondHoldings should be > PLN.Zero
+    result.world.gov.weightedCoupon shouldBe summon[SimParams].fiscal.govInitialWeightedCoupon
 
   it should "detect tampered bondsOutstanding" in:
     val result   = defaultInit

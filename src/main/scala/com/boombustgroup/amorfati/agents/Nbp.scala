@@ -97,11 +97,12 @@ object Nbp:
     */
   private def taylorTarget(
       inflation: Rate,
+      expectedInflation: Rate,
       exRateChange: Coefficient,
       employed: Int,
       totalPopulation: Int,
   )(using p: SimParams): Rate =
-    val infGap    = inflation - p.monetary.targetInfl
+    val infGap    = policyInflation(inflation, expectedInflation) - p.monetary.targetInfl
     val unempRate = Share.One - Share.fraction(employed, totalPopulation)
     val nairu     = p.monetary.nairu
 
@@ -111,6 +112,10 @@ object Nbp:
       infGap * p.monetary.taylorAlpha -
       (outputGap * p.monetary.taylorDelta).toMultiplier.toRate + // Coefficient × Coefficient → Rate
       (exRateChange * p.monetary.taylorBeta).toMultiplier.toRate // Coefficient × Coefficient → Rate
+
+  private def policyInflation(inflation: Rate, expectedInflation: Rate)(using p: SimParams): Rate =
+    val expectedWeight = p.monetary.taylorExpectedInflationWeight
+    inflation * (Share.One - expectedWeight) + expectedInflation * expectedWeight
 
   /** Inertia smoothing + max rate change clamping. */
   private def smoothAndClamp(prevRate: Rate, taylor: Rate)(using p: SimParams): Rate =
@@ -133,15 +138,25 @@ object Nbp:
       employed: Int,
       totalPopulation: Int,
   )(using p: SimParams): Rate =
-    val taylor = taylorTarget(inflation, exRateChange, employed, totalPopulation)
+    updateRate(prevRate, inflation, exRateChange, employed, totalPopulation, inflation)
+
+  def updateRate(
+      prevRate: Rate,
+      inflation: Rate,
+      exRateChange: Coefficient,
+      employed: Int,
+      totalPopulation: Int,
+      expectedInflation: Rate,
+  )(using p: SimParams): Rate =
+    val taylor = taylorTarget(inflation, expectedInflation, exRateChange, employed, totalPopulation)
     clampRate(smoothAndClamp(prevRate, taylor))
 
   // ---------------------------------------------------------------------------
   // Bond yield
   // ---------------------------------------------------------------------------
 
-  /** Bond yield = refRate + termPremium + fiscalRisk − qeCompression −
-    * foreignDemand + credibilityPremium.
+  /** Bond yield = long-rate anchor + fiscalRisk − qeCompression − foreignDemand
+    * + credibilityPremium.
     */
   def bondYield(
       refRate: Rate,
@@ -150,16 +165,25 @@ object Nbp:
       nfa: PLN,
       credibilityPremium: Rate,
   )(using p: SimParams): Rate =
-    val fiscalRisk     = piecewiseFiscalRisk(debtToGdp)
+    val curveAnchor    = longRateAnchor(refRate)
+    val fiscalRisk     = fiscalRiskPremium(debtToGdp)
     val qeCompress     = QeCompressionCoeff * nbpBondGdpShare
     val foreignDemand  = if nfa > PLN.Zero then ForeignDemandDiscount else Rate.Zero
     val cappedCredPrem = credibilityPremium.min(CredPremiumCap)
-    (refRate + p.fiscal.govTermPremium + fiscalRisk - qeCompress - foreignDemand + cappedCredPrem).max(Rate.Zero).min(BondYieldCap)
+    (curveAnchor + fiscalRisk - qeCompress - foreignDemand + cappedCredPrem).max(Rate.Zero).min(BondYieldCap)
 
-  /** Piecewise fiscal risk premium: steepens at 55% and 60% debt/GDP. base
-    * segment (40%+) + caution segment (55%+) + crisis segment (60%+).
+  /** Domestic policy-rate anchor with a Bund floor for the long end of the
+    * sovereign curve.
     */
-  private def piecewiseFiscalRisk(debtToGdp: Share)(using p: SimParams): Rate =
+  private def longRateAnchor(refRate: Rate)(using p: SimParams): Rate =
+    val domesticCurve = refRate + p.fiscal.govTermPremium
+    val externalCurve = p.fiscal.bundYield + p.fiscal.govTermPremium
+    domesticCurve.max(externalCurve)
+
+  /** Piecewise fiscal risk premium: gradual spread pressure above 40% debt/GDP
+    * with moderate steepening at the domestic 55% and 60% thresholds.
+    */
+  private[amorfati] def fiscalRiskPremium(debtToGdp: Share)(using p: SimParams): Rate =
     val base      = (p.fiscal.govFiscalRiskBeta * (debtToGdp - DebtThreshold).max(Share.Zero)).toMultiplier.toRate
     val caution55 =
       if debtToGdp > p.fiscal.fiscalRuleCautionThreshold then

@@ -34,7 +34,7 @@ class EuFundsSpec extends AnyFlatSpec with Matchers:
     val totalPln = referenceEnvelopePln
 
     totalPln should be > PLN.Zero
-    decimal(totalPln) shouldBe BigDecimal("329080000000.0") +- BigDecimal("1.0")
+    decimal(totalPln) shouldBe BigDecimal("476300000000.0") +- BigDecimal("1.0")
   }
 
   it should "never produce negative transfers during the configured absorption period" in {

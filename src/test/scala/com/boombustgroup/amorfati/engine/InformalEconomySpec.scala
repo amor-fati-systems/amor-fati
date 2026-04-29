@@ -54,20 +54,20 @@ class InformalEconomySpec extends AnyFlatSpec with Matchers:
     )
   }
 
-  "InformalCitEvasion" should "default to 0.80" in {
-    p.informal.citEvasion shouldBe Share.decimal(80, 2)
+  "InformalCitEvasion" should "default to 0.50" in {
+    p.informal.citEvasion shouldBe Share.decimal(50, 2)
   }
 
-  "InformalVatEvasion" should "default to 0.90" in {
-    p.informal.vatEvasion shouldBe Share.decimal(90, 2)
+  "InformalVatEvasion" should "default to 0.30" in {
+    p.informal.vatEvasion shouldBe Share.decimal(30, 2)
   }
 
-  "InformalPitEvasion" should "default to 0.85" in {
-    p.informal.pitEvasion shouldBe Share.decimal(85, 2)
+  "InformalPitEvasion" should "default to 0.40" in {
+    p.informal.pitEvasion shouldBe Share.decimal(40, 2)
   }
 
-  "InformalExciseEvasion" should "default to 0.70" in {
-    p.informal.exciseEvasion shouldBe Share.decimal(70, 2)
+  "InformalExciseEvasion" should "default to 0.30" in {
+    p.informal.exciseEvasion shouldBe Share.decimal(30, 2)
   }
 
   "InformalUnempThreshold" should "default to 0.05" in {
@@ -311,7 +311,7 @@ class InformalEconomySpec extends AnyFlatSpec with Matchers:
 
     avgShare should be >= Share.decimal(24, 2)
     avgShare should be <= Share.decimal(30, 2)
-    avgRatio should be >= Share.decimal(3, 3)
-    avgRatio should be <= Share.decimal(32, 3)
-    avgRatio shouldBe Share.decimal(31, 3)
+    avgRatio should be >= Share.decimal(10, 3)
+    avgRatio should be <= Share.decimal(20, 3)
+    avgRatio shouldBe Share.decimal(165, 4)
   }

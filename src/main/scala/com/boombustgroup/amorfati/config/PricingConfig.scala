@@ -21,7 +21,7 @@ import com.boombustgroup.amorfati.types.*
 case class PricingConfig(
     calvoTheta: Share = Share.decimal(15, 2),
     baseMarkup: Multiplier = Multiplier.decimal(115, 2),
-    demandSensitivity: Coefficient = Coefficient.decimal(5, 1),
+    demandSensitivity: Coefficient = Coefficient.decimal(10, 2),
     costPassthrough: Coefficient = Coefficient.decimal(4, 1),
     minMarkup: Multiplier = Multiplier.decimal(95, 2),
     maxMarkup: Multiplier = Multiplier.decimal(150, 2),

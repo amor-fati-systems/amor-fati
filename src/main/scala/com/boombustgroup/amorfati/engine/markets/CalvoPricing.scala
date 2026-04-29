@@ -100,6 +100,7 @@ object CalvoPricing:
   def aggregateMarkupInflation(
       firms: Vector[Firm.State],
       prevFirms: Vector[Firm.State],
+      productivityIndex: Multiplier = Multiplier.One,
   )(using SimParams): Rate =
     require(
       firms.lengthCompare(prevFirms.length) == 0,
@@ -107,12 +108,12 @@ object CalvoPricing:
     )
     if firms.isEmpty then Rate.Zero
     else
-      val totalRevenue = firms.foldLeft(PLN.Zero)((acc, f) => acc + Firm.computeCapacity(f))
+      val totalRevenue = firms.foldLeft(PLN.Zero)((acc, f) => acc + Firm.computeEffectiveCapacity(f, productivityIndex))
       if totalRevenue <= PLN.Zero then Rate.Zero
       else
         val weightedChange = firms
           .zip(prevFirms)
           .foldLeft(PLN.Zero): (acc, pair) =>
             val (curr, prev) = pair
-            acc + (Firm.computeCapacity(curr) * (curr.markup - prev.markup))
+            acc + (Firm.computeEffectiveCapacity(curr, productivityIndex) * (curr.markup - prev.markup))
         weightedChange.ratioTo(totalRevenue).toRate

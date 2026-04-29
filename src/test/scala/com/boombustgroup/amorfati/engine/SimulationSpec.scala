@@ -42,6 +42,21 @@ class SimulationSpec extends AnyFlatSpec with Matchers:
     r2.inflation.should(be > r1.inflation)
   }
 
+  it should "produce higher inflation with broad import cost pressure" in {
+    val r1 = PriceLevel.update(Rate.decimal(25, 3), PriceIndex.Base, Multiplier.One, Coefficient.Zero, ExchangeRateShock.Zero)
+    val r2 = PriceLevel.update(
+      Rate.decimal(25, 3),
+      PriceIndex.Base,
+      Multiplier.One,
+      Coefficient.Zero,
+      ExchangeRateShock.Zero,
+      importCostIndex = PriceIndex.decimal(110, 2),
+    )
+
+    r2.inflation.should(be > r1.inflation)
+    r2.importPush should be > Coefficient.Zero
+  }
+
   it should "ignore negative wage growth in aggregate cost-push" in {
     val flat = PriceLevel.update(Rate.decimal(25, 3), PriceIndex.Base, Multiplier.One, Coefficient.Zero, ExchangeRateShock.Zero)
     val down = PriceLevel.update(Rate.decimal(25, 3), PriceIndex.Base, Multiplier.One, Coefficient.decimal(-5, 2), ExchangeRateShock.Zero)
@@ -66,6 +81,13 @@ class SimulationSpec extends AnyFlatSpec with Matchers:
     val high = PriceLevel.update(Rate.decimal(30, 3), PriceIndex.Base, Multiplier.One, Coefficient.Zero, ExchangeRateShock.Zero)
 
     high.inflation should be > low.inflation
+  }
+
+  it should "apply the reported smoothed inflation to the price level" in {
+    val anchored = PriceLevel.update(Rate.decimal(25, 3), PriceIndex.Base, Multiplier.One, Coefficient.Zero, ExchangeRateShock.Zero)
+
+    anchored.inflation should be > Rate.Zero
+    anchored.priceLevel should be > PriceIndex.Base
   }
 
   it should "enforce price floor at 0.30" in {
@@ -96,6 +118,31 @@ class SimulationSpec extends AnyFlatSpec with Matchers:
     val rate1 = Nbp.updateRate(Rate.decimal(575, 4), Rate.decimal(3, 2), Coefficient.Zero, totalPop * 95 / 100, totalPop)
     val rate2 = Nbp.updateRate(Rate.decimal(575, 4), Rate.decimal(10, 2), Coefficient.Zero, totalPop * 95 / 100, totalPop)
     decimal(rate2).should(be >= decimal(rate1))
+  }
+
+  it should "respect the calibrated monthly policy-rate change limit" in {
+    val rate = Nbp.updateRate(
+      Rate.decimal(575, 4),
+      Rate.decimal(10, 2),
+      Coefficient.Zero,
+      totalPop * 95 / 100,
+      totalPop,
+    )
+
+    rate shouldBe Rate.decimal(600, 4)
+  }
+
+  it should "look through high current inflation when expectations are anchored" in {
+    val rate = Nbp.updateRate(
+      Rate.decimal(575, 4),
+      Rate.decimal(49, 3),
+      Coefficient.Zero,
+      totalPop * 97 / 100,
+      totalPop,
+      expectedInflation = Rate.decimal(27, 3),
+    )
+
+    decimal(rate).should(be < BigDecimal("0.0575"))
   }
 
   it should "bound rate between floor and ceiling" in {

@@ -31,6 +31,15 @@ class ImmigrationPropertySpec extends AnyFlatSpec with Matchers:
       result should be >= 0
   }
 
+  it should "never exceed stock under unemployment stress" in {
+    val rng = RandomStream.seeded(42)
+    for _ <- 0 until 100 do
+      val stock  = rng.nextInt(10000)
+      val result = Immigration.computeOutflow(stock, Share.random(rng))
+      result should be >= 0
+      result should be <= stock
+  }
+
   "Immigration.chooseSector" should "produce all 6 sectors over many draws" in {
     val rng     = RandomStream.seeded(42)
     val sectors = (0 until 1000).map(_ => Immigration.chooseSector(rng).toInt).toSet

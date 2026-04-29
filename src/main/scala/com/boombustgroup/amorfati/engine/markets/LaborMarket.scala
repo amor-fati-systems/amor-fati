@@ -36,7 +36,32 @@ object LaborMarket:
   case class JobSearchResult(households: Vector[Household.State], crossSectorHires: Int)
 
   private enum WorkerLossKind:
-    case Bankruptcy, Automation, HybridReduction
+    case Bankruptcy, Automation, WorkforceReduction
+
+  /** Reconcile firm headcount with actually employed households after matching.
+    *
+    * Firm decisions create target headcount and vacancies. If the labor market
+    * does not fill every vacancy, production capacity must reflect staffed
+    * workers rather than still counting the unfilled target as employed labor.
+    */
+  def syncFirmStaffing(firms: Vector[Firm.State], households: Vector[Household.State]): Vector[Firm.State] =
+    val staffedCounts = households
+      .flatMap: hh =>
+        hh.status match
+          case HhStatus.Employed(fid, _, _) => Some(fid)
+          case _                            => None
+      .groupMapReduce(identity)(_ => 1)(_ + _)
+
+    firms.map: firm =>
+      if !Firm.isAlive(firm) then firm
+      else
+        val filled        = staffedCounts.getOrElse(firm.id, 0)
+        val startupFilled = if Firm.isInStartup(firm) then filled.min(firm.startupTargetWorkers) else firm.startupFilledWorkers
+        val syncedTech    = firm.tech match
+          case TechState.Traditional(_) => TechState.Traditional(filled)
+          case TechState.Hybrid(_, eff) => TechState.Hybrid(filled, eff)
+          case other                    => other
+        firm.copy(startupFilledWorkers = startupFilled, tech = syncedTech)
 
   // --- Aggregate wage clearing ---
 
@@ -155,35 +180,31 @@ object LaborMarket:
 
   // --- Separation helpers ---
 
-  /** Identify firms that lost workers: bankruptcy, automation, or hybrid
+  /** Identify firms that lost workers: bankruptcy, automation, or workforce
     * reduction.
     */
   private def workerLossKinds(
       prevFirms: Vector[Firm.State],
       newFirms: Vector[Firm.State],
-  ): Map[FirmId, WorkerLossKind] =
+  )(using SimParams): Map[FirmId, WorkerLossKind] =
     newFirms.indices
       .flatMap: i =>
         workerLossKind(prevFirms(i), newFirms(i)).map(newFirms(i).id -> _)
       .toMap
 
-  private def workerLossKind(prev: Firm.State, curr: Firm.State): Option[WorkerLossKind] =
+  private def workerLossKind(prev: Firm.State, curr: Firm.State)(using SimParams): Option[WorkerLossKind] =
     val wentBankrupt   = Firm.isAlive(prev) && !Firm.isAlive(curr)
     val newlyAutomated = (prev.tech, curr.tech) match
       case (_: TechState.Automated, _) => false
       case (_, _: TechState.Automated) => true
       case _                           => false
-    val hybridReduced  = (prev.tech, curr.tech) match
-      case (TechState.Traditional(w1), TechState.Hybrid(w2, _)) => w2 < w1
-      case _                                                    => false
+    val reducedWorkers = Firm.isAlive(prev) && Firm.isAlive(curr) && Firm.workerCount(curr) < Firm.workerCount(prev)
     if wentBankrupt then Some(WorkerLossKind.Bankruptcy)
     else if newlyAutomated then Some(WorkerLossKind.Automation)
-    else if hybridReduced then Some(WorkerLossKind.HybridReduction)
+    else if reducedWorkers then Some(WorkerLossKind.WorkforceReduction)
     else None
 
-  /** How many workers each affected firm retains (hybrid crew or skeleton
-    * crew).
-    */
+  /** How many workers each affected firm retains. */
   private def retainCounts(
       newFirms: Vector[Firm.State],
       lostFirms: Set[FirmId],
@@ -191,9 +212,8 @@ object LaborMarket:
     newFirms.collect {
       case f if lostFirms.contains(f.id) =>
         f.tech match
-          case TechState.Hybrid(w, _) => f.id -> w
           case _: TechState.Automated => f.id -> Firm.skeletonCrew(f)
-          case _                      => f.id -> 0
+          case _                      => f.id -> Firm.workerCount(f)
     }.toMap
 
   /** Build retain sets for affected firms. Automation prioritizes low

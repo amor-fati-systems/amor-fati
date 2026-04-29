@@ -18,15 +18,16 @@ import com.boombustgroup.amorfati.types.*
 object DemandEconomics:
 
   // ---- Calibration constants ----
-  private val RealRateElasticity     = Scalar.decimal(2, 2)      // demand sensitivity to real interest rate gap
-  private val PressureMaxBoost       = Multiplier.decimal(75, 2) // hiring signal can rise above 1.0, but only moderately
-  private val PressureSaturationRate = Scalar.decimal(125, 2)    // how quickly excess-demand pressure saturates above capacity
-  private val HiringSignalSmoothing  = Share.decimal(65, 2)      // persistence in sector hiring plans; avoids month-to-month whipsaw
+  private val RealRateElasticity      = Scalar.decimal(2, 2)      // demand sensitivity to real interest rate gap
+  private val PressureMaxBoost        = Multiplier.decimal(75, 2) // hiring signal can rise above 1.0, but only moderately
+  private val PressureSaturationRate  = Scalar.decimal(125, 2)    // how quickly excess-demand pressure saturates above capacity
+  private val PressureSignalSmoothing = Share.decimal(65, 2)      // persistent sector order-book pressure; avoids startup repricing spikes
+  private val HiringSignalSmoothing   = Share.decimal(65, 2)      // persistence in sector hiring plans; avoids month-to-month whipsaw
 
   case class Output(
       govPurchases: PLN,                        // total government purchases this month
       sectorMults: Vector[Multiplier],          // per-sector demand multiplier (0 = no demand, 1 = full capacity)
-      sectorDemandPressure: Vector[Multiplier], // uncapped demand/capacity ratios used for hiring pressure
+      sectorDemandPressure: Vector[Multiplier], // persistent demand/capacity pressure used for hiring and pricing
       sectorHiringSignal: Vector[Multiplier],   // smoothed sector hiring signal used by firm labor planning
       avgDemandMult: Multiplier,                // economy-wide average demand multiplier
       sectorCapReal: Vector[PLN],               // per-sector real production capacity before price-level repricing
@@ -44,12 +45,12 @@ object DemandEconomics:
     val rawGovPurchases    = computeGovPurchases(w, employed)
     val fiscalResult       = applyFiscalRules(w, employed, rawGovPurchases)
     val govPurchases       = fiscalResult.constrainedGovPurchases
-    val sectorCapReal      = computeSectorCapacity(living)
+    val sectorCapReal      = computeSectorCapacity(w, living)
     val sectorExports      = computeSectorExports(w)
     val laggedInvestDemand = computeLaggedInvestDemand(w)
     val sectorDemand       = computeSectorDemand(domesticCons, govPurchases, sectorExports, laggedInvestDemand)
     val rawPressure        = computeRawDemandPressure(sectorDemand, sectorCapReal, w.priceLevel)
-    val sectorPressure     = stabilizeDemandPressure(rawPressure)
+    val sectorPressure     = smoothPressureSignal(seedIn.sectorDemandPressure, stabilizeDemandPressure(rawPressure))
     val sectorHiringSignal = smoothHiringSignal(seedIn.sectorHiringSignal, sectorPressure)
     val sectorMults        = applySpillover(sectorDemand, rawPressure, sectorCapReal, w.priceLevel)
     val avgDemandMult      = computeAvgDemandMult(sectorMults, sectorCapReal, w)
@@ -59,11 +60,19 @@ object DemandEconomics:
     * stabilizer tied to labor-market slack. Revenue windfalls are not
     * mechanically recycled back into demand.
     */
+  private def fiscalUnemploymentRate(w: World, employed: Int): Share =
+    w.unemploymentRate(employed).max(w.seedIn.unemploymentRate)
+
   private def computeGovPurchases(w: World, employed: Int)(using p: SimParams): PLN =
-    val unempRate = Share.One - Share.fraction(employed, w.derivedTotalPopulation)
+    val unempRate = fiscalUnemploymentRate(w, employed)
     val unempGap  = (unempRate - p.monetary.nairu).max(Share.Zero)
     val stimulus  = p.fiscal.govBaseSpending * unempGap * p.fiscal.govAutoStabMult
-    val target    = p.fiscal.govBaseSpending * w.priceLevel.toMultiplier.max(Multiplier.One) + stimulus
+    val priceIdx  = w.priceLevel.toMultiplier.max(Multiplier.One)
+    val wageIdx   =
+      if p.household.baseWage > PLN.Zero then w.householdMarket.marketWage.ratioTo(p.household.baseWage).toMultiplier.max(priceIdx)
+      else priceIdx
+    val costIdx   = priceIdx * (Share.One - p.fiscal.govWageIndexShare) + wageIdx * p.fiscal.govWageIndexShare
+    val target    = p.fiscal.govBaseSpending * costIdx + stimulus
     target
 
   /** Apply fiscal rules to raw government purchases.
@@ -74,7 +83,7 @@ object DemandEconomics:
     */
   private def applyFiscalRules(w: World, employed: Int, rawTarget: PLN)(using p: SimParams): FiscalRules.Output =
     val prevGovSpend = w.gov.domesticBudgetDemand
-    val unempRate    = Share.One - Share.fraction(employed, w.derivedTotalPopulation)
+    val unempRate    = fiscalUnemploymentRate(w, employed)
     val outputGap    = Coefficient((unempRate - p.monetary.nairu) / p.monetary.nairu)
 
     FiscalRules.constrain(
@@ -91,11 +100,11 @@ object DemandEconomics:
     )
 
   /** Per-sector real production capacity before repricing by CPI. */
-  private def computeSectorCapacity(living: Vector[Firm.State])(using p: SimParams): Vector[PLN] =
+  private def computeSectorCapacity(w: World, living: Vector[Firm.State])(using p: SimParams): Vector[PLN] =
     val caps = Array.fill(p.sectorDefs.length)(PLN.Zero)
     living.foreach: f =>
       val s = f.sector.toInt
-      if 0 <= s && s < caps.length then caps(s) = caps(s) + Firm.computeCapacity(f)
+      if 0 <= s && s < caps.length then caps(s) = caps(s) + Firm.computeEffectiveCapacity(f, w.real.productivityIndex)
       else
         throw IllegalArgumentException(
           s"Invalid sector id ${f.sector.toInt} for firm ${f.id.toInt}; expected 0 until ${caps.length}",
@@ -111,10 +120,16 @@ object DemandEconomics:
     if gvcExports.exists(_ > PLN.Zero) then gvcExports
     else p.fiscal.fofExportShares.map(_ * w.forex.exports)
 
-  /** Lagged domestic investment demand (net of import content). */
+  /** Lagged domestic investment demand (net of import content).
+    *
+    * Private firm investment is known only after the previous firm step. EU
+    * project capital is also lagged here because the current-month EU envelope
+    * is computed later in the price/equity stage.
+    */
   private def computeLaggedInvestDemand(w: World)(using p: SimParams): PLN =
     w.real.grossInvestment * (Share.One - p.capital.importShare) +
-      w.real.aggGreenInvestment * (Share.One - p.climate.greenImportShare)
+      w.real.aggGreenInvestment * (Share.One - p.climate.greenImportShare) +
+      w.gov.euProjectCapital * (Share.One - p.capital.importShare)
 
   /** Per-sector total demand: consumption + gov purchases + investment +
     * exports, allocated via flow-of-funds weights.
@@ -150,6 +165,13 @@ object DemandEconomics:
 
   private def stabilizeDemandPressure(rawPressure: Vector[Multiplier]): Vector[Multiplier] =
     rawPressure.map(stabilizedPressure)
+
+  private def smoothPressureSignal(prevSignal: Vector[Multiplier], currentSignal: Vector[Multiplier]): Vector[Multiplier] =
+    currentSignal.indices
+      .map: i =>
+        val prev = prevSignal.lift(i).getOrElse(Multiplier.One)
+        prev * PressureSignalSmoothing + currentSignal(i) * (Share.One - PressureSignalSmoothing)
+      .toVector
 
   private def smoothHiringSignal(prevSignal: Vector[Multiplier], currentSignal: Vector[Multiplier]): Vector[Multiplier] =
     currentSignal.indices

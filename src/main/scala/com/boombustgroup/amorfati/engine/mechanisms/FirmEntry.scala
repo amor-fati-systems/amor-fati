@@ -9,18 +9,19 @@ import com.boombustgroup.amorfati.types.*
 import com.boombustgroup.amorfati.random.RandomStream
 
 /** Endogenous firm entry: replaces a share of bankrupt firm slots and may also
-  * append net new firms when unemployment exceeds NAIRU. Sector choice is
-  * weighted by relative profitability signals across sectors. Firms in more
-  * profitable sectors attract more entrants, subject to sector-specific
-  * regulatory barriers (GUS CEIDG/KRS 2024 calibration).
+  * append net new firms when cyclical labor-market signals support expansion.
+  * Sector choice is weighted by relative profitability signals across sectors.
+  * Firms in more profitable sectors attract more entrants, subject to
+  * sector-specific regulatory barriers (GUS CEIDG/KRS 2024 calibration).
   *
   * New entrants may be AI-native (hybrid technology with partial automation)
   * when the economy-wide technology adoption rate exceeds a maturity threshold,
   * reflecting the observed pattern of digitally-born startups in mature digital
   * ecosystems (OECD Digital Economy Outlook 2023).
   *
-  * Expansionary net entry activates only above NAIRU. Replacement entry is a
-  * separate, faster channel intended to rebuild the firm base after exit waves.
+  * Expansionary net entry is constrained by hiring slack and startup
+  * absorption. Replacement entry is a separate, faster channel intended to
+  * rebuild the firm base after exit waves.
   */
 object FirmEntry:
 
@@ -39,7 +40,8 @@ object FirmEntry:
   private val HybridMinWorkers    = 1                        // minimum viable hybrid workforce
   private val StartupMonths       = 4                        // short entrant startup ramp-up window
   private val StartupMinWorkers   = 1                        // minimum planned startup team
-  private val StartupMaxWorkers   = 4                        // entrant startup team cap
+  private val StartupMaxWorkers   = 8                        // entrant startup team cap
+  private val HalfWeight          = Share.decimal(5, 1)
 
   case class Result(
       firms: Vector[Firm.State],                     // post-entry firm population (may be longer than input if net creation occurred)
@@ -121,10 +123,10 @@ object FirmEntry:
         else (firm, stocks)
     (rows.map(_._1), rows.map(_._2), replacementIds)
 
-  /** Append net new firms when unemployment exceeds NAIRU. Birth count is
-    * proportional to the gap, capped to prevent vector explosion. New firms get
-    * sequential FirmIds starting at `firms.length` to maintain the FirmId ==
-    * vector index invariant.
+  /** Append net new firms when cyclical labor-market signals support expansion.
+    * Birth count is proportional to the signal, capped to prevent vector
+    * explosion. New firms get sequential FirmIds starting at `firms.length` to
+    * maintain the FirmId == vector index invariant.
     */
   private def netCreation(
       firms: Vector[Firm.State],
@@ -148,13 +150,18 @@ object FirmEntry:
     (firms ++ newRows.map(_._1), financialStocks ++ newRows.map(_._2), newRows.map(_._1.id).toSet)
 
   private def expansionaryEntrySignal(c: LaggedEntrySignals)(using p: SimParams): Share =
-    val laborSlack    = (c.unemploymentRate - p.monetary.nairu).max(Share.Zero)
-    if laborSlack <= Share.Zero then return Share.Zero
-    val nominalSignal =
+    val laborSlack          = (c.unemploymentRate - p.monetary.nairu).max(Share.Zero)
+    val tightDemand         = (p.monetary.nairu - c.unemploymentRate).max(Share.Zero)
+    val cyclicalPulse       = laborSlack + tightDemand
+    if cyclicalPulse <= Share.Zero then return Share.Zero
+    val nominalSignal       =
       if c.inflation < Rate.Zero && c.expectedInflation < Rate.Zero then Share.Zero
-      else if c.inflation < Rate.Zero || c.expectedInflation < Rate.Zero then Share.decimal(35, 2)
+      else if c.inflation < Rate.Zero || c.expectedInflation < Rate.Zero then Share.decimal(75, 2)
       else Share.One
-    laborSlack * nominalSignal * c.laggedHiringSlack.clamp(Share.Zero, Share.One) * c.startupAbsorptionRate.clamp(Share.Zero, Share.One)
+    val staffingFeasibility =
+      c.laggedHiringSlack.clamp(Share.Zero, Share.One) * HalfWeight +
+        c.startupAbsorptionRate.clamp(Share.Zero, Share.One) * HalfWeight
+    cyclicalPulse * nominalSignal * staffingFeasibility
 
   private def computeProfitSignals(living: Vector[(Firm.State, Firm.FinancialStocks)])(using p: SimParams): Vector[Coefficient] =
     val bySector      = living.groupBy(_._1.sector.toInt)

@@ -24,7 +24,10 @@ import com.boombustgroup.amorfati.util.Distributions
   *   NFZ health insurance contribution rate (9%, Ustawa o swiadczeniach opieki
   *   zdrowotnej Art. 79)
   * @param nfzPerCapitaCost
-  *   monthly per-capita health spending (NFZ 2024: ~180 mld PLN/yr / 38M pop)
+  *   monthly health spending per effective model working-age person. The agent
+  *   population is GDP-scaled rather than a literal 38M demographic count, so
+  *   this is calibrated to the aggregate NFZ spending envelope after `gdpRatio`
+  *   projection.
   * @param nfzAgingElasticity
   *   retiree health cost multiplier vs working-age (empirical: ~2.5×, OECD)
   * @param ppkEmployeeRate
@@ -65,7 +68,7 @@ case class SocialConfig(
     zusScale: Multiplier = Multiplier(1),
     // NFZ (Ustawa o swiadczeniach opieki zdrowotnej, Art. 79)
     nfzContribRate: Rate = Rate.decimal(9, 2),
-    nfzPerCapitaCost: PLN = PLN(1250),
+    nfzPerCapitaCost: PLN = PLN(500),
     nfzAgingElasticity: Multiplier = Multiplier.decimal(25, 1),
     // PPK (Ustawa o PPK)
     ppkEmployeeRate: Rate = Rate.decimal(2, 2),

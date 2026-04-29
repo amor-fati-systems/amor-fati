@@ -64,6 +64,16 @@ class CommodityPriceSpec extends AnyFlatSpec with Matchers:
     after.commodityPriceIndex.bd shouldBe (BigDecimal("1.0") +- BigDecimal("0.1"))
   }
 
+  it should "mean-revert an elevated commodity price in the no-shock baseline" in {
+    val elevated = GvcTrade.initial.copy(
+      commodityPriceIndex = PriceIndex.decimal(150, 2),
+      importCostIndex = PriceIndex.decimal(150, 2),
+    )
+    val after    = GvcTrade.step(mkInput(elevated, month = 2, seed = 42L))
+
+    after.commodityPriceIndex should be < elevated.commodityPriceIndex
+  }
+
   "PriceIndex" should "multiply two indices" in {
     val a = PriceIndex.decimal(15, 1)
     val b = PriceIndex(2)

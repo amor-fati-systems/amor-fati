@@ -227,6 +227,7 @@ object SimParams:
     val firm     = FirmConfig()
     val r        = DefaultGdpRatio
     val totalPop = pop.firmsCount * pop.workersPerFirm
+    val retirees = totalPop / 3
 
     SimParams(
       pop = pop,
@@ -234,6 +235,7 @@ object SimParams:
       household = HouseholdConfig(count = totalPop),
       fiscal = FiscalConfig(
         govBaseSpending = PLN(58300000000L) * r,
+        govInitCapital = PLN(2332000000000L) * r,
         initGovDebt = PLN(1600000000000L) * r,
       ),
       monetary = MonetaryConfig(
@@ -272,7 +274,7 @@ object SimParams:
         initValue = PLN(3000000000000L) * r,
         initMortgage = PLN(485000000000L) * r,
       ),
-      social = SocialConfig(demInitialRetirees = 0),
+      social = SocialConfig(demInitialRetirees = retirees),
       gdpRatio = r,
     )
 

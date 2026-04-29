@@ -11,9 +11,10 @@ import com.boombustgroup.amorfati.types.*
   * multi-year programming period. Absorption follows a Beta(α,β) density
   * (front-loaded when α < β, matching empirical EU fund draw-down patterns).
   *
-  * Calibration: MFiPR KPO/FENIKS 2021-2027 programming period. Total envelope:
-  * 76 bln EUR, period: 84 months, α=2, β=5 (peak ~20% into the period),
-  * co-financing rate: 15%, capital share of spending: 60%.
+  * Calibration: MFiPR KPO/FENIKS-style investment absorption window. Total
+  * envelope: 110 bln EUR, period: 84 months, α=2, β=3 (peak around the
+  * 2026-2027 investment cycle), co-financing rate: 15%, capital share of
+  * spending: 60%.
   *
   * The configured total is a Poland-scale empirical envelope. Runtime flows are
   * converted to the simulated balance-sheet scale with `gdpRatio`; Monte Carlo

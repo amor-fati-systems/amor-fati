@@ -23,6 +23,10 @@ import com.boombustgroup.amorfati.types.*
   *   average dividend yield (GPW 2024: ~5.7%)
   * @param foreignShare
   *   share of market cap held by foreign investors (KNF/KDPW 2024: ~67%)
+  * @param listedProfitShare
+  *   share of aggregate modeled firm profits attributable to GPW-listed firms.
+  *   The firm population covers the whole economy; only the listed-market slice
+  *   should feed GPW dividend and earnings-yield channels.
   * @param issuanceFrac
   *   annual equity issuance as fraction of market cap (eligible large firms)
   * @param issuanceMinSize
@@ -40,6 +44,7 @@ case class EquityConfig(
     peMean: Scalar = Scalar(10),
     divYield: Rate = Rate.decimal(57, 3),
     foreignShare: Share = Share.decimal(67, 2),
+    listedProfitShare: Share = Share.decimal(10, 2),
     issuanceFrac: Share = Share.decimal(10, 2),
     issuanceMinSize: Int = 5,
     hhEquityFrac: Share = Share.decimal(7, 2),

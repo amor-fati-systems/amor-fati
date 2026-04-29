@@ -510,6 +510,8 @@ object FlowSimulation:
     val banks             = stateIn.banks
     val s1                = FiscalConstraintEconomics.compute(w, banks, ledger, input.executionMonth)
     val s2Pre             = LaborEconomics.compute(w, firms, households, s1)
+    val payroll           = SocialSecurity.payrollBase(households)
+    val payrollZus        = SocialSecurity.zusStep(payroll, s2Pre.newDemographics.retirees)
     val s3                = HouseholdIncomeEconomics.compute(
       w,
       firms,
@@ -520,14 +522,13 @@ object FlowSimulation:
       s1.resWage,
       s2Pre.newWage,
       randomness.householdIncomeEconomics.newStream(),
+      pensionIncome = payrollZus.pensionPayments,
     )
     val s4                = DemandEconomics.compute(w, s2Pre.employed, s2Pre.living, s3.domesticCons)
     val s5                = FirmEconomics.runStep(w, firms, households, banks, ledger, s1, s2Pre, s3, s4, randomness.firmEconomics.newStream())
     val postLivingFirms   = s5.ioFirms.filter(Firm.isAlive)
     val nBankruptFirms    = s5.firmDeaths
     val avgFirmWorkers    = if s2Pre.living.nonEmpty then s2Pre.employed / s2Pre.living.length else 0
-    val payroll           = SocialSecurity.payrollBase(households)
-    val payrollZus        = SocialSecurity.zusStep(payroll, s2Pre.newDemographics.retirees)
     val payrollNfz        = SocialSecurity.nfzStep(payroll, s2Pre.newDemographics.workingAgePop, s2Pre.newDemographics.retirees)
     val payrollPpk        = SocialSecurity.ppkStep(payroll)
     val payrollEarmarked  = EarmarkedFunds.step(payroll, s3.hhAgg.totalUnempBenefits, nBankruptFirms, avgFirmWorkers)
@@ -593,6 +594,8 @@ object FlowSimulation:
     val openingCorpBonds  = CorporateBondOwnership.stockStateFromLedger(ledger)
     val corpBondCoupon    = CorporateBondMarket.computeCoupon(w.financialMarkets.corporateBonds, openingCorpBonds)
     val corpBondIssuance  = CorporateBondMarket.processIssuance(CorporateBondMarket.StockState.zero, s5.actualBondIssuance)
+    val laborForce        = s2.newDemographics.workingAgePop.max(1)
+    val unemploymentRate  = Share.One - Share.fraction(Math.max(0, Math.min(s2.employed, laborForce)), laborForce)
     val calc              = MonthlyCalculus(
       month = s1.month,
       resWage = s1.resWage,
@@ -605,7 +608,7 @@ object FlowSimulation:
       zus = s2.newZus,
       ppk = s2.newPpk,
       earmarked = s2.newEarmarked,
-      unemploymentRate = w.unemploymentRate(s2.employed),
+      unemploymentRate = unemploymentRate,
       laborDemand = s2.laborDemand,
       livingFirms = s5.ioFirms.count(Firm.isAlive),
       retirees = s2Pre.newDemographics.retirees,

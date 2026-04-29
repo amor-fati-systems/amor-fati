@@ -19,9 +19,12 @@ import com.boombustgroup.amorfati.types.*
   * @param targetInfl
   *   NBP inflation target (NBP: 2.5% +/- 1pp)
   * @param neutralRate
-  *   long-run neutral real interest rate (estimated)
+  *   long-run neutral policy-rate anchor (estimated)
   * @param taylorAlpha
   *   Taylor rule coefficient on inflation gap
+  * @param taylorExpectedInflationWeight
+  *   share of expected inflation in the policy inflation measure used by the
+  *   Taylor rule; the remainder is realized inflation
   * @param taylorBeta
   *   Taylor rule coefficient on output gap
   * @param taylorInertia
@@ -60,15 +63,16 @@ import com.boombustgroup.amorfati.types.*
 case class MonetaryConfig(
     initialRate: Rate = Rate.decimal(575, 4),
     targetInfl: Rate = Rate.decimal(25, 3),
-    neutralRate: Rate = Rate.decimal(4, 2),
-    taylorAlpha: Coefficient = Coefficient.decimal(15, 1),
+    neutralRate: Rate = Rate.decimal(3, 2),
+    taylorAlpha: Coefficient = Coefficient.decimal(12, 1),
+    taylorExpectedInflationWeight: Share = Share.decimal(80, 2),
     taylorBeta: Coefficient = Coefficient.decimal(8, 1),
     taylorInertia: Share = Share.decimal(70, 2),
     rateFloor: Rate = Rate.decimal(1, 3),
     rateCeiling: Rate = Rate.decimal(15, 2),
-    maxRateChange: Rate = Rate(0),
+    maxRateChange: Rate = Rate.decimal(25, 4),
     nairu: Share = Share.decimal(5, 2),
-    taylorDelta: Coefficient = Coefficient.decimal(5, 1),
+    taylorDelta: Coefficient = Coefficient.decimal(1, 1),
     reserveRateMult: Share = Share.decimal(5, 1),
     depositFacilitySpread: Rate = Rate.decimal(1, 2),
     lombardSpread: Rate = Rate.decimal(1, 2),
@@ -83,6 +87,10 @@ case class MonetaryConfig(
 ):
   require(rateFloor < rateCeiling, s"rateFloor ($rateFloor) must be < rateCeiling ($rateCeiling)")
   require(rateFloor >= Rate.Zero, s"rateFloor must be non-negative: $rateFloor")
+  require(
+    taylorExpectedInflationWeight >= Share.Zero && taylorExpectedInflationWeight <= Share.One,
+    s"taylorExpectedInflationWeight must be in [0,1]: $taylorExpectedInflationWeight",
+  )
   require(
     qeMaxGdpShare > Share.Zero && qeMaxGdpShare <= Share.One,
     s"qeMaxGdpShare must be in (0,1]: $qeMaxGdpShare",

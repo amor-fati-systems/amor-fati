@@ -65,15 +65,19 @@ object WorldInit:
     val initNbfiBalances      = Nbfi.initialBalances
     val initExpectations      = ExpectationsInit.create()
     val initInflation         = p.monetary.targetInfl
-    val initForeignGovBonds   = PLN.Zero
-
-    val initBondsOutstanding = p.banking.initGovBonds + p.banking.initNbpGovBonds +
+    val initDomesticGovBonds  = p.banking.initGovBonds + p.banking.initNbpGovBonds +
       initInsuranceBalances.govBondHoldings + initNbfiBalances.tfiGovBondHoldings
-    val initSocialState      = SocialState.zero.copy(demographics = initDemographics)
+    val initForeignGovBonds   = (p.fiscal.initGovDebt - initDomesticGovBonds).max(PLN.Zero)
+    val initBondsOutstanding  = initDomesticGovBonds + initForeignGovBonds
+    val initSocialState       = SocialState.zero.copy(demographics = initDemographics)
 
     // --- Steady-state gross investment ---
     val initGrossInvestment = PLN.fromRaw(firms.map(f => (f.capitalStock * p.capital.depRates(f.sector.toInt).monthly).toLong).sum)
     val initGreenInvestment = PLN.fromRaw(firms.map(f => (f.greenCapital * p.climate.greenDepRate.monthly).toLong).sum)
+    val initMonthlyGdp      = p.firm.baseRevenue * p.pop.firmsCount
+    val initFiscalDeficit   = initMonthlyGdp * p.fiscal.sgpDeficitLimit
+    val initGovCurrentSpend = p.fiscal.govBaseSpending * (Share.One - p.fiscal.govInvestShare)
+    val initGovCapitalSpend = p.fiscal.govBaseSpending * p.fiscal.govInvestShare
 
     // --- World assembly ---
     val initHhAgg = Household.Aggregates(
@@ -123,10 +127,14 @@ object WorldInit:
       priceLevel = PriceIndex(1),
       currentSigmas = p.sectorDefs.map(_.sigma),
       gov = FiscalBudget.GovState(
-        taxRevenue = PLN.Zero,
-        deficit = PLN.Zero,
+        taxRevenue = (p.fiscal.govBaseSpending - initFiscalDeficit).max(PLN.Zero),
+        deficit = initFiscalDeficit,
         cumulativeDebt = p.fiscal.initGovDebt,
         unempBenefitSpend = PLN.Zero,
+        weightedCoupon = p.fiscal.govInitialWeightedCoupon,
+        publicCapitalStock = p.fiscal.govInitCapital,
+        govCurrentSpend = initGovCurrentSpend,
+        govCapitalSpend = initGovCapitalSpend,
       ),
       nbp = Nbp.State(
         referenceRate = p.monetary.initialRate,
@@ -175,7 +183,7 @@ object WorldInit:
         initInflation,
         initExpectations.expectedInflation,
       ),
-      flows = FlowState(monthlyGdpProxy = p.firm.baseRevenue * p.pop.firmsCount),
+      flows = FlowState(monthlyGdpProxy = initMonthlyGdp),
       regionalWages = Region.all.map(r => r -> (p.household.baseWage * Region.normalizedWageMultiplier(r))).toMap,
     )
 

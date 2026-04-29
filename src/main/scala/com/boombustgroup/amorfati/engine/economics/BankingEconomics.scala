@@ -458,15 +458,17 @@ object BankingEconomics:
 
   /** Recompute household aggregates from final households. */
   private def computeHhAgg(in: StepInput)(using SimParams): Household.Aggregates =
-    Household.computeAggregates(
-      in.s5.households,
-      in.s5.ledgerFinancialState.households.map(LedgerFinancialState.projectHouseholdFinancialStocks),
-      in.s2.newWage,
-      in.s1.resWage,
-      in.s3.importAdj,
-      in.s3.hhAgg.retrainingAttempts,
-      in.s3.hhAgg.retrainingSuccesses,
-    )
+    Household
+      .computeAggregates(
+        in.s5.households,
+        in.s5.ledgerFinancialState.households.map(LedgerFinancialState.projectHouseholdFinancialStocks),
+        in.s2.newWage,
+        in.s1.resWage,
+        in.s3.importAdj,
+        in.s3.hhAgg.retrainingAttempts,
+        in.s3.hhAgg.retrainingSuccesses,
+      )
+      .withFlowTotalsFrom(in.s3.hhAgg)
 
   /** Compute raw bond waterfall inputs — requests only, no final allocations.
     * Actual allocations happen in processInterbankAndFailures via sellToBuyer.

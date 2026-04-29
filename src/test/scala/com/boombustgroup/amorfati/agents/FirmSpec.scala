@@ -85,12 +85,23 @@ class FirmSpec extends AnyFlatSpec with Matchers:
     Firm.workerCount(mkFirm(TechState.Bankrupt(BankruptReason.Other("test")))) shouldBe 0
   }
 
-  "Firm.applyOperationalHiringSlack" should "compress worker targets when aggregate labor plans exceed supply" in {
-    Firm.applyOperationalHiringSlack(rawTarget = 24, minWorkers = 3, slackFactor = Multiplier.decimal(5, 1)) shouldBe 12
+  "Firm.computeEffectiveCapacity" should "scale base capacity by the runtime productivity index" in {
+    val firm              = mkFirm(TechState.Traditional(10))
+    val productivityIndex = Multiplier.decimal(105, 2)
+
+    Firm.computeEffectiveCapacity(firm, productivityIndex) shouldBe Firm.computeCapacity(firm) * productivityIndex
   }
 
-  it should "respect the workforce floor when compression is severe" in {
-    Firm.applyOperationalHiringSlack(rawTarget = 4, minWorkers = 3, slackFactor = Multiplier.decimal(25, 2)) shouldBe 3
+  "Firm.applyOperationalHiringSlack" should "compress worker targets when aggregate labor plans exceed supply" in {
+    Firm.applyOperationalHiringSlack(currentWorkers = 10, rawTarget = 24, minWorkers = 3, slackFactor = Multiplier.decimal(5, 1)) shouldBe 17
+  }
+
+  it should "not compress incumbent workers when expansion hiring slack is exhausted" in {
+    Firm.applyOperationalHiringSlack(currentWorkers = 4, rawTarget = 8, minWorkers = 3, slackFactor = Multiplier.Zero) shouldBe 4
+  }
+
+  it should "leave downsizing targets unchanged when labor hiring slack is tight" in {
+    Firm.applyOperationalHiringSlack(currentWorkers = 10, rawTarget = 4, minWorkers = 3, slackFactor = Multiplier.decimal(25, 2)) shouldBe 4
   }
 
   "Firm.hiringDiagnostics" should "delay non-micro hiring until demand persists" in {
@@ -189,14 +200,14 @@ class FirmSpec extends AnyFlatSpec with Matchers:
     Firm.hasWorkingCapitalGrace(incumbent, pnl, cashGap) shouldBe false
   }
 
-  "Firm.canFundUpsize" should "let startups hire against their startup runway" in {
+  "Firm.canFundUpsize" should "let startups hire against their startup runway when incumbents are not profitable" in {
     val startup         = mkFirm(TechState.Traditional(2), sector = 3).copy(startupMonthsLeft = 4, startupTargetWorkers = 4)
     val incumbent       = mkFirm(TechState.Traditional(2), sector = 3)
     val pnl             = Firm.PnL(
       revenue = PLN(1000),
       costs = PLN(1000),
       tax = PLN.Zero,
-      netAfterTax = PLN.Zero,
+      netAfterTax = PLN(-1),
       profitShiftCost = PLN.Zero,
       energyCost = PLN.Zero,
       newAccumulatedLoss = PLN.Zero,
@@ -298,7 +309,7 @@ class FirmSpec extends AnyFlatSpec with Matchers:
   it should "start at the documented base willingness in the first execution month" in {
     val first = Firm.adoptionWillingnessMultiplier(month = ExecutionMonth.First, localAuto = Share.Zero)
 
-    first.shouldBe(Share.decimal(15, 2))
+    first.shouldBe(Share.decimal(8, 2))
   }
 
   it should "return 0.0 for firm with no neighbors" in {
@@ -376,6 +387,55 @@ class FirmSpec extends AnyFlatSpec with Matchers:
     lowResult.taxPaid should be > PLN.Zero
     highResult.taxPaid should be > PLN.Zero
     highResult.citEvasion should be > lowResult.citEvasion
+  }
+
+  it should "allow hybrid firms to hire when demand supports a larger workforce" in {
+    val world = mkWorld().copy(
+      pipeline = PipelineState(
+        sectorDemandMult = Vector.fill(p.sectorDefs.length)(Multiplier(20)),
+        sectorDemandPressure = Vector.fill(p.sectorDefs.length)(Multiplier(20)),
+        sectorHiringSignal = Vector.fill(p.sectorDefs.length)(Multiplier(20)),
+        operationalHiringSlack = Share.One,
+      ),
+      flows = FlowState.zero,
+    )
+    val firm  = mkFirm(TechState.Hybrid(400, Multiplier.One), sector = 0).copy(
+      initialSize = 400,
+      digitalReadiness = Share.decimal(25, 2),
+      hiringSignalMonths = 1,
+    )
+    val diag  = Firm.hiringDiagnostics(
+      firm,
+      defaultStocks(cash = PLN(1000000000)),
+      world,
+      OperationalSignals.fromDecisionSignals(world.seedIn, world.pipeline.operationalHiringSlack),
+    )
+
+    diag.desiredWorkers should be > diag.workers
+    diag.feasibleWorkers should be > diag.workers
+
+    val result = process(firm, world, Rate.decimal(7, 2), _ => true, Vector(firm), RandomStream.seeded(7), defaultStocks(cash = PLN(1000000000)))
+
+    result.firm.tech shouldBe a[TechState.Hybrid]
+    Firm.workerCount(result.firm) should be > Firm.workerCount(firm)
+  }
+
+  it should "adjust inventory toward realized-sales target without adding unsold capacity residuals" in {
+    val demand = Multiplier.decimal(8, 1)
+    val world  = mkWorld().copy(
+      pipeline = PipelineState(
+        sectorDemandMult = Vector.fill(p.sectorDefs.length)(demand),
+        sectorDemandPressure = Vector.fill(p.sectorDefs.length)(Multiplier.One),
+        sectorHiringSignal = Vector.fill(p.sectorDefs.length)(Multiplier.One),
+        operationalHiringSlack = Share.One,
+      ),
+    )
+    val firm   = mkFirm(TechState.Traditional(10), sector = 2)
+
+    val result = process(firm, world, Rate.decimal(7, 2), _ => true, Vector(firm), RandomStream.seeded(17), defaultStocks(cash = PLN(1000000000)))
+    val target = Firm.computeCapacity(result.firm) * demand.toShare * p.capital.inventoryTargetRatios(firm.sector.toInt)
+
+    result.inventoryChange should be <= (target * p.capital.inventoryAdjustSpeed + PLN(1))
   }
 
   // --- helpers ---

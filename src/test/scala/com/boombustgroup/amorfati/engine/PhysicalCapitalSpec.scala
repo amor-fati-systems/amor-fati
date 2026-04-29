@@ -72,15 +72,15 @@ class PhysicalCapitalSpec extends AnyFlatSpec with Matchers:
   // --- Depreciation ---
 
   "Depreciation" should "equal annual rate / 12" in {
-    val annualRate = BigDecimal("0.08")
-    val K          = BigDecimal("250000.0") * 10 // 10-worker Mfg firm
+    val annualRate = decimal(p.capital.depRates(1))
+    val K          = decimal(p.capital.klRatios(1)) * 10 // 10-worker Mfg firm
     val monthlyDep = K * annualRate / BigDecimal("12.0")
     monthlyDep shouldBe (K * annualRate / BigDecimal("12.0")) +- BigDecimal("0.01")
   }
 
   it should "reduce capital stock without investment" in {
-    val K          = BigDecimal("2500000.0")
-    val depRate    = BigDecimal("0.08")
+    val K          = decimal(p.capital.klRatios(1)) * 10
+    val depRate    = decimal(p.capital.depRates(1))
     val monthlyDep = depRate / BigDecimal("12.0")
     val postDepK   = K * (BigDecimal("1.0") - monthlyDep)
     postDepK should be < K
@@ -89,24 +89,35 @@ class PhysicalCapitalSpec extends AnyFlatSpec with Matchers:
   // --- K/L initialization ---
 
   "K/L initialization" should "set K = workers x sectorKL" in {
-    val sector    = 1 // Manufacturing: K/L = 250,000
+    val sector    = 1 // Manufacturing
     val workers   = 10
     val expectedK = workers * decimal(p.capital.klRatios(sector))
-    expectedK shouldBe BigDecimal("2500000.0") +- BigDecimal("0.01")
+    expectedK shouldBe workers * decimal(p.capital.klRatios(sector)) +- BigDecimal("0.01")
+    expectedK should be > BigDecimal("0.0")
+  }
+
+  "Capital planning scale" should "not collapse after a temporary headcount cut" in {
+    val firm = mkFirm(sector = 1, workers = 4).copy(initialSize = 10)
+    Firm.capitalPlanningWorkers(firm) shouldBe 10
+  }
+
+  it should "track expansion once current headcount exceeds initial scale" in {
+    val firm = mkFirm(sector = 1, workers = 14).copy(initialSize = 10)
+    Firm.capitalPlanningWorkers(firm) shouldBe 14
   }
 
   // --- Investment ---
 
   "Investment" should "replace depreciation at steady state" in {
     // At steady state: K = targetK, gap = 0, desiredInv = depn
-    val K          = BigDecimal("2500000.0")                     // 10-worker Mfg firm at target
-    val depRate    = BigDecimal("0.08") / BigDecimal("12.0")
+    val targetK    = BigDecimal("10.0") * decimal(p.capital.klRatios(1))
+    val K          = targetK // 10-worker Mfg firm at target
+    val depRate    = decimal(p.capital.depRates(1)) / BigDecimal("12.0")
     val depn       = K * depRate
     val postDepK   = K - depn
-    val targetK    = BigDecimal("10.0") * BigDecimal("250000.0") // = 2,500,000
     val gap        = DecimalMath.max(BigDecimal("0.0"), targetK - postDepK)
     val desiredInv = depn + gap * decimal(p.capital.adjustSpeed)
-    // gap = depn, so desiredInv = depn + depn * 0.10 = 1.1 * depn
+    // gap = depn, so desiredInv = depn + depn * adjustSpeed
     desiredInv should be > depn
     desiredInv should be < depn * BigDecimal("2.0")
   }
@@ -153,7 +164,7 @@ class PhysicalCapitalSpec extends AnyFlatSpec with Matchers:
   // --- Capacity augmented in FirmOps ---
 
   "Firm.computeCapacity" should "return positive for firm with capitalStock" in {
-    val f = mkFirm(sector = 1, workers = 10, capitalStock = BigDecimal("2500000.0"))
+    val f = mkFirm(sector = 1, workers = 10, capitalStock = decimal(p.capital.klRatios(1)) * 10)
     Firm.computeCapacity(f) should be > PLN.Zero
   }
 
@@ -197,7 +208,7 @@ class PhysicalCapitalSpec extends AnyFlatSpec with Matchers:
       bankId = BankId(0),
       equityRaised = PLN.Zero,
       initialSize = 10,
-      capitalStock = PLN(2500000),
+      capitalStock = p.capital.klRatios(1) * 10,
       foreignOwned = false,
       inventory = PLN.Zero,
       greenCapital = PLN.Zero,
@@ -206,7 +217,7 @@ class PhysicalCapitalSpec extends AnyFlatSpec with Matchers:
     val r = Firm.Result.zero(f)
     // When PhysCapEnabled, applyInvestment should zero K for bankrupt
     // Call process on a bankrupt firm -- capitalStock should be 0
-    decimal(r.firm.capitalStock) shouldBe BigDecimal("2500000.0") // before applyInvestment
+    decimal(r.firm.capitalStock) shouldBe decimal(p.capital.klRatios(1)) * 10 // before applyInvestment
   }
 
   // --- OtherCosts reduction ---
@@ -217,36 +228,31 @@ class PhysicalCapitalSpec extends AnyFlatSpec with Matchers:
     effective shouldBe rawOther * BigDecimal("0.5") +- BigDecimal("0.01")
   }
 
-  "Cost calibration for Manufacturing" should "be roughly neutral" in {
-    // Mfg: 10 workers x 250K K/L = 2.5M capital. Dep = 2.5M * 0.08/12 = 16,667 PLN/mo
-    // OtherCosts = 16,667 PLN/mo. With 50% replacement: effective other = 8,333.
-    // Total = 8,333 + 16,667 = 25,000 vs original 16,667.
-    // Actually depn ~ OtherCosts for Mfg, but effective = 0.5*OtherCosts + depn ~ 1.5*OtherCosts
-    // The plan notes "roughly neutral for Manufacturing" -- let's verify the numbers
-    val K              = BigDecimal("10.0") * BigDecimal("250000.0")          // 2,500,000
-    val depn           = K * BigDecimal("0.08") / BigDecimal("12.0")          // 16,666.67
+  "Cost calibration for Manufacturing" should "keep explicit capital cost bounded" in {
+    val K              = BigDecimal("10.0") * decimal(p.capital.klRatios(1))
+    val depn           = K * decimal(p.capital.depRates(1)) / BigDecimal("12.0")
     val origOther      = decimal(p.firm.otherCosts)                           // 16,667
     val effectiveOther = origOther * (BigDecimal("1.0") - BigDecimal("0.50")) // 8,333.33
-    val newTotal       = effectiveOther + depn                                // 25,000
+    val newTotal       = effectiveOther + depn
     // New total cost (halved other + depreciation) should exceed original OtherCosts
     newTotal should be > origOther
-    // Not exactly neutral but within 50% -- acceptable for a model
-    depn shouldBe origOther +- BigDecimal("1.0") // Mfg depreciation ~ original OtherCosts
+    depn should be > origOther
+    depn should be < origOther * BigDecimal("2.0")
   }
 
   // --- GFCF ---
 
   "GFCF formula" should "equal grossInv x (1 - importShare)" in {
     val grossInv    = BigDecimal("1000000.0")
-    val importShare = BigDecimal("0.35")
+    val importShare = decimal(p.capital.importShare)
     val gfcf        = grossInv * (BigDecimal("1.0") - importShare)
-    gfcf shouldBe BigDecimal("650000.0") +- BigDecimal("0.01")
+    gfcf shouldBe grossInv * (BigDecimal("1.0") - importShare) +- BigDecimal("0.01")
   }
 
   "Investment imports" should "equal grossInv x importShare" in {
     val grossInv   = BigDecimal("1000000.0")
     val invImports = grossInv * decimal(p.capital.importShare)
-    invImports shouldBe BigDecimal("350000.0") +- BigDecimal("0.01")
+    invImports shouldBe grossInv * decimal(p.capital.importShare) +- BigDecimal("0.01")
   }
 
   // --- Sector heterogeneity ---

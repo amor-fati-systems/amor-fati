@@ -34,7 +34,7 @@ object BankruptcyProbe:
 
         val byReason    = newBankrupts.groupMapReduce(_._1)(_ => 1)(_ + _).toVector.sortBy(-_._2)
         val bySector    = newBankrupts.groupMapReduce(_._2)(_ => 1)(_ + _).toVector.sortBy(_._1)
-        val unemp       = result.nextState.householdAggregates.unemploymentRate(result.nextState.world.derivedTotalPopulation)
+        val unemp       = result.nextState.world.unemploymentRate(result.nextState.householdAggregates.employed)
         val demandMults = result.nextState.world.pipeline.sectorDemandMult
 
         println(

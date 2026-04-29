@@ -30,14 +30,14 @@ object RegionalClearing:
       prevRegionalWages: Map[Region, PLN],
       resWage: PLN,
       laborDemand: Int,
-      totalPopulation: Int,
+      laborForcePopulation: Int,
   )(using p: SimParams): Result =
     val regionalWages: Map[Region, PLN] = Region.all
       .map: region =>
         val regWageMult: Multiplier = Region.normalizedWageMultiplier(region)
         val prevWage: PLN           = prevRegionalWages.getOrElse(region, resWage * regWageMult)
         val regDemand: Int          = region.populationShare.applyTo(laborDemand)
-        val regPop: Int             = region.populationShare.applyTo(totalPopulation).max(1)
+        val regPop: Int             = region.populationShare.applyTo(laborForcePopulation).max(1)
         val regResWage: PLN         = resWage * regWageMult
         val clearResult             = LaborMarket.updateLaborMarket(prevWage, regResWage, regDemand, regPop)
         region -> clearResult.wage
