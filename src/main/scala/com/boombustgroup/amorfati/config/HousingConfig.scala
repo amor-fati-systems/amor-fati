@@ -18,11 +18,11 @@ import com.boombustgroup.amorfati.types.*
   * @param initHpi
   *   initial house price index (base = 100)
   * @param initValue
-  *   initial aggregate housing stock value in raw PLN (~3.0 bln PLN, scaled by
-  *   gdpRatio)
+  *   initial aggregate housing stock value in raw PLN (~7.8 tln PLN, latest NBP
+  *   comprehensive stock estimate, scaled by gdpRatio)
   * @param initMortgage
-  *   initial aggregate mortgage stock in raw PLN (NBP bridge prior: ~485 mld
-  *   PLN, scaled by gdpRatio)
+  *   initial aggregate mortgage stock in raw PLN (KNF monthly banking data,
+  *   February 2026: ~506.3 mld PLN, scaled by gdpRatio)
   * @param priceIncomeElast
   *   elasticity of house prices to income growth
   * @param priceRateElast
@@ -55,8 +55,8 @@ import com.boombustgroup.amorfati.types.*
   */
 case class HousingConfig(
     initHpi: PriceIndex = PriceIndex(100),
-    initValue: PLN = PLN(3000000000000L),   // raw — scaled by gdpRatio
-    initMortgage: PLN = PLN(485000000000L), // raw — scaled by gdpRatio
+    initValue: PLN = PLN(7800000000000L),   // raw — scaled by gdpRatio
+    initMortgage: PLN = PLN(506300000000L), // raw — scaled by gdpRatio
     priceIncomeElast: Coefficient = Coefficient.decimal(12, 1),
     priceRateElast: Coefficient = Coefficient.decimal(-8, 1),
     priceReversion: Coefficient = Coefficient.decimal(5, 2),

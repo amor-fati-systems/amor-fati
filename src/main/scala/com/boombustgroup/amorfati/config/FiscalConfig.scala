@@ -188,8 +188,8 @@ case class FiscalConfig(
     fofInvestWeights: Vector[Share] =
       Vector(Share.decimal(10, 2), Share.decimal(40, 2), Share.decimal(15, 2), Share.decimal(5, 2), Share.decimal(20, 2), Share.decimal(10, 2)),
     // Unemployment benefits
-    govBenefitM1to3: PLN = PLN(1500),
-    govBenefitM4to6: PLN = PLN(1200),
+    govBenefitM1to3: PLN = PLN(1784),
+    govBenefitM4to6: PLN = PLN(1401),
     govBenefitDuration: Int = 6,
     govBenefitCoverage: Share = Share.decimal(15, 2),
     // Bond market
@@ -217,7 +217,7 @@ case class FiscalConfig(
     fiscalRiskBeta55: Coefficient = Coefficient.decimal(4, 2),         // bond yield sensitivity above 55% debt/GDP
     fiscalRiskBeta60: Coefficient = Coefficient.decimal(8, 2),         // bond yield sensitivity above 60% debt/GDP
     // Government debt (raw — scaled by gdpRatio in SimParams.defaults)
-    initGovDebt: PLN = PLN(2235000000000L),
+    initGovDebt: PLN = PLN(2335153000000L),
     // JST (local government, Art. 4 Ustawa o dochodach JST)
     jstPitShare: Share = Share.decimal(3846, 4),
     jstCitShare: Share = Share.decimal(671, 4),

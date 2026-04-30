@@ -12,29 +12,29 @@ class MinWageSpec extends AnyFlatSpec with Matchers:
   given SimParams          = SimParams.defaults
   private val p: SimParams = summon[SimParams]
 
-  "GovState defaults" should "have minWageLevel=4666 and minWagePriceLevel=1.0" in {
+  "GovState defaults" should "have minWageLevel=4806 and minWagePriceLevel=1.0" in {
     val gov = FiscalBudget.GovState(PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero)
-    gov.minWageLevel shouldBe PLN(4666)
+    gov.minWageLevel shouldBe PLN(4806)
     gov.minWagePriceLevel shouldBe PriceIndex.Base
   }
 
   "Inflation indexation" should "increase min wage by cumulative CPI" in {
-    // 5% cumulative inflation: prevMinWage * (1 + 0.05) = 4666 * 1.05 = 4899.3
-    val prevMinWage = BigDecimal("4666.0")
+    // 5% cumulative inflation: prevMinWage * (1 + 0.05) = 4806 * 1.05 = 5046.3
+    val prevMinWage = BigDecimal("4806.0")
     val cumInfl     = BigDecimal("0.05")
     val inflIndexed = prevMinWage * (BigDecimal("1.0") + DecimalMath.max(BigDecimal("0.0"), cumInfl))
-    inflIndexed shouldBe (BigDecimal("4899.3") +- BigDecimal("0.1"))
+    inflIndexed shouldBe (BigDecimal("5046.3") +- BigDecimal("0.1"))
   }
 
   "Deflation" should "not decrease min wage (max(0, cumInfl))" in {
-    val prevMinWage = BigDecimal("4666.0")
+    val prevMinWage = BigDecimal("4806.0")
     val cumInfl     = -BigDecimal("0.03") // 3% deflation
     val inflIndexed = prevMinWage * (BigDecimal("1.0") + DecimalMath.max(BigDecimal("0.0"), cumInfl))
     inflIndexed shouldBe prevMinWage // no change under deflation
   }
 
   "Convergence" should "close gap toward 50% of market wage" in {
-    val prevMinWage      = BigDecimal("4666.0")
+    val prevMinWage      = BigDecimal("4806.0")
     val marketWage       = BigDecimal("12000.0")
     val targetRatio      = BigDecimal("0.50")
     val convergenceSpeed = BigDecimal("0.33")
@@ -42,11 +42,11 @@ class MinWageSpec extends AnyFlatSpec with Matchers:
 
     val inflIndexed = prevMinWage * (BigDecimal("1.0") + DecimalMath.max(BigDecimal("0.0"), cumInfl))
     val target      = marketWage * targetRatio             // 6000
-    val gap         = target - inflIndexed                 // 6000 - 4666 = 1334
-    val adjusted    = inflIndexed + gap * convergenceSpeed // 4666 + 1334*0.33 = 5106.22
+    val gap         = target - inflIndexed                 // 6000 - 4806 = 1194
+    val adjusted    = inflIndexed + gap * convergenceSpeed // 4806 + 1194*0.33 = 5200.02
     val result      = DecimalMath.max(prevMinWage, adjusted)
 
-    result shouldBe (BigDecimal("5106.22") +- BigDecimal("0.1"))
+    result shouldBe (BigDecimal("5200.02") +- BigDecimal("0.1"))
     result should be > prevMinWage
   }
 

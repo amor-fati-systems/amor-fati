@@ -59,7 +59,7 @@ import com.boombustgroup.amorfati.types.*
   * @param fxBand
   *   intervention band width around base exchange rate
   * @param fxReserves
-  *   initial FX reserves in raw PLN (scaled by gdpRatio)
+  *   initial official reserve assets in raw PLN (scaled by gdpRatio)
   * @param fxMaxMonthly
   *   maximum monthly intervention as fraction of reserves
   * @param fxStrength
@@ -89,7 +89,7 @@ case class MonetaryConfig(
     qeMaxGdpShare: Share = Share.decimal(30, 2),
     // FX intervention (raw — scaled by gdpRatio in SimParams.defaults)
     fxBand: Share = Share.decimal(10, 2),
-    fxReserves: PLN = PLN(185000000000L),
+    fxReserves: PLN = PLN(1078313000000L),
     fxMaxMonthly: Share = Share.decimal(3, 2),
     fxStrength: Coefficient = Coefficient.decimal(5, 1),
 ):

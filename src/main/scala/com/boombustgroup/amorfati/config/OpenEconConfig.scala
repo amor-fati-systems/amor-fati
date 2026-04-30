@@ -21,8 +21,8 @@ import com.boombustgroup.amorfati.types.*
   * @param erCeiling
   *   exchange rate ceiling (PLN/EUR) — structural upper bound
   * @param exportBase
-  *   monthly export base in raw PLN (scaled by gdpRatio, NBP BoP bridge prior:
-  *   ~138.5 mld)
+  *   monthly goods-and-services export base in raw PLN (scaled by gdpRatio,
+  *   latest available NBP BoP bridge for January 2026: ~157.6 mld)
   * @param importPushCap
   *   maximum monthly import growth from demand pressure
   * @param foreignGdpGrowth
@@ -41,8 +41,8 @@ import com.boombustgroup.amorfati.types.*
   *   monthly EU structural transfers in raw PLN (scaled by gdpRatio, MFiPR
   *   bridge prior: ~1.458 mld)
   * @param fdiBase
-  *   monthly FDI base inflow in raw PLN (scaled by gdpRatio, NBP IIP bridge
-  *   prior: ~583 mln)
+  *   monthly FDI base inflow in raw PLN (scaled by gdpRatio, NBP BoP trailing
+  *   12-month bridge through January 2026: ~5.0 mld)
   * @param portfolioSensitivity
   *   sensitivity of portfolio flows to interest rate differential
   * @param riskPremiumSensitivity
@@ -53,7 +53,7 @@ case class OpenEconConfig(
       Vector(Share.decimal(15, 2), Share.decimal(50, 2), Share.decimal(20, 2), Share.decimal(15, 2), Share.decimal(5, 2), Share.decimal(12, 2)),
     erFloor: ExchangeRate = ExchangeRate.decimal(25, 1),
     erCeiling: ExchangeRate = ExchangeRate(10),
-    exportBase: PLN = PLN(138500000000L),              // raw — scaled by gdpRatio
+    exportBase: PLN = PLN(157600000000L),              // raw — scaled by gdpRatio
     importPushCap: Share = Share.decimal(3, 2),
     foreignGdpGrowth: Rate = Rate.decimal(15, 3),
     exportPriceElasticity: Coefficient = Coefficient.decimal(8, 1),
@@ -62,7 +62,7 @@ case class OpenEconConfig(
     ulcExportBoost: Coefficient = Coefficient.decimal(15, 2),
     nfaReturnRate: Rate = Rate.decimal(3, 2),
     euTransfers: PLN = PLN(1458000000),                // raw — scaled by gdpRatio
-    fdiBase: PLN = PLN(583100000),                     // raw — scaled by gdpRatio
+    fdiBase: PLN = PLN(4963000000L),                   // raw — scaled by gdpRatio
     portfolioSensitivity: Coefficient = Coefficient.decimal(20, 2),
     riskPremiumSensitivity: Coefficient = Coefficient.decimal(10, 2),
     pppSpeed: Coefficient = Coefficient.decimal(10, 2), // annual convergence speed toward PPP equilibrium (Rogoff 1996: 3-5yr half-life)

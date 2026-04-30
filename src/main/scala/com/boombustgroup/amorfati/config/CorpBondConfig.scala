@@ -17,8 +17,9 @@ import com.boombustgroup.amorfati.types.*
   *   credit spread over policy rate for corporate bonds (RRRF bridge prior BBB
   *   avg: ~2.5%)
   * @param initStock
-  *   initial outstanding corporate bond stock in raw PLN (KNF bridge prior: ~90
-  *   mld PLN, scaled by gdpRatio)
+  *   initial outstanding Catalyst corporate instruments in raw PLN, including
+  *   EUR-denominated corporate instruments converted at the model-start FX rate
+  *   (Catalyst 2026-04-30: ~108.5 mld PLN, scaled by gdpRatio)
   * @param minSize
   *   minimum firm size (employees) for bond issuance eligibility
   * @param issuanceFrac
@@ -34,7 +35,7 @@ import com.boombustgroup.amorfati.types.*
   */
 case class CorpBondConfig(
     spread: Rate = Rate.decimal(25, 3),
-    initStock: PLN = PLN(90000000000L), // raw — scaled by gdpRatio
+    initStock: PLN = PLN(108500000000L), // raw — scaled by gdpRatio
     minSize: Int = 50,
     issuanceFrac: Share = Share.decimal(15, 2),
     bankShare: Share = Share.decimal(30, 2),

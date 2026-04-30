@@ -14,10 +14,10 @@ import com.boombustgroup.amorfati.types.*
   * `initMcap` is in raw PLN — scaled by `gdpRatio` in `SimParams.defaults`.
   *
   * @param initIndex
-  *   initial WIG index value (GPW bridge prior: ~2,400)
+  *   initial WIG index value (GPW Benchmark, 2026-04-30 close)
   * @param initMcap
-  *   initial market capitalization in raw PLN (GPW bridge prior: ~1.4 bln PLN,
-  *   scaled by gdpRatio)
+  *   initial domestic-company market capitalization in raw PLN (GPW,
+  *   2026-04-30: ~1.233 tln PLN, scaled by gdpRatio)
   * @param peMean
   *   long-run mean P/E ratio for reversion (GPW bridge prior: ~10)
   * @param divYield
@@ -41,8 +41,8 @@ import com.boombustgroup.amorfati.types.*
   *   dividend withholding tax rate (Belka tax, Ustawa o PIT Art. 30a: 19%)
   */
 case class EquityConfig(
-    initIndex: PriceIndex = PriceIndex(2400),
-    initMcap: PLN = PLN(1400000000000L), // raw — scaled by gdpRatio
+    initIndex: PriceIndex = PriceIndex.decimal(12850877, 2),
+    initMcap: PLN = PLN(1232992640000L), // raw — scaled by gdpRatio
     peMean: Scalar = Scalar(10),
     divYield: Rate = Rate.decimal(57, 3),
     foreignShare: Share = Share.decimal(67, 2),

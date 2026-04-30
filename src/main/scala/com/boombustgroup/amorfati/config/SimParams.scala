@@ -240,11 +240,11 @@ object SimParams:
       fiscal = FiscalConfig(
         govBaseSpending = PLN(76575000000L) * r,
         govInitCapital = PLN(2332000000000L) * r,
-        initGovDebt = PLN(2235000000000L) * r,
+        initGovDebt = PLN(2335153000000L) * r,
       ),
       monetary = MonetaryConfig(
         qePace = PLN(5000000000L) * r,
-        fxReserves = PLN(185000000000L) * r,
+        fxReserves = PLN(1078313000000L) * r,
       ),
       banking = BankingConfig(
         initCapital = PLN(168000000000L) * r,
@@ -256,27 +256,27 @@ object SimParams:
       ),
       forex = ForexConfig(),
       openEcon = OpenEconConfig(
-        exportBase = PLN(138500000000L) * r,
+        exportBase = PLN(157600000000L) * r,
         euTransfers = PLN(1458000000) * r,
-        fdiBase = PLN(583100000) * r,
+        fdiBase = PLN(4963000000L) * r,
       ),
       equity = EquityConfig(
-        initMcap = PLN(1400000000000L) * r,
+        initMcap = PLN(1232992640000L) * r,
       ),
       corpBond = CorpBondConfig(
-        initStock = PLN(90000000000L) * r,
+        initStock = PLN(108500000000L) * r,
       ),
       ins = InsuranceConfig(
-        lifeReserves = PLN(110000000000L) * r,
-        nonLifeReserves = PLN(90000000000L) * r,
+        lifeReserves = PLN(76981000000L) * r,
+        nonLifeReserves = PLN(105869000000L) * r,
       ),
       nbfi = NbfiConfig(
-        tfiInitAum = PLN(380000000000L) * r,
-        creditInitStock = PLN(231000000000L) * r,
+        tfiInitAum = PLN(448300000000L) * r,
+        creditInitStock = PLN(234000000000L) * r,
       ),
       housing = HousingConfig(
-        initValue = PLN(3000000000000L) * r,
-        initMortgage = PLN(485000000000L) * r,
+        initValue = PLN(7800000000000L) * r,
+        initMortgage = PLN(506300000000L) * r,
       ),
       social = SocialConfig(demInitialRetirees = retirees),
       gdpRatio = r,

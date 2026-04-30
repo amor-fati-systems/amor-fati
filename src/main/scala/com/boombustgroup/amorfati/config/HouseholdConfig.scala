@@ -11,10 +11,10 @@ import com.boombustgroup.amorfati.types.*
   * truncated normal.
   *
   * @param baseWage
-  *   mean monthly gross wage (PLN, GUS bridge prior: ~8,266 PLN)
+  *   mean monthly gross wage (PLN, GUS March 2026 enterprise-sector wage:
+  *   ~9,652 PLN)
   * @param baseReservationWage
-  *   minimum acceptable wage — also the current minimum wage bridge level
-  *   (current legal bridge prior)
+  *   minimum acceptable wage — anchored to the statutory 2026 minimum wage
   * @param mpc
   *   mean marginal propensity to consume (aggregate target)
   * @param laborSupplySteepness
@@ -35,7 +35,8 @@ import com.boombustgroup.amorfati.types.*
   * @param debtSigma
   *   log-normal std dev of initial debt distribution
   * @param rentMean
-  *   mean monthly rent (PLN, Otodom/NBP bridge prior)
+  *   mean monthly rent (PLN, Otodom March 2026 provincial-city asking-rent
+  *   bridge)
   * @param rentStd
   *   std dev of rent (PLN)
   * @param rentFloor
@@ -90,8 +91,8 @@ import com.boombustgroup.amorfati.types.*
   *   fraction of employed households eligible for consumer credit each month
   */
 case class HouseholdConfig(
-    baseWage: PLN = PLN(8266),
-    baseReservationWage: PLN = PLN(4666),
+    baseWage: PLN = PLN(9652),
+    baseReservationWage: PLN = PLN(4806),
     mpc: Share = Share.decimal(92, 2),
     laborSupplySteepness: Coefficient = Coefficient(4),
     wageAdjSpeed: Coefficient = Coefficient.decimal(12, 2),
@@ -105,9 +106,9 @@ case class HouseholdConfig(
     debtMu: Coefficient = Coefficient.decimal(105, 1),
     debtSigma: Coefficient = Coefficient.decimal(15, 1),
     // Rent
-    rentMean: PLN = PLN(1800),
-    rentStd: PLN = PLN(400),
-    rentFloor: PLN = PLN(800),
+    rentMean: PLN = PLN(3500),
+    rentStd: PLN = PLN(800),
+    rentFloor: PLN = PLN(1200),
     // MPC distribution
     mpcAlpha: Coefficient = Coefficient.decimal(92, 1),
     mpcBeta: Coefficient = Coefficient.decimal(8, 1),

@@ -17,7 +17,8 @@ import com.boombustgroup.amorfati.util.Distributions
   *   total ZUS contribution rate as fraction of gross wage (Ustawa o systemie
   *   ubezpieczen spolecznych: 19.52%)
   * @param zusBasePension
-  *   average monthly pension payment (PLN, ZUS bridge prior: ~3,500)
+  *   average monthly pension/rent payment (PLN, GUS Q1 2026 non-agricultural
+  *   social-insurance system: ~4,321)
   * @param zusScale
   *   scaling factor for pension payments (for sensitivity analysis)
   * @param nfzContribRate
@@ -65,7 +66,7 @@ case class SocialConfig(
     // ZUS (Ustawa o systemie ubezpieczen spolecznych)
     zusContribRate: Rate = Rate.decimal(1952, 4),
     zusEmployeeRate: Rate = Rate.decimal(1371, 4), // employee portion deducted from PIT base (emerytura 9.76% + rentowe 1.5% + chorobowe 2.45%)
-    zusBasePension: PLN = PLN(3500),
+    zusBasePension: PLN = PLN(4321),
     zusScale: Multiplier = Multiplier(1),
     // NFZ (Ustawa o swiadczeniach opieki zdrowotnej, Art. 79)
     nfzContribRate: Rate = Rate.decimal(9, 2),

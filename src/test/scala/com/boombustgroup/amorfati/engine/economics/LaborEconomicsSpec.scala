@@ -51,19 +51,37 @@ class LaborEconomicsSpec extends AnyFlatSpec with Matchers:
   }
 
   it should "index nominal wage pressure to anchored expected inflation" in {
-    val zeroExpected = world.copy(
-      mechanisms = world.mechanisms.copy(
-        expectations = world.mechanisms.expectations.copy(expectedInflation = Rate.Zero),
+    val expectationsWorld = Generators
+      .testWorld(
+        totalPopulation = 1000,
+        employed = 900,
+        marketWage = PLN(8000),
+        reservationWage = PLN(1000),
+      )
+      .copy(
+        regionalWages = Region.all.map(_ -> PLN(8000)).toMap,
+      )
+    val expectationFirms  = (0 until 100).map: id =>
+      TestFirmState(FirmId(id), tech = TechState.Traditional(9), initialSize = 9)
+    val expectationS1     = s1.copy(
+      lendingBaseRate = expectationsWorld.nbp.referenceRate,
+      resWage = expectationsWorld.householdMarket.reservationWage,
+      baseMinWage = expectationsWorld.gov.minWageLevel,
+      updatedMinWagePriceLevel = expectationsWorld.priceLevel,
+    )
+    val zeroExpected      = expectationsWorld.copy(
+      mechanisms = expectationsWorld.mechanisms.copy(
+        expectations = expectationsWorld.mechanisms.expectations.copy(expectedInflation = Rate.Zero),
       ),
     )
-    val highExpected = world.copy(
-      mechanisms = world.mechanisms.copy(
-        expectations = world.mechanisms.expectations.copy(expectedInflation = Rate.decimal(8, 2)),
+    val highExpected      = expectationsWorld.copy(
+      mechanisms = expectationsWorld.mechanisms.copy(
+        expectations = expectationsWorld.mechanisms.expectations.copy(expectedInflation = Rate.decimal(50, 2)),
       ),
     )
 
-    val zeroResult = LaborEconomics.compute(zeroExpected, firms, households, s1)
-    val highResult = LaborEconomics.compute(highExpected, firms, households, s1)
+    val zeroResult = LaborEconomics.compute(zeroExpected, expectationFirms.toVector, Vector.empty, expectationS1)
+    val highResult = LaborEconomics.compute(highExpected, expectationFirms.toVector, Vector.empty, expectationS1)
 
     highResult.newWage should be > zeroResult.newWage
     highResult.wageGrowth should be > zeroResult.wageGrowth

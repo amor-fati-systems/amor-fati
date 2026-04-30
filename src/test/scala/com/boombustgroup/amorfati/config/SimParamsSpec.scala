@@ -23,6 +23,9 @@ class SimParamsSpec extends AnyFlatSpec with Matchers:
     decimal(p.monetary.initialInflation) shouldBe BigDecimal("0.030")
     decimal(p.forex.baseExRate) shouldBe BigDecimal("4.2537")
     decimal(p.forex.foreignRate) shouldBe BigDecimal("0.0215")
+    decimal(p.household.baseWage) shouldBe BigDecimal("9652")
+    decimal(p.household.baseReservationWage) shouldBe BigDecimal("4806")
+    decimal(p.social.zusBasePension) shouldBe BigDecimal("4321")
   }
 
   "SimParams.defaults.gdpRatio" should "match GdpRatio for Gus size distribution" in {
@@ -44,7 +47,7 @@ class SimParamsSpec extends AnyFlatSpec with Matchers:
   }
 
   it should "have gdpRatio-scaled initGovDebt" in {
-    decimal(p.fiscal.initGovDebt) shouldBe (BigDecimal("2235e9") * gdpRatio) +- BigDecimal("1.0")
+    decimal(p.fiscal.initGovDebt) shouldBe (BigDecimal("2335.153e9") * gdpRatio) +- BigDecimal("1.0")
   }
 
   "p.fiscal.initGovDebt" should "delegate to fiscal.initGovDebt" in {
@@ -65,34 +68,35 @@ class SimParamsSpec extends AnyFlatSpec with Matchers:
   // ── External sector sub-configs ──
 
   "OpenEconConfig" should "have gdpRatio-scaled values" in {
-    decimal(p.openEcon.exportBase) shouldBe (BigDecimal("138.5e9") * gdpRatio) +- BigDecimal("1.0")
+    decimal(p.openEcon.exportBase) shouldBe (BigDecimal("157.6e9") * gdpRatio) +- BigDecimal("1.0")
     decimal(p.openEcon.euTransfers) shouldBe (BigDecimal("1.458e9") * gdpRatio) +- BigDecimal("1.0")
-    decimal(p.openEcon.fdiBase) shouldBe (BigDecimal("583.1e6") * gdpRatio) +- BigDecimal("1.0")
+    decimal(p.openEcon.fdiBase) shouldBe (BigDecimal("4.963e9") * gdpRatio) +- BigDecimal("1.0")
   }
 
   // ── Financial sub-configs ──
 
   "EquityConfig" should "have gdpRatio-scaled initMcap" in {
-    decimal(p.equity.initMcap) shouldBe (BigDecimal("1.4e12") * gdpRatio) +- BigDecimal("1.0")
+    decimal(p.equity.initIndex) shouldBe BigDecimal("128508.77")
+    decimal(p.equity.initMcap) shouldBe (BigDecimal("1232.99264e9") * gdpRatio) +- BigDecimal("1.0")
   }
 
   "CorpBondConfig" should "have gdpRatio-scaled initStock" in {
-    decimal(p.corpBond.initStock) shouldBe (BigDecimal("90e9") * gdpRatio) +- BigDecimal("1.0")
+    decimal(p.corpBond.initStock) shouldBe (BigDecimal("108.5e9") * gdpRatio) +- BigDecimal("1.0")
   }
 
   "InsuranceConfig" should "have gdpRatio-scaled reserves" in {
-    decimal(p.ins.lifeReserves) shouldBe (BigDecimal("110e9") * gdpRatio) +- BigDecimal("1.0")
-    decimal(p.ins.nonLifeReserves) shouldBe (BigDecimal("90e9") * gdpRatio) +- BigDecimal("1.0")
+    decimal(p.ins.lifeReserves) shouldBe (BigDecimal("76.981e9") * gdpRatio) +- BigDecimal("1.0")
+    decimal(p.ins.nonLifeReserves) shouldBe (BigDecimal("105.869e9") * gdpRatio) +- BigDecimal("1.0")
   }
 
   "NbfiConfig" should "have gdpRatio-scaled values" in {
-    decimal(p.nbfi.tfiInitAum) shouldBe (BigDecimal("380e9") * gdpRatio) +- BigDecimal("1.0")
-    decimal(p.nbfi.creditInitStock) shouldBe (BigDecimal("231e9") * gdpRatio) +- BigDecimal("1.0")
+    decimal(p.nbfi.tfiInitAum) shouldBe (BigDecimal("448.3e9") * gdpRatio) +- BigDecimal("1.0")
+    decimal(p.nbfi.creditInitStock) shouldBe (BigDecimal("234e9") * gdpRatio) +- BigDecimal("1.0")
   }
 
   "HousingConfig" should "have gdpRatio-scaled values" in {
-    decimal(p.housing.initValue) shouldBe (BigDecimal("3.0e12") * gdpRatio) +- BigDecimal("1.0")
-    decimal(p.housing.initMortgage) shouldBe (BigDecimal("485e9") * gdpRatio) +- BigDecimal("1.0")
+    decimal(p.housing.initValue) shouldBe (BigDecimal("7.8e12") * gdpRatio) +- BigDecimal("1.0")
+    decimal(p.housing.initMortgage) shouldBe (BigDecimal("506.3e9") * gdpRatio) +- BigDecimal("1.0")
   }
 
   // ── Delegation consistency ──
