@@ -31,3 +31,12 @@ class WorldInitSpec extends AnyFlatSpec with Matchers:
     decimal(unempRate) shouldBe decimal(p.pop.initialUnemploymentRate) +- BigDecimal("0.0001")
     decimal(annualGdp) shouldBe decimal(p.pop.realGdp) +- BigDecimal("1000000.0")
   }
+
+  it should "honor the banking consumer-loan opening stock" in {
+    val init             = WorldInit.initialize(InitRandomness.Contract.fromSeed(42L))
+    val householdLoans   = init.ledgerFinancialState.households.map(_.consumerLoan).sumPln
+    val bankConsumerBook = init.ledgerFinancialState.banks.map(_.consumerLoan).sumPln
+
+    householdLoans shouldBe p.banking.initConsumerLoans
+    bankConsumerBook shouldBe p.banking.initConsumerLoans
+  }

@@ -15,8 +15,7 @@ import com.boombustgroup.amorfati.types.*
   *     (λ=0.05 monthly ≈ quarterly HP filter with λ=1600, per Drehmann & Yetman
   *     2018).
   *   - **O-SII** (Other Systemically Important Institutions): per-bank
-  *     surcharges calibrated to KNF bridge prior decisions (PKO BP 1.0%, Pekao
-  *     0.5%).
+  *     surcharges calibrated to KNF decisions active in the 2026 baseline.
   *   - **P2R** (Pillar 2 Requirement): per-bank BION/SREP add-ons from KNF.
   *   - **Concentration limit**: single-name exposure cap as share of system
   *     loans.
@@ -41,16 +40,14 @@ object Macroprudential:
 
   // ---- O-SII buffer ----
 
-  /** O-SII buffer for a specific bank. PKO BP (id=0): 1.0%, Pekao (id=1): 0.5%,
-    * others: 0%.
-    */
+  /** O-SII buffer for a specific default bank archetype. */
   def osiiBuffer(bankId: Int)(using p: SimParams): Multiplier =
     osiiBufferImpl(bankId)
 
-  private[engine] def osiiBufferImpl(bankId: Int)(using p: SimParams): Multiplier = bankId match
-    case 0 => p.banking.osiiPkoBp
-    case 1 => p.banking.osiiPekao
-    case _ => Multiplier.Zero
+  private[engine] def osiiBufferImpl(bankId: Int)(using p: SimParams): Multiplier =
+    val buffers = p.banking.osiiBuffers
+    if bankId >= 0 && bankId < buffers.length then buffers(bankId)
+    else Multiplier.Zero
 
   // ---- Effective minimum CAR ----
 

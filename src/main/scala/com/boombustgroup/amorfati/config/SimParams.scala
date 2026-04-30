@@ -247,12 +247,12 @@ object SimParams:
         fxReserves = PLN(185000000000L) * r,
       ),
       banking = BankingConfig(
-        initCapital = PLN(270000000000L) * r,
-        initDeposits = PLN(1900000000000L) * r,
-        initLoans = PLN(700000000000L) * r,
+        initCapital = PLN(168000000000L) * r,
+        initDeposits = PLN(2542300000000L) * r,
+        initLoans = PLN(557400000000L) * r,
         initGovBonds = PLN(400000000000L) * r,
         initNbpGovBonds = PLN(300000000000L) * r,
-        initConsumerLoans = PLN(200000000000L) * r,
+        initConsumerLoans = PLN(225200000000L) * r,
       ),
       forex = ForexConfig(),
       openEcon = OpenEconConfig(

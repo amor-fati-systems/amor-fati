@@ -54,12 +54,12 @@ class SimParamsSpec extends AnyFlatSpec with Matchers:
   // ── Banking ──
 
   "BankingConfig" should "have gdpRatio-scaled values" in {
-    decimal(p.banking.initCapital) shouldBe (BigDecimal("270e9") * gdpRatio) +- BigDecimal("1.0")
-    decimal(p.banking.initDeposits) shouldBe (BigDecimal("1900e9") * gdpRatio) +- BigDecimal("1.0")
-    decimal(p.banking.initLoans) shouldBe (BigDecimal("700e9") * gdpRatio) +- BigDecimal("1.0")
+    decimal(p.banking.initCapital) shouldBe (BigDecimal("168e9") * gdpRatio) +- BigDecimal("1.0")
+    decimal(p.banking.initDeposits) shouldBe (BigDecimal("2542.3e9") * gdpRatio) +- BigDecimal("1.0")
+    decimal(p.banking.initLoans) shouldBe (BigDecimal("557.4e9") * gdpRatio) +- BigDecimal("1.0")
     decimal(p.banking.initGovBonds) shouldBe (BigDecimal("400e9") * gdpRatio) +- BigDecimal("1.0")
     decimal(p.banking.initNbpGovBonds) shouldBe (BigDecimal("300e9") * gdpRatio) +- BigDecimal("1.0")
-    decimal(p.banking.initConsumerLoans) shouldBe (BigDecimal("200e9") * gdpRatio) +- BigDecimal("1.0")
+    decimal(p.banking.initConsumerLoans) shouldBe (BigDecimal("225.2e9") * gdpRatio) +- BigDecimal("1.0")
   }
 
   // ── External sector sub-configs ──

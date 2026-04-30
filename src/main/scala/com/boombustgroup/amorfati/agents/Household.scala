@@ -229,18 +229,21 @@ object Household:
       * artificial same-month vacancies.
       */
     def create(randomness: InitRandomness.HouseholdStreams, firms: Vector[Firm.State])(using p: SimParams): Population =
-      val employedSlots = firms.map(Firm.workerCount).sum
-      val nUnemployed   = initialUnemployedCount(employedSlots)
-      val totalCount    = employedSlots + nUnemployed
-      val hhNetwork     = Network.wattsStrogatz(totalCount, p.household.socialK, p.household.socialP, randomness.network)
-      val initialized   = initialize(employedSlots, firms, hhNetwork, randomness.attributes)
+      val employedSlots    = firms.map(Firm.workerCount).sum
+      val nUnemployed      = initialUnemployedCount(employedSlots)
+      val totalCount       = employedSlots + nUnemployed
+      val hhNetwork        = Network.wattsStrogatz(totalCount, p.household.socialK, p.household.socialP, randomness.network)
+      val initialized      = initialize(employedSlots, firms, hhNetwork, randomness.attributes)
       // Assign households to same bank as their employer
-      val banked        = initialized.households.map: h =>
+      val banked           = initialized.households.map: h =>
         h.status match
           case HhStatus.Employed(fid, _, _) if fid.toInt < firms.length => h.copy(bankId = firms(fid.toInt).bankId)
           case _                                                        => h
-      val unemployed    = initializeUnemployed(employedSlots, nUnemployed, firms, hhNetwork, randomness.attributes, randomness.initialUnemployment)
-      Population(banked ++ unemployed.map(_.state), initialized.financialStocks ++ unemployed.map(_.financialStocks))
+      val unemployed       = initializeUnemployed(employedSlots, nUnemployed, firms, hhNetwork, randomness.attributes, randomness.initialUnemployment)
+      val households       = banked ++ unemployed.map(_.state)
+      val financialStocks  = initialized.financialStocks ++ unemployed.map(_.financialStocks)
+      val calibratedStocks = calibrateConsumerLoans(financialStocks)
+      Population(households, calibratedStocks)
 
     private def initialUnemployedCount(employedSlots: Int)(using p: SimParams): Int =
       if employedSlots <= 0 || p.pop.initialUnemploymentRate <= Share.Zero then 0
@@ -295,6 +298,21 @@ object Household:
         sampleHousehold(hhId, firm, sectorIdx, socialNetwork, rng)
       }
       Population(sampled.map(_.state), sampled.map(_.financialStocks))
+
+    private def calibrateConsumerLoans(stocks: Vector[FinancialStocks])(using p: SimParams): Vector[FinancialStocks] =
+      if stocks.isEmpty then stocks
+      else
+        val target = p.banking.initConsumerLoans
+        if target <= PLN.Zero then stocks.map(_.copy(consumerLoan = PLN.Zero))
+        else
+          val current   = stocks.iterator.map(_.consumerLoan).sumPln
+          val weights   =
+            if current > PLN.Zero then stocks.map(_.consumerLoan.distributeRaw).toArray
+            else Array.fill(stocks.length)(1L)
+          val allocated = com.boombustgroup.ledger.Distribute.distribute(target.toLong, weights)
+          stocks.zip(allocated).map { case (stock, rawConsumerLoan) =>
+            stock.copy(consumerLoan = PLN.fromRaw(rawConsumerLoan))
+          }
 
     private case class SampledHousehold(
         state: State,

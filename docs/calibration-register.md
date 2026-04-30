@@ -10,14 +10,15 @@ surface.
 
 The register is intentionally useful before every value has a final data
 source. Missing or weak provenance is marked explicitly with searchable tokens:
-`UNKNOWN_SOURCE`, `TUNED_NEEDS_VALIDATION`, `ASSUMED`, `PLACEHOLDER`, or
-`POLICY_SCENARIO`.
+`UNKNOWN_SOURCE`, `TUNED_NEEDS_VALIDATION`, `ASSUMED`, `PLACEHOLDER`,
+`EMPIRICAL_TRANSFORMED`, or `POLICY_SCENARIO`.
 
 ## Status Taxonomy
 
 | Status | Meaning |
 | --- | --- |
 | `EMPIRICAL` | Direct statutory, institutional, or data-note target is documented in code comments. |
+| `EMPIRICAL_TRANSFORMED` | Institutional/data target transformed to match the model perimeter or units. |
 | `CODE_NOTE_EMPIRICAL` | Code comments name source institution/year, but no source table or URL is attached yet. |
 | `ASSUMED` | Structural modeling assumption or stylized calibration. |
 | `TUNED_NEEDS_VALIDATION` | Behavioral/dynamic coefficient chosen for model behavior; needs sensitivity and validation work. |
@@ -196,11 +197,11 @@ source. Missing or weak provenance is marked explicitly with searchable tokens:
 | `monetary.qePace` | `5e9` | raw PLN/month | UNKNOWN_SOURCE | QE monthly purchase pace | Scaled by `gdpRatio` | `MonetaryConfig`, `SimParams` | `POLICY_SCENARIO` |
 | `monetary.qeMaxGdpShare` | `0.30` | GDP share | UNKNOWN_SOURCE | QE stock ceiling | Direct | `MonetaryConfig` | `POLICY_SCENARIO` |
 | `monetary.fxReserves` | `185e9` | raw PLN | Code note bridge: NBP bridge prior | Initial FX reserves | Scaled by `gdpRatio` | `MonetaryConfig`, `SimParams` | `CODE_NOTE_EMPIRICAL` |
-| `banking.initCapital` | `270e9` | raw PLN | Code note bridge: KNF bridge prior | Aggregate bank equity | Scaled by `gdpRatio` | `BankingConfig`, `SimParams` | `CODE_NOTE_EMPIRICAL` |
-| `banking.initDeposits` | `1900e9` | raw PLN | Code note bridge: NBP M3 bridge prior | Aggregate deposits | Scaled by `gdpRatio` | `BankingConfig`, `SimParams` | `CODE_NOTE_EMPIRICAL` |
-| `banking.initLoans` | `700e9` | raw PLN | Code note bridge: NBP bridge prior | Corporate loans | Scaled by `gdpRatio` | `BankingConfig`, `SimParams` | `CODE_NOTE_EMPIRICAL` |
+| `banking.initCapital` | `168e9` | raw PLN | KNF February 2026 TCR 21.1%, mapped to model RWA proxy | Aggregate regulatory-capital proxy | Scaled by `gdpRatio` | `BankingConfig`, `SimParams` | `EMPIRICAL_TRANSFORMED` |
+| `banking.initDeposits` | `2542.3e9` | raw PLN | KNF monthly banking data, February 2026 | Aggregate banking-sector deposits | Scaled by `gdpRatio` | `BankingConfig`, `SimParams` | `EMPIRICAL` |
+| `banking.initLoans` | `557.4e9` | raw PLN | KNF monthly banking data, February 2026: SME + large enterprises + individual entrepreneurs + individual farmers | Corporate/nonfinancial business loans | Scaled by `gdpRatio` | `BankingConfig`, `SimParams` | `EMPIRICAL_TRANSFORMED` |
 | `banking.initGovBonds`, `initNbpGovBonds` | `400e9`, `300e9` | raw PLN | Code note bridge: NBP bridge prior | Bank/NBP government-bond holdings | Scaled by `gdpRatio` | `BankingConfig`, `SimParams` | `CODE_NOTE_EMPIRICAL` |
-| `banking.initConsumerLoans` | `200e9` | raw PLN | Code note bridge: BIK bridge prior | Consumer loan stock | Scaled by `gdpRatio` | `BankingConfig`, `SimParams` | `CODE_NOTE_EMPIRICAL` |
+| `banking.initConsumerLoans` | `225.2e9` | raw PLN | KNF monthly banking data, February 2026 | Consumer loan stock | Scaled by `gdpRatio`; household opening consumer loans are normalized to this target | `BankingConfig`, `SimParams`, `Household.Init` | `EMPIRICAL` |
 | `banking.baseSpread` | `0.015` | annual rate | UNKNOWN_SOURCE | Base firm-loan spread | Direct | `BankingConfig` | `UNKNOWN_SOURCE` |
 | `banking.minCar` | `0.08` | multiplier/share | Code note bridge: Basel III CRR | Minimum capital adequacy | Direct | `BankingConfig` | `EMPIRICAL` |
 | `banking.loanRecovery` | `0.30` | share | UNKNOWN_SOURCE | Corporate loan recovery | Direct | `BankingConfig` | `UNKNOWN_SOURCE` |
@@ -209,8 +210,9 @@ source. Missing or weak provenance is marked explicitly with searchable tokens:
 | `banking.lcrMin`, `nsfrMin` | `1.0`, `1.0` | multiplier | Basel III | Minimum LCR/NSFR | Direct | `BankingConfig` | `EMPIRICAL` |
 | `banking.p2rAddons` | `[0.015, 0.010, 0.030, 0.015, 0.020, 0.025, 0.020]` | multiplier by bank | Code note bridge: KNF bridge prior | SREP/P2R add-ons | Direct | `BankingConfig` | `CODE_NOTE_EMPIRICAL` |
 | `banking.bfgLevyRate` | `0.0024` | annual rate | Code note bridge: BFG bridge prior | Resolution levy | `.monthly` in use | `BankingConfig` | `CODE_NOTE_EMPIRICAL` |
-| `banking.bfgDepositGuarantee` | `400000` | PLN/depositor | Code note bridge: BFG guarantee | Deposit guarantee threshold | Direct | `BankingConfig` | `EMPIRICAL` |
+| `banking.bfgDepositGuarantee` | `425370` | PLN/depositor | BFG EUR 100,000 guarantee converted at model-start PLN/EUR 4.2537 | Deposit guarantee threshold | Direct | `BankingConfig` | `EMPIRICAL_TRANSFORMED` |
 | `banking.ccybMax` | `0.025` | multiplier | Code note bridge: KNF bridge prior | Max CCyB | Direct | `BankingConfig` | `CODE_NOTE_EMPIRICAL` |
+| `banking.osiiBuffers` | `[0.020, 0.010, 0.005, 0.010, 0.015, 0.0025, 0.0025]` | multiplier by bank | KNF O-SII decisions announced November 2025 | O-SII buffers for default bank archetypes | Direct | `BankingConfig`, `Macroprudential` | `EMPIRICAL_TRANSFORMED` |
 | `banking.htmShare` | `0.60` | share | Code note bridge: NBP bridge prior | HTM share of gov bond portfolio | Direct | `BankingConfig` | `CODE_NOTE_EMPIRICAL` |
 | `banking.depositPanicRate` | `0.03` | monthly share | Code note bridge: Diamond-Dybvig mechanism | Panic switching after failure | Direct | `BankingConfig` | `TUNED_NEEDS_VALIDATION` |
 | `banking.eclRate1`, `eclRate2`, `eclRate3` | `0.01`, `0.08`, `0.50` | share | Code note bridge: KNF IFRS 9 | ECL provision rates | Direct | `BankingConfig` | `CODE_NOTE_EMPIRICAL` |
