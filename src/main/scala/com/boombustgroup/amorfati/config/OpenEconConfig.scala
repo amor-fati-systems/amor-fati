@@ -8,21 +8,21 @@ import com.boombustgroup.amorfati.types.*
   * Extends the basic ForexConfig with detailed trade dynamics: per-sector
   * import content, Marshall-Lerner elasticities, exchange rate bands, ULC-based
   * competitiveness, net foreign asset returns, EU structural transfers, and FDI
-  * base flow. Calibrated to GUS/NBP 2024 balance of payments data.
+  * base flow. Calibrated to GUS/NBP bridge prior balance of payments data.
   *
   * Stock values (`exportBase`, `euTransfers`, `fdiBase`) are in raw PLN —
   * scaled by `gdpRatio` in `SimParams.defaults`.
   *
   * @param importContent
-  *   per-sector import content of production (6 sectors, GUS supply-use tables
-  *   2024)
+  *   per-sector import content of production (6 sectors, supply-use bridge
+  *   prior)
   * @param erFloor
   *   exchange rate floor (PLN/EUR) — structural lower bound
   * @param erCeiling
   *   exchange rate ceiling (PLN/EUR) — structural upper bound
   * @param exportBase
-  *   monthly export base in raw PLN (scaled by gdpRatio, NBP BoP 2024: ~138.5
-  *   mld)
+  *   monthly export base in raw PLN (scaled by gdpRatio, NBP BoP bridge prior:
+  *   ~138.5 mld)
   * @param importPushCap
   *   maximum monthly import growth from demand pressure
   * @param foreignGdpGrowth
@@ -39,10 +39,10 @@ import com.boombustgroup.amorfati.types.*
   *   annual return rate on net foreign assets
   * @param euTransfers
   *   monthly EU structural transfers in raw PLN (scaled by gdpRatio, MFiPR
-  *   2024: ~1.458 mld)
+  *   bridge prior: ~1.458 mld)
   * @param fdiBase
-  *   monthly FDI base inflow in raw PLN (scaled by gdpRatio, NBP IIP 2024: ~583
-  *   mln)
+  *   monthly FDI base inflow in raw PLN (scaled by gdpRatio, NBP IIP bridge
+  *   prior: ~583 mln)
   * @param portfolioSensitivity
   *   sensitivity of portfolio flows to interest rate differential
   * @param riskPremiumSensitivity

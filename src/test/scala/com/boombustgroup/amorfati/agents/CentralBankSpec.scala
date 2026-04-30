@@ -127,8 +127,8 @@ class CentralBankSpec extends AnyFlatSpec with Matchers:
   // --- NbpState defaults ---
 
   "Nbp.State" should "carry policy and QE state without financial stocks" in {
-    val nbp = Nbp.State(Rate.decimal(575, 4), false, PLN.Zero, PLN.Zero)
-    nbp.referenceRate shouldBe Rate.decimal(575, 4)
+    val nbp = Nbp.State(p.monetary.initialRate, false, PLN.Zero, PLN.Zero)
+    nbp.referenceRate shouldBe p.monetary.initialRate
     nbp.qeActive shouldBe false
     nbp.qeCumulative shouldBe PLN.Zero
   }

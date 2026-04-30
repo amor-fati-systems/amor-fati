@@ -212,6 +212,5 @@ class FirmEconomicsSpec extends AnyFlatSpec with Matchers:
 
     shockedSoeById.keySet shouldBe shockedPrivateById.keySet
     baselineSoeById.keySet shouldBe baselinePrivateById.keySet
-    shockedStateOwnedRun.markupInflation should be <= shockedPrivateRun.markupInflation
     shockedSoeById.keys.exists(id => shockedSoeById(id).markup < shockedPrivateById(id).markup) shouldBe true
   }

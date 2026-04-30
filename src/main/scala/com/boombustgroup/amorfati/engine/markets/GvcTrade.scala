@@ -17,7 +17,7 @@ import com.boombustgroup.amorfati.util.Distributions
   * (1 − disruption). Import demand: sector output × GVC depth × differentiated
   * ER pass-through (EU vs non-EU). Disruptions recover at configurable rate.
   *
-  * Calibration: GUS foreign trade data 2024, NBP BoP statistics, OECD TiVA.
+  * Calibration: GUS foreign-trade bridge prior, NBP BoP statistics, OECD TiVA.
   */
 object GvcTrade:
 

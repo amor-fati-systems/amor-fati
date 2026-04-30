@@ -5,27 +5,28 @@ import com.boombustgroup.amorfati.types.*
 /** Commercial banking system: balance sheets, credit risk, LCR/NSFR,
   * macroprudential, and KNF/BFG supervision.
   *
-  * Models a multi-bank system (7 banks by default, calibrated to KNF 2024) with
-  * heterogeneous balance sheets, credit spreads, NPL dynamics, capital adequacy
-  * (Basel III CRR), liquidity coverage (LCR/NSFR), macroprudential buffers
-  * (CCyB, O-SII), KNF BION/SREP P2R add-ons, BFG resolution levy and bail-in,
-  * and interbank market.
+  * Models a multi-bank system (7 banks by default, calibrated to KNF bridge
+  * prior) with heterogeneous balance sheets, credit spreads, NPL dynamics,
+  * capital adequacy (Basel III CRR), liquidity coverage (LCR/NSFR),
+  * macroprudential buffers (CCyB, O-SII), KNF BION/SREP P2R add-ons, BFG
+  * resolution levy and bail-in, and interbank market.
   *
   * Stock values (`initCapital`, `initDeposits`, etc.) are in raw PLN — scaled
   * by `gdpRatio` in `SimParams.defaults`.
   *
   * @param initCapital
-  *   initial aggregate bank equity (KNF 2024: ~270 mld PLN)
+  *   initial aggregate bank equity (KNF bridge prior: ~270 mld PLN)
   * @param initDeposits
-  *   initial aggregate deposits (NBP M3 2024: ~1,900 mld PLN)
+  *   initial aggregate deposits (NBP M3 bridge prior: ~1,900 mld PLN)
   * @param initLoans
-  *   initial aggregate corporate loans (NBP 2024: ~700 mld PLN)
+  *   initial aggregate corporate loans (NBP bridge prior: ~700 mld PLN)
   * @param initGovBonds
-  *   initial commercial bank government bond holdings (NBP 2024: ~400 mld PLN)
+  *   initial commercial bank government bond holdings (NBP bridge prior: ~400
+  *   mld PLN)
   * @param initNbpGovBonds
-  *   initial NBP government bond holdings (NBP 2024: ~300 mld PLN)
+  *   initial NBP government bond holdings (NBP bridge prior: ~300 mld PLN)
   * @param initConsumerLoans
-  *   initial consumer loan stock (BIK 2024: ~200 mld PLN)
+  *   initial consumer loan stock (BIK bridge prior: ~200 mld PLN)
   * @param baseSpread
   *   base lending spread over policy rate
   * @param nplSpreadFactor
@@ -37,7 +38,7 @@ import com.boombustgroup.amorfati.types.*
   * @param profitRetention
   *   fraction of bank profits retained as capital
   * @param reserveReq
-  *   required reserve ratio (NBP 2024: 3.5%)
+  *   required reserve ratio (NBP bridge prior: 3.5%)
   * @param stressThreshold
   *   CAR threshold below which bank enters stress mode
   * @param lcrMin
@@ -49,28 +50,28 @@ import com.boombustgroup.amorfati.types.*
   * @param termDepositFrac
   *   fraction of deposits that are term (stable for NSFR purposes)
   * @param p2rAddons
-  *   per-bank BION/SREP P2R capital add-ons (KNF 2024, 7 banks)
+  *   per-bank BION/SREP P2R capital add-ons (KNF bridge prior, 7 banks)
   * @param bfgLevyRate
-  *   annual BFG resolution fund levy as fraction of deposits (BFG 2024)
+  *   annual BFG resolution fund levy as fraction of deposits (BFG bridge prior)
   * @param bailInDepositHaircut
   *   fraction of uninsured deposits bailed-in during resolution
   * @param bfgDepositGuarantee
   *   BFG deposit guarantee limit per depositor (PLN, BFG: 400,000)
   * @param ccybMax
-  *   maximum countercyclical capital buffer (KNF 2024: 2.5%)
+  *   maximum countercyclical capital buffer (KNF bridge prior: 2.5%)
   * @param ccybActivationGap
   *   credit/GDP gap threshold to activate CCyB
   * @param ccybReleaseGap
   *   credit/GDP gap threshold to release CCyB
   * @param osiiPkoBp
-  *   O-SII buffer for PKO BP (KNF 2024: 1.0%)
+  *   O-SII buffer for PKO BP (KNF bridge prior: 1.0%)
   * @param osiiPekao
-  *   O-SII buffer for Pekao (KNF 2024: 0.5%)
+  *   O-SII buffer for Pekao (KNF bridge prior: 0.5%)
   * @param concentrationLimit
   *   single-name concentration limit as fraction of capital (Art. 395 CRR: 25%)
   * @param htmShare
-  *   fraction of gov bond portfolio classified Held-to-Maturity (NBP 2024:
-  *   ~60%)
+  *   fraction of gov bond portfolio classified Held-to-Maturity (NBP bridge
+  *   prior: ~60%)
   * @param htmForcedSaleThreshold
   *   LCR threshold (as fraction of lcrMin) below which HTM bonds are forcibly
   *   reclassified to AFS, realizing hidden mark-to-market losses (interest rate
@@ -79,7 +80,7 @@ import com.boombustgroup.amorfati.types.*
   *   fraction of HTM portfolio reclassified to AFS per month under LCR stress
   * @param initHtmBookYield
   *   weighted-average acquisition yield on initial HTM portfolio (Polish 10Y at
-  *   model start, MF 2024)
+  *   model start, MF bridge prior)
   * @param depositFlightSensitivity
   *   sensitivity of deposit switching to CAR shortfall below threshold
   * @param depositFlightCarThreshold
@@ -126,9 +127,9 @@ case class BankingConfig(
     nplSpreadFactor: Multiplier = Multiplier(5),
     minCar: Multiplier = Multiplier.decimal(8, 2),
     loanRecovery: Share = Share.decimal(30, 2),
-    firmLoanAmortRate: Rate = Rate.fraction(1, 60),          // monthly: 1/60 ≈ 5-year avg maturity (NBP 2024)
+    firmLoanAmortRate: Rate = Rate.fraction(1, 60),          // monthly: 1/60 ≈ 5-year avg maturity (NBP bridge prior)
     profitRetention: Share = Share.decimal(30, 2),
-    govBondDuration: Multiplier = Multiplier.decimal(45, 1), // avg modified duration of Polish gov bond portfolio (years, MF 2024)
+    govBondDuration: Multiplier = Multiplier.decimal(45, 1), // avg modified duration of Polish gov bond portfolio (years, MF bridge prior)
     reserveReq: Share = Share.decimal(35, 3),
     stressThreshold: Share = Share.decimal(5, 2),
     // LCR/NSFR (Basel III)
@@ -149,7 +150,7 @@ case class BankingConfig(
     bfgLevyRate: Rate = Rate.decimal(24, 4),
     bailInDepositHaircut: Share = Share.decimal(8, 2),
     bfgDepositGuarantee: PLN = PLN(400000),
-    // Macroprudential (KNF 2024)
+    // Macroprudential (KNF bridge prior)
     ccybMax: Multiplier = Multiplier.decimal(25, 3),
     ccybActivationGap: Coefficient = Coefficient.decimal(2, 2),
     ccybReleaseGap: Coefficient = Coefficient.decimal(-2, 2),

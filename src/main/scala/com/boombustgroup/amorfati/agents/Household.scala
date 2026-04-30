@@ -223,9 +223,10 @@ object Household:
   object Init:
 
     /** Create individual households with multi-bank assignment. Firm job slots
-      * are initialized as employed households; the NAIRU stock is added as
-      * unemployed labor-force participants outside those firm slots, so
-      * baseline unemployment does not create artificial same-month vacancies.
+      * are initialized as employed households; the configured initial
+      * unemployment stock is added as unemployed labor-force participants
+      * outside those firm slots, so baseline unemployment does not create
+      * artificial same-month vacancies.
       */
     def create(randomness: InitRandomness.HouseholdStreams, firms: Vector[Firm.State])(using p: SimParams): Population =
       val employedSlots = firms.map(Firm.workerCount).sum
@@ -242,9 +243,9 @@ object Household:
       Population(banked ++ unemployed.map(_.state), initialized.financialStocks ++ unemployed.map(_.financialStocks))
 
     private def initialUnemployedCount(employedSlots: Int)(using p: SimParams): Int =
-      if employedSlots <= 0 || p.monetary.nairu <= Share.Zero then 0
+      if employedSlots <= 0 || p.pop.initialUnemploymentRate <= Share.Zero then 0
       else
-        val employedShareRaw = (Share.One - p.monetary.nairu).toLong
+        val employedShareRaw = (Share.One - p.pop.initialUnemploymentRate).toLong
         val total            =
           ((BigInt(employedSlots) * BigInt(FixedPointBase.Scale)) + BigInt(employedShareRaw - 1L)) / BigInt(employedShareRaw)
         Math.max(0, total.toInt - employedSlots)

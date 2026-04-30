@@ -11,7 +11,7 @@ import com.boombustgroup.amorfati.types.*
   *
   * @param baseRevenue
   *   monthly revenue per worker before demand shocks (PLN, calibrated to GUS
-  *   F-01 2024)
+  *   GUS F-01 bridge prior)
   * @param productivityGrowth
   *   baseline annual firm productivity trend
   * @param otherCosts
@@ -33,12 +33,13 @@ import com.boombustgroup.amorfati.types.*
   * @param demandPassthrough
   *   fraction of aggregate demand shock passed to firm revenue
   * @param entryRate
-  *   base monthly probability of new firm entry per vacant slot (GUS CEIDG
-  *   2024)
+  *   base monthly probability of new firm entry per vacant slot (enterprise
+  *   bridge prior)
   * @param entryProfitSens
   *   sensitivity of entry probability to sector profitability
   * @param entrySectorBarriers
-  *   per-sector entry barrier multiplier (6 sectors, GUS CEIDG/KRS 2024)
+  *   per-sector entry barrier multiplier (6 sectors, enterprise-size bridge
+  *   prior)
   * @param entryAiThreshold
   *   sector average DR above which new entrants may be AI-native
   * @param entryAiProb
@@ -93,7 +94,7 @@ import com.boombustgroup.amorfati.types.*
 case class FirmConfig(
     // Production & costs
     baseRevenue: PLN = PLN(180000),
-    productivityGrowth: Rate = Rate.decimal(85, 3),
+    productivityGrowth: Rate = Rate.decimal(3, 2),
     otherCosts: PLN = PLN(16667),
     aiCapex: PLN = PLN(1200000),
     hybridCapex: PLN = PLN(350000),

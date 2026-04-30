@@ -7,8 +7,8 @@ import com.boombustgroup.amorfati.types.*
   * expectations.
   *
   * Three interacting mechanisms: (1) sectoral labor mobility with friction
-  * matrix (GUS LFS 2024, Shimer 2005), (2) trade unions with per-sector
-  * density, wage premia, and downward rigidity (GUS 2024), and (3)
+  * matrix (GUS LFS bridge prior, Shimer 2005), (2) trade unions with per-sector
+  * density, wage premia, and downward rigidity (GUS bridge prior), and (3)
   * forward-looking inflation/wage expectations with adaptive learning and
   * central bank credibility (Carroll 2003, Bewley 1999, NBP target band).
   *
@@ -26,8 +26,12 @@ import com.boombustgroup.amorfati.types.*
   *   weight of vacancy rate in sectoral attractiveness
   * @param adjacentFrictionMax
   *   maximum friction for adjacent sectors (caps transition difficulty)
+  * @param structuralMatchRate
+  *   monthly matching rate for the structural unemployment pool
+  * @param cyclicalMatchRate
+  *   monthly matching rate for unemployment above NAIRU
   * @param unionDensity
-  *   per-sector union membership density (6 sectors, GUS 2024)
+  *   per-sector union membership density (6 sectors, GUS bridge prior)
   * @param unionWagePremium
   *   wage premium for unionized workers (empirical: ~8%)
   * @param unionRigidity
@@ -50,7 +54,7 @@ import com.boombustgroup.amorfati.types.*
   *   sensitivity of bond yields to inflation expectations
   */
 case class LaborConfig(
-    // Sectoral mobility (GUS LFS 2024, Shimer 2005)
+    // Sectoral mobility (GUS LFS bridge prior, Shimer 2005)
     frictionMatrix: Vector[Vector[Share]] = SectoralMobility.DefaultFrictionMatrix,
     frictionDurationMult: Multiplier = Multiplier(1),
     frictionCostMult: Share = Share.decimal(5, 1),
@@ -58,12 +62,14 @@ case class LaborConfig(
     voluntaryWageThreshold: Share = Share.decimal(20, 2),
     vacancyWeight: Coefficient = Coefficient(2),
     adjacentFrictionMax: Share = Share.decimal(4, 1),
-    // Unions (GUS 2024)
+    structuralMatchRate: Share = Share.decimal(5, 3),
+    cyclicalMatchRate: Share = Share.decimal(15, 2),
+    // Unions (GUS bridge prior)
     unionDensity: Vector[Share] =
       Vector(Share.decimal(2, 2), Share.decimal(15, 2), Share.decimal(3, 2), Share.decimal(12, 2), Share.decimal(30, 2), Share.decimal(4, 2)),
     unionWagePremium: Share = Share.decimal(8, 2),
     unionRigidity: Share = Share.decimal(50, 2),
-    // Skills-biased technological change (Acemoglu & Restrepo 2020, Autor 2024)
+    // Skills-biased technological change (Acemoglu & Restrepo, Autor)
     sbtcEduRoutineness: Vector[Share] =
       Vector(Share.decimal(80, 2), Share.decimal(65, 2), Share.decimal(45, 2), Share.decimal(25, 2)), // Primary, Vocational, Secondary, Tertiary
     sbtcComplementPremium: Share = Share.decimal(15, 2),                                              // max wage premium for AI-complemented cognitive workers

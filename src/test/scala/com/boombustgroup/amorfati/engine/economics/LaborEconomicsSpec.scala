@@ -51,22 +51,22 @@ class LaborEconomicsSpec extends AnyFlatSpec with Matchers:
   }
 
   it should "index nominal wage pressure to anchored expected inflation" in {
-    val zeroExpected   = world.copy(
+    val zeroExpected = world.copy(
       mechanisms = world.mechanisms.copy(
         expectations = world.mechanisms.expectations.copy(expectedInflation = Rate.Zero),
       ),
     )
-    val targetExpected = world.copy(
+    val highExpected = world.copy(
       mechanisms = world.mechanisms.copy(
-        expectations = world.mechanisms.expectations.copy(expectedInflation = p.monetary.targetInfl),
+        expectations = world.mechanisms.expectations.copy(expectedInflation = Rate.decimal(8, 2)),
       ),
     )
 
-    val zeroResult   = LaborEconomics.compute(zeroExpected, firms, households, s1)
-    val targetResult = LaborEconomics.compute(targetExpected, firms, households, s1)
+    val zeroResult = LaborEconomics.compute(zeroExpected, firms, households, s1)
+    val highResult = LaborEconomics.compute(highExpected, firms, households, s1)
 
-    targetResult.newWage should be > zeroResult.newWage
-    targetResult.wageGrowth should be > zeroResult.wageGrowth
+    highResult.newWage should be > zeroResult.newWage
+    highResult.wageGrowth should be > zeroResult.wageGrowth
   }
 
   it should "add wage pressure when unemployment is below NAIRU" in {

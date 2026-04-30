@@ -11,9 +11,9 @@ import com.boombustgroup.amorfati.types.*
   * flows.
   *
   * Computes mortgage debt service, deposit interest, diaspora remittance
-  * inflows (NBP BoP 2024), tourism services (GUS TSA 2023), and consumer credit
-  * aggregation. Connects household-level flows to the banking sector and
-  * external accounts.
+  * inflows (NBP BoP bridge prior), tourism services (GUS TSA 2023), and
+  * consumer credit aggregation. Connects household-level flows to the banking
+  * sector and external accounts.
   *
   * Extracted from HouseholdFinancialStep (Calculus vs Accounting split).
   */

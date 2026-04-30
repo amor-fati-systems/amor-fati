@@ -6,11 +6,12 @@ import com.boombustgroup.amorfati.types.*
   *
   * BGK (Bank Gospodarstwa Krajowego) and PFR (Polski Fundusz Rozwoju) issue
   * state-guaranteed bonds off the MF balance sheet to finance infrastructure,
-  * crisis programs, and subsidized lending. ~200 mld PLN outstanding (NIK
-  * 2024).
+  * crisis programs, and subsidized lending. Outstanding stock uses the
+  * 2026-04-30 quasi-fiscal bridge prior.
   *
   * @param issuanceShare
-  *   fraction of gov capital spending routed through BGK/PFR (NIK 2024: ~40%)
+  *   fraction of gov capital spending routed through BGK/PFR (NIK bridge prior:
+  *   ~40%)
   * @param avgMaturityMonths
   *   average maturity of BGK/PFR bonds (longer than SPW, ~72 months / 6 years)
   * @param nbpAbsorptionShare

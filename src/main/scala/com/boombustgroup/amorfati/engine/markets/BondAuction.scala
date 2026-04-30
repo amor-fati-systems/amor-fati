@@ -8,11 +8,11 @@ import com.boombustgroup.amorfati.types.*
   * Models the primary market for Polish government bonds (skarbowe papiery
   * wartościowe, SPW) with two demand channels:
   *
-  *   1. '''Foreign demand''' (~35% of SPW stock, NBP 2024) is a function of the
-  *      yield spread vs German Bund and PLN exchange rate expectations. Higher
-  *      spread attracts carry trade; PLN depreciation deters (risk-off). This
-  *      is a natural stabilizer: yield shock → higher spread → more foreign
-  *      demand → absorption → lower yield pressure.
+  *   1. '''Foreign demand''' (~35% of SPW stock, NBP bridge prior) is a
+  *      function of the yield spread vs German Bund and PLN exchange rate
+  *      expectations. Higher spread attracts carry trade; PLN depreciation
+  *      deters (risk-off). This is a natural stabilizer: yield shock → higher
+  *      spread → more foreign demand → absorption → lower yield pressure.
   *   2. '''Absorption constraint''' — total demand (domestic + foreign) vs new
   *      issuance. When bid-to-cover ratio < 1, the auction is undersubscribed:
   *      not all bonds are placed, unfunded deficit accumulates as floating

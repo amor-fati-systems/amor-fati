@@ -11,11 +11,11 @@ import com.boombustgroup.amorfati.types.*
   * and RemittanceConfig.
   *
   * @param baseExRate
-  *   PLN/EUR exchange rate at simulation start (NBP 2024: ~4.33)
+  *   PLN/EUR exchange rate at simulation start
   * @param foreignRate
-  *   foreign (ECB) reference interest rate for IRP
+  *   foreign (ECB main refinancing) reference interest rate for IRP
   * @param importPropensity
-  *   aggregate import-to-GDP ratio (GUS/NBP 2024: ~22%)
+  *   aggregate import-to-GDP ratio (GUS/NBP bridge prior: ~22%)
   * @param techImportShare
   *   share of imports classified as technology/capital goods
   * @param irpSensitivity
@@ -40,8 +40,8 @@ import com.boombustgroup.amorfati.types.*
   *   portfolio outflow sensitivity to auction undersubscription
   */
 case class ForexConfig(
-    baseExRate: ExchangeRate = ExchangeRate.decimal(433, 2),
-    foreignRate: Rate = Rate.decimal(4, 2),
+    baseExRate: ExchangeRate = ExchangeRate.decimal(42537, 4),
+    foreignRate: Rate = Rate.decimal(215, 4),
     importPropensity: Share = Share.decimal(22, 2),
     techImportShare: Share = Share.decimal(40, 2),
     irpSensitivity: Coefficient = Coefficient.decimal(15, 2),

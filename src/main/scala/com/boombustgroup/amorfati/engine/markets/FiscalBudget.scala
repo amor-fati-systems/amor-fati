@@ -48,8 +48,8 @@ object FiscalBudget:
     * — a yield shock passes through over the configured debt-portfolio maturity
     * instead of instantly, matching the MF flat redemption profile.
     *
-    * Calibration: MF budgetary law structure 2024, GUS public finance
-    * statistics, NBP government securities data.
+    * Calibration: MF budgetary bridge prior, GUS public finance statistics, NBP
+    * government securities data.
     */
   case class GovFinancialState(
       cumulativeDebt: PLN, // fiscal debt metric (Σ deficits since t = 0), not a separate holder-tracked instrument
@@ -59,7 +59,7 @@ object FiscalBudget:
       bondYield: Rate = Rate.Zero,                    // lagged market yield (for lending rates)
       weightedCoupon: Rate = Rate.Zero,               // portfolio-weighted average coupon (WAM rolling model)
       publicCapitalStock: PLN = PLN.Zero,             // public capital stock accumulated from domestic capex and EU project capital
-      minWageLevel: PLN = PLN(4666),                  // statutory minimum wage (PLN/month, GUS 2024)
+      minWageLevel: PLN = PLN(4666),                  // statutory minimum wage (PLN/month, GUS bridge prior)
       minWagePriceLevel: PriceIndex = PriceIndex.Base, // price level at last minimum wage adjustment
   )
 

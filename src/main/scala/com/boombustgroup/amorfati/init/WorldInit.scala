@@ -64,7 +64,7 @@ object WorldInit:
     val initInsuranceBalances = Insurance.initialBalances
     val initNbfiBalances      = Nbfi.initialBalances
     val initExpectations      = ExpectationsInit.create()
-    val initInflation         = p.monetary.targetInfl
+    val initInflation         = p.monetary.initialInflation
     val initDomesticGovBonds  = p.banking.initGovBonds + p.banking.initNbpGovBonds +
       initInsuranceBalances.govBondHoldings + initNbfiBalances.tfiGovBondHoldings
     val initForeignGovBonds   = (p.fiscal.initGovDebt - initDomesticGovBonds).max(PLN.Zero)
@@ -74,7 +74,7 @@ object WorldInit:
     // --- Steady-state gross investment ---
     val initGrossInvestment = PLN.fromRaw(firms.map(f => (f.capitalStock * p.capital.depRates(f.sector.toInt).monthly).toLong).sum)
     val initGreenInvestment = PLN.fromRaw(firms.map(f => (f.greenCapital * p.climate.greenDepRate.monthly).toLong).sum)
-    val initMonthlyGdp      = p.firm.baseRevenue * p.pop.firmsCount
+    val initMonthlyGdp      = (p.pop.realGdp * p.gdpRatio.toMultiplier) / 12
     val initFiscalDeficit   = initMonthlyGdp * p.fiscal.sgpDeficitLimit
     val initGovCurrentSpend = p.fiscal.govBaseSpending * (Share.One - p.fiscal.govInvestShare)
     val initGovCapitalSpend = p.fiscal.govBaseSpending * p.fiscal.govInvestShare

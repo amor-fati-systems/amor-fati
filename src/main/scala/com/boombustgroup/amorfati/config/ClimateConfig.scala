@@ -5,21 +5,22 @@ import com.boombustgroup.amorfati.types.*
 /** Energy costs and climate policy: EU ETS carbon pricing, green capital
   * investment, and decarbonization.
   *
-  * Models per-sector energy cost burdens (Eurostat/GUS 2023), EU ETS carbon
-  * pricing with price drift (KOBiZE 2024, EC Fit for 55), and green capital
-  * investment pathway: firms allocate a budget share to green capital with
-  * separate K/L ratios, achieving energy cost discounts up to 30% as green
-  * capital stock grows. Green capital has lower depreciation than conventional
-  * capital.
+  * Models per-sector energy cost burdens (Eurostat/GUS bridge prior), EU ETS
+  * carbon pricing with price drift (KOBiZE bridge prior, EC Fit for 55), and
+  * green capital investment pathway: firms allocate a budget share to green
+  * capital with separate K/L ratios, achieving energy cost discounts up to 30%
+  * as green capital stock grows. Green capital has lower depreciation than
+  * conventional capital.
   *
   * @param energyCostShares
   *   per-sector energy cost as fraction of revenue (6 sectors, Eurostat/GUS
-  *   2023)
+  *   bridge prior)
   * @param carbonIntensity
   *   per-sector carbon intensity in tCO2/PLN of revenue (6 sectors, KOBiZE
-  *   2024)
+  *   bridge prior)
   * @param etsBasePrice
-  *   EU ETS carbon price at simulation start (EUR/tCO2, KOBiZE 2024: ~80 EUR)
+  *   EU ETS carbon price at simulation start (EUR/tCO2, KOBiZE bridge prior:
+  *   ~80 EUR)
   * @param etsPriceDrift
   *   annual drift rate of ETS carbon price (EC Fit for 55 trajectory: ~3%)
   * @param greenKLRatios

@@ -614,7 +614,16 @@ object FirmEconomics:
     val startId        = afterRemoval.map(_.id.toInt).maxOption.getOrElse(-1) + 1
     val newImmigrants  = Immigration.spawnImmigrantPopulation(in.s2.newImmig.monthlyInflow, startId, rng)
     val availableLabor = afterRemoval ++ newImmigrants.households
-    val searchResult   = LaborMarket.jobSearch(availableLabor, ioFirms, in.s2.newWage, rng, in.s2.regionalWages)
+    val maxHires       = LaborMarket.monthlyMatchingCapacity(availableLabor, in.s2.newDemographics.workingAgePop)
+    val searchResult   = LaborMarket.jobSearch(
+      availableLabor,
+      ioFirms,
+      in.s2.newWage,
+      rng,
+      in.s2.regionalWages,
+      maxHires = Some(maxHires),
+      priorityHouseholdIds = newImmigrants.households.map(_.id).toSet,
+    )
     val postWages      = LaborMarket.updateWages(searchResult.households, ioFirms, in.s2.newWage)
     val newStocksById  = newImmigrants.households.zip(newImmigrants.financialStocks).map((household, stocks) => household.id -> stocks).toMap
 

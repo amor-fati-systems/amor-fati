@@ -215,7 +215,7 @@ object Banking:
       id: BankId,                   // unique bank identifier (0–6)
       name: String,                 // human-readable label (KNF registry)
       initMarketShare: Share,       // deposit-weighted share at t = 0
-      initCet1: Share,              // initial CET1 ratio (KNF 2024)
+      initCet1: Share,              // initial CET1 ratio (KNF bridge prior)
       lendingSpread: Rate,          // bank-specific spread over base lending rate
       sectorAffinity: Vector[Share], // relative lending preference per sector
   )
@@ -312,7 +312,7 @@ object Banking:
   )
 
   // ---------------------------------------------------------------------------
-  // Default configs (7 Polish banks, KNF 2024)
+  // Default configs (7 Polish banks, KNF bridge prior)
   // ---------------------------------------------------------------------------
 
   private def affinity(xs: Share*): Vector[Share] = xs.toVector

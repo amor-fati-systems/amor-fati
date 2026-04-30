@@ -184,11 +184,11 @@ class InsuranceSectorSpec extends AnyFlatSpec with Matchers:
     r.lastNetDepositChange shouldBe PLN.Zero
   }
 
-  "Config defaults" should "have InsLifeReserves consistent with KNF 2024 calibration" in {
+  "Config defaults" should "have InsLifeReserves consistent with the 2026-04-30 bridge calibration" in {
     p.ins.lifeReserves should be > PLN.Zero
   }
 
-  it should "have InsNonLifeReserves consistent with KNF 2024 calibration" in {
+  it should "have InsNonLifeReserves consistent with the 2026-04-30 bridge calibration" in {
     p.ins.nonLifeReserves should be > PLN.Zero
   }
 

@@ -230,7 +230,8 @@ object WorldAssemblyEconomics:
         .filter(f => Firm.isAlive(f) && Firm.isInStartup(f))
         .map(_.startupFilledWorkers)
         .sum
-      val searchResult          = LaborMarket.jobSearch(households, firms, in.s2.newWage, rng, in.s2.regionalWages, startupIds)
+      val maxHires              = LaborMarket.monthlyMatchingCapacity(households, in.s2.newDemographics.workingAgePop)
+      val searchResult          = LaborMarket.jobSearch(households, firms, in.s2.newWage, rng, in.s2.regionalWages, startupIds, Some(maxHires))
       val postWages             = LaborMarket.updateWages(searchResult.households, firms, in.s2.newWage)
       val staffedFirms          = syncStartupStaffing(firms, postWages)
       val startupFilled         = staffedFirms.filter(f => Firm.isAlive(f) && Firm.isInStartup(f)).map(_.startupFilledWorkers).sum

@@ -12,7 +12,7 @@ import com.boombustgroup.amorfati.types.*
   * assignments (GUS structural shares), size distribution, digital readiness,
   * physical capital, inventories, green capital, FDI ownership, and bank
   * relationships. Cash and debt are distributed proportionally to workforce
-  * share (NBP M3 2024 corporate deposit split).
+  * share (NBP M3 bridge prior corporate deposit split).
   *
   * RNG ordering matters: passes are separated so that adding a new stochastic
   * draw in one pass (e.g. FDI) does not shift the random sequence of another
@@ -21,7 +21,7 @@ import com.boombustgroup.amorfati.types.*
 object FirmInit:
 
   // ---- Calibration constants ----
-  private val FirmDepositShare   = Share.decimal(35, 2)      // NBP M3 2024: ~35% of deposits are corporate
+  private val FirmDepositShare   = Share.decimal(35, 2)      // NBP M3 bridge prior: ~35% of deposits are corporate
   private val CashMin            = PLN(10000)                // PLN floor for initial cash draw
   private val CashMax            = PLN(80000)                // PLN ceiling for initial cash draw
   private val LargeCashBonus     = PLN(200000)               // PLN bonus for top-decile firms (lottery draw)
@@ -34,7 +34,7 @@ object FirmInit:
   private val DrFloor            = Share.decimal(2, 2)       // minimum digital readiness
   private val DrCap              = Share.decimal(98, 2)      // maximum digital readiness
   private val InitHybridMinSigma = Sigma(5)                  // minimum sector sigma for init Hybrid (BPO=50, Mfg=10, Retail=5)
-  private val InitHybridProb     = Share.decimal(8, 2)       // ~8% of eligible firms start as Hybrid (OECD 2024: 5-10%)
+  private val InitHybridProb     = Share.decimal(8, 2)       // ~8% of eligible firms start as Hybrid (OECD bridge prior: 5-10%)
 
   case class Population(
       firms: Vector[Firm.State],
@@ -79,11 +79,11 @@ object FirmInit:
       .map: i =>
         val sec          = p.sectorDefs(sectorAssignments(i))
         val firmSize     = FirmSizeDistribution.draw(rng)
-        // Preserve the historical RNG contract; final cash is assigned in the
+        // Preserve the pre-existing RNG contract; final cash is assigned in the
         // deterministic ledger-stock pass below.
         rng.between(CashMin.toLong, CashMax.toLong) + (if LargeCashProb.sampleBelow(rng) then LargeCashBonus.toLong else 0L)
         val dr           = TypedRandom.withGaussianNoise(sec.baseDigitalReadiness, DrNoise, rng).clamp(DrFloor, DrCap)
-        // Init tech mix: high-σ sectors with high DR may start as Hybrid (OECD 2024: ~5-10% AI adoption)
+        // Init tech mix: high-σ sectors with high DR may start as Hybrid (OECD bridge prior: ~5-10% AI adoption)
         val isHybridInit = sec.sigma >= InitHybridMinSigma &&
           dr > p.firm.hybridReadinessMin &&
           InitHybridProb.sampleBelow(rng)

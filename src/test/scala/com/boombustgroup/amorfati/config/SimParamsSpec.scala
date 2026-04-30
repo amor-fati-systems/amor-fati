@@ -16,6 +16,15 @@ class SimParamsSpec extends AnyFlatSpec with Matchers:
 
   // ── GdpRatio ──
 
+  "SimParams.defaults" should "use the Poland 2026-04-30 production baseline" in {
+    decimal(p.pop.realGdp) shouldBe BigDecimal("4160e9")
+    decimal(p.pop.initialUnemploymentRate) shouldBe BigDecimal("0.061")
+    decimal(p.monetary.initialRate) shouldBe BigDecimal("0.0375")
+    decimal(p.monetary.initialInflation) shouldBe BigDecimal("0.030")
+    decimal(p.forex.baseExRate) shouldBe BigDecimal("4.2537")
+    decimal(p.forex.foreignRate) shouldBe BigDecimal("0.0215")
+  }
+
   "SimParams.defaults.gdpRatio" should "match GdpRatio for Gus size distribution" in {
     val expected = SimParams.computeGdpRatio(p.pop, p.firm.baseRevenue)
     gdpRatio shouldBe decimal(expected) +- BigDecimal("1e-12")
@@ -31,11 +40,11 @@ class SimParamsSpec extends AnyFlatSpec with Matchers:
   // ── Fiscal ──
 
   "FiscalConfig" should "have gdpRatio-scaled govBaseSpending" in {
-    decimal(p.fiscal.govBaseSpending) shouldBe (BigDecimal("58.3e9") * gdpRatio) +- BigDecimal("1.0")
+    decimal(p.fiscal.govBaseSpending) shouldBe (BigDecimal("76.575e9") * gdpRatio) +- BigDecimal("1.0")
   }
 
   it should "have gdpRatio-scaled initGovDebt" in {
-    decimal(p.fiscal.initGovDebt) shouldBe (BigDecimal("1600e9") * gdpRatio) +- BigDecimal("1.0")
+    decimal(p.fiscal.initGovDebt) shouldBe (BigDecimal("2235e9") * gdpRatio) +- BigDecimal("1.0")
   }
 
   "p.fiscal.initGovDebt" should "delegate to fiscal.initGovDebt" in {

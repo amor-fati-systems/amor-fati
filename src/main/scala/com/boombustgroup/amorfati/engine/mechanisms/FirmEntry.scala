@@ -12,7 +12,8 @@ import com.boombustgroup.amorfati.random.RandomStream
   * append net new firms when cyclical labor-market signals support expansion.
   * Sector choice is weighted by relative profitability signals across sectors.
   * Firms in more profitable sectors attract more entrants, subject to
-  * sector-specific regulatory barriers (GUS CEIDG/KRS 2024 calibration).
+  * sector-specific regulatory barriers (GUS CEIDG/KRS bridge prior
+  * calibration).
   *
   * New entrants may be AI-native (hybrid technology with partial automation)
   * when the economy-wide technology adoption rate exceeds a maturity threshold,

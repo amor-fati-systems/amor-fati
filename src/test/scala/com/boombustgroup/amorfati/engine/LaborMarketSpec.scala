@@ -183,6 +183,31 @@ class LaborMarketSpec extends AnyFlatSpec with Matchers:
     result(9).status shouldBe a[HhStatus.Employed]
   }
 
+  it should "respect a monthly matching capacity when provided" in {
+    val rng   = RandomStream.seeded(42)
+    val firms = Vector(mkFirms(1)(0).copy(tech = TechState.Traditional(4), initialSize = 4))
+    val hhs   = Vector(
+      mkHousehold(0, HhStatus.Employed(FirmId(0), SectorIdx(2), PLN(8000))),
+      mkHousehold(1, HhStatus.Unemployed(1), skill = BigDecimal("0.9")),
+      mkHousehold(2, HhStatus.Unemployed(1), skill = BigDecimal("0.8")),
+      mkHousehold(3, HhStatus.Unemployed(1), skill = BigDecimal("0.7")),
+    )
+
+    val result = LaborMarket.jobSearch(hhs, firms, PLN(8000), rng, maxHires = Some(1)).households
+
+    result.count(_.status.isInstanceOf[HhStatus.Employed]) shouldBe 2
+    result(1).status shouldBe a[HhStatus.Employed]
+    result(2).status shouldBe HhStatus.Unemployed(1)
+    result(3).status shouldBe HhStatus.Unemployed(1)
+  }
+
+  it should "derive monthly matching capacity from structural and cyclical unemployment pools" in {
+    val hhs      = (0 until 1000).map(i => mkHousehold(i, HhStatus.Unemployed(1))).toVector
+    val capacity = LaborMarket.monthlyMatchingCapacity(hhs, laborForcePopulation = 10000)
+
+    capacity shouldBe 78
+  }
+
   it should "let startup firms keep hiring up to startupTargetWorkers during startup" in {
     val rng    = RandomStream.seeded(42)
     val firms  = Vector(

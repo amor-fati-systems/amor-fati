@@ -16,12 +16,12 @@ import com.boombustgroup.amorfati.types.*
   * Dividends split between domestic (subject to Belka 19% PIT) and foreign
   * holders. Foreign-ownership share mean-reverts to calibrated share.
   *
-  * Calibration: GPW market data 2024, NBP BoP statistics.
+  * Calibration: GPW market bridge prior, NBP BoP statistics.
   */
 object EquityMarket:
 
   // --- Named constants ---
-  private val EquityRiskPremium      = Rate.decimal(5, 2)   // GPW historical average
+  private val EquityRiskPremium      = Rate.decimal(5, 2)   // GPW market bridge prior
   private val MinDiscountRate        = Rate.decimal(2, 2)   // floor to avoid near-zero discount
   private val GrowthFloor            = Rate.decimal(-10, 2) // max annualized contraction
   private val GordonSingularityGuard = Rate.decimal(5, 3)   // min denominator (r - g) to avoid explosion

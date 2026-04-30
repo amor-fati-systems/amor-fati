@@ -15,7 +15,8 @@ import com.boombustgroup.amorfati.types.*
   *     (λ=0.05 monthly ≈ quarterly HP filter with λ=1600, per Drehmann & Yetman
   *     2018).
   *   - **O-SII** (Other Systemically Important Institutions): per-bank
-  *     surcharges calibrated to KNF 2024 decisions (PKO BP 1.0%, Pekao 0.5%).
+  *     surcharges calibrated to KNF bridge prior decisions (PKO BP 1.0%, Pekao
+  *     0.5%).
   *   - **P2R** (Pillar 2 Requirement): per-bank BION/SREP add-ons from KNF.
   *   - **Concentration limit**: single-name exposure cap as share of system
   *     loans.

@@ -15,7 +15,7 @@ enum Topology(val label: String):
   */
 case class SectorDef(
     name: String,
-    share: Share,                // Share of firm population (GUS BAEL 2024)
+    share: Share,                // Share of firm population
     sigma: Sigma,                // CES elasticity of substitution
     wageMultiplier: Multiplier,  // Sector wage multiplier vs national average
     revenueMultiplier: Multiplier,
@@ -45,9 +45,10 @@ case class SectorDef(
   *   - `sectorDefs`, `topology`, `gdpRatio` — simulation infrastructure
   *
   * Stock values in sub-configs use raw PLN amounts. `SimParams.defaults`
-  * applies `gdpRatio` scaling so that agent-level flows map correctly to real
-  * Polish GDP (~3.5 bln PLN). Do NOT construct SimParams directly with unscaled
-  * values — always start from `defaults` and use `.copy()`.
+  * applies `gdpRatio` scaling so that agent-level flows map correctly to the
+  * Poland 2026-04-30 current-price GDP scale (~4.16 tln PLN). Do NOT construct
+  * SimParams directly with unscaled values — always start from `defaults` and
+  * use `.copy()`.
   */
 case class SimParams private[config] (
     pop: PopulationConfig = PopulationConfig(),
@@ -87,7 +88,7 @@ case class SimParams private[config] (
 
 object SimParams:
 
-  // ── Sector definitions (6-sector Polish economy, GUS 2024) ──
+  // ── Sector definitions (6-sector Polish economy, 2026-04-30 baseline) ──
 
   import com.boombustgroup.amorfati.types.*
 
@@ -116,7 +117,7 @@ object SimParams:
       s"sectorDefs must preserve schema order ${SchemaSectorNames.mkString(" -> ")}, got ${sectorDefs.map(_.name).mkString(" -> ")}",
     )
 
-  /** Default 6-sector definitions calibrated to GUS 2024.
+  /** Default 6-sector definitions for the 2026-04-30 Poland baseline.
     *
     * Sectors: BPO/SSC, Manufacturing, Retail/Services, Healthcare, Public,
     * Agriculture. Each sector has: employment share, revenue multiplier, wage
@@ -194,14 +195,8 @@ object SimParams:
 
   // ── GdpRatio computation ──
 
-  /** Compute the scaling factor that maps agent-level monthly flows to real
-    * Polish GDP.
-    *
-    * Formula:
-    * `(firmsCount * avgWorkers / workersPerFirm * baseRevenue * 12) / realGdp`
-    */
-  def computeGdpRatio(pop: PopulationConfig, baseRevenue: PLN): Scalar =
-    val expectedAvgWorkers = pop.firmSizeDist match
+  def expectedAvgWorkersPerFirm(pop: PopulationConfig): Scalar =
+    pop.firmSizeDist match
       case FirmSizeDist.Gus     =>
         val microMean   = Scalar(5)
         val smallMean   = Scalar.decimal(295, 1)
@@ -212,6 +207,15 @@ object SimParams:
         pop.firmSizeMicroShare.toScalar * microMean + pop.firmSizeSmallShare.toScalar * smallMean +
           mediumShare.toScalar * mediumMean + pop.firmSizeLargeShare.toScalar * largeMean
       case FirmSizeDist.Uniform => Scalar(pop.workersPerFirm)
+
+  /** Compute the scaling factor that maps agent-level monthly flows to the
+    * current-price Polish GDP baseline.
+    *
+    * Formula:
+    * `(firmsCount * avgWorkers / workersPerFirm * baseRevenue * 12) / realGdp`
+    */
+  def computeGdpRatio(pop: PopulationConfig, baseRevenue: PLN): Scalar =
+    val expectedAvgWorkers = expectedAvgWorkersPerFirm(pop)
     (((baseRevenue * pop.firmsCount) / pop.workersPerFirm) * expectedAvgWorkers * 12) / pop.realGdp
 
   private val DefaultGdpRatio: Scalar = computeGdpRatio(PopulationConfig(), FirmConfig().baseRevenue)
@@ -234,9 +238,9 @@ object SimParams:
       firm = firm,
       household = HouseholdConfig(count = totalPop),
       fiscal = FiscalConfig(
-        govBaseSpending = PLN(58300000000L) * r,
+        govBaseSpending = PLN(76575000000L) * r,
         govInitCapital = PLN(2332000000000L) * r,
-        initGovDebt = PLN(1600000000000L) * r,
+        initGovDebt = PLN(2235000000000L) * r,
       ),
       monetary = MonetaryConfig(
         qePace = PLN(5000000000L) * r,
@@ -278,8 +282,8 @@ object SimParams:
       gdpRatio = r,
     )
 
-/** Firm size distribution: stratified draw from GUS 2024 Polish enterprise
-  * data.
+/** Firm size distribution: stratified draw from the configured Polish
+  * enterprise-size baseline.
   */
 object FirmSizeDistribution:
   import com.boombustgroup.amorfati.random.RandomStream

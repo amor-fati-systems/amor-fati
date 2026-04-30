@@ -8,14 +8,20 @@ import com.boombustgroup.amorfati.types.*
   * Implements the NBP's interest rate corridor (deposit facility, lombard
   * rate), Taylor-rule rate setting with inertia, quantitative easing via
   * government bond purchases, and FX intervention with reserve management.
-  * Standing facilities calibrated to NBP 2024 corridor structure (Uchwala RPP
-  * nr 7/2003).
+  * Standing facilities use the NBP corridor convention (reference rate plus or
+  * minus the configured spreads).
   *
   * Stock values (`qePace`, `fxReserves`) are in raw PLN — scaled by `gdpRatio`
   * in `SimParams.defaults`.
   *
   * @param initialRate
-  *   NBP reference rate at simulation start (NBP 2024: 5.75%)
+  *   NBP reference rate at simulation start
+  * @param initialInflation
+  *   observed CPI inflation rate at simulation start
+  * @param initialExpectedInflation
+  *   expected inflation stock at simulation start
+  * @param initialExpectedRate
+  *   expected policy-rate stock at simulation start
   * @param targetInfl
   *   NBP inflation target (NBP: 2.5% +/- 1pp)
   * @param neutralRate
@@ -41,11 +47,11 @@ import com.boombustgroup.amorfati.types.*
   * @param taylorDelta
   *   Taylor rule coefficient on unemployment gap
   * @param reserveRateMult
-  *   reserve remuneration as fraction of policy rate (NBP 2024)
+  *   reserve remuneration as fraction of policy rate
   * @param depositFacilitySpread
-  *   spread below policy rate for deposit facility (NBP 2024: 1pp)
+  *   spread below policy rate for deposit facility
   * @param lombardSpread
-  *   spread above policy rate for lombard facility (NBP 2024: 1pp)
+  *   spread above policy rate for lombard facility
   * @param qePace
   *   monthly QE purchase pace in raw PLN (scaled by gdpRatio)
   * @param qeMaxGdpShare
@@ -53,15 +59,17 @@ import com.boombustgroup.amorfati.types.*
   * @param fxBand
   *   intervention band width around base exchange rate
   * @param fxReserves
-  *   initial FX reserves in raw PLN (NBP 2024: ~185 mld PLN, scaled by
-  *   gdpRatio)
+  *   initial FX reserves in raw PLN (scaled by gdpRatio)
   * @param fxMaxMonthly
   *   maximum monthly intervention as fraction of reserves
   * @param fxStrength
   *   effectiveness of FX intervention on exchange rate
   */
 case class MonetaryConfig(
-    initialRate: Rate = Rate.decimal(575, 4),
+    initialRate: Rate = Rate.decimal(375, 4),
+    initialInflation: Rate = Rate.decimal(30, 3),
+    initialExpectedInflation: Rate = Rate.decimal(25, 3),
+    initialExpectedRate: Rate = Rate.decimal(375, 4),
     targetInfl: Rate = Rate.decimal(25, 3),
     neutralRate: Rate = Rate.decimal(3, 2),
     taylorAlpha: Coefficient = Coefficient.decimal(12, 1),
@@ -87,6 +95,8 @@ case class MonetaryConfig(
 ):
   require(rateFloor < rateCeiling, s"rateFloor ($rateFloor) must be < rateCeiling ($rateCeiling)")
   require(rateFloor >= Rate.Zero, s"rateFloor must be non-negative: $rateFloor")
+  require(initialRate >= Rate.Zero, s"initialRate must be non-negative: $initialRate")
+  require(initialExpectedRate >= Rate.Zero, s"initialExpectedRate must be non-negative: $initialExpectedRate")
   require(
     taylorExpectedInflationWeight >= Share.Zero && taylorExpectedInflationWeight <= Share.One,
     s"taylorExpectedInflationWeight must be in [0,1]: $taylorExpectedInflationWeight",

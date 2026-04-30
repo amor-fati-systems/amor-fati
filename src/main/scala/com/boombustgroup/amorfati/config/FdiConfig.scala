@@ -6,12 +6,13 @@ import com.boombustgroup.amorfati.types.*
   * outflows, and M&A.
   *
   * Models the two-channel FDI outflow (profit shifting + repatriation)
-  * calibrated to NBP IIP 2024 and GUS 2024 data on foreign-owned firms in
-  * Poland. Cumulative FDI stock ~1.1 bln PLN (~50% GDP). Affects SFC Identity 4
-  * (external balance).
+  * calibrated to NBP IIP bridge prior and GUS bridge prior data on
+  * foreign-owned firms in Poland. Cumulative FDI stock ~1.1 bln PLN (~50% GDP).
+  * Affects SFC Identity 4 (external balance).
   *
   * @param foreignShares
-  *   per-sector share of firms that are foreign-owned (6 sectors, GUS/NBP 2024)
+  *   per-sector share of firms that are foreign-owned (6 sectors, GUS/NBP
+  *   bridge prior)
   * @param profitShiftRate
   *   fraction of foreign firms' profits shifted via transfer pricing
   * @param repatriationRate

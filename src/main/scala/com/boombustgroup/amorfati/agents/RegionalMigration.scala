@@ -19,7 +19,7 @@ import com.boombustgroup.amorfati.random.RandomStream
   *
   * Pure function — no mutable state. Only unemployed HH consider migration.
   *
-  * Calibration: GUS internal migration statistics 2024, NBP residential price
+  * Calibration: GUS internal-migration bridge prior, NBP residential price
   * survey.
   */
 object RegionalMigration:

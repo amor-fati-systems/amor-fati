@@ -147,7 +147,7 @@ class McRunnerSpec extends AnyFlatSpec with Matchers:
   }
 
   it should "cut NBP rate when inflation is negative (symmetric Taylor)" in {
-    val initialRate    = BigDecimal("0.0575")
+    val initialRate    = decimal(summon[SimParams].monetary.initialRate)
     val deflationMonth = ts.indices.find(t => decimal(row(t)(Col.Inflation.ordinal)) < BigDecimal("0.0"))
     deflationMonth match
       case Some(t) =>

@@ -114,7 +114,7 @@ class FxInterventionSpec extends AnyFlatSpec with Matchers:
   // --- NbpState monthly operation fields ---
 
   "Nbp.State" should "carry monthly FX operation state without FX reserve ownership" in {
-    val nbp = Nbp.State(Rate.decimal(575, 4), false, PLN.Zero, PLN.Zero)
+    val nbp = Nbp.State(p.monetary.initialRate, false, PLN.Zero, PLN.Zero)
     nbp.lastFxTraded.shouldBe(PLN.Zero)
   }
 

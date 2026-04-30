@@ -29,7 +29,7 @@ object Main extends ZIOAppDefault:
        |  SFC-ABM  |  commit: $commit
        |
        |  N=${rc.nSeeds} seeds  |  PLN (NBP)  |  HH=${p.household.count}  |  BANK=multi (7)
-       |  $firms firms x 6 sectors (GUS 2024) x ${p.topology.label} x ${rc.runDurationMonths}m
+       |  $firms firms x 6 sectors x Poland 2026-04-30 x ${p.topology.label} x ${rc.runDurationMonths}m
        |
        |  Apache 2.0 | Copyright 2026 BoomBustGroup | www.boombustgroup.com
        |""".stripMargin

@@ -8,21 +8,23 @@ import com.boombustgroup.amorfati.types.*
   * Models the WIG index with P/E-driven valuation, equity issuance by large
   * firms (Catalyst), household equity participation with wealth effects (Case,
   * Quigley & Shiller 2005), dividend distribution with Belka tax, and foreign
-  * ownership channel. Calibrated to GPW 2024, KNF/KDPW 2024 data.
+  * ownership channel. Calibrated to GPW bridge prior, KNF/KDPW bridge prior
+  * data.
   *
   * `initMcap` is in raw PLN — scaled by `gdpRatio` in `SimParams.defaults`.
   *
   * @param initIndex
-  *   initial WIG index value (GPW 2024: ~2,400)
+  *   initial WIG index value (GPW bridge prior: ~2,400)
   * @param initMcap
-  *   initial market capitalization in raw PLN (GPW 2024: ~1.4 bln PLN, scaled
-  *   by gdpRatio)
+  *   initial market capitalization in raw PLN (GPW bridge prior: ~1.4 bln PLN,
+  *   scaled by gdpRatio)
   * @param peMean
-  *   long-run mean P/E ratio for reversion (GPW 2024: ~10)
+  *   long-run mean P/E ratio for reversion (GPW bridge prior: ~10)
   * @param divYield
-  *   average dividend yield (GPW 2024: ~5.7%)
+  *   average dividend yield (GPW bridge prior: ~5.7%)
   * @param foreignShare
-  *   share of market cap held by foreign investors (KNF/KDPW 2024: ~67%)
+  *   share of market cap held by foreign investors (KNF/KDPW bridge prior:
+  *   ~67%)
   * @param listedProfitShare
   *   share of aggregate modeled firm profits attributable to GPW-listed firms.
   *   The firm population covers the whole economy; only the listed-market slice

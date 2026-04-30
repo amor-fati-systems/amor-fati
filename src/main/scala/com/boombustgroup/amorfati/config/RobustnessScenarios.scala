@@ -119,7 +119,7 @@ object RobustnessScenarios:
         label = "Tighter monetary stance",
         category = "policy rates",
         variedParameter = "monetary.initialRate, monetary.neutralRate, monetary.taylorAlpha",
-        variation = "0.0575 -> 0.075, 0.04 -> 0.05, 1.5 -> 1.8",
+        variation = "0.0375 -> 0.075, 0.03 -> 0.05, 1.2 -> 1.8",
         rationale = "Tests inflation, credit, debt-service, and unemployment sensitivity to tighter policy rates.",
         params = baseline.copy(
           monetary = baseline.monetary.copy(

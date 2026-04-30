@@ -57,16 +57,16 @@ class ExpectationsPropertySpec extends AnyFlatSpec with Matchers with ScalaCheck
     val prev   = Expectations.initial.copy(credibility = Share.decimal(5, 1))
     val target = decimal(p.monetary.targetInfl)
     // Low deviation
-    val r1     = step(prev, target + BigDecimal("0.005"), BigDecimal("0.0575"), BigDecimal("0.05"))
+    val r1     = step(prev, target + BigDecimal("0.005"), decimal(p.monetary.initialRate), BigDecimal("0.05"))
     // High deviation
-    val r2     = step(prev, target + BigDecimal("0.10"), BigDecimal("0.0575"), BigDecimal("0.05"))
+    val r2     = step(prev, target + BigDecimal("0.10"), decimal(p.monetary.initialRate), BigDecimal("0.05"))
     decimal(r1.credibility).should(be > decimal(r2.credibility))
   }
 
   it should "keep expected inflation between target and adaptive" in
     forAll(inflationGen, credGen) { (infl: BigDecimal, cred: BigDecimal) =>
       val prev     = Expectations.initial.copy(credibility = shareBD(cred))
-      val r        = step(prev, infl, BigDecimal("0.0575"), BigDecimal("0.05"))
+      val r        = step(prev, infl, decimal(p.monetary.initialRate), BigDecimal("0.05"))
       val target   = decimal(p.monetary.targetInfl)
       val adaptive =
         decimal(prev.expectedInflation) + decimal(p.labor.expLambda) * (infl - decimal(prev.expectedInflation))

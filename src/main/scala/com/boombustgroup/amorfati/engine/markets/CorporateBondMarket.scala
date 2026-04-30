@@ -4,18 +4,20 @@ import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.types.*
 import com.boombustgroup.ledger.Distribute
 
-/** Corporate bond market: Catalyst + non-public issuance (GPW Catalyst 2024).
+/** Corporate bond market: Catalyst + non-public issuance (GPW Catalyst bridge
+  * prior).
   *
   * Holder buckets (banks, PPK, insurance, NBFI, other) absorb issuance. Monthly
   * cycle: yield repricing → coupon → amortization → default → issuance.
   *
   * Demand-side absorption constraint (two gates):
   *   - Gate 1: spread-based investor appetite (cyclical, widens with NPL)
-  *   - Gate 2: bank CAR headroom (corp bonds at 50% risk weight, KNF 2024)
+  *   - Gate 2: bank CAR headroom (corp bonds at 50% risk weight, KNF bridge
+  *     prior)
   *
   * Yield = gov bond yield + credit spread; spread widens with system NPL ratio
-  * (credit risk channel). Calibration: NBP Financial Stability Report 2024, GPW
-  * Catalyst market data.
+  * (credit risk channel). Calibration: NBP FSR bridge prior, GPW Catalyst
+  * market data.
   */
 object CorporateBondMarket:
 
