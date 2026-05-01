@@ -286,7 +286,11 @@ object Firm:
     * erase a firm's capital target.
     */
   private[amorfati] def capitalPlanningWorkers(f: State)(using p: SimParams): Int =
-    if !isAlive(f) then 0 else Math.max(workerCount(f), f.initialSize)
+    if !isAlive(f) then 0
+    else
+      val workers = workerCount(f)
+      if f.startupTargetWorkers > 0 && workers < f.initialSize then Math.max(workers, f.startupTargetWorkers)
+      else Math.max(workers, f.initialSize)
 
   /** Effective wage multiplier including union wage premium. */
   def effectiveWageMult(sectorIdx: SectorIdx)(using p: SimParams): Multiplier =

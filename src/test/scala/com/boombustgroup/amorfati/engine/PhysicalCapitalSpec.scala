@@ -106,6 +106,21 @@ class PhysicalCapitalSpec extends AnyFlatSpec with Matchers:
     Firm.capitalPlanningWorkers(firm) shouldBe 14
   }
 
+  it should "plan entrant capital from operating scale until hiring reaches the planned size" in {
+    val firm = mkFirm(sector = 1, workers = 3).copy(
+      initialSize = 40,
+      startupTargetWorkers = 5,
+      startupMonthsLeft = 0,
+    )
+    Firm.capitalPlanningWorkers(firm) shouldBe 5
+
+    val growing = firm.copy(tech = TechState.Traditional(12))
+    Firm.capitalPlanningWorkers(growing) shouldBe 12
+
+    val mature = firm.copy(tech = TechState.Traditional(45))
+    Firm.capitalPlanningWorkers(mature) shouldBe 45
+  }
+
   // --- Investment ---
 
   "Investment" should "replace depreciation at steady state" in {
