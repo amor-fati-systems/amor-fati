@@ -333,7 +333,7 @@ object LaborMarket:
   )(using p: SimParams): JobSearchResult =
     val ranked          = rankUnemployed(households, maxHires, priorityHouseholdIds)
     val firmsBySector   = vacancies.keys.groupBy(fid => firms(fid.toInt).sector)
-    val firmsByPriority = vacancies.keys.toVector.sortBy(fid => p.sectorDefs(firms(fid.toInt).sector.toInt).sigma)(using summon[Ordering[Sigma]].reverse)
+    val firmsByPriority = fallbackFirmOrder(vacancies)
 
     val init   = MatchState(Map.empty, vacancies, 0)
     val result = ranked.foldLeft(init): (st, idx) =>
@@ -363,8 +363,7 @@ object LaborMarket:
       vacancies.keys.toVector.groupBy(fid => (firms(fid.toInt).sector, firms(fid.toInt).region))
     val firmsByRegion: Map[Region, Vector[FirmId]]                    =
       vacancies.keys.toVector.groupBy(fid => firms(fid.toInt).region)
-    val firmsByPriority                                               =
-      vacancies.keys.toVector.sortBy(fid => p.sectorDefs(firms(fid.toInt).sector.toInt).sigma)(using summon[Ordering[Sigma]].reverse)
+    val firmsByPriority                                               = fallbackFirmOrder(vacancies)
 
     val init   = MatchState(Map.empty, vacancies, 0)
     val result = ranked.foldLeft(init): (st, idx) =>
@@ -422,6 +421,12 @@ object LaborMarket:
         val remaining     = st.vacancies(fid) - 1
         val newVacancies  = if remaining <= 0 then st.vacancies - fid else st.vacancies.updated(fid, remaining)
         MatchState(st.hired.updated(idx, newHh), newVacancies, st.crossSectorHires + (if isCrossSector then 1 else 0))
+
+  /** Stable cross-sector fallback order. Same-sector and same-region matches
+    * still clear first; this only avoids a global high-sigma sector preference.
+    */
+  private def fallbackFirmOrder(vacancies: Map[FirmId, Int]): Vector[FirmId] =
+    vacancies.keys.toVector.sortBy(_.toInt)
 
   /** Rank unemployed households by effective skill descending. */
   private def rankUnemployed(households: Vector[Household.State], maxHires: Option[Int], priorityHouseholdIds: Set[HhId]): Vector[Int] =

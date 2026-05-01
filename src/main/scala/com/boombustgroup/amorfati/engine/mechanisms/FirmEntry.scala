@@ -9,10 +9,10 @@ import com.boombustgroup.amorfati.types.*
 import com.boombustgroup.amorfati.random.RandomStream
 
 /** Endogenous firm entry: replaces a share of bankrupt firm slots and may also
-  * append net new firms when cyclical labor-market signals support expansion.
-  * Sector choice is weighted by relative profitability signals across sectors.
-  * Firms in more profitable sectors attract more entrants, subject to
-  * sector-specific regulatory barriers (GUS CEIDG/KRS bridge prior
+  * append net new firms when demand pressure and staffing feasibility support
+  * expansion. Sector choice is weighted by relative profitability signals
+  * across sectors. Firms in more profitable sectors attract more entrants,
+  * subject to sector-specific regulatory barriers (GUS CEIDG/KRS bridge prior
   * calibration).
   *
   * New entrants may be AI-native (hybrid technology with partial automation)
@@ -27,22 +27,27 @@ import com.boombustgroup.amorfati.random.RandomStream
 object FirmEntry:
 
   // ---- Calibration constants ----
-  private val ProfitClampMin      = Coefficient(-1)          // floor for normalized sector profit signal
-  private val ProfitClampMax      = Coefficient(2)           // ceiling for normalized sector profit signal
-  private val MinSectorWeight     = Multiplier.decimal(1, 2) // floor so no sector has zero entry probability
-  private val MaxNeighbors        = 6                        // network degree for new entrants
-  private val AiNativeMinDr       = Share.decimal(50, 2)     // digital readiness floor for AI-native entrants
-  private val AiNativeMaxDr       = Share.decimal(90, 2)     // digital readiness ceiling for AI-native entrants
-  private val ConventionalDrNoise = Share.decimal(10, 2)     // std dev for conventional entrant DR draw
-  private val ConventionalDrFloor = Share.decimal(2, 2)      // minimum DR for conventional entrant
-  private val ConventionalDrCap   = Share.decimal(30, 2)     // maximum DR for conventional entrant
-  private val MinAiProductivity   = Multiplier.decimal(5, 1) // AI productivity floor for hybrid entrants
-  private val MaxAiProductivity   = Multiplier.decimal(8, 1) // AI productivity ceiling for hybrid entrants
-  private val HybridMinWorkers    = 1                        // minimum viable hybrid workforce
-  private val StartupMonths       = 4                        // short entrant startup ramp-up window
-  private val StartupMinWorkers   = 1                        // minimum planned startup team
-  private val StartupMaxWorkers   = 8                        // entrant startup team cap
-  private val HalfWeight          = Share.decimal(5, 1)
+  private val ProfitClampMin           = Coefficient(-1)           // floor for normalized sector profit signal
+  private val ProfitClampMax           = Coefficient(2)            // ceiling for normalized sector profit signal
+  private val MinSectorWeight          = Multiplier.decimal(1, 2)  // floor so no sector has zero entry probability
+  private val MinObservedSectorShare   = Share.decimal(1, 4)       // avoids divide-by-zero when a sector has no incumbents
+  private val MinSectorShareCorrection = Multiplier.decimal(25, 2) // damp overrepresented sectors without fully closing entry
+  private val MaxSectorShareCorrection = Multiplier(2)             // bounded catch-up for underrepresented sectors
+  private val MinEntryDemandPressure   = Multiplier.decimal(25, 2) // weak demand can damp but not erase replacement entry
+  private val MaxEntryDemandPressure   = Multiplier.decimal(175, 2)
+  private val MaxNeighbors             = 6                         // network degree for new entrants
+  private val AiNativeMinDr            = Share.decimal(50, 2)      // digital readiness floor for AI-native entrants
+  private val AiNativeMaxDr            = Share.decimal(90, 2)      // digital readiness ceiling for AI-native entrants
+  private val ConventionalDrNoise      = Share.decimal(10, 2)      // std dev for conventional entrant DR draw
+  private val ConventionalDrFloor      = Share.decimal(2, 2)       // minimum DR for conventional entrant
+  private val ConventionalDrCap        = Share.decimal(30, 2)      // maximum DR for conventional entrant
+  private val MinAiProductivity        = Multiplier.decimal(5, 1)  // AI productivity floor for hybrid entrants
+  private val MaxAiProductivity        = Multiplier.decimal(8, 1)  // AI productivity ceiling for hybrid entrants
+  private val HybridMinWorkers         = 1                         // minimum viable hybrid workforce
+  private val StartupMonths            = 4                         // short entrant startup ramp-up window
+  private val StartupMinWorkers        = 1                         // minimum planned startup team
+  private val StartupMaxWorkers        = 8                         // entrant startup team cap
+  private val HalfWeight               = Share.decimal(5, 1)
 
   case class Result(
       firms: Vector[Firm.State],                     // post-entry firm population (may be longer than input if net creation occurred)
@@ -58,6 +63,7 @@ object FirmEntry:
       expectedInflation: Rate,
       laggedHiringSlack: Share,
       startupAbsorptionRate: Share,
+      sectorDemandPressure: Vector[Multiplier],
   )
   object LaggedEntrySignals:
     def fromDecisionSignals(signals: DecisionSignals): LaggedEntrySignals =
@@ -67,6 +73,7 @@ object FirmEntry:
         expectedInflation = signals.expectedInflation,
         laggedHiringSlack = signals.laggedHiringSlack,
         startupAbsorptionRate = signals.startupAbsorptionRate,
+        sectorDemandPressure = signals.sectorDemandPressure,
       )
 
   def process(
@@ -84,7 +91,7 @@ object FirmEntry:
     val rows          = firms.zip(financialStocks)
     val living        = rows.filter((firm, _) => Firm.isAlive(firm))
     val profitSignals = computeProfitSignals(living)
-    val sectorWeights = computeSectorWeights(profitSignals)
+    val sectorWeights = computeSectorWeights(living, profitSignals, laggedSignals)
 
     val totalAdoption                                = automationRatio + hybridRatio
     val livingIds                                    = living.map(_._1.id.toInt)
@@ -124,7 +131,7 @@ object FirmEntry:
         else (firm, stocks)
     (rows.map(_._1), rows.map(_._2), replacementIds)
 
-  /** Append net new firms when cyclical labor-market signals support expansion.
+  /** Append net new firms when demand-backed entry signals support expansion.
     * Birth count is proportional to the signal, capped to prevent vector
     * explosion. New firms get sequential FirmIds starting at `firms.length` to
     * maintain the FirmId == vector index invariant.
@@ -151,10 +158,8 @@ object FirmEntry:
     (firms ++ newRows.map(_._1), financialStocks ++ newRows.map(_._2), newRows.map(_._1.id).toSet)
 
   private def expansionaryEntrySignal(c: LaggedEntrySignals)(using p: SimParams): Share =
-    val laborSlack          = (c.unemploymentRate - p.monetary.nairu).max(Share.Zero)
-    val tightDemand         = (p.monetary.nairu - c.unemploymentRate).max(Share.Zero)
-    val cyclicalPulse       = laborSlack + tightDemand
-    if cyclicalPulse <= Share.Zero then return Share.Zero
+    val demandPulse         = (weightedDemandEntryPulse(c) + (p.monetary.nairu - c.unemploymentRate).max(Share.Zero)).clamp(Share.Zero, Share.One)
+    if demandPulse <= Share.Zero then return Share.Zero
     val nominalSignal       =
       if c.inflation < Rate.Zero && c.expectedInflation < Rate.Zero then Share.Zero
       else if c.inflation < Rate.Zero || c.expectedInflation < Rate.Zero then Share.decimal(75, 2)
@@ -162,7 +167,7 @@ object FirmEntry:
     val staffingFeasibility =
       c.laggedHiringSlack.clamp(Share.Zero, Share.One) * HalfWeight +
         c.startupAbsorptionRate.clamp(Share.Zero, Share.One) * HalfWeight
-    cyclicalPulse * nominalSignal * staffingFeasibility
+    demandPulse * nominalSignal * staffingFeasibility
 
   private def computeProfitSignals(living: Vector[(Firm.State, Firm.FinancialStocks)])(using p: SimParams): Vector[Coefficient] =
     val bySector      = living.groupBy(_._1.sector.toInt)
@@ -177,16 +182,65 @@ object FirmEntry:
           .clamp(ProfitClampMin, ProfitClampMax)
       .toVector
 
-  private def computeSectorWeights(profitSignals: Vector[Coefficient])(using p: SimParams): Vector[Multiplier] =
+  private[amorfati] def computeSectorWeights(
+      living: Vector[(Firm.State, Firm.FinancialStocks)],
+      profitSignals: Vector[Coefficient],
+      laggedSignals: LaggedEntrySignals,
+  )(using p: SimParams): Vector[Multiplier] =
+    require(
+      profitSignals.length == p.sectorDefs.length,
+      s"FirmEntry.computeSectorWeights requires ${p.sectorDefs.length} profit signals, got ${profitSignals.length}",
+    )
+    val pressure     = sectorDemandPressure(laggedSignals)
+    val sectorCounts = livingSectorCounts(living)
     p.sectorDefs.indices
       .map: s =>
+        val targetShare     = p.sectorDefs(s).share
+        val observedShare   =
+          if living.nonEmpty then Share.fraction(sectorCounts(s), living.length)
+          else targetShare
+        val shareCorrection =
+          targetShare
+            .ratioTo(observedShare.max(MinObservedSectorShare))
+            .toMultiplier
+            .clamp(MinSectorShareCorrection, MaxSectorShareCorrection)
+        val demandWeight    = pressure(s).clamp(MinEntryDemandPressure, MaxEntryDemandPressure)
         (
-          (profitSignals(s) * p.firm.entryProfitSens).growthMultiplier *
+          targetShare.toMultiplier *
+            shareCorrection *
+            demandWeight *
+            (profitSignals(s) * p.firm.entryProfitSens).growthMultiplier *
             p.firm.entrySectorBarriers(s).toMultiplier
         ).max(
           MinSectorWeight,
         )
       .toVector
+
+  private def sectorDemandPressure(c: LaggedEntrySignals)(using p: SimParams): Vector[Multiplier] =
+    if c.sectorDemandPressure.isEmpty then Vector.fill(p.sectorDefs.length)(Multiplier.One)
+    else if c.sectorDemandPressure.length != p.sectorDefs.length then
+      throw IllegalArgumentException(
+        s"LaggedEntrySignals.sectorDemandPressure must have ${p.sectorDefs.length} entries, got ${c.sectorDemandPressure.length}",
+      )
+    else c.sectorDemandPressure
+
+  private def weightedDemandEntryPulse(c: LaggedEntrySignals)(using p: SimParams): Share =
+    val pressure = sectorDemandPressure(c)
+    p.sectorDefs.indices
+      .map: s =>
+        val excess = pressure(s).deviationFromOne.max(Coefficient.Zero).toShare
+        p.sectorDefs(s).share.toScalar * excess
+      .foldLeft(Share.Zero)(_ + _)
+      .clamp(Share.Zero, Share.One)
+
+  private def livingSectorCounts(living: Vector[(Firm.State, Firm.FinancialStocks)])(using p: SimParams): Array[Int] =
+    val counts = Array.fill(p.sectorDefs.length)(0)
+    living.foreach: (firm, _) =>
+      val idx = firm.sector.toInt
+      if idx < 0 || idx >= p.sectorDefs.length then
+        throw IllegalArgumentException(s"FirmEntry encountered firm ${firm.id} with sector index $idx outside 0..${p.sectorDefs.length - 1}")
+      counts(idx) += 1
+    counts
 
   private def createNewFirm(
       slotId: FirmId,

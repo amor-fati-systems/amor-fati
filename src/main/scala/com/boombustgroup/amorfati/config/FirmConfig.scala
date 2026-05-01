@@ -32,9 +32,6 @@ import com.boombustgroup.amorfati.types.*
   *   minimum DR for full AI adoption
   * @param demandPassthrough
   *   fraction of aggregate demand shock passed to firm revenue
-  * @param entryRate
-  *   base monthly probability of new firm entry per vacant slot (enterprise
-  *   bridge prior)
   * @param entryProfitSens
   *   sensitivity of entry probability to sector profitability
   * @param entrySectorBarriers
@@ -105,7 +102,6 @@ case class FirmConfig(
     fullAiReadinessMin: Share = Share.decimal(55, 2),
     demandPassthrough: Share = Share.decimal(40, 2),
     // Entry
-    entryRate: Share = Share.decimal(2, 2),
     entryProfitSens: Coefficient = Coefficient(2),
     entrySectorBarriers: Vector[Coefficient] = Vector(
       Coefficient.decimal(8, 1),
@@ -123,8 +119,8 @@ case class FirmConfig(
     replacementEntryMaxMonthly: Int = 250,
     aggregateLaborSlackBuffer: Share = Share.decimal(105, 2),
     aggregateLaborSlackFloor: Share = Share.decimal(50, 2),
-    // Net entry (dynamic vector growth when unemployment > NAIRU)
-    netEntryRate: Share = Share.decimal(12, 2),                 // monthly net births as fraction of living firms, scaled by cyclical entry signal
+    // Net entry (dynamic vector growth when demand pressure has staffing support)
+    netEntryRate: Share = Share.decimal(12, 2),                 // monthly net births as fraction of living firms, scaled by demand-backed entry signal
     netEntryMaxMonthly: Int = 175,                              // hard cap on net births per month (prevents vector explosion)
     // Digitalization
     digiDrift: Share = Share.decimal(1, 3),

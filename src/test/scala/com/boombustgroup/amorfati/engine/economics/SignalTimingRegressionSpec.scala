@@ -242,6 +242,7 @@ class SignalTimingRegressionSpec extends AnyFlatSpec with Matchers:
           expectedInflation = Rate.decimal(25, 3),
           laggedHiringSlack = Share.One,
           startupAbsorptionRate = Share.One,
+          sectorDemandPressure = multiplierVector(BigDecimal("1.05")),
         ),
       ),
       s2 = base.s2.copy(operationalHiringSlack = Share.One),
@@ -398,7 +399,7 @@ class SignalTimingRegressionSpec extends AnyFlatSpec with Matchers:
     gainBoundaryResult.nonBank.newNbfi.lastTfiNetInflow should not equal lowerSameMonth.nonBank.newNbfi.lastTfiNetInflow
   }
 
-  "WorldAssemblyEconomics.computePostMonth" should "derive entry unemployment from lagged decision signals instead of post-firm households" in {
+  "WorldAssemblyEconomics.computePostMonth" should "derive entry tight-demand unemployment from lagged decision signals instead of post-firm households" in {
     val base       = entrySensitiveInput
     val lowUnemp   = base.copy(
       s9 = base.s9.copy(
@@ -418,7 +419,7 @@ class SignalTimingRegressionSpec extends AnyFlatSpec with Matchers:
     )
 
     netBirths(highUnemp) shouldBe netBirths(lowUnemp)
-    netBirths(highLagged) should be > netBirths(lowLagged)
+    netBirths(lowLagged) should be > netBirths(highLagged)
   }
 
   it should "ignore assembled month-t inflation when entry uses lagged nominal signals" in {
