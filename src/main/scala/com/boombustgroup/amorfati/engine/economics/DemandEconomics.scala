@@ -23,6 +23,7 @@ object DemandEconomics:
   private val PressureSaturationRate  = Scalar.decimal(125, 2)    // how quickly excess-demand pressure saturates above capacity
   private val PressureSignalSmoothing = Share.decimal(65, 2)      // persistent sector order-book pressure; avoids startup repricing spikes
   private val HiringSignalSmoothing   = Share.decimal(65, 2)      // persistence in sector hiring plans; avoids month-to-month whipsaw
+  private val CrossSectorSpillover    = Share.decimal(65, 2)      // only part of unmet sector demand is substitutable across sectors
 
   case class Output(
       govPurchases: PLN,                        // total government purchases this month
@@ -148,9 +149,10 @@ object DemandEconomics:
           sectorExports(s)
       .toVector
 
-  /** Redistribute excess demand from capacity-constrained sectors to sectors
-    * with slack. Sectors above capacity are capped at 1.0; their excess flows
-    * proportionally into below-capacity sectors.
+  /** Redistribute substitutable excess demand from capacity-constrained sectors
+    * to sectors with slack. Sectors above capacity are capped at 1.0; only the
+    * calibrated substitutable share of their excess flows proportionally into
+    * below-capacity sectors.
     */
   private def computeRawDemandPressure(
       sectorDemand: Vector[PLN],
@@ -192,19 +194,20 @@ object DemandEconomics:
       sectorCapReal: Vector[PLN],
       priceLevel: PriceIndex,
   ): Vector[Multiplier] =
-    val nominalCapBySector = sectorCapReal.map(_ * priceLevel.toMultiplier)
-    val excessDemand       = rawMults.indices
+    val nominalCapBySector  = sectorCapReal.map(_ * priceLevel.toMultiplier)
+    val excessDemand        = rawMults.indices
       .map: s =>
         if nominalCapBySector(s) <= PLN.Zero then sectorDemand(s)
         else if rawMults(s) > Multiplier.One then nominalCapBySector(s) * rawMults(s).deviationFromOne
         else PLN.Zero
       .foldLeft(PLN.Zero)(_ + _)
-    val deficitCapacity    = rawMults.indices
+    val deficitCapacity     = rawMults.indices
       .map: s =>
         if rawMults(s) < Multiplier.One then nominalCapBySector(s) * (Multiplier.One - rawMults(s)).toCoefficient else PLN.Zero
       .foldLeft(PLN.Zero)(_ + _)
-    val spilloverFrac      =
-      if deficitCapacity > PLN.Zero then excessDemand.ratioTo(deficitCapacity).toShare.clamp(Share.Zero, Share.One)
+    val substitutableExcess = excessDemand * CrossSectorSpillover
+    val spilloverFrac       =
+      if deficitCapacity > PLN.Zero then substitutableExcess.ratioTo(deficitCapacity).toShare.clamp(Share.Zero, Share.One)
       else Share.Zero
     rawMults.indices
       .map: s =>

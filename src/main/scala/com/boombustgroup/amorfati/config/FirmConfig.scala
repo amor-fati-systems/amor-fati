@@ -91,7 +91,7 @@ import com.boombustgroup.amorfati.types.*
 case class FirmConfig(
     // Production & costs
     baseRevenue: PLN = PLN(180000),
-    productivityGrowth: Rate = Rate.decimal(3, 2),
+    productivityGrowth: Rate = Rate.decimal(2, 2),
     otherCosts: PLN = PLN(16667),
     aiCapex: PLN = PLN(1200000),
     hybridCapex: PLN = PLN(350000),
