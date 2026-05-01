@@ -35,9 +35,9 @@ import com.boombustgroup.amorfati.types.*
   *   initial immigrant stock at simulation start (number of workers)
   */
 case class ImmigrationConfig(
-    monthlyRate: Share = Share.decimal(15, 4),
+    monthlyRate: Share = Share.decimal(8, 4),
     wageElasticity: Coefficient = Coefficient(2),
-    foreignWage: PLN = PLN(4000),
+    foreignWage: PLN = PLN(6500),
     remitRate: Share = Share.decimal(15, 2),
     returnRate: Share = Share.decimal(5, 3),
     returnUnempThreshold: Share = Share.decimal(20, 2),
