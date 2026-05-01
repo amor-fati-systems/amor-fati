@@ -267,7 +267,7 @@ object FirmEntry:
     val newSector    = pickSector(sectorWeights, rng)
     val firmSize     = FirmSizeDistribution.draw(rng)
     val startupTeam  = drawStartupTargetWorkers(firmSize, rng)
-    val sizeMult     = Scalar.fraction(firmSize, p.pop.workersPerFirm).toMultiplier
+    val startupScale = Scalar.fraction(startupTeam, p.pop.workersPerFirm).toMultiplier
     val isAiNative   = totalAdoption > p.firm.entryAiThreshold &&
       p.firm.entryAiProb.sampleBelow(rng)
     val tech         = chooseTechnology(isAiNative, startupTeam, rng)
@@ -286,10 +286,10 @@ object FirmEntry:
         neighbors = newNeighbors,
         bankId = newBankId,
         initialSize = firmSize,
-        capitalStock = initCapitalStock(firmSize, newSector),
+        capitalStock = initCapitalStock(startupTeam, newSector),
         foreignOwned = p.fdi.foreignShares(newSector).sampleBelow(rng),
-        inventory = initInventory(firmSize, newSector),
-        greenCapital = initGreenCapital(firmSize, newSector),
+        inventory = initInventory(startupTeam, newSector),
+        greenCapital = initGreenCapital(startupTeam, newSector),
         accumulatedLoss = PLN.Zero,
         markup = p.pricing.baseMarkup,
         region = Region.cdfSample(rng),
@@ -298,7 +298,7 @@ object FirmEntry:
         startupFilledWorkers = 0,
       ),
       Firm.FinancialStocks(
-        cash = p.firm.entryStartupCash * sizeMult,
+        cash = p.firm.entryStartupCash * startupScale,
         firmLoan = PLN.Zero,
         equity = PLN.Zero,
       ),

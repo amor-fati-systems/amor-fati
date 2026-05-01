@@ -524,15 +524,18 @@ class FirmEntrySpec extends AnyFlatSpec with Matchers:
   }
 
   it should "initialize entrants with startup ramp-up state" in {
-    val firms    = mkFirms(100)
-    val rng      = RandomStream.seeded(42)
-    val result   = runEntry(firms, BigDecimal("0.20"), rng, sectorDemandPressure = ExpansionDemandPressure)
-    val newFirms = result.firms.drop(firms.length)
-    newFirms.foreach: f =>
+    val firms   = mkFirms(100)
+    val rng     = RandomStream.seeded(42)
+    val result  = runEntry(firms, BigDecimal("0.20"), rng, sectorDemandPressure = ExpansionDemandPressure)
+    val newRows = result.firms.drop(firms.length).zip(result.financialStocks.drop(firms.length))
+    newRows.foreach: (f, stocks) =>
       f.startupMonthsLeft should be > 0
       f.startupTargetWorkers should be >= 1
+      f.startupTargetWorkers should be <= f.initialSize
       f.startupFilledWorkers shouldBe 0
       Firm.workerCount(f) shouldBe f.startupTargetWorkers
+      f.capitalStock shouldBe f.startupTargetWorkers * p.capital.klRatios(f.sector.toInt)
+      stocks.cash shouldBe p.firm.entryStartupCash * Scalar.fraction(f.startupTargetWorkers, p.pop.workersPerFirm).toMultiplier
   }
 
   it should "dampen net entry when lagged hiring slack is tight" in {
