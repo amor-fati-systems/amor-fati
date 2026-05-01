@@ -90,7 +90,7 @@ object LaborEconomics:
     )
 
     // Demographics
-    val newDemographics = SocialSecurity.demographicsStep(w.social.demographics, cleared.employed, netMigration)
+    val newDemographics = SocialSecurity.demographicsStep(w.social.demographics, cleared.employed, netMigration, households.length)
 
     // Wage growth
     val wageGrowth = wageGrowthFrom(w.householdMarket.marketWage, cleared.wage)

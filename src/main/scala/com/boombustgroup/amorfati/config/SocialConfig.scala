@@ -38,10 +38,12 @@ import com.boombustgroup.amorfati.util.Distributions
   * @param ppkBondAlloc
   *   PPK bond allocation share (remainder split across corp bonds + equities)
   * @param demRetirementRate
-  *   monthly retirement transition rate (fraction of working-age population)
+  *   monthly retiree-stock accrual rate. At the current household-agent
+  *   granularity this raises the external ZUS/NFZ retiree stock rather than
+  *   silently removing household agents from the labor force.
   * @param demWorkingAgeDecline
-  *   annual decline rate of working-age population (GUS bridge prior
-  *   projections)
+  *   annual aging-pressure rate added to the external retiree stock until
+  *   explicit household age cohorts are modeled.
   * @param demInitialRetirees
   *   initial retiree count (0 = built from flow during simulation)
   * @param eduShares

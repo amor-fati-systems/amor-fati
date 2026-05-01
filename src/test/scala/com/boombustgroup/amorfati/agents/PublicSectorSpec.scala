@@ -75,6 +75,15 @@ class PublicSectorSpec extends AnyFlatSpec with Matchers:
     SocialSecurity.DemographicsState.zero.monthlyRetirements shouldBe 0
   }
 
+  "SocialSecurity.demographicsStep" should "keep labor supply aligned with represented household agents" in {
+    val prev   = SocialSecurity.DemographicsState(retirees = 1000, workingAgePop = 100000, monthlyRetirements = 0)
+    val result = SocialSecurity.demographicsStep(prev, employed = 90000, netMigration = -25, representedLaborForce = 100000)
+
+    result.workingAgePop shouldBe 99975
+    result.retirees should be > prev.retirees
+    result.monthlyRetirements shouldBe result.retirees - prev.retirees
+  }
+
   // =========================================================================
   // BGK (stub)
   // =========================================================================

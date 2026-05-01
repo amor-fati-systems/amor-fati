@@ -175,14 +175,20 @@ object SocialSecurity:
   object DemographicsState:
     val zero: DemographicsState = DemographicsState(0, 0, 0)
 
-  /** Compute demographics monthly step. Monthly retirements reduce labor
-    * supply; working-age population declines.
+  /** Compute demographics monthly step.
+    *
+    * At the current model granularity retirees are an external ZUS/NFZ stock,
+    * while household agents do not yet have an age cohort or retired status.
+    * Therefore the labor-force denominator must track represented household
+    * agents plus net migration; otherwise retirements would silently remove
+    * workers from macro labor supply without changing any household status.
     */
-  def demographicsStep(prev: DemographicsState, employed: Int, netMigration: Int)(using p: SimParams): DemographicsState =
+  def demographicsStep(prev: DemographicsState, employed: Int, netMigration: Int, representedLaborForce: Int)(using p: SimParams): DemographicsState =
     val retirements       = p.social.demRetirementRate.applyTo(employed)
     val workingAgeDecline = p.social.demWorkingAgeDecline.monthly.applyTo(prev.workingAgePop)
+    val externalRetirees  = retirements + workingAgeDecline
     DemographicsState(
-      retirees = prev.retirees + retirements,
-      workingAgePop = Math.max(0, prev.workingAgePop - retirements - workingAgeDecline + netMigration),
-      monthlyRetirements = retirements,
+      retirees = prev.retirees + externalRetirees,
+      workingAgePop = Math.max(0, representedLaborForce + netMigration),
+      monthlyRetirements = externalRetirees,
     )
