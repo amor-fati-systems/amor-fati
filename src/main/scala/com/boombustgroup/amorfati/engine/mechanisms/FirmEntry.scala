@@ -63,6 +63,7 @@ object FirmEntry:
       expectedInflation: Rate,
       laggedHiringSlack: Share,
       startupAbsorptionRate: Share,
+      sectorDemandMult: Vector[Multiplier],
       sectorDemandPressure: Vector[Multiplier],
   )
   object LaggedEntrySignals:
@@ -73,6 +74,7 @@ object FirmEntry:
         expectedInflation = signals.expectedInflation,
         laggedHiringSlack = signals.laggedHiringSlack,
         startupAbsorptionRate = signals.startupAbsorptionRate,
+        sectorDemandMult = signals.sectorDemandMult,
         sectorDemandPressure = signals.sectorDemandPressure,
       )
 
@@ -192,6 +194,7 @@ object FirmEntry:
       s"FirmEntry.computeSectorWeights requires ${p.sectorDefs.length} profit signals, got ${profitSignals.length}",
     )
     val pressure     = sectorDemandPressure(laggedSignals)
+    val utilization  = sectorDemandMult(laggedSignals)
     val sectorCounts = livingSectorCounts(living)
     p.sectorDefs.indices
       .map: s =>
@@ -204,7 +207,9 @@ object FirmEntry:
             .ratioTo(observedShare.max(MinObservedSectorShare))
             .toMultiplier
             .clamp(MinSectorShareCorrection, MaxSectorShareCorrection)
-        val demandWeight    = pressure(s).clamp(MinEntryDemandPressure, MaxEntryDemandPressure)
+        val demandWeight    =
+          (pressure(s) * utilization(s).clamp(MinEntryDemandPressure, Multiplier.One).toShare)
+            .clamp(MinEntryDemandPressure, MaxEntryDemandPressure)
         (
           targetShare.toMultiplier *
             shareCorrection *
@@ -224,12 +229,22 @@ object FirmEntry:
       )
     else c.sectorDemandPressure
 
+  private def sectorDemandMult(c: LaggedEntrySignals)(using p: SimParams): Vector[Multiplier] =
+    if c.sectorDemandMult.isEmpty then Vector.fill(p.sectorDefs.length)(Multiplier.One)
+    else if c.sectorDemandMult.length != p.sectorDefs.length then
+      throw IllegalArgumentException(
+        s"LaggedEntrySignals.sectorDemandMult must have ${p.sectorDefs.length} entries, got ${c.sectorDemandMult.length}",
+      )
+    else c.sectorDemandMult
+
   private def weightedDemandEntryPulse(c: LaggedEntrySignals)(using p: SimParams): Share =
-    val pressure = sectorDemandPressure(c)
+    val pressure    = sectorDemandPressure(c)
+    val utilization = sectorDemandMult(c)
     p.sectorDefs.indices
       .map: s =>
-        val excess = pressure(s).deviationFromOne.max(Coefficient.Zero).toShare
-        p.sectorDefs(s).share.toScalar * excess
+        val excess            = pressure(s).deviationFromOne.max(Coefficient.Zero).toShare
+        val utilizationWeight = utilization(s).clamp(Multiplier.Zero, Multiplier.One).toShare
+        p.sectorDefs(s).share.toScalar * (excess.toScalar * utilizationWeight)
       .foldLeft(Share.Zero)(_ + _)
       .clamp(Share.Zero, Share.One)
 

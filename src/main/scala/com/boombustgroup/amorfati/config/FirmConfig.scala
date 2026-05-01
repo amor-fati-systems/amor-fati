@@ -119,8 +119,8 @@ case class FirmConfig(
     replacementEntryMaxMonthly: Int = 250,
     aggregateLaborSlackBuffer: Share = Share.decimal(105, 2),
     aggregateLaborSlackFloor: Share = Share.decimal(50, 2),
-    // Net entry (dynamic vector growth when demand pressure has staffing support)
-    netEntryRate: Share = Share.decimal(12, 2),                 // monthly net births as fraction of living firms, scaled by demand-backed entry signal
+    // Net entry (dynamic vector growth when demand pressure has staffing and realized utilization support)
+    netEntryRate: Share = Share.decimal(8, 2),                  // monthly net births as fraction of living firms, scaled by utilization-backed entry signal
     netEntryMaxMonthly: Int = 175,                              // hard cap on net births per month (prevents vector explosion)
     // Digitalization
     digiDrift: Share = Share.decimal(1, 3),

@@ -25,6 +25,7 @@ class FirmEntrySpec extends AnyFlatSpec with Matchers:
       inflation: Rate = Rate.Zero,
       expectedInflation: Rate = Rate.Zero,
       startupAbsorptionRate: Share = Share.One,
+      sectorDemandMult: Vector[Multiplier] = Vector.fill(p.sectorDefs.length)(Multiplier.One),
       sectorDemandPressure: Vector[Multiplier] = Vector.fill(p.sectorDefs.length)(Multiplier.One),
       financialStocks: Vector[Firm.FinancialStocks] = Vector.empty,
   ): FirmEntry.Result =
@@ -39,6 +40,7 @@ class FirmEntrySpec extends AnyFlatSpec with Matchers:
         expectedInflation = expectedInflation,
         laggedHiringSlack = laggedHiringSlack,
         startupAbsorptionRate = startupAbsorptionRate,
+        sectorDemandMult = sectorDemandMult,
         sectorDemandPressure = sectorDemandPressure,
       ),
       rng,
@@ -52,6 +54,7 @@ class FirmEntrySpec extends AnyFlatSpec with Matchers:
 
   private val ExpansionDemandPressure: Vector[Multiplier] = demandPressure(Multiplier.decimal(125, 2))
   private val StrongDemandPressure: Vector[Multiplier]    = demandPressure(Multiplier(10))
+  private val WeakDemandUtilization: Vector[Multiplier]   = demandPressure(Multiplier.decimal(45, 2))
 
   // ==========================================================================
   // Config defaults
@@ -333,6 +336,7 @@ class FirmEntrySpec extends AnyFlatSpec with Matchers:
         expectedInflation = Rate.Zero,
         laggedHiringSlack = Share.One,
         startupAbsorptionRate = Share.One,
+        sectorDemandMult = demandPressure(Multiplier.One),
         sectorDemandPressure = demandPressure(Multiplier.One),
       ),
     )
@@ -354,6 +358,7 @@ class FirmEntrySpec extends AnyFlatSpec with Matchers:
         expectedInflation = Rate.Zero,
         laggedHiringSlack = Share.One,
         startupAbsorptionRate = Share.One,
+        sectorDemandMult = demandPressure(Multiplier.One),
         sectorDemandPressure = demandPressure(Multiplier.One),
       ),
     )
@@ -461,6 +466,35 @@ class FirmEntrySpec extends AnyFlatSpec with Matchers:
     val result = runEntry(firms, BigDecimal("0.15"), rng, sectorDemandPressure = ExpansionDemandPressure)
     result.netBirths should be > 0
     result.firms.length should be > firms.length
+  }
+
+  it should "dampen stale demand pressure when realized demand utilization is weak" in {
+    val firms        = mkFirms(1000)
+    val backedDemand = runEntry(firms, BigDecimal("0.20"), RandomStream.seeded(42), sectorDemandPressure = ExpansionDemandPressure)
+    val staleDemand  =
+      runEntry(
+        firms,
+        BigDecimal("0.20"),
+        RandomStream.seeded(42),
+        sectorDemandMult = WeakDemandUtilization,
+        sectorDemandPressure = ExpansionDemandPressure,
+      )
+
+    staleDemand.netBirths should be < backedDemand.netBirths
+  }
+
+  it should "suppress net entry when stale pressure is not backed by realized utilization" in {
+    val firms  = mkFirms(1000)
+    val result =
+      runEntry(
+        firms,
+        BigDecimal("0.20"),
+        RandomStream.seeded(42),
+        sectorDemandMult = demandPressure(Multiplier.Zero),
+        sectorDemandPressure = ExpansionDemandPressure,
+      )
+
+    result.netBirths shouldBe 0
   }
 
   it should "respect hard cap" in {
@@ -571,8 +605,8 @@ class FirmEntrySpec extends AnyFlatSpec with Matchers:
     result.firms.take(firms.length).map(_.id) shouldBe firms.map(_.id)
   }
 
-  "NetEntryRate" should "default to 0.12" in {
-    p.firm.netEntryRate shouldBe Share.decimal(12, 2)
+  "NetEntryRate" should "default to 0.08" in {
+    p.firm.netEntryRate shouldBe Share.decimal(8, 2)
   }
 
   "NetEntryMaxMonthly" should "default to 175" in {
