@@ -165,6 +165,11 @@ class SectoralMobilitySpec extends AnyFlatSpec with Matchers:
     z.sectorMobilityRate shouldBe Share.Zero
   }
 
+  "mobilityRate" should "compute cross-sector hires over employed workers" in {
+    SectoralMobility.mobilityRate(2, 100) shouldBe Share.decimal(2, 2)
+    SectoralMobility.mobilityRate(2, 0) shouldBe Share.Zero
+  }
+
   // --- helpers ---
 
   private def mkFirms(n: Int): Vector[Firm.State] =

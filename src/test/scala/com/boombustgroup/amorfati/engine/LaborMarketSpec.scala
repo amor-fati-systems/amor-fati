@@ -160,6 +160,24 @@ class LaborMarketSpec extends AnyFlatSpec with Matchers:
     result(1).status shouldBe a[HhStatus.Employed]
   }
 
+  it should "count cross-sector hires before updating the household sector anchor" in {
+    val rng   = RandomStream.seeded(42)
+    val firms = Vector(
+      mkFirms(1)(0).copy(id = FirmId(0), sector = SectorIdx(0), tech = TechState.Traditional(1), initialSize = 1),
+      mkFirms(1)(0).copy(id = FirmId(1), sector = SectorIdx(2), tech = TechState.Traditional(1), initialSize = 1),
+    )
+    val hhs   = Vector(
+      mkHousehold(0, HhStatus.Employed(FirmId(0), SectorIdx(0), PLN(8000))).copy(lastSectorIdx = SectorIdx(0)),
+      mkHousehold(1, HhStatus.Unemployed(1), skill = BigDecimal("0.9")).copy(lastSectorIdx = SectorIdx(0)),
+    )
+
+    val result = LaborMarket.jobSearch(hhs, firms, PLN(8000), rng)
+
+    result.crossSectorHires shouldBe 1
+    result.households(1).status shouldBe a[HhStatus.Employed]
+    result.households(1).lastSectorIdx shouldBe SectorIdx(2)
+  }
+
   it should "prefer higher-skilled workers" in {
     val rng    = RandomStream.seeded(42)
     val firms  = Vector(mkFirms(1)(0))

@@ -139,6 +139,8 @@ object McTimeseriesSchema:
     ColumnDef("Month", ctx => ctx.executionMonth.toInt),
     ColumnDef("Inflation", ctx => ctx.world.inflation),
     ColumnDef("Unemployment", ctx => ctx.unemployPct),
+    ColumnDef("UnemployedShare", ctx => Share.fraction(ctx.hhAgg.unemployed, ctx.world.laborForcePopulation)),
+    ColumnDef("RetrainingShare", ctx => Share.fraction(ctx.hhAgg.retraining, ctx.world.laborForcePopulation)),
     ColumnDef(
       "PermanentShare",
       ctx =>
@@ -631,6 +633,8 @@ object McTimeseriesSchema:
     val Month: Col                  = lookup("Month")
     val Inflation: Col              = lookup("Inflation")
     val Unemployment: Col           = lookup("Unemployment")
+    val UnemployedShare: Col        = lookup("UnemployedShare")
+    val RetrainingShare: Col        = lookup("RetrainingShare")
     val TotalAdoption: Col          = lookup("TotalAdoption")
     val ExRate: Col                 = lookup("ExRate")
     val MarketWage: Col             = lookup("MarketWage")

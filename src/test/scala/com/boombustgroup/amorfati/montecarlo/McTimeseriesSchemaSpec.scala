@@ -22,6 +22,8 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     "Month",
     "Inflation",
     "Unemployment",
+    "UnemployedShare",
+    "RetrainingShare",
     "PermanentShare",
     "ZlecenieShare",
     "B2BShare",
@@ -305,7 +307,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     MetricValue.fromRaw((value / summon[SimParams].gdpRatio.toMultiplier).toLong)
 
   "McTimeseriesSchema" should "expose the stable schema contract" in {
-    McTimeseriesSchema.nCols shouldBe 257
+    McTimeseriesSchema.nCols shouldBe 259
     McTimeseriesSchema.colNames.toVector shouldBe expectedColNames
   }
 

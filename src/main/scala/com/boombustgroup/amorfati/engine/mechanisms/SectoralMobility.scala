@@ -38,6 +38,9 @@ object SectoralMobility:
 
   def zero: State = State.zero
 
+  def mobilityRate(crossSectorHires: Int, employed: Int): Share =
+    if employed <= 0 then Share.Zero else Share.fraction(crossSectorHires, employed)
+
   /** Default 6×6 symmetric transition friction matrix. f(i,j) ∈ [0,1]: 0 =
     * frictionless, 1 = near-impossible. GUS BAEL 2023 inter-industry flows.
     */

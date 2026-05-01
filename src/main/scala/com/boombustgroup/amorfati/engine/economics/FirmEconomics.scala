@@ -232,9 +232,10 @@ object FirmEconomics:
       val calvo              = CalvoPricing.updateFirmMarkup(f.markup, sectorPressure, stepIn.s2.wageGrowth, energyCostPressure, rng)
       f.copy(markup = calvo.newMarkup)
     val laborMarket         = processLaborMarket(calvoFirms, stepIn, rng)
+    val staffedFirms        = LaborMarket.syncFirmStaffing(calvoFirms, laborMarket.households)
     val npl                 = computeNplAndInterest(
       stepIn.firms,
-      calvoFirms,
+      staffedFirms,
       stepIn.ledgerFinancialState.firms.map(LedgerFinancialState.projectFirmFinancialStocks),
       intermediate.financialStocks,
       bonded.ledgerFinancialState,
@@ -247,7 +248,7 @@ object FirmEconomics:
     assembleOutput(
       fp,
       bonded,
-      calvoFirms,
+      staffedFirms,
       intermediate.financialStocks,
       issuerSettledLedger,
       intermediate.totalPaid,

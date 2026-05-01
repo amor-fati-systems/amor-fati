@@ -309,6 +309,33 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
     result.aggregates.voluntaryQuits shouldBe 0
   }
 
+  it should "keep adjacent voluntary sector search on the job until a hire is matched" in {
+    val rng    = RandomStream.seeded(42)
+    val hhs    = (0 until 500).map: id =>
+      mkHousehold(
+        id,
+        HhStatus.Employed(FirmId(0), SectorIdx(0), PLN(5000)),
+        savings = PLN(100000),
+        rent = PLN(1800),
+      )
+    val stocks = hhs.map(_ => TestHouseholdState.financial(savings = PLN(100000))).toVector
+    val result = Household.step(
+      hhs.toVector,
+      stocks,
+      mkWorld(),
+      PLN(8000),
+      PLN(4666),
+      Share.decimal(4, 1),
+      rng,
+      sectorWages = Some(Vector(PLN(5000), PLN(5000), PLN(25000), PLN(5000), PLN(5000), PLN(5000))),
+      sectorVacancies = Some(Vector(0, 0, 10000, 0, 0, 0)),
+    )
+
+    result.households.foreach(_.status shouldBe a[HhStatus.Employed])
+    result.aggregates.unemployed shouldBe 0
+    result.aggregates.voluntaryQuits shouldBe 0
+  }
+
   it should "return None for perBankHhFlows when bankRates not provided" in {
     val rng = RandomStream.seeded(42)
     val hhs = Vector(mkHousehold(0, HhStatus.Employed(FirmId(0), SectorIdx(2), PLN(8000)), savings = PLN(50000)))
