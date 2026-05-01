@@ -310,7 +310,7 @@ object Firm:
       case _: TechState.Bankrupt    => Multiplier.Zero
     val tfp       = sizeScale * sec.revenueMultiplier
     if f.capitalStock > PLN.Zero && laborEff > Multiplier.Zero then
-      val targetK: PLN  = workerCount(f) * p.capital.klRatios(f.sector.toInt)
+      val targetK: PLN  = capitalPlanningWorkers(f) * p.capital.klRatios(f.sector.toInt)
       val k: Multiplier =
         (if targetK > PLN.Zero then f.capitalStock.ratioTo(targetK).toMultiplier else Multiplier.One).clamp(Multiplier.decimal(1, 1), Multiplier(2))
       val alpha: Share  = p.capital.prodElast

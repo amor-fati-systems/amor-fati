@@ -168,6 +168,21 @@ class PhysicalCapitalSpec extends AnyFlatSpec with Matchers:
     Firm.computeCapacity(f) should be > PLN.Zero
   }
 
+  it should "price capital intensity against structural scale after temporary headcount cuts" in {
+    val sector       = 1
+    val initialScale = 10
+    val workers      = 4
+    val f            = mkFirm(sector = sector, workers = workers, capitalStock = decimal(p.capital.klRatios(sector)) * initialScale)
+      .copy(initialSize = initialScale)
+    val sec          = p.sectorDefs(sector)
+    val sizeScale    = Scalar.fraction(initialScale, p.pop.workersPerFirm).toMultiplier
+    val laborEff     = Scalar.fraction(workers, initialScale).toMultiplier
+    val expected     =
+      p.firm.baseRevenue * sizeScale * sec.revenueMultiplier * Firm.cesOutput(p.capital.prodElast, Multiplier.One, laborEff, sec.sigma)
+
+    decimal(Firm.computeCapacity(f)) shouldBe decimal(expected) +- BigDecimal("0.01")
+  }
+
   it should "return 0 for bankrupt firm" in {
     val f = TestFirmState(
       id = FirmId(0),
