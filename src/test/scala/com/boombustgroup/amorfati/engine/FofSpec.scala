@@ -7,6 +7,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import com.boombustgroup.amorfati.accounting.Sfc
 import com.boombustgroup.amorfati.agents.{Firm, TechState}
+import com.boombustgroup.amorfati.engine.economics.DemandEconomics
 import com.boombustgroup.amorfati.types.*
 
 class FofSpec extends AnyFlatSpec with Matchers:
@@ -158,6 +159,25 @@ class FofSpec extends AnyFlatSpec with Matchers:
     val sectorCap = BigDecimal("0.0")
     val mult      = if sectorCap > 0 then BigDecimal("100.0") / (sectorCap * BigDecimal("1.0")) else BigDecimal("0.0")
     mult shouldBe BigDecimal("0.0")
+  }
+
+  "Demand spillover" should "follow I-O compatibility instead of pooled economy-wide slack" in {
+    val rawMults = Vector(
+      Multiplier.decimal(5, 1),
+      Multiplier.One,
+      Multiplier.decimal(5, 1),
+      Multiplier.One,
+      Multiplier.One,
+      Multiplier(2),
+    )
+    val mults    = DemandEconomics.applySpillover(
+      rawMults = rawMults,
+      sectorCapReal = Vector.fill(6)(PLN(100)),
+      priceLevel = PriceIndex.Base,
+    )
+
+    decimal(mults(0)) should be < BigDecimal("0.6")
+    decimal(mults(2)) shouldBe BigDecimal("1.0") +- BigDecimal("0.0001")
   }
 
   "Total firm revenue" should "equal sum of sector demands (identity closes)" in {
