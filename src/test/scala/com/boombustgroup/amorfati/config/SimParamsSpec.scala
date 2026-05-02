@@ -46,8 +46,14 @@ class SimParamsSpec extends AnyFlatSpec with Matchers:
     decimal(p.fiscal.govBaseSpending) shouldBe (BigDecimal("76.575e9") * gdpRatio) +- BigDecimal("1.0")
   }
 
-  it should "have gdpRatio-scaled initGovDebt" in {
-    decimal(p.fiscal.initGovDebt) shouldBe (BigDecimal("2335.153e9") * gdpRatio) +- BigDecimal("1.0")
+  it should "have gdpRatio-scaled fiscal-rule debt" in {
+    decimal(p.fiscal.initGovDebt) shouldBe (BigDecimal("1913.5e9") * gdpRatio) +- BigDecimal("1.0")
+  }
+
+  it should "bridge fiscal-rule debt to ESA debt through quasi-fiscal bonds" in {
+    decimal(p.quasiFiscal.initBondsOutstanding) shouldBe (BigDecimal("421.653e9") * gdpRatio) +- BigDecimal("1.0")
+    decimal(p.quasiFiscal.initNbpBondHoldings) shouldBe (BigDecimal("106e9") * gdpRatio) +- BigDecimal("1.0")
+    decimal(p.fiscal.initGovDebt + p.quasiFiscal.initBondsOutstanding) shouldBe (BigDecimal("2335.153e9") * gdpRatio) +- BigDecimal("1.0")
   }
 
   "p.fiscal.initGovDebt" should "delegate to fiscal.initGovDebt" in {

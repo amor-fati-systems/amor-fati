@@ -65,6 +65,12 @@ object WorldInit:
     val initNbfiBalances      = Nbfi.initialBalances
     val initExpectations      = ExpectationsInit.create()
     val initInflation         = p.monetary.initialInflation
+    val initQuasiFiscalStock  = QuasiFiscal.StockState(
+      bondsOutstanding = p.quasiFiscal.initBondsOutstanding,
+      loanPortfolio = PLN.Zero,
+      bankHoldings = p.quasiFiscal.initBondsOutstanding - p.quasiFiscal.initNbpBondHoldings,
+      nbpHoldings = p.quasiFiscal.initNbpBondHoldings,
+    )
     val initDomesticGovBonds  = p.banking.initGovBonds + p.banking.initNbpGovBonds +
       initInsuranceBalances.govBondHoldings + initNbfiBalances.tfiGovBondHoldings
     val initForeignGovBonds   = (p.fiscal.initGovDebt - initDomesticGovBonds).max(PLN.Zero)
@@ -210,7 +216,7 @@ object WorldInit:
         ppkGovBondHoldings = PLN.Zero,
         corporateBonds = initCorporateBondStocks,
         nbfi = initNbfiBalances,
-        quasiFiscal = QuasiFiscal.StockState.zero,
+        quasiFiscal = initQuasiFiscalStock,
       ),
     )
 

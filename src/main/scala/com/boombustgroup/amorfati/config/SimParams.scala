@@ -240,7 +240,7 @@ object SimParams:
       fiscal = FiscalConfig(
         govBaseSpending = PLN(76575000000L) * r,
         govInitCapital = PLN(2332000000000L) * r,
-        initGovDebt = PLN(2335153000000L) * r,
+        initGovDebt = PLN(1913500000000L) * r,
       ),
       monetary = MonetaryConfig(
         qePace = PLN(5000000000L) * r,
@@ -265,6 +265,10 @@ object SimParams:
       ),
       corpBond = CorpBondConfig(
         initStock = PLN(108500000000L) * r,
+      ),
+      quasiFiscal = QuasiFiscalConfig(
+        initBondsOutstanding = PLN(421653000000L) * r,
+        initNbpBondHoldings = PLN(106000000000L) * r,
       ),
       ins = InsuranceConfig(
         lifeReserves = PLN(76981000000L) * r,

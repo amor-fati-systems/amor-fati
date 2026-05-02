@@ -271,7 +271,8 @@ object McTimeseriesSchema:
     ColumnDef("MinWageLevel", ctx => ctx.world.gov.minWageLevel),
     ColumnDef.macroPln("ExciseRevenue", ctx => ctx.world.gov.exciseRevenue),
     ColumnDef.macroPln("CustomsDutyRevenue", ctx => ctx.world.gov.customsDutyRevenue),
-    // Fiscal rules
+    // Fiscal rules: domestic PDP-style debt metric; ESA/EDP debt is reported
+    // separately in the quasi-fiscal group.
     ColumnDef(
       "DebtToGdp",
       ctx => if ctx.monthlyGdp > PLN.Zero then ctx.world.gov.cumulativeDebt / (ctx.monthlyGdp * 12) else Scalar.Zero,

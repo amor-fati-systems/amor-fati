@@ -116,7 +116,9 @@ import com.boombustgroup.amorfati.types.*
   * @param bankBondAbsorptionShare
   *   fraction of bank deposits available for bond absorption
   * @param initGovDebt
-  *   initial government debt in raw PLN (scaled by gdpRatio)
+  *   initial domestic public-debt metric used by Polish fiscal-rule thresholds
+  *   in raw PLN (scaled by gdpRatio). ESA/EDP debt is reconstructed by adding
+  *   quasi-fiscal bonds.
   * @param jstPitShare
   *   JST (local government) share of PIT revenue (Art. 4 Ustawa o dochodach
   *   JST: 38.46%)
@@ -217,7 +219,7 @@ case class FiscalConfig(
     fiscalRiskBeta55: Coefficient = Coefficient.decimal(4, 2),         // bond yield sensitivity above 55% debt/GDP
     fiscalRiskBeta60: Coefficient = Coefficient.decimal(8, 2),         // bond yield sensitivity above 60% debt/GDP
     // Government debt (raw — scaled by gdpRatio in SimParams.defaults)
-    initGovDebt: PLN = PLN(2335153000000L),
+    initGovDebt: PLN = PLN(1913500000000L),
     // JST (local government, Art. 4 Ustawa o dochodach JST)
     jstPitShare: Share = Share.decimal(3846, 4),
     jstCitShare: Share = Share.decimal(671, 4),
