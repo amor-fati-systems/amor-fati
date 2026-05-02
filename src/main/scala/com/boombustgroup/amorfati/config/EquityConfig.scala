@@ -8,21 +8,23 @@ import com.boombustgroup.amorfati.types.*
   * Models the WIG index with P/E-driven valuation, equity issuance by large
   * firms (Catalyst), household equity participation with wealth effects (Case,
   * Quigley & Shiller 2005), dividend distribution with Belka tax, and foreign
-  * ownership channel. Calibrated to GPW 2024, KNF/KDPW 2024 data.
+  * ownership channel. Calibrated to GPW bridge prior, KNF/KDPW bridge prior
+  * data.
   *
   * `initMcap` is in raw PLN — scaled by `gdpRatio` in `SimParams.defaults`.
   *
   * @param initIndex
-  *   initial WIG index value (GPW 2024: ~2,400)
+  *   initial WIG index value (GPW Benchmark, 2026-04-30 close)
   * @param initMcap
-  *   initial market capitalization in raw PLN (GPW 2024: ~1.4 bln PLN, scaled
-  *   by gdpRatio)
+  *   initial domestic-company market capitalization in raw PLN (GPW,
+  *   2026-04-30: ~1.233 tln PLN, scaled by gdpRatio)
   * @param peMean
-  *   long-run mean P/E ratio for reversion (GPW 2024: ~10)
+  *   long-run mean P/E ratio for reversion (GPW bridge prior: ~10)
   * @param divYield
-  *   average dividend yield (GPW 2024: ~5.7%)
+  *   average dividend yield (GPW bridge prior: ~5.7%)
   * @param foreignShare
-  *   share of market cap held by foreign investors (KNF/KDPW 2024: ~67%)
+  *   share of market cap held by foreign investors (KNF/KDPW bridge prior:
+  *   ~67%)
   * @param listedProfitShare
   *   share of aggregate modeled firm profits attributable to GPW-listed firms.
   *   The firm population covers the whole economy; only the listed-market slice
@@ -39,8 +41,8 @@ import com.boombustgroup.amorfati.types.*
   *   dividend withholding tax rate (Belka tax, Ustawa o PIT Art. 30a: 19%)
   */
 case class EquityConfig(
-    initIndex: PriceIndex = PriceIndex(2400),
-    initMcap: PLN = PLN(1400000000000L), // raw — scaled by gdpRatio
+    initIndex: PriceIndex = PriceIndex.decimal(12850877, 2),
+    initMcap: PLN = PLN(1232992640000L), // raw — scaled by gdpRatio
     peMean: Scalar = Scalar(10),
     divYield: Rate = Rate.decimal(57, 3),
     foreignShare: Share = Share.decimal(67, 2),

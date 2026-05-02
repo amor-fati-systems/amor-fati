@@ -106,6 +106,21 @@ class PhysicalCapitalSpec extends AnyFlatSpec with Matchers:
     Firm.capitalPlanningWorkers(firm) shouldBe 14
   }
 
+  it should "plan entrant capital from operating scale until hiring reaches the planned size" in {
+    val firm = mkFirm(sector = 1, workers = 3).copy(
+      initialSize = 40,
+      startupTargetWorkers = 5,
+      startupMonthsLeft = 0,
+    )
+    Firm.capitalPlanningWorkers(firm) shouldBe 5
+
+    val growing = firm.copy(tech = TechState.Traditional(12))
+    Firm.capitalPlanningWorkers(growing) shouldBe 12
+
+    val mature = firm.copy(tech = TechState.Traditional(45))
+    Firm.capitalPlanningWorkers(mature) shouldBe 45
+  }
+
   // --- Investment ---
 
   "Investment" should "replace depreciation at steady state" in {
@@ -166,6 +181,21 @@ class PhysicalCapitalSpec extends AnyFlatSpec with Matchers:
   "Firm.computeCapacity" should "return positive for firm with capitalStock" in {
     val f = mkFirm(sector = 1, workers = 10, capitalStock = decimal(p.capital.klRatios(1)) * 10)
     Firm.computeCapacity(f) should be > PLN.Zero
+  }
+
+  it should "price capital intensity against structural scale after temporary headcount cuts" in {
+    val sector       = 1
+    val initialScale = 10
+    val workers      = 4
+    val f            = mkFirm(sector = sector, workers = workers, capitalStock = decimal(p.capital.klRatios(sector)) * initialScale)
+      .copy(initialSize = initialScale)
+    val sec          = p.sectorDefs(sector)
+    val sizeScale    = Scalar.fraction(initialScale, p.pop.workersPerFirm).toMultiplier
+    val laborEff     = Scalar.fraction(workers, initialScale).toMultiplier
+    val expected     =
+      p.firm.baseRevenue * sizeScale * sec.revenueMultiplier * Firm.cesOutput(p.capital.prodElast, Multiplier.One, laborEff, sec.sigma)
+
+    decimal(Firm.computeCapacity(f)) shouldBe decimal(expected) +- BigDecimal("0.01")
   }
 
   it should "return 0 for bankrupt firm" in {

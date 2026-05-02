@@ -10,7 +10,7 @@ import com.boombustgroup.amorfati.types.*
   */
 object YieldCurve:
 
-  // Base term premia over O/N (annual). NBP/GPW Benchmark 2024 calm-market values.
+  // Base term premia over O/N (annual). NBP/GPW Benchmark bridge prior calm-market values.
   val BasePremium1M: Rate = Rate.decimal(6, 4)  // 6bp
   val BasePremium3M: Rate = Rate.decimal(9, 4)  // 9bp
   val BasePremium6M: Rate = Rate.decimal(12, 4) // 12bp

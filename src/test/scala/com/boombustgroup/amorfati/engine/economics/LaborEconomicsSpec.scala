@@ -3,7 +3,7 @@ package com.boombustgroup.amorfati.engine.economics
 import com.boombustgroup.amorfati.FixedPointSpecSupport.*
 import com.boombustgroup.amorfati.{Generators, TestFirmState}
 import com.boombustgroup.amorfati.agents.*
-import com.boombustgroup.amorfati.config.SimParams
+import com.boombustgroup.amorfati.config.{SimParams, SimParamsTestOverrides}
 import com.boombustgroup.amorfati.engine.SimulationMonth.ExecutionMonth
 import com.boombustgroup.amorfati.engine.SocialState
 import com.boombustgroup.amorfati.init.{InitRandomness, WorldInit}
@@ -51,22 +51,41 @@ class LaborEconomicsSpec extends AnyFlatSpec with Matchers:
   }
 
   it should "index nominal wage pressure to anchored expected inflation" in {
-    val zeroExpected   = world.copy(
-      mechanisms = world.mechanisms.copy(
-        expectations = world.mechanisms.expectations.copy(expectedInflation = Rate.Zero),
+    val expectationsWorld = Generators
+      .testWorld(
+        totalPopulation = 1000,
+        employed = 900,
+        marketWage = PLN(8000),
+        reservationWage = PLN(1000),
+      )
+      .copy(
+        regionalWages = Region.all.map(_ -> PLN(8000)).toMap,
+      )
+    val expectationFirms  = (0 until 100).map: id =>
+      TestFirmState(FirmId(id), tech = TechState.Traditional(10), initialSize = 10)
+    val expectationS1     = s1.copy(
+      lendingBaseRate = expectationsWorld.nbp.referenceRate,
+      resWage = expectationsWorld.householdMarket.reservationWage,
+      baseMinWage = expectationsWorld.gov.minWageLevel,
+      updatedMinWagePriceLevel = expectationsWorld.priceLevel,
+    )
+    val zeroExpected      = expectationsWorld.copy(
+      mechanisms = expectationsWorld.mechanisms.copy(
+        expectations = expectationsWorld.mechanisms.expectations.copy(expectedInflation = Rate.Zero),
       ),
     )
-    val targetExpected = world.copy(
-      mechanisms = world.mechanisms.copy(
-        expectations = world.mechanisms.expectations.copy(expectedInflation = p.monetary.targetInfl),
+    val highExpected      = expectationsWorld.copy(
+      mechanisms = expectationsWorld.mechanisms.copy(
+        expectations = expectationsWorld.mechanisms.expectations.copy(expectedInflation = Rate.decimal(5, 2)),
       ),
     )
+    val expectationP      = SimParamsTestOverrides.noTightLaborWagePressure
 
-    val zeroResult   = LaborEconomics.compute(zeroExpected, firms, households, s1)
-    val targetResult = LaborEconomics.compute(targetExpected, firms, households, s1)
+    val zeroResult = LaborEconomics.compute(zeroExpected, expectationFirms.toVector, Vector.empty, expectationS1)(using expectationP)
+    val highResult = LaborEconomics.compute(highExpected, expectationFirms.toVector, Vector.empty, expectationS1)(using expectationP)
 
-    targetResult.newWage should be > zeroResult.newWage
-    targetResult.wageGrowth should be > zeroResult.wageGrowth
+    highResult.newWage should be > zeroResult.newWage
+    highResult.wageGrowth should be > zeroResult.wageGrowth
   }
 
   it should "add wage pressure when unemployment is below NAIRU" in {

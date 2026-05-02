@@ -58,7 +58,7 @@ object ScenarioRegistry:
         seedPolicy = "Compare on the same seed band as baseline.",
         outputFolder = "<out>/<run-id>/monetary-tightening",
         deltas = Vector(
-          ParameterDelta("monetary.initialRate", "0.0575", "0.075", "Higher starting reference rate."),
+          ParameterDelta("monetary.initialRate", "0.0375", "0.075", "Higher starting reference rate."),
           ParameterDelta("monetary.neutralRate", "0.04", "0.05", "Higher neutral-rate anchor."),
           ParameterDelta("monetary.taylorAlpha", "1.5", "1.8", "Stronger inflation response."),
         ),

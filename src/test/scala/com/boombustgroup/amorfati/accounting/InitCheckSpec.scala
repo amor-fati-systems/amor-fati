@@ -53,6 +53,16 @@ class InitCheckSpec extends AnyFlatSpec with Matchers:
     result.ledgerFinancialState.foreign.govBondHoldings should be > PLN.Zero
     result.world.gov.weightedCoupon shouldBe summon[SimParams].fiscal.govInitialWeightedCoupon
 
+  it should "initialize domestic and ESA debt metrics through quasi-fiscal stock" in:
+    val result = defaultInit
+    val p      = summon[SimParams]
+    val qf     = result.ledgerFinancialState.funds.quasiFiscal
+
+    result.world.gov.cumulativeDebt shouldBe p.fiscal.initGovDebt
+    qf.bondsOutstanding shouldBe p.quasiFiscal.initBondsOutstanding
+    qf.nbpHoldings shouldBe p.quasiFiscal.initNbpBondHoldings
+    qf.bankHoldings + qf.nbpHoldings shouldBe qf.bondsOutstanding
+
   it should "detect tampered bondsOutstanding" in:
     val result   = defaultInit
     val snap     = stockSnapshot(result)

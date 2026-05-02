@@ -8,21 +8,21 @@ import com.boombustgroup.amorfati.types.*
   * Extends the basic ForexConfig with detailed trade dynamics: per-sector
   * import content, Marshall-Lerner elasticities, exchange rate bands, ULC-based
   * competitiveness, net foreign asset returns, EU structural transfers, and FDI
-  * base flow. Calibrated to GUS/NBP 2024 balance of payments data.
+  * base flow. Calibrated to GUS/NBP bridge prior balance of payments data.
   *
   * Stock values (`exportBase`, `euTransfers`, `fdiBase`) are in raw PLN —
   * scaled by `gdpRatio` in `SimParams.defaults`.
   *
   * @param importContent
-  *   per-sector import content of production (6 sectors, GUS supply-use tables
-  *   2024)
+  *   per-sector import content of production (6 sectors, supply-use bridge
+  *   prior)
   * @param erFloor
   *   exchange rate floor (PLN/EUR) — structural lower bound
   * @param erCeiling
   *   exchange rate ceiling (PLN/EUR) — structural upper bound
   * @param exportBase
-  *   monthly export base in raw PLN (scaled by gdpRatio, NBP BoP 2024: ~138.5
-  *   mld)
+  *   monthly goods-and-services export base in raw PLN (scaled by gdpRatio,
+  *   latest available NBP BoP bridge for January 2026: ~157.6 mld)
   * @param importPushCap
   *   maximum monthly import growth from demand pressure
   * @param foreignGdpGrowth
@@ -39,10 +39,10 @@ import com.boombustgroup.amorfati.types.*
   *   annual return rate on net foreign assets
   * @param euTransfers
   *   monthly EU structural transfers in raw PLN (scaled by gdpRatio, MFiPR
-  *   2024: ~1.458 mld)
+  *   bridge prior: ~1.458 mld)
   * @param fdiBase
-  *   monthly FDI base inflow in raw PLN (scaled by gdpRatio, NBP IIP 2024: ~583
-  *   mln)
+  *   monthly FDI base inflow in raw PLN (scaled by gdpRatio, NBP BoP trailing
+  *   12-month bridge through January 2026: ~5.0 mld)
   * @param portfolioSensitivity
   *   sensitivity of portfolio flows to interest rate differential
   * @param riskPremiumSensitivity
@@ -53,7 +53,7 @@ case class OpenEconConfig(
       Vector(Share.decimal(15, 2), Share.decimal(50, 2), Share.decimal(20, 2), Share.decimal(15, 2), Share.decimal(5, 2), Share.decimal(12, 2)),
     erFloor: ExchangeRate = ExchangeRate.decimal(25, 1),
     erCeiling: ExchangeRate = ExchangeRate(10),
-    exportBase: PLN = PLN(138500000000L),              // raw — scaled by gdpRatio
+    exportBase: PLN = PLN(157600000000L),              // raw — scaled by gdpRatio
     importPushCap: Share = Share.decimal(3, 2),
     foreignGdpGrowth: Rate = Rate.decimal(15, 3),
     exportPriceElasticity: Coefficient = Coefficient.decimal(8, 1),
@@ -62,7 +62,7 @@ case class OpenEconConfig(
     ulcExportBoost: Coefficient = Coefficient.decimal(15, 2),
     nfaReturnRate: Rate = Rate.decimal(3, 2),
     euTransfers: PLN = PLN(1458000000),                // raw — scaled by gdpRatio
-    fdiBase: PLN = PLN(583100000),                     // raw — scaled by gdpRatio
+    fdiBase: PLN = PLN(4963000000L),                   // raw — scaled by gdpRatio
     portfolioSensitivity: Coefficient = Coefficient.decimal(20, 2),
     riskPremiumSensitivity: Coefficient = Coefficient.decimal(10, 2),
     pppSpeed: Coefficient = Coefficient.decimal(10, 2), // annual convergence speed toward PPP equilibrium (Rogoff 1996: 3-5yr half-life)

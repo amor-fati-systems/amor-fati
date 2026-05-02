@@ -961,7 +961,7 @@ research hypotheses or calibration targets:
   files. Their current values and provenance status are documented in
   `docs/calibration-register.md`; external source mapping is documented in
   `docs/data-bridge-national-financial-accounts.md`; empirical validation
-  against historical Polish macro and micro series is documented in
+  against Polish macro and micro series is documented in
   `docs/empirical-validation-report.md`.
 - Household decision rules are bounded procedural heuristics, not an estimated
   structural life-cycle model.

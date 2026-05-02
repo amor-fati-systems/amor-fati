@@ -10,7 +10,9 @@ import com.boombustgroup.amorfati.types.*
   * for total deposits), so they do not break existing SFC identities. Column
   * sums are pre-computed for efficiency.
   *
-  * Default matrix calibrated to GUS supply-use tables 2024.
+  * Default matrix is the 6-sector technical-coefficients prior used by the
+  * 2026-04-30 Poland baseline. It is a model bridge to the runtime sector set,
+  * not a directly observed 2026 input-output table.
   *
   * @param matrix
   *   6x6 technical coefficients matrix A[i][j] = sector i's input share from
@@ -18,10 +20,14 @@ import com.boombustgroup.amorfati.types.*
   * @param scale
   *   scaling factor for I-O flows (1.0 = full strength, for sensitivity
   *   analysis)
+  * @param crossSectorSpillover
+  *   substitutable share of excess sector demand that can spill to compatible
+  *   slack sectors
   */
 case class IoConfig(
     matrix: Vector[Vector[Share]] = IoConfig.DefaultMatrix,
     scale: Multiplier = Multiplier(1),
+    crossSectorSpillover: Share = Share.decimal(65, 2),
 ):
   require(matrix.nonEmpty, "IoConfig.matrix must be non-empty")
 
@@ -32,6 +38,7 @@ case class IoConfig(
   require(rowCount == colCount, "IoConfig.matrix must be square")
   require(matrix.flatten.forall(_ >= Share.Zero), "IoConfig.matrix entries must be non-negative")
   require(scale >= Multiplier.Zero, "IoConfig.scale must be non-negative")
+  require(crossSectorSpillover >= Share.Zero && crossSectorSpillover <= Share.One, s"crossSectorSpillover must be in [0,1]: $crossSectorSpillover")
 
   /** Pre-computed column sums of the technical coefficients matrix (used in
     * intermediate demand calculation).
@@ -41,8 +48,8 @@ case class IoConfig(
   require(columnSums.forall(_ < Share.One), "IoConfig matrix column sums must be < 1.0")
 
 object IoConfig:
-  /** Default 6x6 I-O technical coefficients matrix (GUS supply-use tables
-    * 2024).
+  /** Default 6x6 I-O technical coefficients matrix for the 2026-04-30 Poland
+    * baseline bridge.
     *
     * Rows/columns: BPO/SSC, Manufacturing, Retail/Services, Healthcare, Public,
     * Agriculture.

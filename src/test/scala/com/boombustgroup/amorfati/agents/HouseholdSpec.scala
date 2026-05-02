@@ -8,7 +8,7 @@ import com.boombustgroup.amorfati.TestFirmState
 import org.scalatest.flatspec.AnyFlatSpec
 import com.boombustgroup.amorfati.Generators
 import org.scalatest.matchers.should.Matchers
-import com.boombustgroup.amorfati.config.SimParams
+import com.boombustgroup.amorfati.config.{SimParams, SimParamsTestOverrides}
 import com.boombustgroup.amorfati.engine.World
 import com.boombustgroup.amorfati.engine.markets.OpenEconomy
 import com.boombustgroup.amorfati.types.*
@@ -307,6 +307,45 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
 
     result.households.foreach(_.status shouldBe a[HhStatus.Employed])
     result.aggregates.voluntaryQuits shouldBe 0
+  }
+
+  it should "move adjacent voluntary sector search into retraining eligibility" in {
+    val searchP      = SimParamsTestOverrides.voluntarySearchAlways
+    val rng          = RandomStream.seeded(42)
+    val sourceSector = 0
+    val sectorCount  = searchP.labor.frictionMatrix.length
+    val targetSector = searchP.labor
+      .frictionMatrix(sourceSector)
+      .zipWithIndex
+      .collectFirst:
+        case (friction, idx) if idx != sourceSector && friction <= searchP.labor.adjacentFrictionMax => idx
+      .get
+    val hhs          = (0 until 500).map: id =>
+      mkHousehold(
+        id,
+        HhStatus.Employed(FirmId(0), SectorIdx(sourceSector), PLN(5000)),
+        savings = PLN(100000),
+        rent = PLN(1800),
+      )
+    val stocks       = hhs.map(_ => TestHouseholdState.financial(savings = PLN(100000))).toVector
+    val sectorWages  = Vector.tabulate(sectorCount)(idx => if idx == targetSector then PLN(25000) else PLN.Zero)
+    val vacancies    = Vector.tabulate(sectorCount)(idx => if idx == targetSector then 10000 else 0)
+    val result       = Household.step(
+      hhs.toVector,
+      stocks,
+      mkWorld(),
+      PLN(8000),
+      PLN(4666),
+      Share.decimal(4, 1),
+      rng,
+      sectorWages = Some(sectorWages),
+      sectorVacancies = Some(vacancies),
+    )(using searchP)
+
+    result.households.foreach(_.status shouldBe a[HhStatus.Retraining])
+    result.aggregates.unemployed shouldBe 0
+    result.aggregates.retraining shouldBe hhs.length
+    result.aggregates.voluntaryQuits shouldBe hhs.length
   }
 
   it should "return None for perBankHhFlows when bankRates not provided" in {

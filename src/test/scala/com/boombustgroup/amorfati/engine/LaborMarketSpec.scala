@@ -160,6 +160,24 @@ class LaborMarketSpec extends AnyFlatSpec with Matchers:
     result(1).status shouldBe a[HhStatus.Employed]
   }
 
+  it should "count cross-sector hires before updating the household sector anchor" in {
+    val rng   = RandomStream.seeded(42)
+    val firms = Vector(
+      mkFirms(1)(0).copy(id = FirmId(0), sector = SectorIdx(0), tech = TechState.Traditional(1), initialSize = 1),
+      mkFirms(1)(0).copy(id = FirmId(1), sector = SectorIdx(2), tech = TechState.Traditional(1), initialSize = 1),
+    )
+    val hhs   = Vector(
+      mkHousehold(0, HhStatus.Employed(FirmId(0), SectorIdx(0), PLN(8000))).copy(lastSectorIdx = SectorIdx(0)),
+      mkHousehold(1, HhStatus.Unemployed(1), skill = BigDecimal("0.9")).copy(lastSectorIdx = SectorIdx(0)),
+    )
+
+    val result = LaborMarket.jobSearch(hhs, firms, PLN(8000), rng)
+
+    result.crossSectorHires shouldBe 1
+    result.households(1).status shouldBe a[HhStatus.Employed]
+    result.households(1).lastSectorIdx shouldBe SectorIdx(2)
+  }
+
   it should "prefer higher-skilled workers" in {
     val rng    = RandomStream.seeded(42)
     val firms  = Vector(mkFirms(1)(0))
@@ -181,6 +199,38 @@ class LaborMarketSpec extends AnyFlatSpec with Matchers:
     val result = LaborMarket.jobSearch(hhs, firms, PLN(8000), rng).households
     // Higher skilled (id=9, skill=0.9) should get the job
     result(9).status shouldBe a[HhStatus.Employed]
+  }
+
+  it should "respect a monthly matching capacity when provided" in {
+    val rng   = RandomStream.seeded(42)
+    val firms = Vector(mkFirms(1)(0).copy(tech = TechState.Traditional(4), initialSize = 4))
+    val hhs   = Vector(
+      mkHousehold(0, HhStatus.Employed(FirmId(0), SectorIdx(2), PLN(8000))),
+      mkHousehold(1, HhStatus.Unemployed(1), skill = BigDecimal("0.9")),
+      mkHousehold(2, HhStatus.Unemployed(1), skill = BigDecimal("0.8")),
+      mkHousehold(3, HhStatus.Unemployed(1), skill = BigDecimal("0.7")),
+    )
+
+    val result = LaborMarket.jobSearch(hhs, firms, PLN(8000), rng, maxHires = Some(1)).households
+
+    result.count(_.status.isInstanceOf[HhStatus.Employed]) shouldBe 2
+    result(1).status shouldBe a[HhStatus.Employed]
+    result(2).status shouldBe HhStatus.Unemployed(1)
+    result(3).status shouldBe HhStatus.Unemployed(1)
+  }
+
+  it should "derive monthly matching capacity from structural and cyclical unemployment pools" in {
+    val hhs      = (0 until 1000).map(i => mkHousehold(i, HhStatus.Unemployed(1))).toVector
+    val capacity = LaborMarket.monthlyMatchingCapacity(hhs, laborForcePopulation = 10000)
+
+    capacity shouldBe 78
+  }
+
+  it should "return zero monthly matching capacity for non-positive labor force" in {
+    val hhs = (0 until 10).map(i => mkHousehold(i, HhStatus.Unemployed(1))).toVector
+
+    LaborMarket.monthlyMatchingCapacity(hhs, laborForcePopulation = 0) shouldBe 0
+    LaborMarket.monthlyMatchingCapacity(hhs, laborForcePopulation = -1) shouldBe 0
   }
 
   it should "let startup firms keep hiring up to startupTargetWorkers during startup" in {

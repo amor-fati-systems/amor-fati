@@ -16,6 +16,18 @@ class SimParamsSpec extends AnyFlatSpec with Matchers:
 
   // ── GdpRatio ──
 
+  "SimParams.defaults" should "use the Poland 2026-04-30 production baseline" in {
+    decimal(p.pop.realGdp) shouldBe BigDecimal("4160e9")
+    decimal(p.pop.initialUnemploymentRate) shouldBe BigDecimal("0.061")
+    decimal(p.monetary.initialRate) shouldBe BigDecimal("0.0375")
+    decimal(p.monetary.initialInflation) shouldBe BigDecimal("0.030")
+    decimal(p.forex.baseExRate) shouldBe BigDecimal("4.2537")
+    decimal(p.forex.foreignRate) shouldBe BigDecimal("0.0215")
+    decimal(p.household.baseWage) shouldBe BigDecimal("9652")
+    decimal(p.household.baseReservationWage) shouldBe BigDecimal("4806")
+    decimal(p.social.zusBasePension) shouldBe BigDecimal("4321")
+  }
+
   "SimParams.defaults.gdpRatio" should "match GdpRatio for Gus size distribution" in {
     val expected = SimParams.computeGdpRatio(p.pop, p.firm.baseRevenue)
     gdpRatio shouldBe decimal(expected) +- BigDecimal("1e-12")
@@ -31,11 +43,17 @@ class SimParamsSpec extends AnyFlatSpec with Matchers:
   // ── Fiscal ──
 
   "FiscalConfig" should "have gdpRatio-scaled govBaseSpending" in {
-    decimal(p.fiscal.govBaseSpending) shouldBe (BigDecimal("58.3e9") * gdpRatio) +- BigDecimal("1.0")
+    decimal(p.fiscal.govBaseSpending) shouldBe (BigDecimal("76.575e9") * gdpRatio) +- BigDecimal("1.0")
   }
 
-  it should "have gdpRatio-scaled initGovDebt" in {
-    decimal(p.fiscal.initGovDebt) shouldBe (BigDecimal("1600e9") * gdpRatio) +- BigDecimal("1.0")
+  it should "have gdpRatio-scaled fiscal-rule debt" in {
+    decimal(p.fiscal.initGovDebt) shouldBe (BigDecimal("1913.5e9") * gdpRatio) +- BigDecimal("1.0")
+  }
+
+  it should "bridge fiscal-rule debt to ESA debt through quasi-fiscal bonds" in {
+    decimal(p.quasiFiscal.initBondsOutstanding) shouldBe (BigDecimal("421.653e9") * gdpRatio) +- BigDecimal("1.0")
+    decimal(p.quasiFiscal.initNbpBondHoldings) shouldBe (BigDecimal("106e9") * gdpRatio) +- BigDecimal("1.0")
+    decimal(p.fiscal.initGovDebt + p.quasiFiscal.initBondsOutstanding) shouldBe (BigDecimal("2335.153e9") * gdpRatio) +- BigDecimal("1.0")
   }
 
   "p.fiscal.initGovDebt" should "delegate to fiscal.initGovDebt" in {
@@ -45,45 +63,46 @@ class SimParamsSpec extends AnyFlatSpec with Matchers:
   // ── Banking ──
 
   "BankingConfig" should "have gdpRatio-scaled values" in {
-    decimal(p.banking.initCapital) shouldBe (BigDecimal("270e9") * gdpRatio) +- BigDecimal("1.0")
-    decimal(p.banking.initDeposits) shouldBe (BigDecimal("1900e9") * gdpRatio) +- BigDecimal("1.0")
-    decimal(p.banking.initLoans) shouldBe (BigDecimal("700e9") * gdpRatio) +- BigDecimal("1.0")
+    decimal(p.banking.initCapital) shouldBe (BigDecimal("168e9") * gdpRatio) +- BigDecimal("1.0")
+    decimal(p.banking.initDeposits) shouldBe (BigDecimal("2542.3e9") * gdpRatio) +- BigDecimal("1.0")
+    decimal(p.banking.initLoans) shouldBe (BigDecimal("557.4e9") * gdpRatio) +- BigDecimal("1.0")
     decimal(p.banking.initGovBonds) shouldBe (BigDecimal("400e9") * gdpRatio) +- BigDecimal("1.0")
     decimal(p.banking.initNbpGovBonds) shouldBe (BigDecimal("300e9") * gdpRatio) +- BigDecimal("1.0")
-    decimal(p.banking.initConsumerLoans) shouldBe (BigDecimal("200e9") * gdpRatio) +- BigDecimal("1.0")
+    decimal(p.banking.initConsumerLoans) shouldBe (BigDecimal("225.2e9") * gdpRatio) +- BigDecimal("1.0")
   }
 
   // ── External sector sub-configs ──
 
   "OpenEconConfig" should "have gdpRatio-scaled values" in {
-    decimal(p.openEcon.exportBase) shouldBe (BigDecimal("138.5e9") * gdpRatio) +- BigDecimal("1.0")
+    decimal(p.openEcon.exportBase) shouldBe (BigDecimal("157.6e9") * gdpRatio) +- BigDecimal("1.0")
     decimal(p.openEcon.euTransfers) shouldBe (BigDecimal("1.458e9") * gdpRatio) +- BigDecimal("1.0")
-    decimal(p.openEcon.fdiBase) shouldBe (BigDecimal("583.1e6") * gdpRatio) +- BigDecimal("1.0")
+    decimal(p.openEcon.fdiBase) shouldBe (BigDecimal("4.963e9") * gdpRatio) +- BigDecimal("1.0")
   }
 
   // ── Financial sub-configs ──
 
   "EquityConfig" should "have gdpRatio-scaled initMcap" in {
-    decimal(p.equity.initMcap) shouldBe (BigDecimal("1.4e12") * gdpRatio) +- BigDecimal("1.0")
+    decimal(p.equity.initIndex) shouldBe BigDecimal("128508.77")
+    decimal(p.equity.initMcap) shouldBe (BigDecimal("1232.99264e9") * gdpRatio) +- BigDecimal("1.0")
   }
 
   "CorpBondConfig" should "have gdpRatio-scaled initStock" in {
-    decimal(p.corpBond.initStock) shouldBe (BigDecimal("90e9") * gdpRatio) +- BigDecimal("1.0")
+    decimal(p.corpBond.initStock) shouldBe (BigDecimal("108.5e9") * gdpRatio) +- BigDecimal("1.0")
   }
 
   "InsuranceConfig" should "have gdpRatio-scaled reserves" in {
-    decimal(p.ins.lifeReserves) shouldBe (BigDecimal("110e9") * gdpRatio) +- BigDecimal("1.0")
-    decimal(p.ins.nonLifeReserves) shouldBe (BigDecimal("90e9") * gdpRatio) +- BigDecimal("1.0")
+    decimal(p.ins.lifeReserves) shouldBe (BigDecimal("76.981e9") * gdpRatio) +- BigDecimal("1.0")
+    decimal(p.ins.nonLifeReserves) shouldBe (BigDecimal("105.869e9") * gdpRatio) +- BigDecimal("1.0")
   }
 
   "NbfiConfig" should "have gdpRatio-scaled values" in {
-    decimal(p.nbfi.tfiInitAum) shouldBe (BigDecimal("380e9") * gdpRatio) +- BigDecimal("1.0")
-    decimal(p.nbfi.creditInitStock) shouldBe (BigDecimal("231e9") * gdpRatio) +- BigDecimal("1.0")
+    decimal(p.nbfi.tfiInitAum) shouldBe (BigDecimal("448.3e9") * gdpRatio) +- BigDecimal("1.0")
+    decimal(p.nbfi.creditInitStock) shouldBe (BigDecimal("234e9") * gdpRatio) +- BigDecimal("1.0")
   }
 
   "HousingConfig" should "have gdpRatio-scaled values" in {
-    decimal(p.housing.initValue) shouldBe (BigDecimal("3.0e12") * gdpRatio) +- BigDecimal("1.0")
-    decimal(p.housing.initMortgage) shouldBe (BigDecimal("485e9") * gdpRatio) +- BigDecimal("1.0")
+    decimal(p.housing.initValue) shouldBe (BigDecimal("7.8e12") * gdpRatio) +- BigDecimal("1.0")
+    decimal(p.housing.initMortgage) shouldBe (BigDecimal("506.3e9") * gdpRatio) +- BigDecimal("1.0")
   }
 
   // ── Delegation consistency ──
@@ -136,9 +155,28 @@ class SimParamsSpec extends AnyFlatSpec with Matchers:
     an[IllegalArgumentException] should be thrownBy MonetaryConfig(rateFloor = Rate.decimal(5, 1), rateCeiling = Rate.decimal(1, 1))
   }
 
+  it should "reject initial rates outside the configured corridor" in {
+    an[IllegalArgumentException] should be thrownBy MonetaryConfig(initialRate = Rate.decimal(20, 2))
+    an[IllegalArgumentException] should be thrownBy MonetaryConfig(initialExpectedRate = Rate.decimal(20, 2))
+  }
+
   "BankingConfig" should "reject invalid minCar" in {
     an[IllegalArgumentException] should be thrownBy BankingConfig(minCar = Multiplier(0))
     an[IllegalArgumentException] should be thrownBy BankingConfig(minCar = Multiplier(1))
+  }
+
+  it should "reject p2rAddons and osiiBuffers outside [0,1]" in {
+    val p2rErr = intercept[IllegalArgumentException]:
+      BankingConfig(p2rAddons = Vector(Multiplier(-1)), osiiBuffers = Vector(Multiplier.Zero))
+    p2rErr.getMessage should include("p2rAddons[0]")
+
+    val osiiErr = intercept[IllegalArgumentException]:
+      BankingConfig(p2rAddons = Vector(Multiplier.Zero), osiiBuffers = Vector(Multiplier(2)))
+    osiiErr.getMessage should include("osiiBuffers[0]")
+  }
+
+  "FirmConfig" should "pin the Poland productivity-growth baseline" in {
+    p.firm.productivityGrowth shouldBe Rate.decimal(2, 2)
   }
 
   // ── Vector length validation ──
@@ -153,6 +191,10 @@ class SimParamsSpec extends AnyFlatSpec with Matchers:
 
   "ClimateConfig" should "reject wrong-length energyCostShares" in {
     an[IllegalArgumentException] should be thrownBy ClimateConfig(energyCostShares = Vector(Share.decimal(1, 1)))
+  }
+
+  "HousingConfig" should "reject negative initMortgage" in {
+    an[IllegalArgumentException] should be thrownBy HousingConfig(initMortgage = PLN(-1))
   }
 
   // ── Private constructor ──

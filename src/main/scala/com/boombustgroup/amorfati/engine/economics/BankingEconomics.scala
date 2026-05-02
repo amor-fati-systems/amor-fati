@@ -425,7 +425,7 @@ object BankingEconomics:
     * The model has a single household `bankId` reused for origination, debt
     * service, and default routing. Deposit mobility / bank reassignment can
     * change that routing key without changing the aggregate unsecured loan
-    * stock. If we leave the historical per-bank book untouched, a bank can end
+    * stock. If we leave the pre-scaling per-bank book untouched, a bank can end
     * up receiving more consumer-loan outflows than the stock it still carries,
     * forcing per-bank zero clipping and eventually breaking aggregate SFC
     * exactness. This helper keeps the aggregate book constant but rebalances

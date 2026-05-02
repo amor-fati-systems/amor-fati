@@ -5,20 +5,21 @@ import com.boombustgroup.amorfati.types.*
 /** Insurance sector: life and non-life reserves, asset allocation, and
   * counter-cyclical claims.
   *
-  * Models the Polish insurance industry with separate life (~110 mld PLN) and
-  * non-life (~90 mld PLN) reserve pools (KNF 2024). Three-asset allocation
-  * across government bonds, corporate bonds, and equities. Non-life claims are
-  * counter-cyclical (unemployment-sensitive). Affects SFC Identities 2 and 5.
+  * Models the Polish insurance industry with separate life (~77 mld PLN) and
+  * non-life (~106 mld PLN) technical provision pools (KNF IV/2025). Three-asset
+  * allocation across government bonds, corporate bonds, and equities. Non-life
+  * claims are counter-cyclical (unemployment-sensitive). Affects SFC Identities
+  * 2 and 5.
   *
   * Reserve values are in raw PLN — scaled by `gdpRatio` in
   * `SimParams.defaults`.
   *
   * @param lifeReserves
-  *   initial life insurance reserves in raw PLN (KNF 2024: ~110 mld, scaled by
-  *   gdpRatio)
+  *   initial life insurance technical provisions in raw PLN (KNF IV/2025: ~77
+  *   mld, scaled by gdpRatio)
   * @param nonLifeReserves
-  *   initial non-life insurance reserves in raw PLN (KNF 2024: ~90 mld, scaled
-  *   by gdpRatio)
+  *   initial non-life insurance technical provisions in raw PLN (KNF IV/2025:
+  *   ~106 mld, scaled by gdpRatio)
   * @param govBondShare
   *   share of reserves invested in government bonds
   * @param corpBondShare
@@ -39,8 +40,8 @@ import com.boombustgroup.amorfati.types.*
   *   monthly portfolio rebalancing speed toward target allocation
   */
 case class InsuranceConfig(
-    lifeReserves: PLN = PLN(110000000000L),   // raw — scaled by gdpRatio
-    nonLifeReserves: PLN = PLN(90000000000L), // raw — scaled by gdpRatio
+    lifeReserves: PLN = PLN(76981000000L),     // raw — scaled by gdpRatio
+    nonLifeReserves: PLN = PLN(105869000000L), // raw — scaled by gdpRatio
     govBondShare: Share = Share.decimal(35, 2),
     corpBondShare: Share = Share.decimal(8, 2),
     equityShare: Share = Share.decimal(12, 2),

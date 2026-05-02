@@ -10,9 +10,10 @@ import com.boombustgroup.amorfati.types.*
   * @param fpAlmpSpendPerWorker
   *   monthly ALMP spending per employed worker (training, job placement)
   * @param pfronMonthlyRevenue
-  *   PFRON monthly revenue from employer levies (~460 mln PLN/mo, PFRON 2024)
+  *   PFRON monthly revenue from employer levies (~460 mln PLN/mo, PFRON bridge
+  *   prior)
   * @param pfronMonthlySpending
-  *   PFRON monthly disability spending (~420 mln PLN/mo, PFRON 2024)
+  *   PFRON monthly disability spending (~420 mln PLN/mo, PFRON bridge prior)
   * @param fgspRate
   *   FGŚP payroll contribution rate (0.10%, Ustawa o ochronie roszczeń
   *   pracowniczych)

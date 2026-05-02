@@ -10,12 +10,12 @@ import com.boombustgroup.amorfati.types.*
   * stress liquidation. GDP accounting includes inventory investment (SNA 2008:
   * GDP += delta-inventories).
   *
-  * Calibrated to GUS F-01 2024 (capital) and GUS 2024 industry data
-  * (inventories).
+  * Calibrated to GUS F-01 bridge prior (capital) and GUS bridge prior industry
+  * data (inventories).
   *
   * @param klRatios
   *   per-sector capital-labor ratio in PLN per worker (6 sectors, GUS F-01
-  *   2024)
+  *   bridge prior)
   * @param depRates
   *   per-sector annual capital depreciation rate (6 sectors)
   * @param importShare
@@ -32,7 +32,7 @@ import com.boombustgroup.amorfati.types.*
   * @param costReplace
   *   replacement cost of capital as fraction of original value
   * @param inventoryTargetRatios
-  *   per-sector target inventory-to-revenue ratio (6 sectors, GUS 2024)
+  *   per-sector target inventory-to-revenue ratio (6 sectors, GUS bridge prior)
   * @param inventoryAdjustSpeed
   *   monthly speed of inventory adjustment toward target
   * @param inventoryCarryingCost
@@ -49,16 +49,16 @@ import com.boombustgroup.amorfati.types.*
   *   cost of replacing spoiled inventory as fraction of revenue
   */
 case class CapitalConfig(
-    // Physical capital (GUS F-01 2024; #461 K/GDP calibration)
+    // Physical capital (GUS F-01 bridge prior; #461 K/GDP calibration)
     klRatios: Vector[PLN] = Vector(PLN(180000), PLN(375000), PLN(120000), PLN(300000), PLN(225000), PLN(270000)),
     depRates: Vector[Rate] = Vector(Rate.decimal(15, 2), Rate.decimal(8, 2), Rate.decimal(10, 2), Rate.decimal(7, 2), Rate.decimal(5, 2), Rate.decimal(8, 2)),
     importShare: Share = Share.decimal(18, 2),
-    adjustSpeed: Coefficient = Coefficient.decimal(18, 2),
-    demandExpansionSensitivity: Coefficient = Coefficient.decimal(40, 2),
+    adjustSpeed: Coefficient = Coefficient.decimal(10, 2),
+    demandExpansionSensitivity: Coefficient = Coefficient.decimal(30, 2),
     investmentCreditShare: Share = Share.One,
     prodElast: Share = Share.decimal(30, 2),
     costReplace: Share = Share.decimal(50, 2),
-    // Inventories (GUS 2024)
+    // Inventories (GUS bridge prior)
     inventoryTargetRatios: Vector[Share] =
       Vector(Share.decimal(5, 2), Share.decimal(25, 2), Share.decimal(15, 2), Share.decimal(10, 2), Share.decimal(2, 2), Share.decimal(30, 2)),
     inventoryAdjustSpeed: Coefficient = Coefficient.decimal(10, 2),

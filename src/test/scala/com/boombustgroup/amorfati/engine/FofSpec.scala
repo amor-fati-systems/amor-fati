@@ -7,6 +7,8 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import com.boombustgroup.amorfati.accounting.Sfc
 import com.boombustgroup.amorfati.agents.{Firm, TechState}
+import com.boombustgroup.amorfati.config.SimParamsTestOverrides
+import com.boombustgroup.amorfati.engine.economics.DemandEconomics
 import com.boombustgroup.amorfati.types.*
 
 class FofSpec extends AnyFlatSpec with Matchers:
@@ -158,6 +160,34 @@ class FofSpec extends AnyFlatSpec with Matchers:
     val sectorCap = BigDecimal("0.0")
     val mult      = if sectorCap > 0 then BigDecimal("100.0") / (sectorCap * BigDecimal("1.0")) else BigDecimal("0.0")
     mult shouldBe BigDecimal("0.0")
+  }
+
+  "Demand spillover" should "follow I-O compatibility instead of pooled economy-wide slack" in {
+    val ioMatrix   = Vector(
+      Vector(Share.Zero, Share.Zero, Share.Zero, Share.Zero, Share.Zero, Share.Zero),
+      Vector(Share.Zero, Share.Zero, Share.Zero, Share.Zero, Share.Zero, Share.Zero),
+      Vector(Share.Zero, Share.Zero, Share.Zero, Share.Zero, Share.Zero, Share.Zero),
+      Vector(Share.Zero, Share.Zero, Share.Zero, Share.Zero, Share.Zero, Share.Zero),
+      Vector(Share.Zero, Share.Zero, Share.Zero, Share.Zero, Share.Zero, Share.Zero),
+      Vector(Share.Zero, Share.Zero, Share.decimal(2, 1), Share.Zero, Share.Zero, Share.Zero),
+    )
+    val spilloverP = SimParamsTestOverrides.withIo(ioMatrix)
+    val rawMults   = Vector(
+      Multiplier.decimal(5, 1),
+      Multiplier.One,
+      Multiplier.decimal(5, 1),
+      Multiplier.One,
+      Multiplier.One,
+      Multiplier(2),
+    )
+    val mults      = DemandEconomics.applySpillover(
+      rawMults = rawMults,
+      sectorCapReal = Vector.fill(6)(PLN(100)),
+      priceLevel = PriceIndex.Base,
+    )(using spilloverP)
+
+    decimal(mults(0)) shouldBe BigDecimal("0.5")
+    decimal(mults(2)) shouldBe BigDecimal("1.0")
   }
 
   "Total firm revenue" should "equal sum of sector demands (identity closes)" in {

@@ -16,8 +16,8 @@ import com.boombustgroup.ledger.Distribute
   * Optional 7-region disaggregation: Warsaw, Kraków, Wrocław, Gdańsk, Łódź,
   * Poznań, rest-of-Poland.
   *
-  * Calibration: NBP residential price survey 2024, KNF Recommendation S, GUS
-  * wage surveys 2024.
+  * Calibration: NBP residential price bridge prior, KNF Recommendation S, and
+  * wage-distribution bridge priors.
   */
 object HousingMarket:
 

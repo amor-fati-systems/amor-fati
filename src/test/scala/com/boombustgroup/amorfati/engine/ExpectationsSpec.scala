@@ -19,39 +19,39 @@ class ExpectationsSpec extends AnyFlatSpec with Matchers:
 
   "Expectations.initial" should "use config values" in {
     val i = Expectations.initial
-    decimal(i.expectedInflation) shouldBe decimal(p.monetary.targetInfl)
-    decimal(i.expectedRate) shouldBe decimal(p.monetary.initialRate)
+    decimal(i.expectedInflation) shouldBe decimal(p.monetary.initialExpectedInflation)
+    decimal(i.expectedRate) shouldBe decimal(p.monetary.initialExpectedRate)
     decimal(i.credibility) shouldBe decimal(p.labor.expCredibilityInit)
     decimal(i.forecastError) shouldBe BigDecimal("0.0")
-    decimal(i.forwardGuidanceRate) shouldBe decimal(p.monetary.initialRate)
+    decimal(i.forwardGuidanceRate) shouldBe decimal(p.monetary.initialExpectedRate)
   }
 
   // --- Forecast error ---
 
   "step" should "compute forecast error = realized - expected" in {
     val prev = Expectations.initial
-    val r    = step(prev, BigDecimal("0.05"), BigDecimal("0.0575"), BigDecimal("0.05"))
-    decimal(r.forecastError) shouldBe (BigDecimal("0.05") - decimal(p.monetary.targetInfl)) +- BigDecimal("1e-10")
+    val r    = step(prev, BigDecimal("0.05"), decimal(p.monetary.initialRate), BigDecimal("0.05"))
+    decimal(r.forecastError) shouldBe (BigDecimal("0.05") - decimal(prev.expectedInflation)) +- BigDecimal("1e-10")
   }
 
   // --- Adaptive update + anchoring ---
 
   it should "increase expected inflation when realized exceeds target" in {
     val prev = Expectations.initial
-    val r    = step(prev, BigDecimal("0.08"), BigDecimal("0.0575"), BigDecimal("0.05"))
+    val r    = step(prev, BigDecimal("0.08"), decimal(p.monetary.initialRate), BigDecimal("0.05"))
     decimal(r.expectedInflation) should be > decimal(p.monetary.targetInfl)
   }
 
   it should "keep expected inflation near target when credibility is high" in {
     val prev = Expectations.initial.copy(credibility = Share.decimal(99, 2))
-    val r    = step(prev, BigDecimal("0.08"), BigDecimal("0.0575"), BigDecimal("0.05"))
+    val r    = step(prev, BigDecimal("0.08"), decimal(p.monetary.initialRate), BigDecimal("0.05"))
     // With 99% credibility, expectations should stay close to target
     decimal(r.expectedInflation) should be < BigDecimal("0.04")
   }
 
   it should "track realized inflation when credibility is low" in {
     val prev = Expectations.initial.copy(credibility = Share.decimal(5, 2))
-    val r    = step(prev, BigDecimal("0.10"), BigDecimal("0.0575"), BigDecimal("0.05"))
+    val r    = step(prev, BigDecimal("0.10"), decimal(p.monetary.initialRate), BigDecimal("0.05"))
     // With 5% credibility, expectations should move toward realized
     decimal(r.expectedInflation) should be > BigDecimal("0.06")
   }
@@ -72,14 +72,14 @@ class ExpectationsSpec extends AnyFlatSpec with Matchers:
 
   it should "build credibility when inflation is near target" in {
     val prev = Expectations.initial.copy(credibility = Share.decimal(5, 1))
-    val r    = Expectations.step(prev, p.monetary.targetInfl, Rate.decimal(575, 4), Share.decimal(5, 2))
+    val r    = Expectations.step(prev, p.monetary.targetInfl, p.monetary.initialRate, Share.decimal(5, 2))
     decimal(r.credibility) should be > BigDecimal("0.5")
   }
 
   it should "erode credibility when inflation deviates from target" in {
     val prev = Expectations.initial.copy(credibility = Share.decimal(8, 1))
     // 10% inflation -> well above 2pp threshold
-    val r    = step(prev, BigDecimal("0.10"), BigDecimal("0.0575"), BigDecimal("0.05"))
+    val r    = step(prev, BigDecimal("0.10"), decimal(p.monetary.initialRate), BigDecimal("0.05"))
     decimal(r.credibility) should be < BigDecimal("0.8")
   }
 
@@ -87,30 +87,30 @@ class ExpectationsSpec extends AnyFlatSpec with Matchers:
     val prev          = Expectations.initial.copy(credibility = Share.decimal(8, 1))
     val target        = decimal(p.monetary.targetInfl)
     val sameDeviation = BigDecimal("0.05")
-    val low           = step(prev, target - sameDeviation, BigDecimal("0.0575"), BigDecimal("0.08"))
-    val high          = step(prev, target + sameDeviation, BigDecimal("0.0575"), BigDecimal("0.05"))
+    val low           = step(prev, target - sameDeviation, decimal(p.monetary.initialRate), BigDecimal("0.08"))
+    val high          = step(prev, target + sameDeviation, decimal(p.monetary.initialRate), BigDecimal("0.05"))
     decimal(low.credibility) should be > decimal(high.credibility)
   }
 
   it should "bound credibility in [0.01, 1.0]" in {
     // Test lower bound
     val low = Expectations.initial.copy(credibility = Share.decimal(2, 2))
-    val r1  = step(low, BigDecimal("0.50"), BigDecimal("0.0575"), BigDecimal("0.05"))
+    val r1  = step(low, BigDecimal("0.50"), decimal(p.monetary.initialRate), BigDecimal("0.05"))
     decimal(r1.credibility) should be >= BigDecimal("0.01")
 
     // Test upper bound
     val high = Expectations.initial.copy(credibility = Share.decimal(99, 2))
-    val r2   = Expectations.step(high, p.monetary.targetInfl, Rate.decimal(575, 4), Share.decimal(5, 2))
+    val r2   = Expectations.step(high, p.monetary.targetInfl, p.monetary.initialRate, Share.decimal(5, 2))
     decimal(r2.credibility) should be <= BigDecimal("1.0")
   }
 
   it should "be harder to build credibility than to lose it (asymmetric)" in {
     val mid        = Expectations.initial.copy(credibility = Share.decimal(5, 1))
     // Build: at target
-    val rBuild     = Expectations.step(mid, p.monetary.targetInfl, Rate.decimal(575, 4), Share.decimal(5, 2))
+    val rBuild     = Expectations.step(mid, p.monetary.targetInfl, p.monetary.initialRate, Share.decimal(5, 2))
     val buildDelta = decimal(rBuild.credibility) - BigDecimal("0.5")
     // Erode: 5% above target (symmetric deviation)
-    val rErode     = step(mid, decimal(p.monetary.targetInfl) + BigDecimal("0.05"), BigDecimal("0.0575"), BigDecimal("0.05"))
+    val rErode     = step(mid, decimal(p.monetary.targetInfl) + BigDecimal("0.05"), decimal(p.monetary.initialRate), BigDecimal("0.05"))
     val erodeDelta = BigDecimal("0.5") - decimal(rErode.credibility)
     // Erosion should be larger because it's proportional to current credibility (0.5)
     // while building is proportional to (1 - credibility) (0.5) -- but the deviation matters too
@@ -126,7 +126,7 @@ class ExpectationsSpec extends AnyFlatSpec with Matchers:
     val r    = step(prev, BigDecimal("0.025"), BigDecimal("0.08"), BigDecimal("0.05"))
     // With forward guidance on, expected rate blends FG (approx neutralRate) and adaptive (toward 0.08)
     // Expected rate should differ from initial (moves toward blended target)
-    decimal(r.expectedRate) should not be decimal(p.monetary.initialRate)
+    decimal(r.expectedRate) should not be decimal(p.monetary.initialExpectedRate)
   }
 
   // --- Stability ---

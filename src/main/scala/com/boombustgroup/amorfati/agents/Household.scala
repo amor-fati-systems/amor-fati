@@ -223,28 +223,32 @@ object Household:
   object Init:
 
     /** Create individual households with multi-bank assignment. Firm job slots
-      * are initialized as employed households; the NAIRU stock is added as
-      * unemployed labor-force participants outside those firm slots, so
-      * baseline unemployment does not create artificial same-month vacancies.
+      * are initialized as employed households; the configured initial
+      * unemployment stock is added as unemployed labor-force participants
+      * outside those firm slots, so baseline unemployment does not create
+      * artificial same-month vacancies.
       */
     def create(randomness: InitRandomness.HouseholdStreams, firms: Vector[Firm.State])(using p: SimParams): Population =
-      val employedSlots = firms.map(Firm.workerCount).sum
-      val nUnemployed   = initialUnemployedCount(employedSlots)
-      val totalCount    = employedSlots + nUnemployed
-      val hhNetwork     = Network.wattsStrogatz(totalCount, p.household.socialK, p.household.socialP, randomness.network)
-      val initialized   = initialize(employedSlots, firms, hhNetwork, randomness.attributes)
+      val employedSlots    = firms.map(Firm.workerCount).sum
+      val nUnemployed      = initialUnemployedCount(employedSlots)
+      val totalCount       = employedSlots + nUnemployed
+      val hhNetwork        = Network.wattsStrogatz(totalCount, p.household.socialK, p.household.socialP, randomness.network)
+      val initialized      = initialize(employedSlots, firms, hhNetwork, randomness.attributes)
       // Assign households to same bank as their employer
-      val banked        = initialized.households.map: h =>
+      val banked           = initialized.households.map: h =>
         h.status match
           case HhStatus.Employed(fid, _, _) if fid.toInt < firms.length => h.copy(bankId = firms(fid.toInt).bankId)
           case _                                                        => h
-      val unemployed    = initializeUnemployed(employedSlots, nUnemployed, firms, hhNetwork, randomness.attributes, randomness.initialUnemployment)
-      Population(banked ++ unemployed.map(_.state), initialized.financialStocks ++ unemployed.map(_.financialStocks))
+      val unemployed       = initializeUnemployed(employedSlots, nUnemployed, firms, hhNetwork, randomness.attributes, randomness.initialUnemployment)
+      val households       = banked ++ unemployed.map(_.state)
+      val financialStocks  = initialized.financialStocks ++ unemployed.map(_.financialStocks)
+      val calibratedStocks = calibrateConsumerLoans(financialStocks)
+      Population(households, calibratedStocks)
 
     private def initialUnemployedCount(employedSlots: Int)(using p: SimParams): Int =
-      if employedSlots <= 0 || p.monetary.nairu <= Share.Zero then 0
+      if employedSlots <= 0 || p.pop.initialUnemploymentRate <= Share.Zero then 0
       else
-        val employedShareRaw = (Share.One - p.monetary.nairu).toLong
+        val employedShareRaw = (Share.One - p.pop.initialUnemploymentRate).toLong
         val total            =
           ((BigInt(employedSlots) * BigInt(FixedPointBase.Scale)) + BigInt(employedShareRaw - 1L)) / BigInt(employedShareRaw)
         Math.max(0, total.toInt - employedSlots)
@@ -294,6 +298,21 @@ object Household:
         sampleHousehold(hhId, firm, sectorIdx, socialNetwork, rng)
       }
       Population(sampled.map(_.state), sampled.map(_.financialStocks))
+
+    private def calibrateConsumerLoans(stocks: Vector[FinancialStocks])(using p: SimParams): Vector[FinancialStocks] =
+      if stocks.isEmpty then stocks
+      else
+        val target = p.banking.initConsumerLoans
+        if target <= PLN.Zero then stocks.map(_.copy(consumerLoan = PLN.Zero))
+        else
+          val current   = stocks.iterator.map(_.consumerLoan).sumPln
+          val weights   =
+            if current > PLN.Zero then stocks.map(_.consumerLoan.distributeRaw).toArray
+            else Array.fill(stocks.length)(1L)
+          val allocated = com.boombustgroup.ledger.Distribute.distribute(target.toLong, weights)
+          stocks.zip(allocated).map { case (stock, rawConsumerLoan) =>
+            stock.copy(consumerLoan = PLN.fromRaw(rawConsumerLoan))
+          }
 
     private case class SampledHousehold(
         state: State,
@@ -525,11 +544,11 @@ object Household:
     val frictionNetWage   = targetAvgWage * SectoralMobility.crossSectorWagePenalty(friction)
     val wageThresholdMult = Multiplier.One + p.labor.voluntaryWageThreshold.toMultiplier
     if frictionNetWage <= status.wage * wageThresholdMult then return (status, 0)
-    if friction < p.labor.adjacentFrictionMax then (HhStatus.Unemployed(0), 1)
-    else
+    if friction <= p.labor.adjacentFrictionMax then
       val rp = SectoralMobility.frictionAdjustedParams(friction, p.labor.frictionDurationMult, p.labor.frictionCostMult)
       if financialStocks.demandDeposit > rp.cost then (HhStatus.Retraining(rp.duration, SectorIdx(targetSector), rp.cost), 1)
       else (status, 0)
+    else (status, 0)
 
   /** Retraining for unemployed HH → (newStatus, attemptFlag, successFlag). */
   private def tryRetraining(

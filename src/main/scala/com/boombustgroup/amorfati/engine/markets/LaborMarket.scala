@@ -22,7 +22,8 @@ import com.boombustgroup.amorfati.random.RandomStream
   * Separations use contract protection and automation vulnerability before
   * skill tie-breaks.
   *
-  * Calibration: GUS BAEL (Labor Force Survey) 2024, NBP wage statistics.
+  * Calibration: 2026-04-30 labor-market bridge prior and NBP wage-statistics
+  * bridge prior.
   */
 object LaborMarket:
 
@@ -144,11 +145,24 @@ object LaborMarket:
       rng: RandomStream,
       regionalWages: Map[Region, PLN] = Map.empty,
       eligibleFirmIds: Set[FirmId] = Set.empty,
+      maxHires: Option[Int] = None,
+      priorityHouseholdIds: Set[HhId] = Set.empty,
   )(using p: SimParams): JobSearchResult =
     val vacancies = computeVacancies(households, firms, eligibleFirmIds)
     if vacancies.isEmpty then JobSearchResult(households, 0)
-    else if regionalWages.nonEmpty then matchWorkersRegional(households, firms, vacancies, marketWage, regionalWages, rng)
-    else matchWorkers(households, firms, vacancies, marketWage, rng)
+    else if maxHires.exists(_ <= 0) then JobSearchResult(households, 0)
+    else if regionalWages.nonEmpty then matchWorkersRegional(households, firms, vacancies, marketWage, regionalWages, rng, maxHires, priorityHouseholdIds)
+    else matchWorkers(households, firms, vacancies, marketWage, rng, maxHires, priorityHouseholdIds)
+
+  def monthlyMatchingCapacity(households: Vector[Household.State], laborForcePopulation: Int)(using p: SimParams): Int =
+    val unemployed = households.count(_.status.isInstanceOf[HhStatus.Unemployed])
+    if unemployed <= 0 || laborForcePopulation <= 0 then 0
+    else
+      val structuralPool = Math.min(unemployed, p.monetary.nairu.ceilApplyTo(laborForcePopulation))
+      val cyclicalPool   = Math.max(0, unemployed - structuralPool)
+      val structural     = p.labor.structuralMatchRate.ceilApplyTo(structuralPool)
+      val cyclical       = p.labor.cyclicalMatchRate.ceilApplyTo(cyclicalPool)
+      Math.min(unemployed, structural + cyclical)
 
   // --- Wage updating ---
 
@@ -314,10 +328,12 @@ object LaborMarket:
       vacancies: Map[FirmId, Int],
       marketWage: PLN,
       rng: RandomStream,
+      maxHires: Option[Int],
+      priorityHouseholdIds: Set[HhId],
   )(using p: SimParams): JobSearchResult =
-    val ranked          = rankUnemployed(households)
+    val ranked          = rankUnemployed(households, maxHires, priorityHouseholdIds)
     val firmsBySector   = vacancies.keys.groupBy(fid => firms(fid.toInt).sector)
-    val firmsByPriority = vacancies.keys.toVector.sortBy(fid => p.sectorDefs(firms(fid.toInt).sector.toInt).sigma)(using summon[Ordering[Sigma]].reverse)
+    val firmsByPriority = fallbackFirmOrder(vacancies)
 
     val init   = MatchState(Map.empty, vacancies, 0)
     val result = ranked.foldLeft(init): (st, idx) =>
@@ -337,16 +353,17 @@ object LaborMarket:
       marketWage: PLN,
       regionalWages: Map[Region, PLN],
       rng: RandomStream,
+      maxHires: Option[Int],
+      priorityHouseholdIds: Set[HhId],
   )(using p: SimParams): JobSearchResult =
-    val ranked = rankUnemployed(households)
+    val ranked = rankUnemployed(households, maxHires, priorityHouseholdIds)
 
     // Pre-grouped maps for O(1) tier lookups
     val firmsBySectorRegion: Map[(SectorIdx, Region), Vector[FirmId]] =
       vacancies.keys.toVector.groupBy(fid => (firms(fid.toInt).sector, firms(fid.toInt).region))
     val firmsByRegion: Map[Region, Vector[FirmId]]                    =
       vacancies.keys.toVector.groupBy(fid => firms(fid.toInt).region)
-    val firmsByPriority                                               =
-      vacancies.keys.toVector.sortBy(fid => p.sectorDefs(firms(fid.toInt).sector.toInt).sigma)(using summon[Ordering[Sigma]].reverse)
+    val firmsByPriority                                               = fallbackFirmOrder(vacancies)
 
     val init   = MatchState(Map.empty, vacancies, 0)
     val result = ranked.foldLeft(init): (st, idx) =>
@@ -405,14 +422,27 @@ object LaborMarket:
         val newVacancies  = if remaining <= 0 then st.vacancies - fid else st.vacancies.updated(fid, remaining)
         MatchState(st.hired.updated(idx, newHh), newVacancies, st.crossSectorHires + (if isCrossSector then 1 else 0))
 
+  /** Stable cross-sector fallback order. Same-sector and same-region matches
+    * still clear first; this only avoids a global high-sigma sector preference.
+    */
+  private def fallbackFirmOrder(vacancies: Map[FirmId, Int]): Vector[FirmId] =
+    vacancies.keys.toVector.sortBy(_.toInt)
+
   /** Rank unemployed households by effective skill descending. */
-  private def rankUnemployed(households: Vector[Household.State]): Vector[Int] =
-    households.zipWithIndex
+  private def rankUnemployed(households: Vector[Household.State], maxHires: Option[Int], priorityHouseholdIds: Set[HhId]): Vector[Int] =
+    val ranked = households.zipWithIndex
       .flatMap: (hh, idx) =>
         hh.status match
           case _: HhStatus.Unemployed => Some(idx)
           case _                      => None
-      .sortBy(i => effectiveSkill(households(i)))(using summon[Ordering[Share]].reverse)
+      .sortWith: (left, right) =>
+        val leftPriority  = priorityHouseholdIds.contains(households(left).id)
+        val rightPriority = priorityHouseholdIds.contains(households(right).id)
+        if leftPriority != rightPriority then leftPriority
+        else effectiveSkill(households(left)) > effectiveSkill(households(right))
+    maxHires match
+      case Some(limit) => ranked.take(limit.max(0))
+      case None        => ranked
 
   /** Try hiring one unemployed household into a vacancy. */
   private def tryHire(

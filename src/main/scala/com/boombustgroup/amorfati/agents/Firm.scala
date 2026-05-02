@@ -286,7 +286,11 @@ object Firm:
     * erase a firm's capital target.
     */
   private[amorfati] def capitalPlanningWorkers(f: State)(using p: SimParams): Int =
-    if !isAlive(f) then 0 else Math.max(workerCount(f), f.initialSize)
+    if !isAlive(f) then 0
+    else
+      val workers = workerCount(f)
+      if f.startupTargetWorkers > 0 && workers < f.initialSize then Math.max(workers, f.startupTargetWorkers)
+      else Math.max(workers, f.initialSize)
 
   /** Effective wage multiplier including union wage premium. */
   def effectiveWageMult(sectorIdx: SectorIdx)(using p: SimParams): Multiplier =
@@ -310,7 +314,7 @@ object Firm:
       case _: TechState.Bankrupt    => Multiplier.Zero
     val tfp       = sizeScale * sec.revenueMultiplier
     if f.capitalStock > PLN.Zero && laborEff > Multiplier.Zero then
-      val targetK: PLN  = workerCount(f) * p.capital.klRatios(f.sector.toInt)
+      val targetK: PLN  = capitalPlanningWorkers(f) * p.capital.klRatios(f.sector.toInt)
       val k: Multiplier =
         (if targetK > PLN.Zero then f.capitalStock.ratioTo(targetK).toMultiplier else Multiplier.One).clamp(Multiplier.decimal(1, 1), Multiplier(2))
       val alpha: Share  = p.capital.prodElast

@@ -34,8 +34,9 @@ object FiscalBudget:
     * of the total EU project envelope (EU transfer + domestic co-financing).
     * Stock fields (`cumulativeDebt`, `publicCapitalStock`) accumulate across
     * months. Government-bond ownership and issuer-side outstanding stock live
-    * in `LedgerFinancialState`; this state keeps only the broader fiscal debt
-    * metric (Σ deficits), not a separate tradable instrument.
+    * in `LedgerFinancialState`; this state keeps the domestic fiscal-rule debt
+    * metric initialized from `FiscalConfig.initGovDebt` and advanced by monthly
+    * deficits, not a separate tradable instrument.
     *
     * `deficit` = totalSpend − totalRevenue (positive = deficit, negative =
     * surplus). `cumulativeDebt` += deficit each month.
@@ -48,18 +49,18 @@ object FiscalBudget:
     * — a yield shock passes through over the configured debt-portfolio maturity
     * instead of instantly, matching the MF flat redemption profile.
     *
-    * Calibration: MF budgetary law structure 2024, GUS public finance
-    * statistics, NBP government securities data.
+    * Calibration: MF budgetary bridge prior, GUS public finance statistics, NBP
+    * government securities data.
     */
   case class GovFinancialState(
-      cumulativeDebt: PLN, // fiscal debt metric (Σ deficits since t = 0), not a separate holder-tracked instrument
+      cumulativeDebt: PLN, // domestic fiscal-rule debt metric, not a separate holder-tracked instrument
   )
 
   case class GovPolicyState(
       bondYield: Rate = Rate.Zero,                    // lagged market yield (for lending rates)
       weightedCoupon: Rate = Rate.Zero,               // portfolio-weighted average coupon (WAM rolling model)
       publicCapitalStock: PLN = PLN.Zero,             // public capital stock accumulated from domestic capex and EU project capital
-      minWageLevel: PLN = PLN(4666),                  // statutory minimum wage (PLN/month, GUS 2024)
+      minWageLevel: PLN = PLN(4806),                  // statutory 2026 minimum wage (PLN/month)
       minWagePriceLevel: PriceIndex = PriceIndex.Base, // price level at last minimum wage adjustment
   )
 
@@ -130,7 +131,7 @@ object FiscalBudget:
         exciseRevenue: PLN = PLN.Zero,
         customsDutyRevenue: PLN = PLN.Zero,
         govDividendRevenue: PLN = PLN.Zero,
-        minWageLevel: PLN = PLN(4666),
+        minWageLevel: PLN = PLN(4806),
         minWagePriceLevel: PriceIndex = PriceIndex.Base,
     ): GovState =
       GovState(

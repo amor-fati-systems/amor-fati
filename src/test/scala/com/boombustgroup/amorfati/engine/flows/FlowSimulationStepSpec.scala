@@ -2,7 +2,7 @@ package com.boombustgroup.amorfati.engine.flows
 
 import com.boombustgroup.amorfati.accounting.Sfc
 import com.boombustgroup.amorfati.agents.{ContractType, HhStatus, Household, Insurance, SocialSecurity}
-import com.boombustgroup.amorfati.config.SimParams
+import com.boombustgroup.amorfati.config.{SimParams, SimParamsTestOverrides}
 import com.boombustgroup.amorfati.engine.{
   DecisionSignals,
   MonthDriver,
@@ -46,20 +46,25 @@ class FlowSimulationStepSpec extends AnyFlatSpec with Matchers:
   }
 
   it should "emit equity issuance once from current-month firm financing" in {
-    val baseState     = stateFromSeed()
+    val financingP    = SimParamsTestOverrides.equityIssuanceFinancing
+    val baseState     = stateFromSeed()(using financingP)
     val staleIssuance = PLN(987654321)
+    val firmsNeedCash = baseState.ledgerFinancialState.firms.map(_.copy(cash = PLN.Zero))
     val state         = baseState.copy(
       world = baseState.world.copy(
         financialMarkets = baseState.world.financialMarkets.copy(
           equity = baseState.world.financialMarkets.equity.copy(lastIssuance = staleIssuance),
         ),
       ),
+      ledgerFinancialState = baseState.ledgerFinancialState.copy(firms = firmsNeedCash),
     )
 
-    val result                = stepWithSeed(state)
+    val result                = stepWithSeed(state)(using financingP)
     val firmIssuance          = mechanismTotal(result.flows, FlowMechanism.FirmEquityIssuance)
     val equityIssuanceBatches = result.flows.filter(batch => batch.asset == AssetType.Equity && batch.to == EntitySector.Firms)
 
+    firmIssuance should be > PLN.Zero
+    equityIssuanceBatches.length shouldBe 1
     equityIssuanceBatches.map(_.mechanism).toSet shouldBe Set(FlowMechanism.FirmEquityIssuance)
     firmIssuance shouldBe result.calculus.firmEquityIssuance
     firmIssuance shouldBe result.nextState.world.financialMarkets.equity.lastIssuance

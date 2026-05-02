@@ -25,6 +25,8 @@ class FirmEntrySpec extends AnyFlatSpec with Matchers:
       inflation: Rate = Rate.Zero,
       expectedInflation: Rate = Rate.Zero,
       startupAbsorptionRate: Share = Share.One,
+      sectorDemandMult: Vector[Multiplier] = Vector.fill(p.sectorDefs.length)(Multiplier.One),
+      sectorDemandPressure: Vector[Multiplier] = Vector.fill(p.sectorDefs.length)(Multiplier.One),
       financialStocks: Vector[Firm.FinancialStocks] = Vector.empty,
   ): FirmEntry.Result =
     FirmEntry.process(
@@ -38,6 +40,8 @@ class FirmEntrySpec extends AnyFlatSpec with Matchers:
         expectedInflation = expectedInflation,
         laggedHiringSlack = laggedHiringSlack,
         startupAbsorptionRate = startupAbsorptionRate,
+        sectorDemandMult = sectorDemandMult,
+        sectorDemandPressure = sectorDemandPressure,
       ),
       rng,
     )
@@ -45,13 +49,16 @@ class FirmEntrySpec extends AnyFlatSpec with Matchers:
   private def defaultFinancialStocks(firms: Vector[Firm.State]): Vector[Firm.FinancialStocks] =
     firms.map(_ => TestFirmState.financial(cash = PLN(100000)))
 
+  private def demandPressure(value: Multiplier): Vector[Multiplier] =
+    Vector.fill(p.sectorDefs.length)(value)
+
+  private val ExpansionDemandPressure: Vector[Multiplier] = demandPressure(Multiplier.decimal(125, 2))
+  private val StrongDemandPressure: Vector[Multiplier]    = demandPressure(Multiplier(10))
+  private val WeakDemandUtilization: Vector[Multiplier]   = demandPressure(Multiplier.decimal(45, 2))
+
   // ==========================================================================
   // Config defaults
   // ==========================================================================
-
-  "FirmEntryRate" should "default to 0.02" in {
-    p.firm.entryRate shouldBe Share.decimal(2, 2)
-  }
 
   "FirmEntryProfitSens" should "default to 2.0" in {
     p.firm.entryProfitSens shouldBe Coefficient(2)
@@ -315,32 +322,48 @@ class FirmEntrySpec extends AnyFlatSpec with Matchers:
   }
 
   // ==========================================================================
-  // Entry probability
+  // Sector entry weights
   // ==========================================================================
 
-  "Entry probability" should "be non-negative" in {
-    for s <- 0 until 6 do
-      val profitSignal = BigDecimal("0.5") // moderate positive
-      val entryProb    = decimal(p.firm.entryRate) * decimal(p.firm.entrySectorBarriers(s)) *
-        DecimalMath.max(BigDecimal("0.0"), BigDecimal("1.0") + profitSignal * decimal(p.firm.entryProfitSens))
-      entryProb should be >= BigDecimal("0.0")
+  "Sector entry weights" should "anchor neutral entry to configured sector shares" in {
+    val firms   = mkFirms(120)
+    val weights = FirmEntry.computeSectorWeights(
+      living = firms.zip(defaultFinancialStocks(firms)),
+      profitSignals = Vector.fill(p.sectorDefs.length)(Coefficient.Zero),
+      laggedSignals = FirmEntry.LaggedEntrySignals(
+        unemploymentRate = p.monetary.nairu,
+        inflation = Rate.Zero,
+        expectedInflation = Rate.Zero,
+        laggedHiringSlack = Share.One,
+        startupAbsorptionRate = Share.One,
+        sectorDemandMult = demandPressure(Multiplier.One),
+        sectorDemandPressure = demandPressure(Multiplier.One),
+      ),
+    )
+
+    weights.foreach(weight => weight should be >= Multiplier.decimal(1, 2))
+    weights(0) should be < weights(1) // BPO anchor stays below manufacturing
+    weights(0) should be < weights(2) // BPO anchor stays below retail/services
   }
 
-  it should "be zero when profit signal is very negative" in {
-    val profitSignal = -BigDecimal("1.0")
-    val entryProb    = decimal(p.firm.entryRate) * decimal(p.firm.entrySectorBarriers(0)) *
-      DecimalMath.max(BigDecimal("0.0"), BigDecimal("1.0") + profitSignal * decimal(p.firm.entryProfitSens))
-    entryProb shouldBe BigDecimal("0.0")
-  }
+  it should "dampen an overrepresented BPO sector even when its cash signal is strong" in {
+    val firms   = mkFirms(120).zipWithIndex.map: (firm, idx) =>
+      firm.copy(sector = if idx < 72 then SectorIdx(0) else SectorIdx(2))
+    val weights = FirmEntry.computeSectorWeights(
+      living = firms.zip(defaultFinancialStocks(firms)),
+      profitSignals = Vector(Coefficient(2), Coefficient.Zero, Coefficient.Zero, Coefficient.Zero, Coefficient.Zero, Coefficient.Zero),
+      laggedSignals = FirmEntry.LaggedEntrySignals(
+        unemploymentRate = p.monetary.nairu,
+        inflation = Rate.Zero,
+        expectedInflation = Rate.Zero,
+        laggedHiringSlack = Share.One,
+        startupAbsorptionRate = Share.One,
+        sectorDemandMult = demandPressure(Multiplier.One),
+        sectorDemandPressure = demandPressure(Multiplier.One),
+      ),
+    )
 
-  it should "scale with sector barriers" in {
-    val profitSignal = BigDecimal("0.0")
-    val probs        = (0 until 6).map { s =>
-      decimal(p.firm.entryRate) * decimal(p.firm.entrySectorBarriers(s)) *
-        DecimalMath.max(BigDecimal("0.0"), BigDecimal("1.0") + profitSignal * decimal(p.firm.entryProfitSens))
-    }
-    // Retail (1.2) should have higher prob than Public (0.1)
-    probs(2) should be > probs(4) // Retail > Public
+    weights(0) should be < weights(2)
   }
 
   // ==========================================================================
@@ -422,32 +445,69 @@ class FirmEntrySpec extends AnyFlatSpec with Matchers:
   it should "count only appended firms as netBirths" in {
     val firms  = mkFirms(100) ++ Vector(mkDeadFirm(100), mkDeadFirm(101), mkDeadFirm(102))
     val rng    = RandomStream.seeded(42)
-    val result = runEntry(firms, BigDecimal("0.20"), rng)
+    val result = runEntry(firms, BigDecimal("0.20"), rng, sectorDemandPressure = ExpansionDemandPressure)
     result.births should be >= result.netBirths
     result.netBirths should be > 0
     result.newFirmIds.size shouldBe result.births
     result.firms.length shouldBe firms.length + result.netBirths
   }
 
-  it should "produce firms when unemployment > NAIRU" in {
+  it should "not produce net firms from high unemployment alone" in {
     val firms  = mkFirms(100)
     val rng    = RandomStream.seeded(42)
     val result = runEntry(firms, BigDecimal("0.15"), rng)
+    result.netBirths shouldBe 0
+    result.firms.length shouldBe firms.length
+  }
+
+  it should "produce net firms when demand pressure is high and labor supply is available" in {
+    val firms  = mkFirms(100)
+    val rng    = RandomStream.seeded(42)
+    val result = runEntry(firms, BigDecimal("0.15"), rng, sectorDemandPressure = ExpansionDemandPressure)
     result.netBirths should be > 0
     result.firms.length should be > firms.length
+  }
+
+  it should "dampen stale demand pressure when realized demand utilization is weak" in {
+    val firms        = mkFirms(1000)
+    val backedDemand = runEntry(firms, BigDecimal("0.20"), RandomStream.seeded(42), sectorDemandPressure = ExpansionDemandPressure)
+    val staleDemand  =
+      runEntry(
+        firms,
+        BigDecimal("0.20"),
+        RandomStream.seeded(42),
+        sectorDemandMult = WeakDemandUtilization,
+        sectorDemandPressure = ExpansionDemandPressure,
+      )
+
+    staleDemand.netBirths should be < backedDemand.netBirths
+  }
+
+  it should "suppress net entry when stale pressure is not backed by realized utilization" in {
+    val firms  = mkFirms(1000)
+    val result =
+      runEntry(
+        firms,
+        BigDecimal("0.20"),
+        RandomStream.seeded(42),
+        sectorDemandMult = demandPressure(Multiplier.Zero),
+        sectorDemandPressure = ExpansionDemandPressure,
+      )
+
+    result.netBirths shouldBe 0
   }
 
   it should "respect hard cap" in {
     val firms  = mkFirms(10000)
     val rng    = RandomStream.seeded(42)
-    val result = runEntry(firms, BigDecimal("0.50"), rng)
+    val result = runEntry(firms, BigDecimal("0.50"), rng, sectorDemandPressure = StrongDemandPressure)
     result.netBirths should be <= p.firm.netEntryMaxMonthly
   }
 
   it should "assign sequential FirmIds" in {
     val firms    = mkFirms(100)
     val rng      = RandomStream.seeded(42)
-    val result   = runEntry(firms, BigDecimal("0.20"), rng)
+    val result   = runEntry(firms, BigDecimal("0.20"), rng, sectorDemandPressure = ExpansionDemandPressure)
     val newFirms = result.firms.drop(firms.length)
     newFirms.zipWithIndex.foreach: (f, i) =>
       f.id.toInt shouldBe firms.length + i
@@ -457,34 +517,45 @@ class FirmEntrySpec extends AnyFlatSpec with Matchers:
   it should "create firms with GUS size distribution" in {
     val firms    = mkFirms(100)
     val rng      = RandomStream.seeded(42)
-    val result   = runEntry(firms, BigDecimal("0.20"), rng)
+    val result   = runEntry(firms, BigDecimal("0.20"), rng, sectorDemandPressure = ExpansionDemandPressure)
     val newFirms = result.firms.drop(firms.length)
     newFirms.foreach: f =>
       f.initialSize should be >= 1
   }
 
   it should "initialize entrants with startup ramp-up state" in {
-    val firms    = mkFirms(100)
-    val rng      = RandomStream.seeded(42)
-    val result   = runEntry(firms, BigDecimal("0.20"), rng)
-    val newFirms = result.firms.drop(firms.length)
-    newFirms.foreach: f =>
+    val firms   = mkFirms(100)
+    val rng     = RandomStream.seeded(42)
+    val result  = runEntry(firms, BigDecimal("0.20"), rng, sectorDemandPressure = ExpansionDemandPressure)
+    val newRows = result.firms.drop(firms.length).zip(result.financialStocks.drop(firms.length))
+    newRows.foreach: (f, stocks) =>
       f.startupMonthsLeft should be > 0
       f.startupTargetWorkers should be >= 1
+      f.startupTargetWorkers should be <= f.initialSize
       f.startupFilledWorkers shouldBe 0
       Firm.workerCount(f) shouldBe f.startupTargetWorkers
+      f.capitalStock shouldBe f.startupTargetWorkers * p.capital.klRatios(f.sector.toInt)
+      stocks.cash shouldBe p.firm.entryStartupCash * Scalar.fraction(f.startupTargetWorkers, p.pop.workersPerFirm).toMultiplier
   }
 
   it should "dampen net entry when lagged hiring slack is tight" in {
     val firms       = mkFirms(1000)
-    val looseResult = runEntry(firms, BigDecimal("0.20"), RandomStream.seeded(42))
-    val tightResult = runEntry(firms, BigDecimal("0.20"), RandomStream.seeded(42), laggedHiringSlack = Share.decimal(5, 1))
+    val looseResult = runEntry(firms, BigDecimal("0.20"), RandomStream.seeded(42), sectorDemandPressure = ExpansionDemandPressure)
+    val tightResult =
+      runEntry(firms, BigDecimal("0.20"), RandomStream.seeded(42), laggedHiringSlack = Share.decimal(5, 1), sectorDemandPressure = ExpansionDemandPressure)
     tightResult.netBirths.should(be < looseResult.netBirths)
   }
 
   it should "dampen net entry when startup absorption is weak" in {
     val firms        = mkFirms(1000)
-    val strongAbsorb = runEntry(firms, BigDecimal("0.20"), RandomStream.seeded(42), inflation = Rate.decimal(3, 2), expectedInflation = Rate.decimal(25, 3))
+    val strongAbsorb = runEntry(
+      firms,
+      BigDecimal("0.20"),
+      RandomStream.seeded(42),
+      inflation = Rate.decimal(3, 2),
+      expectedInflation = Rate.decimal(25, 3),
+      sectorDemandPressure = ExpansionDemandPressure,
+    )
     val weakAbsorb   =
       runEntry(
         firms,
@@ -493,19 +564,34 @@ class FirmEntrySpec extends AnyFlatSpec with Matchers:
         inflation = Rate.decimal(3, 2),
         expectedInflation = Rate.decimal(25, 3),
         startupAbsorptionRate = Share.decimal(25, 2),
+        sectorDemandPressure = ExpansionDemandPressure,
       )
     weakAbsorb.netBirths should be < strongAbsorb.netBirths
   }
 
   it should "suppress expansionary net entry under deflation and negative expectations" in {
     val firms  = mkFirms(1000)
-    val result = runEntry(firms, BigDecimal("0.20"), RandomStream.seeded(42), inflation = Rate.decimal(-2, 2), expectedInflation = Rate.decimal(-1, 2))
+    val result = runEntry(
+      firms,
+      BigDecimal("0.20"),
+      RandomStream.seeded(42),
+      inflation = Rate.decimal(-2, 2),
+      expectedInflation = Rate.decimal(-1, 2),
+      sectorDemandPressure = ExpansionDemandPressure,
+    )
     result.netBirths.shouldBe(0)
   }
 
-  it should "allow expansionary net entry when labor slack is high and nominal conditions are positive" in {
+  it should "allow expansionary net entry when demand pressure is high and nominal conditions are positive" in {
     val firms  = mkFirms(1000)
-    val result = runEntry(firms, BigDecimal("0.20"), RandomStream.seeded(42), inflation = Rate.decimal(3, 2), expectedInflation = Rate.decimal(25, 3))
+    val result = runEntry(
+      firms,
+      BigDecimal("0.20"),
+      RandomStream.seeded(42),
+      inflation = Rate.decimal(3, 2),
+      expectedInflation = Rate.decimal(25, 3),
+      sectorDemandPressure = ExpansionDemandPressure,
+    )
     result.netBirths.should(be > 0)
   }
 
@@ -518,12 +604,12 @@ class FirmEntrySpec extends AnyFlatSpec with Matchers:
   it should "preserve existing firms unchanged" in {
     val firms  = mkFirms(100)
     val rng    = RandomStream.seeded(42)
-    val result = runEntry(firms, BigDecimal("0.20"), rng)
+    val result = runEntry(firms, BigDecimal("0.20"), rng, sectorDemandPressure = ExpansionDemandPressure)
     result.firms.take(firms.length).map(_.id) shouldBe firms.map(_.id)
   }
 
-  "NetEntryRate" should "default to 0.12" in {
-    p.firm.netEntryRate shouldBe Share.decimal(12, 2)
+  "NetEntryRate" should "default to 0.08" in {
+    p.firm.netEntryRate shouldBe Share.decimal(8, 2)
   }
 
   "NetEntryMaxMonthly" should "default to 175" in {

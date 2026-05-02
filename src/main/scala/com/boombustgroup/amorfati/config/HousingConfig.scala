@@ -9,8 +9,8 @@ import com.boombustgroup.amorfati.types.*
   * mortgage origination subject to LTV limits (KNF Recommendation S), mortgage
   * default with unemployment sensitivity, housing wealth effects on
   * consumption, and 7-region disaggregation (Warsaw, Krakow, Wroclaw, Gdansk,
-  * Lodz, Poznan, rest-of-Poland). Calibrated to NBP residential price survey
-  * 2024, KNF Recommendation S, and GUS wage surveys 2024.
+  * Lodz, Poznan, rest-of-Poland). Calibrated to the 2026-04-30 housing bridge
+  * prior, KNF Recommendation S, and wage-distribution bridge priors.
   *
   * Stock values (`initValue`, `initMortgage`) are in raw PLN — scaled by
   * `gdpRatio` in `SimParams.defaults`.
@@ -18,11 +18,11 @@ import com.boombustgroup.amorfati.types.*
   * @param initHpi
   *   initial house price index (base = 100)
   * @param initValue
-  *   initial aggregate housing stock value in raw PLN (~3.0 bln PLN, scaled by
-  *   gdpRatio)
+  *   initial aggregate housing stock value in raw PLN (~7.8 tln PLN, latest NBP
+  *   comprehensive stock estimate, scaled by gdpRatio)
   * @param initMortgage
-  *   initial aggregate mortgage stock in raw PLN (NBP 2024: ~485 mld PLN,
-  *   scaled by gdpRatio)
+  *   initial aggregate mortgage stock in raw PLN (KNF monthly banking data,
+  *   February 2026: ~506.3 mld PLN, scaled by gdpRatio)
   * @param priceIncomeElast
   *   elasticity of house prices to income growth
   * @param priceRateElast
@@ -31,7 +31,7 @@ import com.boombustgroup.amorfati.types.*
   * @param priceReversion
   *   monthly mean-reversion speed of HPI toward fundamental value
   * @param mortgageSpread
-  *   mortgage rate spread over policy rate (NBP 2024: ~2.5pp)
+  *   mortgage rate spread over policy rate (NBP bridge prior: ~2.5pp)
   * @param mortgageMaturity
   *   average mortgage maturity in months (25 years = 300, KNF Recommendation S)
   * @param ltvMax
@@ -55,8 +55,8 @@ import com.boombustgroup.amorfati.types.*
   */
 case class HousingConfig(
     initHpi: PriceIndex = PriceIndex(100),
-    initValue: PLN = PLN(3000000000000L),   // raw — scaled by gdpRatio
-    initMortgage: PLN = PLN(485000000000L), // raw — scaled by gdpRatio
+    initValue: PLN = PLN(7800000000000L),   // raw — scaled by gdpRatio
+    initMortgage: PLN = PLN(506300000000L), // raw — scaled by gdpRatio
     priceIncomeElast: Coefficient = Coefficient.decimal(12, 1),
     priceRateElast: Coefficient = Coefficient.decimal(-8, 1),
     priceReversion: Coefficient = Coefficient.decimal(5, 2),
@@ -74,6 +74,7 @@ case class HousingConfig(
   require(ltvMax > Share.Zero && ltvMax <= Share.One, s"ltvMax must be in (0,1]: $ltvMax")
   require(mortgageMaturity > 0, s"mortgageMaturity must be positive: $mortgageMaturity")
   require(initValue >= PLN.Zero, s"initValue must be non-negative: $initValue")
+  require(initMortgage >= PLN.Zero, s"initMortgage must be non-negative: $initMortgage")
 
   require(
     regionalMarkets.length == HousingConfig.RegionalMarket.count,

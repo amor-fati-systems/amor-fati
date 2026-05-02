@@ -188,6 +188,8 @@ object FirmEconomics:
       perBankWorkers: Vector[Int],               // worker count by bank index
       lendingRates: Vector[Rate],                // per-bank lending rates
       postFirmCrossSectorHires: Int,             // cross-sector hires in labor matching
+      postFirmHires: Int,                        // total hires consumed by firm-stage matching
+      postFirmHireCapacity: Int,                 // monthly hire capacity available at firm-stage matching
       markupInflation: Rate,                     // Calvo: annualized revenue-weighted avg markup change
       sumRealizedPostTaxProfit: PLN,             // aggregate realized post-tax profits from Firm.process
       sumStateOwnedPostTaxProfit: PLN,           // aggregate realized post-tax profits of SOEs
@@ -232,9 +234,10 @@ object FirmEconomics:
       val calvo              = CalvoPricing.updateFirmMarkup(f.markup, sectorPressure, stepIn.s2.wageGrowth, energyCostPressure, rng)
       f.copy(markup = calvo.newMarkup)
     val laborMarket         = processLaborMarket(calvoFirms, stepIn, rng)
+    val staffedFirms        = LaborMarket.syncFirmStaffing(calvoFirms, laborMarket.households)
     val npl                 = computeNplAndInterest(
       stepIn.firms,
-      calvoFirms,
+      staffedFirms,
       stepIn.ledgerFinancialState.firms.map(LedgerFinancialState.projectFirmFinancialStocks),
       intermediate.financialStocks,
       bonded.ledgerFinancialState,
@@ -247,12 +250,14 @@ object FirmEconomics:
     assembleOutput(
       fp,
       bonded,
-      calvoFirms,
+      staffedFirms,
       intermediate.financialStocks,
       issuerSettledLedger,
       intermediate.totalPaid,
       laborMarket.households,
       laborMarket.crossSectorHires,
+      laborMarket.hires,
+      laborMarket.hireCapacity,
       laborMarket.newHouseholdFinancialStocksById,
       npl,
       stepIn,
@@ -277,6 +282,8 @@ object FirmEconomics:
   private case class LaborMarketResult(
       households: Vector[Household.State],
       crossSectorHires: Int,
+      hires: Int,
+      hireCapacity: Int,
       newHouseholdFinancialStocksById: Map[HhId, Household.FinancialStocks],
   )
 
@@ -614,11 +621,22 @@ object FirmEconomics:
     val startId        = afterRemoval.map(_.id.toInt).maxOption.getOrElse(-1) + 1
     val newImmigrants  = Immigration.spawnImmigrantPopulation(in.s2.newImmig.monthlyInflow, startId, rng)
     val availableLabor = afterRemoval ++ newImmigrants.households
-    val searchResult   = LaborMarket.jobSearch(availableLabor, ioFirms, in.s2.newWage, rng, in.s2.regionalWages)
+    val maxHires       = LaborMarket.monthlyMatchingCapacity(availableLabor, in.s2.newDemographics.workingAgePop)
+    val employedBefore = availableLabor.count(_.status.isInstanceOf[HhStatus.Employed])
+    val searchResult   = LaborMarket.jobSearch(
+      availableLabor,
+      ioFirms,
+      in.s2.newWage,
+      rng,
+      in.s2.regionalWages,
+      maxHires = Some(maxHires),
+      priorityHouseholdIds = newImmigrants.households.map(_.id).toSet,
+    )
     val postWages      = LaborMarket.updateWages(searchResult.households, ioFirms, in.s2.newWage)
+    val hires          = Math.max(0, postWages.count(_.status.isInstanceOf[HhStatus.Employed]) - employedBefore)
     val newStocksById  = newImmigrants.households.zip(newImmigrants.financialStocks).map((household, stocks) => household.id -> stocks).toMap
 
-    LaborMarketResult(postWages, searchResult.crossSectorHires, newStocksById)
+    LaborMarketResult(postWages, searchResult.crossSectorHires, hires, maxHires, newStocksById)
 
   // ---- Phase 6: NPL and interest income ----
 
@@ -686,6 +704,8 @@ object FirmEconomics:
       totalIoPaid: PLN,
       households: Vector[Household.State],
       crossSectorHires: Int,
+      hires: Int,
+      hireCapacity: Int,
       newHouseholdFinancialStocksById: Map[HhId, Household.FinancialStocks],
       npl: NplResult,
       in: StepInput,
@@ -754,6 +774,8 @@ object FirmEconomics:
       perBankWorkers = npl.perBankWorkers,
       lendingRates = lending.rates,
       postFirmCrossSectorHires = crossSectorHires,
+      postFirmHires = hires,
+      postFirmHireCapacity = hireCapacity,
       markupInflation = markupInflation,
       sumRealizedPostTaxProfit = fp.outcomes.foldLeft(PLN.Zero)(_ + _.realizedPostTaxProfit),
       sumStateOwnedPostTaxProfit = fp.outcomes.filter(_.firm.stateOwned).foldLeft(PLN.Zero)((acc, o) => acc + o.realizedPostTaxProfit),

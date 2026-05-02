@@ -5,27 +5,32 @@ import com.boombustgroup.amorfati.types.*
 /** Commercial banking system: balance sheets, credit risk, LCR/NSFR,
   * macroprudential, and KNF/BFG supervision.
   *
-  * Models a multi-bank system (7 banks by default, calibrated to KNF 2024) with
-  * heterogeneous balance sheets, credit spreads, NPL dynamics, capital adequacy
-  * (Basel III CRR), liquidity coverage (LCR/NSFR), macroprudential buffers
-  * (CCyB, O-SII), KNF BION/SREP P2R add-ons, BFG resolution levy and bail-in,
-  * and interbank market.
+  * Models a multi-bank system (7 banks by default, calibrated to the Poland
+  * 2026-04-30 production baseline) with heterogeneous balance sheets, credit
+  * spreads, NPL dynamics, capital adequacy (Basel III CRR), liquidity coverage
+  * (LCR/NSFR), macroprudential buffers (CCyB, O-SII), KNF BION/SREP P2R
+  * add-ons, BFG resolution levy and bail-in, and interbank market.
   *
   * Stock values (`initCapital`, `initDeposits`, etc.) are in raw PLN — scaled
   * by `gdpRatio` in `SimParams.defaults`.
   *
   * @param initCapital
-  *   initial aggregate bank equity (KNF 2024: ~270 mld PLN)
+  *   initial aggregate regulatory-capital proxy; calibrated to KNF TCR 21.1% on
+  *   the model's simplified RWA perimeter, not book equity
   * @param initDeposits
-  *   initial aggregate deposits (NBP M3 2024: ~1,900 mld PLN)
+  *   initial aggregate deposits (KNF monthly banking data, February 2026:
+  *   ~2,542.3 bn PLN)
   * @param initLoans
-  *   initial aggregate corporate loans (NBP 2024: ~700 mld PLN)
+  *   initial aggregate corporate/nonfinancial business loans (KNF monthly
+  *   banking data, February 2026: ~557.4 bn PLN)
   * @param initGovBonds
-  *   initial commercial bank government bond holdings (NBP 2024: ~400 mld PLN)
+  *   initial commercial bank government bond holdings (NBP bridge prior: ~400
+  *   mld PLN)
   * @param initNbpGovBonds
-  *   initial NBP government bond holdings (NBP 2024: ~300 mld PLN)
+  *   initial NBP government bond holdings (NBP bridge prior: ~300 mld PLN)
   * @param initConsumerLoans
-  *   initial consumer loan stock (BIK 2024: ~200 mld PLN)
+  *   initial consumer loan stock (KNF monthly banking data, February 2026:
+  *   ~225.2 bn PLN)
   * @param baseSpread
   *   base lending spread over policy rate
   * @param nplSpreadFactor
@@ -37,7 +42,7 @@ import com.boombustgroup.amorfati.types.*
   * @param profitRetention
   *   fraction of bank profits retained as capital
   * @param reserveReq
-  *   required reserve ratio (NBP 2024: 3.5%)
+  *   required reserve ratio (NBP bridge prior: 3.5%)
   * @param stressThreshold
   *   CAR threshold below which bank enters stress mode
   * @param lcrMin
@@ -49,28 +54,28 @@ import com.boombustgroup.amorfati.types.*
   * @param termDepositFrac
   *   fraction of deposits that are term (stable for NSFR purposes)
   * @param p2rAddons
-  *   per-bank BION/SREP P2R capital add-ons (KNF 2024, 7 banks)
+  *   per-bank BION/SREP P2R capital add-ons (KNF bridge prior, 7 banks)
   * @param bfgLevyRate
-  *   annual BFG resolution fund levy as fraction of deposits (BFG 2024)
+  *   annual BFG resolution fund levy as fraction of deposits (BFG bridge prior)
   * @param bailInDepositHaircut
   *   fraction of uninsured deposits bailed-in during resolution
   * @param bfgDepositGuarantee
-  *   BFG deposit guarantee limit per depositor (PLN, BFG: 400,000)
+  *   BFG deposit guarantee limit per depositor, converted from EUR 100,000 at
+  *   the model-start PLN/EUR rate
   * @param ccybMax
-  *   maximum countercyclical capital buffer (KNF 2024: 2.5%)
+  *   maximum countercyclical capital buffer (KNF bridge prior: 2.5%)
   * @param ccybActivationGap
   *   credit/GDP gap threshold to activate CCyB
   * @param ccybReleaseGap
   *   credit/GDP gap threshold to release CCyB
-  * @param osiiPkoBp
-  *   O-SII buffer for PKO BP (KNF 2024: 1.0%)
-  * @param osiiPekao
-  *   O-SII buffer for Pekao (KNF 2024: 0.5%)
+  * @param osiiBuffers
+  *   O-SII buffers by default bank id (KNF decisions announced in November 2025
+  *   and active in the 2026 baseline)
   * @param concentrationLimit
   *   single-name concentration limit as fraction of capital (Art. 395 CRR: 25%)
   * @param htmShare
-  *   fraction of gov bond portfolio classified Held-to-Maturity (NBP 2024:
-  *   ~60%)
+  *   fraction of gov bond portfolio classified Held-to-Maturity (NBP bridge
+  *   prior: ~60%)
   * @param htmForcedSaleThreshold
   *   LCR threshold (as fraction of lcrMin) below which HTM bonds are forcibly
   *   reclassified to AFS, realizing hidden mark-to-market losses (interest rate
@@ -79,7 +84,7 @@ import com.boombustgroup.amorfati.types.*
   *   fraction of HTM portfolio reclassified to AFS per month under LCR stress
   * @param initHtmBookYield
   *   weighted-average acquisition yield on initial HTM portfolio (Polish 10Y at
-  *   model start, MF 2024)
+  *   model start, MF bridge prior)
   * @param depositFlightSensitivity
   *   sensitivity of deposit switching to CAR shortfall below threshold
   * @param depositFlightCarThreshold
@@ -115,20 +120,20 @@ import com.boombustgroup.amorfati.types.*
   */
 case class BankingConfig(
     // Initial balance sheet (raw — scaled by gdpRatio in SimParams.defaults)
-    initCapital: PLN = PLN(270000000000L),
-    initDeposits: PLN = PLN(1900000000000L),
-    initLoans: PLN = PLN(700000000000L),
+    initCapital: PLN = PLN(168000000000L),
+    initDeposits: PLN = PLN(2542300000000L),
+    initLoans: PLN = PLN(557400000000L),
     initGovBonds: PLN = PLN(400000000000L),
     initNbpGovBonds: PLN = PLN(300000000000L),
-    initConsumerLoans: PLN = PLN(200000000000L),
+    initConsumerLoans: PLN = PLN(225200000000L),
     // Spreads & risk
     baseSpread: Rate = Rate.decimal(15, 3),
     nplSpreadFactor: Multiplier = Multiplier(5),
     minCar: Multiplier = Multiplier.decimal(8, 2),
     loanRecovery: Share = Share.decimal(30, 2),
-    firmLoanAmortRate: Rate = Rate.fraction(1, 60),          // monthly: 1/60 ≈ 5-year avg maturity (NBP 2024)
+    firmLoanAmortRate: Rate = Rate.fraction(1, 60),          // monthly: 1/60 ≈ 5-year avg maturity (NBP bridge prior)
     profitRetention: Share = Share.decimal(30, 2),
-    govBondDuration: Multiplier = Multiplier.decimal(45, 1), // avg modified duration of Polish gov bond portfolio (years, MF 2024)
+    govBondDuration: Multiplier = Multiplier.decimal(45, 1), // avg modified duration of Polish gov bond portfolio (years, MF bridge prior)
     reserveReq: Share = Share.decimal(35, 3),
     stressThreshold: Share = Share.decimal(5, 2),
     // LCR/NSFR (Basel III)
@@ -148,13 +153,20 @@ case class BankingConfig(
     ),
     bfgLevyRate: Rate = Rate.decimal(24, 4),
     bailInDepositHaircut: Share = Share.decimal(8, 2),
-    bfgDepositGuarantee: PLN = PLN(400000),
-    // Macroprudential (KNF 2024)
+    bfgDepositGuarantee: PLN = PLN(425370),
+    // Macroprudential (KNF O-SII decisions active in the 2026 baseline)
     ccybMax: Multiplier = Multiplier.decimal(25, 3),
     ccybActivationGap: Coefficient = Coefficient.decimal(2, 2),
     ccybReleaseGap: Coefficient = Coefficient.decimal(-2, 2),
-    osiiPkoBp: Multiplier = Multiplier.decimal(1, 2),
-    osiiPekao: Multiplier = Multiplier.decimal(5, 3),
+    osiiBuffers: Vector[Multiplier] = Vector(
+      Multiplier.decimal(2, 2),  // PKO BP: 2.00%
+      Multiplier.decimal(1, 2),  // Pekao: 1.00%
+      Multiplier.decimal(5, 3),  // mBank: 0.50%
+      Multiplier.decimal(1, 2),  // ING BSK: 1.00%
+      Multiplier.decimal(15, 3), // Santander: 1.50%
+      Multiplier.decimal(25, 4), // BPS/Coop: 0.25%
+      Multiplier.decimal(25, 4), // Other O-SII banks aggregated into Others: 0.25%
+    ),
     concentrationLimit: Share = Share.decimal(25, 2),
     // AFS/HTM bond portfolio split (interest rate risk channel)
     htmShare: Share = Share.decimal(60, 2),
@@ -182,5 +194,20 @@ case class BankingConfig(
   require(minCar > Multiplier.Zero && minCar < Multiplier.One, s"minCar must be in (0,1): $minCar")
   require(initCapital >= PLN.Zero, s"initCapital must be non-negative: $initCapital")
   require(initDeposits >= PLN.Zero, s"initDeposits must be non-negative: $initDeposits")
+  require(p2rAddons.nonEmpty, "p2rAddons must be non-empty")
+  require(
+    osiiBuffers.length == p2rAddons.length,
+    s"osiiBuffers must have the same length as p2rAddons: expected ${p2rAddons.length}, actual ${osiiBuffers.length}",
+  )
+  p2rAddons.zipWithIndex.foreach: (addon, idx) =>
+    require(
+      addon >= Multiplier.Zero && addon <= Multiplier.One,
+      s"p2rAddons[$idx] must be in [0,1]: $addon",
+    )
+  osiiBuffers.zipWithIndex.foreach: (buffer, idx) =>
+    require(
+      buffer >= Multiplier.Zero && buffer <= Multiplier.One,
+      s"osiiBuffers[$idx] must be in [0,1]: $buffer",
+    )
   require(lcrMin > Multiplier.Zero, s"lcrMin must be positive: $lcrMin")
   require(nsfrMin > Multiplier.Zero, s"nsfrMin must be positive: $nsfrMin")

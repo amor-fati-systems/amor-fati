@@ -52,7 +52,7 @@ object DemandEconomics:
     val rawPressure        = computeRawDemandPressure(sectorDemand, sectorCapReal, w.priceLevel)
     val sectorPressure     = smoothPressureSignal(seedIn.sectorDemandPressure, stabilizeDemandPressure(rawPressure))
     val sectorHiringSignal = smoothHiringSignal(seedIn.sectorHiringSignal, sectorPressure)
-    val sectorMults        = applySpillover(sectorDemand, rawPressure, sectorCapReal, w.priceLevel)
+    val sectorMults        = applySpillover(rawPressure, sectorCapReal, w.priceLevel)
     val avgDemandMult      = computeAvgDemandMult(sectorMults, sectorCapReal, w)
     Output(govPurchases, sectorMults, sectorPressure, sectorHiringSignal, avgDemandMult, sectorCapReal, laggedInvestDemand, fiscalResult.status)
 
@@ -148,9 +148,10 @@ object DemandEconomics:
           sectorExports(s)
       .toVector
 
-  /** Redistribute excess demand from capacity-constrained sectors to sectors
-    * with slack. Sectors above capacity are capped at 1.0; their excess flows
-    * proportionally into below-capacity sectors.
+  /** Redistribute substitutable excess demand from capacity-constrained sectors
+    * to sectors with slack. Sectors above capacity are capped at 1.0; only the
+    * calibrated substitutable share of their excess flows proportionally into
+    * below-capacity sectors.
     */
   private def computeRawDemandPressure(
       sectorDemand: Vector[PLN],
@@ -186,31 +187,54 @@ object DemandEconomics:
       val excess = raw.deviationFromOne.max(Coefficient.Zero)
       Multiplier.One + (PressureMaxBoost * (Multiplier.One - (-(excess.toScalar * PressureSaturationRate)).toCoefficient.exp))
 
-  private def applySpillover(
-      sectorDemand: Vector[PLN],
+  private[amorfati] def applySpillover(
       rawMults: Vector[Multiplier],
       sectorCapReal: Vector[PLN],
       priceLevel: PriceIndex,
-  ): Vector[Multiplier] =
+  )(using p: SimParams): Vector[Multiplier] =
+    require(
+      p.io.matrix.length == rawMults.length && p.io.matrix.forall(_.length == rawMults.length),
+      s"DemandEconomics.applySpillover requires io.matrix to match ${rawMults.length} sector multipliers, got ${p.io.matrix.length} rows",
+    )
+    require(
+      sectorCapReal.length == rawMults.length,
+      s"DemandEconomics.applySpillover requires sectorCapReal to match ${rawMults.length} sector multipliers, got ${sectorCapReal.length}",
+    )
     val nominalCapBySector = sectorCapReal.map(_ * priceLevel.toMultiplier)
-    val excessDemand       = rawMults.indices
+    val slackCapacity      = rawMults.indices
       .map: s =>
-        if nominalCapBySector(s) <= PLN.Zero then sectorDemand(s)
-        else if rawMults(s) > Multiplier.One then nominalCapBySector(s) * rawMults(s).deviationFromOne
+        if rawMults(s) < Multiplier.One then nominalCapBySector(s) * (Multiplier.One - rawMults(s)).toCoefficient
         else PLN.Zero
-      .foldLeft(PLN.Zero)(_ + _)
-    val deficitCapacity    = rawMults.indices
-      .map: s =>
-        if rawMults(s) < Multiplier.One then nominalCapBySector(s) * (Multiplier.One - rawMults(s)).toCoefficient else PLN.Zero
-      .foldLeft(PLN.Zero)(_ + _)
-    val spilloverFrac      =
-      if deficitCapacity > PLN.Zero then excessDemand.ratioTo(deficitCapacity).toShare.clamp(Share.Zero, Share.One)
-      else Share.Zero
+      .toVector
+    val spilloverAdd       = Array.fill(rawMults.length)(PLN.Zero)
+
+    rawMults.indices.foreach: from =>
+      val fromCap = nominalCapBySector(from)
+      if fromCap > PLN.Zero && rawMults(from) > Multiplier.One then
+        val excessDemand        = fromCap * rawMults(from).deviationFromOne
+        val substitutableExcess = excessDemand * p.io.crossSectorSpillover
+        val weights             = rawMults.indices.map: to =>
+          if to == from || slackCapacity(to) <= PLN.Zero then PLN.Zero
+          else slackCapacity(to) * spilloverCompatibility(from, to)
+        val totalWeight         = weights.foldLeft(PLN.Zero)(_ + _)
+        if totalWeight > PLN.Zero then
+          rawMults.indices.foreach: to =>
+            val weight = weights(to)
+            if weight > PLN.Zero then spilloverAdd(to) = spilloverAdd(to) + substitutableExcess * weight.ratioTo(totalWeight).toShare
+
     rawMults.indices
       .map: s =>
         if rawMults(s) > Multiplier.One then Multiplier.One
-        else rawMults(s) + spilloverFrac * (Multiplier.One - rawMults(s))
+        else
+          val cappedAdd = if spilloverAdd(s) < slackCapacity(s) then spilloverAdd(s) else slackCapacity(s)
+          val addMult   =
+            if nominalCapBySector(s) > PLN.Zero then cappedAdd.ratioTo(nominalCapBySector(s)).toMultiplier
+            else Multiplier.Zero
+          (rawMults(s) + addMult).min(Multiplier.One)
       .toVector
+
+  private def spilloverCompatibility(from: Int, to: Int)(using p: SimParams): Share =
+    (p.io.matrix(from)(to) + p.io.matrix(to)(from)).clamp(Share.Zero, Share.One)
 
   /** Economy-wide average demand multiplier, adjusted for real rate effect when
     * expectations mechanism is active.

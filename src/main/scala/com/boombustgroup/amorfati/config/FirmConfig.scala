@@ -11,7 +11,7 @@ import com.boombustgroup.amorfati.types.*
   *
   * @param baseRevenue
   *   monthly revenue per worker before demand shocks (PLN, calibrated to GUS
-  *   F-01 2024)
+  *   GUS F-01 bridge prior)
   * @param productivityGrowth
   *   baseline annual firm productivity trend
   * @param otherCosts
@@ -32,13 +32,11 @@ import com.boombustgroup.amorfati.types.*
   *   minimum DR for full AI adoption
   * @param demandPassthrough
   *   fraction of aggregate demand shock passed to firm revenue
-  * @param entryRate
-  *   base monthly probability of new firm entry per vacant slot (GUS CEIDG
-  *   2024)
   * @param entryProfitSens
   *   sensitivity of entry probability to sector profitability
   * @param entrySectorBarriers
-  *   per-sector entry barrier multiplier (6 sectors, GUS CEIDG/KRS 2024)
+  *   per-sector entry barrier multiplier (6 sectors, enterprise-size bridge
+  *   prior)
   * @param entryAiThreshold
   *   sector average DR above which new entrants may be AI-native
   * @param entryAiProb
@@ -93,7 +91,7 @@ import com.boombustgroup.amorfati.types.*
 case class FirmConfig(
     // Production & costs
     baseRevenue: PLN = PLN(180000),
-    productivityGrowth: Rate = Rate.decimal(85, 3),
+    productivityGrowth: Rate = Rate.decimal(2, 2),
     otherCosts: PLN = PLN(16667),
     aiCapex: PLN = PLN(1200000),
     hybridCapex: PLN = PLN(350000),
@@ -104,7 +102,6 @@ case class FirmConfig(
     fullAiReadinessMin: Share = Share.decimal(55, 2),
     demandPassthrough: Share = Share.decimal(40, 2),
     // Entry
-    entryRate: Share = Share.decimal(2, 2),
     entryProfitSens: Coefficient = Coefficient(2),
     entrySectorBarriers: Vector[Coefficient] = Vector(
       Coefficient.decimal(8, 1),
@@ -122,8 +119,8 @@ case class FirmConfig(
     replacementEntryMaxMonthly: Int = 250,
     aggregateLaborSlackBuffer: Share = Share.decimal(105, 2),
     aggregateLaborSlackFloor: Share = Share.decimal(50, 2),
-    // Net entry (dynamic vector growth when unemployment > NAIRU)
-    netEntryRate: Share = Share.decimal(12, 2),                 // monthly net births as fraction of living firms, scaled by cyclical entry signal
+    // Net entry (dynamic vector growth when demand pressure has staffing and realized utilization support)
+    netEntryRate: Share = Share.decimal(8, 2),                  // monthly net births as fraction of living firms, scaled by utilization-backed entry signal
     netEntryMaxMonthly: Int = 175,                              // hard cap on net births per month (prevents vector explosion)
     // Digitalization
     digiDrift: Share = Share.decimal(1, 3),

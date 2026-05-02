@@ -6,10 +6,10 @@ import com.boombustgroup.amorfati.types.*
   * return migration.
   *
   * Models endogenous labor immigration driven by wage differentials (NBP 2023
-  * survey), with sector-specific allocation (GUS LFS 2024), skill distribution,
-  * wage discount for immigrants, and return migration. Immigrant workers are
-  * added to the household agent population and affect labor supply, ZUS
-  * contributions, and (optionally) 800+ eligibility.
+  * survey), with sector-specific allocation (GUS LFS bridge prior), skill
+  * distribution, wage discount for immigrants, and return migration. Immigrant
+  * workers are added to the household agent population and affect labor supply,
+  * ZUS contributions, and (optionally) 800+ eligibility.
   *
   * @param monthlyRate
   *   base monthly immigration rate as fraction of labor force
@@ -26,7 +26,7 @@ import com.boombustgroup.amorfati.types.*
   * @param returnUnempSensitivity
   *   return-rate response to immigrant unemployment above the threshold
   * @param sectorShares
-  *   sectoral allocation of new immigrants (6 sectors, GUS LFS 2024)
+  *   sectoral allocation of new immigrants (6 sectors, GUS LFS bridge prior)
   * @param skillMean
   *   mean skill level of immigrant workers (0-1 scale)
   * @param wageDiscount
@@ -35,9 +35,9 @@ import com.boombustgroup.amorfati.types.*
   *   initial immigrant stock at simulation start (number of workers)
   */
 case class ImmigrationConfig(
-    monthlyRate: Share = Share.decimal(15, 4),
+    monthlyRate: Share = Share.decimal(8, 4),
     wageElasticity: Coefficient = Coefficient(2),
-    foreignWage: PLN = PLN(4000),
+    foreignWage: PLN = PLN(6500),
     remitRate: Share = Share.decimal(15, 2),
     returnRate: Share = Share.decimal(5, 3),
     returnUnempThreshold: Share = Share.decimal(20, 2),

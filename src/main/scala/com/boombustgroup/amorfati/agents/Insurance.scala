@@ -79,7 +79,7 @@ object Insurance:
       PLN.Zero,
     )
 
-  /** Initialize from SimParams calibration (KNF 2024 reserves + target
+  /** Initialize from SimParams calibration (KNF bridge prior reserves + target
     * allocation).
     */
   def initial: State = State.zero

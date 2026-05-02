@@ -12,7 +12,7 @@ carry behavioral state, operational diagnostics, and legacy unsupported metrics.
 
 | File | Agent | State | Key SFC identities |
 |------|-------|-------|-------------------|
-| `Banking.scala` | 7 Polish banks (KNF 2024) | Per-bank behavior, capital, NPL/risk buckets, LCR/NSFR inputs; deposits, loans, bonds, reserves, interbank positions are ledger projections | BankCapital, BankDeposits, BondClearing, InterbankNetting |
+| `Banking.scala` | 7 Polish bank archetypes (Poland 2026-04-30 baseline) | Per-bank behavior, capital, NPL/risk buckets, LCR/NSFR inputs; deposits, loans, bonds, reserves, interbank positions are ledger projections | BankCapital, BankDeposits, BondClearing, InterbankNetting |
 | `Firm.scala` | Heterogeneous firms (6 sectors) | Technology state (Traditional/Hybrid/Automated), capital stock, inventory, green capital, labor and production state; cash/debt/equity are ledger projections | BankCapital (NPL), FlowOfFunds, CorpBondStock |
 | `Household.scala` | Individual households | Skill, health, MPC, employment status, housing and demographic state; savings, debt, consumer credit, and equity wealth are ledger projections | BankDeposits, ConsumerCredit |
 | `Immigration.scala` | Immigrant workers | Stock, monthly inflow/outflow, remittance outflow | BankDeposits (remittance → deposit outflow), Nfa |

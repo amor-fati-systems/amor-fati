@@ -105,7 +105,7 @@ object StateOwned:
     Share.One - (energyBufferExposure(sectorIdx) * (Share.One - energyPassthrough))
 
   /** Probability that a firm in given sector is state-owned at initialization.
-    * Based on actual SOE presence per sector (GUS/GPW 2024).
+    * Based on actual SOE presence per sector (GUS/GPW bridge prior).
     */
   def sectorSoeShare(sectorIdx: Int): Share = sectorIdx match
     case 0 => Share.decimal(5, 2)  // BPO — minimal SOE

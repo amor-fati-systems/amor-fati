@@ -15,8 +15,8 @@ import com.boombustgroup.amorfati.util.Distributions
   * barrier, migration probability decreases with friction distance. This
   * generates persistent regional inequality that aggregate models miss.
   *
-  * Calibration: GUS BAEL 2024 (regional labor force surveys), GUS average wages
-  * by voivodeship, NBP residential price survey.
+  * Calibration: GUS BAEL bridge prior (regional labor force surveys), GUS
+  * average wages by voivodeship, NBP residential price survey.
   */
 enum Region(
     val label: String,
@@ -81,7 +81,8 @@ object Region:
 
   /** Migration friction matrix: `friction(from)(to)` ∈ [0,1]. 0 = no friction
     * (same region), 1 = maximum friction. Asymmetric: easier to move TO Central
-    * (jobs pull) than FROM Central. Based on GUS internal migration data 2024.
+    * (jobs pull) than FROM Central. Based on GUS internal-migration bridge
+    * prior.
     */
   val frictionMatrix: Vector[Vector[Share]] = Vector(
     //          Central  South  East   NW     SW     North
@@ -124,8 +125,8 @@ object Region:
       ((Share.One - friction) * wagePull.toShare * housingBarrier).clamp(Share.Zero, Share.One)
 
   /** Sector composition by region (6 sectors × 6 regions). Rows = regions
-    * (Central..North), columns = sectors (BPO..Agri). GUS employment by section
-    * and voivodeship 2024.
+    * (Central..North), columns = sectors (BPO..Agri). Regional employment uses
+    * the 2026-04-30 bridge prior.
     */
   val sectorComposition: Vector[Vector[Share]] = Vector(
     // BPO    Mfg    Retail  Health  Public  Agri

@@ -11,13 +11,14 @@ import com.boombustgroup.amorfati.util.Distributions
   * demographic transitions (retirement, working-age decline), and education
   * system with 4-tier attainment (primary, vocational, secondary, tertiary),
   * sector-specific composition, wage premia, retraining multipliers, and skill
-  * ranges. Calibrated to ZUS 2024, Ustawa o PPK, GUS LFS 2024.
+  * ranges. Calibrated to ZUS bridge prior, Ustawa o PPK, GUS LFS bridge prior.
   *
   * @param zusContribRate
   *   total ZUS contribution rate as fraction of gross wage (Ustawa o systemie
   *   ubezpieczen spolecznych: 19.52%)
   * @param zusBasePension
-  *   average monthly pension payment (PLN, ZUS 2024: ~3,500)
+  *   average monthly pension/rent payment (PLN, GUS Q1 2026 non-agricultural
+  *   social-insurance system: ~4,321)
   * @param zusScale
   *   scaling factor for pension payments (for sensitivity analysis)
   * @param nfzContribRate
@@ -37,20 +38,23 @@ import com.boombustgroup.amorfati.util.Distributions
   * @param ppkBondAlloc
   *   PPK bond allocation share (remainder split across corp bonds + equities)
   * @param demRetirementRate
-  *   monthly retirement transition rate (fraction of working-age population)
+  *   monthly retiree-stock accrual rate. At the current household-agent
+  *   granularity this raises the external ZUS/NFZ retiree stock rather than
+  *   silently removing household agents from the labor force.
   * @param demWorkingAgeDecline
-  *   annual decline rate of working-age population (GUS 2024 projections)
+  *   annual aging-pressure rate added to the external retiree stock until
+  *   explicit household age cohorts are modeled.
   * @param demInitialRetirees
   *   initial retiree count (0 = built from flow during simulation)
   * @param eduShares
   *   population share by education tier (4 tiers: primary, vocational,
-  *   secondary, tertiary; GUS LFS 2024)
+  *   secondary, tertiary; GUS LFS bridge prior)
   * @param eduSectorShares
   *   optional sector-specific education composition (6 sectors x 4 tiers,
   *   default from GUS)
   * @param eduWagePreemia
-  *   wage multiplier by education tier (GUS 2024: primary 0.70, vocational
-  *   0.85, secondary 1.00, tertiary 1.30)
+  *   wage multiplier by education tier (GUS bridge prior: primary 0.70,
+  *   vocational 0.85, secondary 1.00, tertiary 1.30)
   * @param eduRetrainMult
   *   retraining success multiplier by education tier
   * @param eduSkillFloors
@@ -58,13 +62,13 @@ import com.boombustgroup.amorfati.util.Distributions
   * @param eduSkillCeilings
   *   maximum initial skill by education tier
   * @param eduImmigShares
-  *   education tier distribution among immigrants (GUS/NBP 2024)
+  *   education tier distribution among immigrants (GUS/NBP bridge prior)
   */
 case class SocialConfig(
     // ZUS (Ustawa o systemie ubezpieczen spolecznych)
     zusContribRate: Rate = Rate.decimal(1952, 4),
     zusEmployeeRate: Rate = Rate.decimal(1371, 4), // employee portion deducted from PIT base (emerytura 9.76% + rentowe 1.5% + chorobowe 2.45%)
-    zusBasePension: PLN = PLN(3500),
+    zusBasePension: PLN = PLN(4321),
     zusScale: Multiplier = Multiplier(1),
     // NFZ (Ustawa o swiadczeniach opieki zdrowotnej, Art. 79)
     nfzContribRate: Rate = Rate.decimal(9, 2),
@@ -74,11 +78,11 @@ case class SocialConfig(
     ppkEmployeeRate: Rate = Rate.decimal(2, 2),
     ppkEmployerRate: Rate = Rate.decimal(15, 3),
     ppkBondAlloc: Share = Share.decimal(60, 2),
-    // Demographics (GUS 2024)
+    // Demographics (GUS bridge prior)
     demRetirementRate: Rate = Rate.decimal(1, 3),
     demWorkingAgeDecline: Rate = Rate.decimal(2, 3),
     demInitialRetirees: Int = 0,
-    // Education (GUS LFS 2024)
+    // Education (GUS LFS bridge prior)
     eduShares: Vector[Share] = Vector(Share.decimal(8, 2), Share.decimal(25, 2), Share.decimal(30, 2), Share.decimal(37, 2)),
     eduSectorShares: Option[Vector[Vector[Share]]] = None,
     eduWagePreemia: Vector[Multiplier] = Vector(Multiplier.decimal(70, 2), Multiplier.decimal(85, 2), Multiplier(1), Multiplier.decimal(130, 2)),

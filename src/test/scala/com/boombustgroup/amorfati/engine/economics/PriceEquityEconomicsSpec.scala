@@ -155,7 +155,7 @@ class PriceEquityEconomicsSpec extends AnyFlatSpec with Matchers:
     err.getMessage should include("Invalid sector id")
   }
 
-  it should "keep the first-month Poland-scale GDP proxy near the 2024 calibration baseline" in {
+  it should "keep the first-month Poland-scale GDP proxy near the 2026-04-30 calibration baseline" in {
     val result       = runPriceStep(w, s5)
     val annualPoland = (result.gdp * 12) / summon[SimParams].gdpRatio.toMultiplier
     val baseline     = summon[SimParams].pop.realGdp

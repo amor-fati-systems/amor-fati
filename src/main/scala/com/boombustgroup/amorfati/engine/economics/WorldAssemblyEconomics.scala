@@ -104,9 +104,11 @@ object WorldAssemblyEconomics:
     val postMigHh                 = RegionalMigration(startupStaffing.households, in.s2.regionalWages, randomness.regionalMigration).households
     val finalFirms                = syncStartupStaffing(startupStaffing.firms, postMigHh)
     val finalFlows                = newW.flows.copy(firmBirths = entryStep.births, firmDeaths = in.s5.firmDeaths, netFirmBirths = entryStep.netBirths)
+    val finalCrossSectorHires     = newW.real.sectoralMobility.crossSectorHires + startupStaffing.crossSectorHires
     val finalReal                 = newW.real.copy(
       sectoralMobility = newW.real.sectoralMobility.copy(
-        crossSectorHires = newW.real.sectoralMobility.crossSectorHires + startupStaffing.crossSectorHires,
+        crossSectorHires = finalCrossSectorHires,
+        sectorMobilityRate = SectoralMobility.mobilityRate(finalCrossSectorHires, startupStaffing.hhAgg.employed),
       ),
     )
     val finalW                    = newW.copy(
@@ -230,7 +232,8 @@ object WorldAssemblyEconomics:
         .filter(f => Firm.isAlive(f) && Firm.isInStartup(f))
         .map(_.startupFilledWorkers)
         .sum
-      val searchResult          = LaborMarket.jobSearch(households, firms, in.s2.newWage, rng, in.s2.regionalWages, startupIds)
+      val maxHires              = Math.max(0, in.s5.postFirmHireCapacity - in.s5.postFirmHires)
+      val searchResult          = LaborMarket.jobSearch(households, firms, in.s2.newWage, rng, in.s2.regionalWages, startupIds, Some(maxHires))
       val postWages             = LaborMarket.updateWages(searchResult.households, firms, in.s2.newWage)
       val staffedFirms          = syncStartupStaffing(firms, postWages)
       val startupFilled         = staffedFirms.filter(f => Firm.isAlive(f) && Firm.isInStartup(f)).map(_.startupFilledWorkers).sum
@@ -288,6 +291,7 @@ object WorldAssemblyEconomics:
       demographics = in.s2.newDemographics,
       earmarked = in.s2.newEarmarked,
     )
+    val crossSectorHires = in.s5.postFirmCrossSectorHires + in.s3.hhAgg.crossSectorHires
     val world            = World(
       inflation = in.s7.newInfl,
       priceLevel = in.s7.newPrice,
@@ -319,9 +323,9 @@ object WorldAssemblyEconomics:
       real = RealState(
         housing = in.s9.housingAfterFlows,
         sectoralMobility = SectoralMobility.State(
-          crossSectorHires = in.s5.postFirmCrossSectorHires + in.s3.hhAgg.crossSectorHires,
+          crossSectorHires = crossSectorHires,
           voluntaryQuits = in.s3.hhAgg.voluntaryQuits,
-          sectorMobilityRate = in.s9.finalHhAgg.sectorMobilityRate,
+          sectorMobilityRate = SectoralMobility.mobilityRate(crossSectorHires, in.s9.finalHhAgg.employed),
         ),
         grossInvestment = in.s5.sumGrossInvestment,
         aggGreenInvestment = in.s5.sumGreenInvestment,

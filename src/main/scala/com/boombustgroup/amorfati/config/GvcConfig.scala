@@ -11,13 +11,13 @@ import com.boombustgroup.amorfati.types.*
   * 2005), foreign demand shocks by sector, supply chain disruption recovery,
   * and exogenous commodity price dynamics (mean-reverting stochastic process +
   * scenario shock). Commodity prices feed into importCostIndex and energy costs
-  * — Poland imports ~95% of oil/gas. EU trade share ~70% of total (GUS/NBP
-  * 2024).
+  * — Poland imports ~95% of oil/gas. EU trade share uses the 2026-04-30 trade
+  * bridge prior.
   *
   * @param euTradeShare
-  *   share of total trade with EU partners (GUS/NBP 2024: ~70%)
+  *   share of total trade with EU partners (GUS/NBP bridge prior: ~70%)
   * @param exportShares
-  *   per-sector share of total exports (6 sectors, GUS 2024)
+  *   per-sector share of total exports (6 sectors, GUS bridge prior)
   * @param depth
   *   per-sector GVC depth / backward linkage ratio (WIOD/OECD ICIO)
   * @param foreignInflation

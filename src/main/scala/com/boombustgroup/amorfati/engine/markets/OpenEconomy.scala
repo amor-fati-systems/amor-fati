@@ -17,7 +17,7 @@ import com.boombustgroup.amorfati.types.*
   * outflows. NFA: CA + valuation effect (partial ER pass-through on foreign
   * assets).
   *
-  * Calibration: NBP BoP statistics 2024, GUS national accounts.
+  * Calibration: NBP BoP bridge prior, GUS national accounts.
   */
 object OpenEconomy:
   private val MonthsPerYear        = 12

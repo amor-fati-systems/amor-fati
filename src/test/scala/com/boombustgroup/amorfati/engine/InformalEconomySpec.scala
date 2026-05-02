@@ -188,9 +188,9 @@ class InformalEconomySpec extends AnyFlatSpec with Matchers:
     val ess = InformalEconomy.aggregateTaxShadowShare(Share.Zero)
     ess should be > Share.Zero
     ess should be < Share.One
-    // BPO=0.02*0.05, Mfg=0.22*0.15, Ret=0.53*0.30, Hlt=0.06*0.20, Pub=0.07*0.02, Agr=0.10*0.35
-    // = 0.001 + 0.033 + 0.159 + 0.012 + 0.0014 + 0.035 = ~0.2414
-    ess shouldBe Share.decimal(2414, 4)
+    // BPO=0.02*0.05, Mfg=0.18*0.15, Ret=0.59*0.30, Hlt=0.06*0.20, Pub=0.07*0.02, Agr=0.08*0.35
+    // = 0.001 + 0.027 + 0.177 + 0.012 + 0.0014 + 0.028 = ~0.2464
+    ess shouldBe Share.decimal(2464, 4)
   }
 
   it should "be capped at 1.0 per sector" in {
@@ -203,7 +203,7 @@ class InformalEconomySpec extends AnyFlatSpec with Matchers:
     val baseline = InformalEconomy.aggregateTaxShadowShare(Share.Zero)
     baseline should be >= Share.decimal(20, 2)
     baseline should be <= Share.decimal(25, 2)
-    baseline shouldBe Share.decimal(2414, 4)
+    baseline shouldBe Share.decimal(2464, 4)
   }
 
   // ==========================================================================
@@ -313,5 +313,5 @@ class InformalEconomySpec extends AnyFlatSpec with Matchers:
     avgShare should be <= Share.decimal(30, 2)
     avgRatio should be >= Share.decimal(10, 3)
     avgRatio should be <= Share.decimal(20, 3)
-    avgRatio shouldBe Share.decimal(165, 4)
+    avgRatio shouldBe Share.decimal(183, 4)
   }

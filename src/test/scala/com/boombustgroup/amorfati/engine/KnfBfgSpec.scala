@@ -66,7 +66,7 @@ class KnfBfgSpec extends AnyFlatSpec with Matchers:
     p.banking.p2rAddons(2) shouldBe Multiplier.decimal(30, 3)
     p.banking.bfgLevyRate shouldBe Rate.decimal(24, 4)
     p.banking.bailInDepositHaircut shouldBe Share.decimal(8, 2)
-    p.banking.bfgDepositGuarantee shouldBe PLN(400000)
+    p.banking.bfgDepositGuarantee shouldBe PLN(425370)
   }
 
   "Macroprudential P2R" should "return per-bank add-ons and affect effective minimum CAR" in {
@@ -75,7 +75,7 @@ class KnfBfgSpec extends AnyFlatSpec with Matchers:
     Macroprudential.p2rAddon(7) shouldBe p.banking.p2rAddons.last
 
     val ccyb        = Multiplier.decimal(1, 2)
-    val expectedPko = decimal(p.banking.minCar) + decimal(ccyb) + decimal(p.banking.osiiPkoBp) + decimal(p.banking.p2rAddons(0))
+    val expectedPko = decimal(p.banking.minCar) + decimal(ccyb) + decimal(p.banking.osiiBuffers(0)) + decimal(p.banking.p2rAddons(0))
     decimal(Macroprudential.effectiveMinCarImpl(0, ccyb)) shouldBe expectedPko +- BigDecimal("1e-10")
     Macroprudential.effectiveMinCarImpl(0, Multiplier.Zero) should be > p.banking.minCar
     Macroprudential.p2rAddon(2) should be > Macroprudential.p2rAddon(0)

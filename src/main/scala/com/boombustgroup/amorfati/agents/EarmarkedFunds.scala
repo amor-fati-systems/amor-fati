@@ -10,10 +10,10 @@ import com.boombustgroup.amorfati.types.*
   *   1. '''Fundusz Pracy (FP)''' — 2.45% employer payroll levy. Finances
   *      unemployment benefits and active labor market policy (ALMP). Currently
   *      unemployment benefits are funded from generic govSpending — FP makes
-  *      the funding source explicit. ~30 mld PLN/year (MRPiPS 2024).
+  *      the funding source explicit. ~30 mld PLN/year (MRPiPS bridge prior).
   *   2. '''PFRON''' — levy on employers with <6% disability employment share.
   *      Finances disability support and workplace adaptation. ~5.5 mld PLN/year
-  *      (PFRON annual report 2024).
+  *      (PFRON annual-report bridge prior).
   *   3. '''FGŚP (Fundusz Gwarantowanych Świadczeń Pracowniczych)''' — 0.10%
   *      payroll. Pays unpaid wages when firms go bankrupt. Counter-cyclical:
   *      payouts spike during bankruptcy waves. ~0.5 mld PLN/year base, 10×

@@ -35,11 +35,11 @@ object Expectations:
   )
 
   def initial(using p: SimParams): State = State(
-    expectedInflation = p.monetary.targetInfl,
-    expectedRate = p.monetary.initialRate,
+    expectedInflation = p.monetary.initialExpectedInflation,
+    expectedRate = p.monetary.initialExpectedRate,
     credibility = p.labor.expCredibilityInit,
     forecastError = Rate.Zero,
-    forwardGuidanceRate = p.monetary.initialRate,
+    forwardGuidanceRate = p.monetary.initialExpectedRate,
   )
 
   /** Monthly update: forecast error → adaptive learning → anchoring →

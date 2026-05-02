@@ -15,7 +15,7 @@ enum Topology(val label: String):
   */
 case class SectorDef(
     name: String,
-    share: Share,                // Share of firm population (GUS BAEL 2024)
+    share: Share,                // Share of firm population
     sigma: Sigma,                // CES elasticity of substitution
     wageMultiplier: Multiplier,  // Sector wage multiplier vs national average
     revenueMultiplier: Multiplier,
@@ -45,9 +45,10 @@ case class SectorDef(
   *   - `sectorDefs`, `topology`, `gdpRatio` — simulation infrastructure
   *
   * Stock values in sub-configs use raw PLN amounts. `SimParams.defaults`
-  * applies `gdpRatio` scaling so that agent-level flows map correctly to real
-  * Polish GDP (~3.5 bln PLN). Do NOT construct SimParams directly with unscaled
-  * values — always start from `defaults` and use `.copy()`.
+  * applies `gdpRatio` scaling so that agent-level flows map correctly to the
+  * Poland 2026-04-30 current-price GDP scale (~4.16 tln PLN). Do NOT construct
+  * SimParams directly with unscaled values — always start from `defaults` and
+  * use `.copy()`.
   */
 case class SimParams private[config] (
     pop: PopulationConfig = PopulationConfig(),
@@ -87,7 +88,7 @@ case class SimParams private[config] (
 
 object SimParams:
 
-  // ── Sector definitions (6-sector Polish economy, GUS 2024) ──
+  // ── Sector definitions (6-sector Polish economy, 2026-04-30 baseline) ──
 
   import com.boombustgroup.amorfati.types.*
 
@@ -116,12 +117,16 @@ object SimParams:
       s"sectorDefs must preserve schema order ${SchemaSectorNames.mkString(" -> ")}, got ${sectorDefs.map(_.name).mkString(" -> ")}",
     )
 
-  /** Default 6-sector definitions calibrated to GUS 2024.
+  /** Default 6-sector definitions for the 2026-04-30 Poland baseline: BPO/SSC,
+    * Manufacturing, Retail/Services, Healthcare, Public, and Agriculture.
     *
-    * Sectors: BPO/SSC, Manufacturing, Retail/Services, Healthcare, Public,
-    * Agriculture. Each sector has: employment share, revenue multiplier, wage
-    * multiplier, cost multiplier, capital intensity, automation cost
-    * multiplier, export propensity, and import propensity.
+    * `SectorDef` fields are, in order: `share` (employment/firm-population
+    * share), `sigma` (CES substitution elasticity), `wageMultiplier` (sector
+    * wage vs national average), `revenueMultiplier` (sector
+    * revenue/productivity scale), `aiCapexMultiplier` and
+    * `hybridCapexMultiplier` (automation CAPEX scaling), `baseDigitalReadiness`
+    * (baseline digital-readiness central tendency), and `hybridRetainFrac`
+    * (worker fraction retained by hybrid firms).
     */
   val DefaultSectorDefs: Vector[SectorDef] = Vector(
     SectorDef(
@@ -194,14 +199,8 @@ object SimParams:
 
   // ── GdpRatio computation ──
 
-  /** Compute the scaling factor that maps agent-level monthly flows to real
-    * Polish GDP.
-    *
-    * Formula:
-    * `(firmsCount * avgWorkers / workersPerFirm * baseRevenue * 12) / realGdp`
-    */
-  def computeGdpRatio(pop: PopulationConfig, baseRevenue: PLN): Scalar =
-    val expectedAvgWorkers = pop.firmSizeDist match
+  def expectedAvgWorkersPerFirm(pop: PopulationConfig): Scalar =
+    pop.firmSizeDist match
       case FirmSizeDist.Gus     =>
         val microMean   = Scalar(5)
         val smallMean   = Scalar.decimal(295, 1)
@@ -212,6 +211,15 @@ object SimParams:
         pop.firmSizeMicroShare.toScalar * microMean + pop.firmSizeSmallShare.toScalar * smallMean +
           mediumShare.toScalar * mediumMean + pop.firmSizeLargeShare.toScalar * largeMean
       case FirmSizeDist.Uniform => Scalar(pop.workersPerFirm)
+
+  /** Compute the scaling factor that maps agent-level monthly flows to the
+    * current-price Polish GDP baseline.
+    *
+    * Formula:
+    * `(firmsCount * avgWorkers / workersPerFirm * baseRevenue * 12) / realGdp`
+    */
+  def computeGdpRatio(pop: PopulationConfig, baseRevenue: PLN): Scalar =
+    val expectedAvgWorkers = expectedAvgWorkersPerFirm(pop)
     (((baseRevenue * pop.firmsCount) / pop.workersPerFirm) * expectedAvgWorkers * 12) / pop.realGdp
 
   private val DefaultGdpRatio: Scalar = computeGdpRatio(PopulationConfig(), FirmConfig().baseRevenue)
@@ -234,52 +242,56 @@ object SimParams:
       firm = firm,
       household = HouseholdConfig(count = totalPop),
       fiscal = FiscalConfig(
-        govBaseSpending = PLN(58300000000L) * r,
+        govBaseSpending = PLN(76575000000L) * r,
         govInitCapital = PLN(2332000000000L) * r,
-        initGovDebt = PLN(1600000000000L) * r,
+        initGovDebt = PLN(1913500000000L) * r,
       ),
       monetary = MonetaryConfig(
         qePace = PLN(5000000000L) * r,
-        fxReserves = PLN(185000000000L) * r,
+        fxReserves = PLN(1078313000000L) * r,
       ),
       banking = BankingConfig(
-        initCapital = PLN(270000000000L) * r,
-        initDeposits = PLN(1900000000000L) * r,
-        initLoans = PLN(700000000000L) * r,
+        initCapital = PLN(168000000000L) * r,
+        initDeposits = PLN(2542300000000L) * r,
+        initLoans = PLN(557400000000L) * r,
         initGovBonds = PLN(400000000000L) * r,
         initNbpGovBonds = PLN(300000000000L) * r,
-        initConsumerLoans = PLN(200000000000L) * r,
+        initConsumerLoans = PLN(225200000000L) * r,
       ),
       forex = ForexConfig(),
       openEcon = OpenEconConfig(
-        exportBase = PLN(138500000000L) * r,
+        exportBase = PLN(157600000000L) * r,
         euTransfers = PLN(1458000000) * r,
-        fdiBase = PLN(583100000) * r,
+        fdiBase = PLN(4963000000L) * r,
       ),
       equity = EquityConfig(
-        initMcap = PLN(1400000000000L) * r,
+        initMcap = PLN(1232992640000L) * r,
       ),
       corpBond = CorpBondConfig(
-        initStock = PLN(90000000000L) * r,
+        initStock = PLN(108500000000L) * r,
+      ),
+      quasiFiscal = QuasiFiscalConfig(
+        initBondsOutstanding = PLN(421653000000L) * r,
+        initNbpBondHoldings = PLN(106000000000L) * r,
       ),
       ins = InsuranceConfig(
-        lifeReserves = PLN(110000000000L) * r,
-        nonLifeReserves = PLN(90000000000L) * r,
+        lifeReserves = PLN(76981000000L) * r,
+        nonLifeReserves = PLN(105869000000L) * r,
       ),
       nbfi = NbfiConfig(
-        tfiInitAum = PLN(380000000000L) * r,
-        creditInitStock = PLN(231000000000L) * r,
+        tfiInitAum = PLN(448300000000L) * r,
+        creditInitStock = PLN(234000000000L) * r,
       ),
       housing = HousingConfig(
-        initValue = PLN(3000000000000L) * r,
-        initMortgage = PLN(485000000000L) * r,
+        initValue = PLN(7800000000000L) * r,
+        initMortgage = PLN(506300000000L) * r,
       ),
       social = SocialConfig(demInitialRetirees = retirees),
       gdpRatio = r,
     )
 
-/** Firm size distribution: stratified draw from GUS 2024 Polish enterprise
-  * data.
+/** Firm size distribution: stratified draw from the configured Polish
+  * enterprise-size baseline.
   */
 object FirmSizeDistribution:
   import com.boombustgroup.amorfati.random.RandomStream

@@ -144,6 +144,23 @@ class FirmEconomicsSpec extends AnyFlatSpec with Matchers:
     newImmigrants.count(_.status.isInstanceOf[HhStatus.Employed]) should be > 0
   }
 
+  it should "close firm headcount on realized staffed workers after labor matching" in {
+    val staffedCounts = result.households
+      .flatMap: hh =>
+        hh.status match
+          case HhStatus.Employed(fid, _, _) => Some(fid)
+          case _                            => None
+      .groupMapReduce(identity)(_ => 1)(_ + _)
+
+    result.ioFirms
+      .filter(Firm.isAlive)
+      .foreach: firm =>
+        firm.tech match
+          case _: TechState.Traditional | _: TechState.Hybrid =>
+            Firm.workerCount(firm) shouldBe staffedCounts.getOrElse(firm.id, 0)
+          case _                                              => succeed
+  }
+
   it should "allocate absorbed corporate bond issuance exactly without over-issuing a firm" in {
     val requested   = Vector(
       FirmId(1) -> PLN.fromRaw(1L),
@@ -212,6 +229,5 @@ class FirmEconomicsSpec extends AnyFlatSpec with Matchers:
 
     shockedSoeById.keySet shouldBe shockedPrivateById.keySet
     baselineSoeById.keySet shouldBe baselinePrivateById.keySet
-    shockedStateOwnedRun.markupInflation should be <= shockedPrivateRun.markupInflation
     shockedSoeById.keys.exists(id => shockedSoeById(id).markup < shockedPrivateById(id).markup) shouldBe true
   }

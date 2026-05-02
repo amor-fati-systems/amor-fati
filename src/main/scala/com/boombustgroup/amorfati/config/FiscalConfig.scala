@@ -15,17 +15,17 @@ import com.boombustgroup.amorfati.types.*
   * `gdpRatio` in `SimParams.defaults`.
   *
   * @param citRate
-  *   corporate income tax rate (MF 2024: 19%)
+  *   corporate income tax rate
   * @param vatRates
-  *   per-sector effective VAT rates (6 sectors, MF 2024: 23%/19%/12%/6%/10%/7%)
+  *   per-sector effective VAT rates (6 sectors)
   * @param exciseRates
-  *   per-sector effective excise rates (6 sectors, MF 2024: ~80 mld PLN total)
+  *   per-sector effective excise rates (6 sectors)
   * @param customsDutyRate
   *   average customs duty rate on non-EU imports (EU CET/Eurostat TARIC: ~4%)
   * @param customsNonEuShare
   *   share of imports subject to customs duties (non-EU origin)
   * @param govBaseSpending
-  *   monthly government consumption in raw PLN (scaled by gdpRatio, MF 2024)
+  *   monthly government spending plan in raw PLN (scaled by gdpRatio)
   * @param govFiscalRecyclingRate
   *   share of tax revenue recycled into spending (automatic stabilizer)
   * @param govAutoStabMult
@@ -35,7 +35,7 @@ import com.boombustgroup.amorfati.types.*
   *   growth; public services are labor-intensive, so CPI-only indexation
   *   mechanically shrinks real public demand when wages outpace consumer prices
   * @param govInvestShare
-  *   share of government spending allocated to capital investment (MF 2024)
+  *   share of government spending allocated to capital investment
   * @param govCapitalMultiplier
   *   fiscal multiplier for government capital spending (Ilzetzki, Mendoza &
   *   Vegh 2013)
@@ -55,7 +55,7 @@ import com.boombustgroup.amorfati.types.*
   * @param euFundsStartMonth
   *   simulation month when EU fund absorption begins
   * @param euFundsAlpha
-  *   Beta distribution alpha for absorption curve shape (MFiPR 2024)
+  *   Beta distribution alpha for absorption curve shape
   * @param euFundsBeta
   *   Beta distribution beta for absorption curve shape
   * @param euCofinanceRate
@@ -72,22 +72,21 @@ import com.boombustgroup.amorfati.types.*
   * @param minWageConvergenceSpeed
   *   annual convergence speed toward target ratio
   * @param fofConsWeights
-  *   Flow-of-Funds: household consumption weights by sector (6 sectors, GUS
-  *   2024)
+  *   Flow-of-Funds: household consumption weights by sector (6 sectors)
   * @param fofGovWeights
-  *   Flow-of-Funds: government spending weights by sector (6 sectors, MF 2024)
+  *   Flow-of-Funds: government spending weights by sector (6 sectors)
   * @param fofExportShares
-  *   Flow-of-Funds: export demand shares by sector (6 sectors, GUS/NBP 2024)
+  *   Flow-of-Funds: export demand shares by sector (6 sectors)
   * @param fofInvestWeights
   *   Flow-of-Funds: investment demand weights by sector (6 sectors)
   * @param govBenefitM1to3
-  *   monthly unemployment benefit for months 1-3 (PLN, GUS 2024: 1,500)
+  *   monthly unemployment benefit for months 1-3 (PLN)
   * @param govBenefitM4to6
-  *   monthly unemployment benefit for months 4-6 (PLN, GUS 2024: 1,200)
+  *   monthly unemployment benefit for months 4-6 (PLN)
   * @param govBenefitDuration
   *   maximum benefit duration in months
   * @param govBenefitCoverage
-  *   fraction of unemployed receiving benefits (GUS 2024: ~15%)
+  *   fraction of unemployed receiving benefits
   * @param govFiscalRiskBeta
   *   baseline sensitivity of bond spread to debt/GDP pressure above 40%
   * @param govTermPremium
@@ -96,18 +95,16 @@ import com.boombustgroup.amorfati.types.*
   *   opening weighted-average coupon on the outstanding Treasury debt stock (MF
   *   interest-cost calibration)
   * @param govAvgMaturityMonths
-  *   average maturity of the total State Treasury debt portfolio in months (MF
-  *   Dec 2025: ~5.75 years = 69 months). Controls yield pass-through speed:
-  *   each month 1/avgMaturity of the portfolio matures and is refinanced at
-  *   current yield. The weighted average coupon converges to market yield
-  *   gradually, not instantly. This prevents unrealistic debt service spikes
-  *   after yield shocks — matching the actual MF flat redemption profile.
+  *   average maturity of the total State Treasury debt portfolio in months.
+  *   Controls yield pass-through speed: each month 1/avgMaturity of the
+  *   portfolio matures and is refinanced at current yield. The weighted average
+  *   coupon converges to market yield gradually, not instantly.
   * @param sgpCorrectionSpeed
   *   annual convergence speed of the SGP excessive-deficit correction. The
   *   model applies this to the excess over the 3% deficit path, scaled by the
   *   deficit overshoot, instead of a one-month hard cap.
   * @param baseForeignShare
-  *   baseline foreign holding share of SPW (NBP 2024: ~35%)
+  *   baseline foreign holding share of SPW
   * @param maxForeignShare
   *   ceiling on foreign share (structural limit, ~55%)
   * @param foreignYieldSensitivity
@@ -115,30 +112,30 @@ import com.boombustgroup.amorfati.types.*
   * @param foreignErSensitivity
   *   elasticity of foreign demand to PLN depreciation (risk-off)
   * @param bundYield
-  *   German 10Y Bund yield benchmark (ECB 2024: ~2.5%)
+  *   German 10Y Bund yield benchmark
   * @param bankBondAbsorptionShare
-  *   fraction of bank deposits available for bond absorption (KNF 2024: banks
-  *   hold ~25-30% of assets in gov bonds, 0% RWA under Basel III)
+  *   fraction of bank deposits available for bond absorption
   * @param initGovDebt
-  *   initial government debt in raw PLN (scaled by gdpRatio, MF 2024: ~1.6 bln
-  *   PLN)
+  *   initial domestic public-debt metric used by Polish fiscal-rule thresholds
+  *   in raw PLN (scaled by gdpRatio). ESA/EDP debt is reconstructed by adding
+  *   quasi-fiscal bonds.
   * @param jstPitShare
   *   JST (local government) share of PIT revenue (Art. 4 Ustawa o dochodach
   *   JST: 38.46%)
   * @param jstCitShare
   *   JST share of CIT revenue (Art. 4: 6.71%)
   * @param jstPropertyTax
-  *   annual property tax per household (PLN, MF 2024)
+  *   annual property tax per household (PLN)
   * @param jstSubventionShare
-  *   education subvention as share of central budget (MF 2024)
+  *   education subvention as share of central budget
   * @param jstDotacjeShare
   *   earmarked grants (dotacje celowe) as share of central budget
   * @param jstSpendingMult
   *   JST spending multiplier (slightly above 1 due to own revenue)
   * @param pitRate1
-  *   PIT first bracket rate (Ustawa o PIT 2024: 12%)
+  *   PIT first bracket rate
   * @param pitRate2
-  *   PIT second bracket rate (Ustawa o PIT 2024: 32%)
+  *   PIT second bracket rate
   * @param pitBracket1Annual
   *   annual income threshold for second PIT bracket (PLN)
   * @param pitTaxCreditAnnual
@@ -148,7 +145,7 @@ import com.boombustgroup.amorfati.types.*
   * @param social800
   *   monthly 800+ benefit per child (PLN, Dz.U. 2023)
   * @param social800ChildrenPerHh
-  *   average number of eligible children per household (GUS 2024)
+  *   average number of eligible children per household
   */
 case class FiscalConfig(
     // Tax rates
@@ -160,7 +157,7 @@ case class FiscalConfig(
     customsDutyRate: Rate = Rate.decimal(4, 2),
     customsNonEuShare: Share = Share.decimal(30, 2),
     // Government spending (raw — scaled by gdpRatio in SimParams.defaults)
-    govBaseSpending: PLN = PLN(58300000000L),
+    govBaseSpending: PLN = PLN(76575000000L),
     govFiscalRecyclingRate: Share = Share.decimal(85, 2),
     govAutoStabMult: Coefficient = Coefficient(3),
     govWageIndexShare: Share = Share.decimal(75, 2),
@@ -193,8 +190,8 @@ case class FiscalConfig(
     fofInvestWeights: Vector[Share] =
       Vector(Share.decimal(10, 2), Share.decimal(40, 2), Share.decimal(15, 2), Share.decimal(5, 2), Share.decimal(20, 2), Share.decimal(10, 2)),
     // Unemployment benefits
-    govBenefitM1to3: PLN = PLN(1500),
-    govBenefitM4to6: PLN = PLN(1200),
+    govBenefitM1to3: PLN = PLN(1784),
+    govBenefitM4to6: PLN = PLN(1401),
     govBenefitDuration: Int = 6,
     govBenefitCoverage: Share = Share.decimal(15, 2),
     // Bond market
@@ -202,7 +199,7 @@ case class FiscalConfig(
     govTermPremium: Rate = Rate.decimal(5, 3),
     govInitialWeightedCoupon: Rate = Rate.decimal(4, 2),
     govAvgMaturityMonths: Int = 69,
-    // Bond auction — foreign demand (NBP SPW holder structure 2024)
+    // Bond auction — foreign demand
     baseForeignShare: Share = Share.decimal(35, 2),
     maxForeignShare: Share = Share.decimal(55, 2),
     foreignYieldSensitivity: Coefficient = Coefficient(8),
@@ -222,7 +219,7 @@ case class FiscalConfig(
     fiscalRiskBeta55: Coefficient = Coefficient.decimal(4, 2),         // bond yield sensitivity above 55% debt/GDP
     fiscalRiskBeta60: Coefficient = Coefficient.decimal(8, 2),         // bond yield sensitivity above 60% debt/GDP
     // Government debt (raw — scaled by gdpRatio in SimParams.defaults)
-    initGovDebt: PLN = PLN(1600000000000L),
+    initGovDebt: PLN = PLN(1913500000000L),
     // JST (local government, Art. 4 Ustawa o dochodach JST)
     jstPitShare: Share = Share.decimal(3846, 4),
     jstCitShare: Share = Share.decimal(671, 4),
@@ -230,7 +227,7 @@ case class FiscalConfig(
     jstSubventionShare: Share = Share.decimal(3, 2),
     jstDotacjeShare: Share = Share.decimal(1, 2),
     jstSpendingMult: Multiplier = Multiplier.decimal(102, 2),
-    // PIT (Ustawa o PIT 2024)
+    // PIT
     pitRate1: Rate = Rate.decimal(12, 2),
     pitRate2: Rate = Rate.decimal(32, 2),
     pitBracket1Annual: PLN = PLN(120000),

@@ -5,16 +5,16 @@ import com.boombustgroup.amorfati.types.*
 
 /** Employment contract types in the Polish dual labor market.
   *
-  * ~30% of Polish employment is non-standard (GUS LFS 2024). Contract type
-  * determines: (1) social contribution rates (ZUS/FP), (2) firing costs and
-  * order, (3) vulnerability to AI displacement.
+  * ~30% of Polish employment is non-standard (GUS LFS bridge prior). Contract
+  * type determines: (1) social contribution rates (ZUS/FP), (2) firing costs
+  * and order, (3) vulnerability to AI displacement.
   *
   * Dual labor market dynamics: flexible segment (Zlecenie/B2B) absorbs shocks
   * via instant hire/fire. Rigid segment (Permanent) resists adjustment but
   * provides income stability. AI hits flexible workers first — routine tasks on
   * non-standard contracts are easiest to automate and cheapest to terminate.
   *
-  * Calibration: GUS LFS 2024, ZUS contribution tables, Kodeks Pracy.
+  * Calibration: GUS LFS bridge prior, ZUS contribution tables, Kodeks Pracy.
   */
 enum ContractType:
   /** Umowa o pracę — full employment protection (Kodeks Pracy). Full ZUS
@@ -66,7 +66,8 @@ object ContractType:
     case Permanent => Multiplier.One
 
   /** Sector-specific probability of each contract type for new hires. Returns
-    * (pPermanent, pZlecenie, pB2B) summing to 1. GUS LFS 2024 sector breakdown.
+    * (pPermanent, pZlecenie, pB2B) summing to 1. GUS LFS bridge prior sector
+    * breakdown.
     */
   def sectorMix(sectorIdx: Int): (Share, Share, Share) = sectorIdx match
     case 0 => (Share.decimal(30, 2), Share.decimal(20, 2), Share.decimal(50, 2)) // BPO/SSC — high B2B

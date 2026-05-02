@@ -9,9 +9,9 @@ import com.boombustgroup.ledger.Distribute
   * 1936).
   *
   * Each living firm purchases intermediate inputs from other sectors according
-  * to the technical coefficients matrix A (calibrated to GUS supply-use tables
-  * 2024). Revenue from intermediate sales is distributed proportionally to firm
-  * gross output within each sector.
+  * to the technical coefficients matrix A (calibrated to the 2026-04-30
+  * six-sector IO bridge prior). Revenue from intermediate sales is distributed
+  * proportionally to firm gross output within each sector.
   *
   * Cash adjustments are zero-sum across all living firms: total intermediate
   * costs equal total intermediate revenues (deposit transfers, no money

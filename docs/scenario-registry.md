@@ -69,7 +69,7 @@ outputs can be compared directly with validation and robustness artifacts.
 | Scenario | Parameter | Baseline | Scenario value | Note |
 | --- | --- | --- | --- | --- |
 | `baseline` | `SimParams` | `SimParams.defaults` | `SimParams.defaults` | No parameter change. |
-| `monetary-tightening` | `monetary.initialRate` | `0.0575` | `0.075` | Higher starting reference rate. |
+| `monetary-tightening` | `monetary.initialRate` | `0.0375` | `0.075` | Higher starting reference rate. |
 | `monetary-tightening` | `monetary.neutralRate` | `0.04` | `0.05` | Higher neutral-rate anchor. |
 | `monetary-tightening` | `monetary.taylorAlpha` | `1.5` | `1.8` | Stronger inflation response. |
 | `fiscal-expansion` | `fiscal.govBaseSpending` | scaled default | scaled default `* 1.15` | 15% higher base government spending. |
@@ -117,4 +117,4 @@ outputs can be compared directly with validation and robustness artifacts.
   baseline.
 - [docs/data-bridge-national-financial-accounts.md](data-bridge-national-financial-accounts.md):
   official source mapping and transformation rules for scenario inputs that are
-  empirical or based on historical analogues.
+  empirical or based on external analogues.

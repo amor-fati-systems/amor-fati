@@ -28,44 +28,61 @@ class MacroprudentialSpec extends AnyFlatSpec with Matchers:
   // OSII buffer (internal — bypasses Config guard)
   // ==========================================================================
 
-  "osiiBufferImpl" should "return 1.0% for PKO BP (id=0)" in {
-    decimal(Macroprudential.osiiBufferImpl(0)) shouldBe BigDecimal("0.01") +- BigDecimal("1e-10")
+  "osiiBufferImpl" should "return 2.0% for PKO BP (id=0)" in {
+    decimal(Macroprudential.osiiBufferImpl(0)) shouldBe BigDecimal("0.02") +- BigDecimal("1e-10")
   }
 
-  it should "return 0.5% for Pekao (id=1)" in {
-    decimal(Macroprudential.osiiBufferImpl(1)) shouldBe BigDecimal("0.005") +- BigDecimal("1e-10")
+  it should "return 1.0% for Pekao (id=1)" in {
+    decimal(Macroprudential.osiiBufferImpl(1)) shouldBe BigDecimal("0.01") +- BigDecimal("1e-10")
   }
 
-  it should "return 0% for other banks (id>=2)" in {
-    for id <- 2 to 6 do Macroprudential.osiiBufferImpl(id) shouldBe Multiplier.Zero
+  it should "return current O-SII buffers for the remaining default banks" in {
+    decimal(Macroprudential.osiiBufferImpl(2)) shouldBe BigDecimal("0.005") +- BigDecimal("1e-10")
+    decimal(Macroprudential.osiiBufferImpl(3)) shouldBe BigDecimal("0.01") +- BigDecimal("1e-10")
+    decimal(Macroprudential.osiiBufferImpl(4)) shouldBe BigDecimal("0.015") +- BigDecimal("1e-10")
+    decimal(Macroprudential.osiiBufferImpl(5)) shouldBe BigDecimal("0.0025") +- BigDecimal("1e-10")
+    decimal(Macroprudential.osiiBufferImpl(6)) shouldBe BigDecimal("0.0025") +- BigDecimal("1e-10")
+  }
+
+  it should "return 0% outside the default bank vector" in {
+    Macroprudential.osiiBufferImpl(7) shouldBe Multiplier.Zero
   }
 
   // ==========================================================================
   // effectiveMinCar (internal)
   // ==========================================================================
 
-  "effectiveMinCarImpl" should "equal MinCar + P2R when ccyb=0 and OSII=0" in {
-    // Bank id=3 has no OSII buffer, but has P2R
+  "effectiveMinCarImpl" should "equal MinCar + O-SII + P2R when ccyb=0" in {
     val eff = Macroprudential.effectiveMinCarImpl(3, Multiplier.Zero)
-    decimal(eff) shouldBe (decimal(p.banking.minCar) + decimal(p.banking.p2rAddons(3))) +- BigDecimal("1e-10")
+    decimal(eff) shouldBe (decimal(p.banking.minCar) + decimal(p.banking.osiiBuffers(3)) + decimal(
+      p.banking.p2rAddons(3),
+    )) +- BigDecimal("1e-10")
   }
 
   it should "add CCyB to MinCar + P2R" in {
     val ccyb = Multiplier.decimal(15, 3)
     val eff  = Macroprudential.effectiveMinCarImpl(3, ccyb)
-    decimal(eff) shouldBe (decimal(p.banking.minCar) + BigDecimal("0.015") + decimal(p.banking.p2rAddons(3))) +- BigDecimal("1e-10")
+    decimal(eff) shouldBe (decimal(p.banking.minCar) + BigDecimal("0.015") + decimal(p.banking.osiiBuffers(3)) + decimal(
+      p.banking.p2rAddons(3),
+    )) +- BigDecimal("1e-10")
   }
 
   it should "add both CCyB and OSII and P2R for PKO BP" in {
     val ccyb = Multiplier.decimal(1, 2)
     val eff  = Macroprudential.effectiveMinCarImpl(0, ccyb)
-    decimal(eff) shouldBe (decimal(p.banking.minCar) + BigDecimal("0.01") + BigDecimal("0.01") + decimal(p.banking.p2rAddons(0))) +- BigDecimal("1e-10")
+    decimal(eff) shouldBe (decimal(p.banking.minCar) + BigDecimal("0.01") + BigDecimal("0.02") + decimal(
+      p.banking.p2rAddons(
+        0,
+      ),
+    )) +- BigDecimal("1e-10")
   }
 
   it should "add CCyB and OSII and P2R for Pekao" in {
     val ccyb = Multiplier.decimal(2, 2)
     val eff  = Macroprudential.effectiveMinCarImpl(1, ccyb)
-    decimal(eff) shouldBe (decimal(p.banking.minCar) + BigDecimal("0.02") + BigDecimal("0.005") + decimal(p.banking.p2rAddons(1))) +- BigDecimal("1e-10")
+    decimal(eff) shouldBe (decimal(p.banking.minCar) + BigDecimal("0.02") + BigDecimal("0.01") + decimal(p.banking.p2rAddons(1))) +- BigDecimal(
+      "1e-10",
+    )
   }
 
   // ==========================================================================
