@@ -226,6 +226,13 @@ class LaborMarketSpec extends AnyFlatSpec with Matchers:
     capacity shouldBe 78
   }
 
+  it should "return zero monthly matching capacity for non-positive labor force" in {
+    val hhs = (0 until 10).map(i => mkHousehold(i, HhStatus.Unemployed(1))).toVector
+
+    LaborMarket.monthlyMatchingCapacity(hhs, laborForcePopulation = 0) shouldBe 0
+    LaborMarket.monthlyMatchingCapacity(hhs, laborForcePopulation = -1) shouldBe 0
+  }
+
   it should "let startup firms keep hiring up to startupTargetWorkers during startup" in {
     val rng    = RandomStream.seeded(42)
     val firms  = Vector(

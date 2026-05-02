@@ -160,6 +160,20 @@ class SimParamsSpec extends AnyFlatSpec with Matchers:
     an[IllegalArgumentException] should be thrownBy BankingConfig(minCar = Multiplier(1))
   }
 
+  it should "reject p2rAddons and osiiBuffers outside [0,1]" in {
+    val p2rErr = intercept[IllegalArgumentException]:
+      BankingConfig(p2rAddons = Vector(Multiplier(-1)), osiiBuffers = Vector(Multiplier.Zero))
+    p2rErr.getMessage should include("p2rAddons[0]")
+
+    val osiiErr = intercept[IllegalArgumentException]:
+      BankingConfig(p2rAddons = Vector(Multiplier.Zero), osiiBuffers = Vector(Multiplier(2)))
+    osiiErr.getMessage should include("osiiBuffers[0]")
+  }
+
+  "FirmConfig" should "pin the Poland productivity-growth baseline" in {
+    p.firm.productivityGrowth shouldBe Rate.decimal(2, 2)
+  }
+
   // ── Vector length validation ──
 
   "FiscalConfig" should "reject wrong-length vatRates" in {

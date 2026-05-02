@@ -323,7 +323,7 @@ source. Missing or weak provenance is marked explicitly with searchable tokens:
 Use the following commands to audit open provenance gaps:
 
 ```bash
-rg "UNKNOWN_SOURCE|TUNED_NEEDS_VALIDATION|PLACEHOLDER|POLICY_SCENARIO" docs/calibration-register.md
+rg "UNKNOWN_SOURCE|TUNED_NEEDS_VALIDATION|ASSUMED|PLACEHOLDER|EMPIRICAL_TRANSFORMED|POLICY_SCENARIO" docs/calibration-register.md
 ```
 
 Priority gaps before publication:

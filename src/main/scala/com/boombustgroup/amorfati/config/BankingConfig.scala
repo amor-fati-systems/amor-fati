@@ -199,5 +199,15 @@ case class BankingConfig(
     osiiBuffers.length == p2rAddons.length,
     s"osiiBuffers must have the same length as p2rAddons: expected ${p2rAddons.length}, actual ${osiiBuffers.length}",
   )
+  p2rAddons.zipWithIndex.foreach: (addon, idx) =>
+    require(
+      addon >= Multiplier.Zero && addon <= Multiplier.One,
+      s"p2rAddons[$idx] must be in [0,1]: $addon",
+    )
+  osiiBuffers.zipWithIndex.foreach: (buffer, idx) =>
+    require(
+      buffer >= Multiplier.Zero && buffer <= Multiplier.One,
+      s"osiiBuffers[$idx] must be in [0,1]: $buffer",
+    )
   require(lcrMin > Multiplier.Zero, s"lcrMin must be positive: $lcrMin")
   require(nsfrMin > Multiplier.Zero, s"nsfrMin must be positive: $nsfrMin")

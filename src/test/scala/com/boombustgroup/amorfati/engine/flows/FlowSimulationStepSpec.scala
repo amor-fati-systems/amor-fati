@@ -64,6 +64,7 @@ class FlowSimulationStepSpec extends AnyFlatSpec with Matchers:
     val equityIssuanceBatches = result.flows.filter(batch => batch.asset == AssetType.Equity && batch.to == EntitySector.Firms)
 
     firmIssuance should be > PLN.Zero
+    equityIssuanceBatches.length shouldBe 1
     equityIssuanceBatches.map(_.mechanism).toSet shouldBe Set(FlowMechanism.FirmEquityIssuance)
     firmIssuance shouldBe result.calculus.firmEquityIssuance
     firmIssuance shouldBe result.nextState.world.financialMarkets.equity.lastIssuance

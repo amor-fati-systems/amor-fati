@@ -156,9 +156,9 @@ object LaborMarket:
 
   def monthlyMatchingCapacity(households: Vector[Household.State], laborForcePopulation: Int)(using p: SimParams): Int =
     val unemployed = households.count(_.status.isInstanceOf[HhStatus.Unemployed])
-    if unemployed <= 0 then 0
+    if unemployed <= 0 || laborForcePopulation <= 0 then 0
     else
-      val structuralPool = Math.min(unemployed, p.monetary.nairu.ceilApplyTo(laborForcePopulation.max(1)))
+      val structuralPool = Math.min(unemployed, p.monetary.nairu.ceilApplyTo(laborForcePopulation))
       val cyclicalPool   = Math.max(0, unemployed - structuralPool)
       val structural     = p.labor.structuralMatchRate.ceilApplyTo(structuralPool)
       val cyclical       = p.labor.cyclicalMatchRate.ceilApplyTo(cyclicalPool)

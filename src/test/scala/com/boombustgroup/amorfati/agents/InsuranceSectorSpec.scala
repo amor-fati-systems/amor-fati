@@ -10,6 +10,7 @@ class InsuranceSectorSpec extends AnyFlatSpec with Matchers:
   import com.boombustgroup.amorfati.config.SimParams
   given SimParams                                       = SimParams.defaults
   private val p: SimParams                              = summon[SimParams]
+  private val gdpRatio: BigDecimal                      = decimal(p.gdpRatio)
   private def initialCorpBondHoldings: PLN              =
     (p.ins.lifeReserves + p.ins.nonLifeReserves) * p.ins.corpBondShare
   private def initialOpening: Insurance.OpeningBalances =
@@ -185,11 +186,11 @@ class InsuranceSectorSpec extends AnyFlatSpec with Matchers:
   }
 
   "Config defaults" should "have InsLifeReserves consistent with the 2026-04-30 bridge calibration" in {
-    p.ins.lifeReserves should be > PLN.Zero
+    decimal(p.ins.lifeReserves) shouldBe (BigDecimal("76.981e9") * gdpRatio) +- BigDecimal("1.0")
   }
 
   it should "have InsNonLifeReserves consistent with the 2026-04-30 bridge calibration" in {
-    p.ins.nonLifeReserves should be > PLN.Zero
+    decimal(p.ins.nonLifeReserves) shouldBe (BigDecimal("105.869e9") * gdpRatio) +- BigDecimal("1.0")
   }
 
   it should "have allocation shares that are positive and bounded" in {
