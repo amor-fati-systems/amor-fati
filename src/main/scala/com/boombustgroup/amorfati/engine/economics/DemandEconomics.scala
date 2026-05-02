@@ -23,7 +23,6 @@ object DemandEconomics:
   private val PressureSaturationRate  = Scalar.decimal(125, 2)    // how quickly excess-demand pressure saturates above capacity
   private val PressureSignalSmoothing = Share.decimal(65, 2)      // persistent sector order-book pressure; avoids startup repricing spikes
   private val HiringSignalSmoothing   = Share.decimal(65, 2)      // persistence in sector hiring plans; avoids month-to-month whipsaw
-  private val CrossSectorSpillover    = Share.decimal(65, 2)      // only part of unmet sector demand is substitutable across sectors
 
   case class Output(
       govPurchases: PLN,                        // total government purchases this month
@@ -197,6 +196,10 @@ object DemandEconomics:
       p.io.matrix.length == rawMults.length && p.io.matrix.forall(_.length == rawMults.length),
       s"DemandEconomics.applySpillover requires io.matrix to match ${rawMults.length} sector multipliers, got ${p.io.matrix.length} rows",
     )
+    require(
+      sectorCapReal.length == rawMults.length,
+      s"DemandEconomics.applySpillover requires sectorCapReal to match ${rawMults.length} sector multipliers, got ${sectorCapReal.length}",
+    )
     val nominalCapBySector = sectorCapReal.map(_ * priceLevel.toMultiplier)
     val slackCapacity      = rawMults.indices
       .map: s =>
@@ -209,7 +212,7 @@ object DemandEconomics:
       val fromCap = nominalCapBySector(from)
       if fromCap > PLN.Zero && rawMults(from) > Multiplier.One then
         val excessDemand        = fromCap * rawMults(from).deviationFromOne
-        val substitutableExcess = excessDemand * CrossSectorSpillover
+        val substitutableExcess = excessDemand * p.io.crossSectorSpillover
         val weights             = rawMults.indices.map: to =>
           if to == from || slackCapacity(to) <= PLN.Zero then PLN.Zero
           else slackCapacity(to) * spilloverCompatibility(from, to)

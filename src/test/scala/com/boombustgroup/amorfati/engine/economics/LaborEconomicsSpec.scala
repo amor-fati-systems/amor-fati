@@ -3,7 +3,7 @@ package com.boombustgroup.amorfati.engine.economics
 import com.boombustgroup.amorfati.FixedPointSpecSupport.*
 import com.boombustgroup.amorfati.{Generators, TestFirmState}
 import com.boombustgroup.amorfati.agents.*
-import com.boombustgroup.amorfati.config.SimParams
+import com.boombustgroup.amorfati.config.{SimParams, SimParamsTestOverrides}
 import com.boombustgroup.amorfati.engine.SimulationMonth.ExecutionMonth
 import com.boombustgroup.amorfati.engine.SocialState
 import com.boombustgroup.amorfati.init.{InitRandomness, WorldInit}
@@ -62,7 +62,7 @@ class LaborEconomicsSpec extends AnyFlatSpec with Matchers:
         regionalWages = Region.all.map(_ -> PLN(8000)).toMap,
       )
     val expectationFirms  = (0 until 100).map: id =>
-      TestFirmState(FirmId(id), tech = TechState.Traditional(9), initialSize = 9)
+      TestFirmState(FirmId(id), tech = TechState.Traditional(10), initialSize = 10)
     val expectationS1     = s1.copy(
       lendingBaseRate = expectationsWorld.nbp.referenceRate,
       resWage = expectationsWorld.householdMarket.reservationWage,
@@ -76,12 +76,13 @@ class LaborEconomicsSpec extends AnyFlatSpec with Matchers:
     )
     val highExpected      = expectationsWorld.copy(
       mechanisms = expectationsWorld.mechanisms.copy(
-        expectations = expectationsWorld.mechanisms.expectations.copy(expectedInflation = Rate.decimal(50, 2)),
+        expectations = expectationsWorld.mechanisms.expectations.copy(expectedInflation = Rate.decimal(5, 2)),
       ),
     )
+    val expectationP      = SimParamsTestOverrides.noTightLaborWagePressure
 
-    val zeroResult = LaborEconomics.compute(zeroExpected, expectationFirms.toVector, Vector.empty, expectationS1)
-    val highResult = LaborEconomics.compute(highExpected, expectationFirms.toVector, Vector.empty, expectationS1)
+    val zeroResult = LaborEconomics.compute(zeroExpected, expectationFirms.toVector, Vector.empty, expectationS1)(using expectationP)
+    val highResult = LaborEconomics.compute(highExpected, expectationFirms.toVector, Vector.empty, expectationS1)(using expectationP)
 
     highResult.newWage should be > zeroResult.newWage
     highResult.wageGrowth should be > zeroResult.wageGrowth

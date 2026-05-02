@@ -80,8 +80,8 @@ class PublicSectorSpec extends AnyFlatSpec with Matchers:
     val result = SocialSecurity.demographicsStep(prev, employed = 90000, netMigration = -25, representedLaborForce = 100000)
 
     result.workingAgePop shouldBe 99975
-    result.retirees should be > prev.retirees
-    result.monthlyRetirements shouldBe result.retirees - prev.retirees
+    result.monthlyRetirements shouldBe p.social.demRetirementRate.applyTo(90000)
+    result.retirees shouldBe prev.retirees + result.monthlyRetirements
   }
 
   // =========================================================================

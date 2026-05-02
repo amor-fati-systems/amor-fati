@@ -544,11 +544,11 @@ object Household:
     val frictionNetWage   = targetAvgWage * SectoralMobility.crossSectorWagePenalty(friction)
     val wageThresholdMult = Multiplier.One + p.labor.voluntaryWageThreshold.toMultiplier
     if frictionNetWage <= status.wage * wageThresholdMult then return (status, 0)
-    if friction < p.labor.adjacentFrictionMax then (status, 0)
-    else
+    if friction <= p.labor.adjacentFrictionMax then
       val rp = SectoralMobility.frictionAdjustedParams(friction, p.labor.frictionDurationMult, p.labor.frictionCostMult)
       if financialStocks.demandDeposit > rp.cost then (HhStatus.Retraining(rp.duration, SectorIdx(targetSector), rp.cost), 1)
       else (status, 0)
+    else (status, 0)
 
   /** Retraining for unemployed HH → (newStatus, attemptFlag, successFlag). */
   private def tryRetraining(

@@ -74,6 +74,7 @@ case class HousingConfig(
   require(ltvMax > Share.Zero && ltvMax <= Share.One, s"ltvMax must be in (0,1]: $ltvMax")
   require(mortgageMaturity > 0, s"mortgageMaturity must be positive: $mortgageMaturity")
   require(initValue >= PLN.Zero, s"initValue must be non-negative: $initValue")
+  require(initMortgage >= PLN.Zero, s"initMortgage must be non-negative: $initMortgage")
 
   require(
     regionalMarkets.length == HousingConfig.RegionalMarket.count,

@@ -20,10 +20,14 @@ import com.boombustgroup.amorfati.types.*
   * @param scale
   *   scaling factor for I-O flows (1.0 = full strength, for sensitivity
   *   analysis)
+  * @param crossSectorSpillover
+  *   substitutable share of excess sector demand that can spill to compatible
+  *   slack sectors
   */
 case class IoConfig(
     matrix: Vector[Vector[Share]] = IoConfig.DefaultMatrix,
     scale: Multiplier = Multiplier(1),
+    crossSectorSpillover: Share = Share.decimal(65, 2),
 ):
   require(matrix.nonEmpty, "IoConfig.matrix must be non-empty")
 
@@ -34,6 +38,7 @@ case class IoConfig(
   require(rowCount == colCount, "IoConfig.matrix must be square")
   require(matrix.flatten.forall(_ >= Share.Zero), "IoConfig.matrix entries must be non-negative")
   require(scale >= Multiplier.Zero, "IoConfig.scale must be non-negative")
+  require(crossSectorSpillover >= Share.Zero && crossSectorSpillover <= Share.One, s"crossSectorSpillover must be in [0,1]: $crossSectorSpillover")
 
   /** Pre-computed column sums of the technical coefficients matrix (used in
     * intermediate demand calculation).

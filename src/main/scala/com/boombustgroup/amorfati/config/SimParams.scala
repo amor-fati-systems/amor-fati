@@ -117,12 +117,16 @@ object SimParams:
       s"sectorDefs must preserve schema order ${SchemaSectorNames.mkString(" -> ")}, got ${sectorDefs.map(_.name).mkString(" -> ")}",
     )
 
-  /** Default 6-sector definitions for the 2026-04-30 Poland baseline.
+  /** Default 6-sector definitions for the 2026-04-30 Poland baseline: BPO/SSC,
+    * Manufacturing, Retail/Services, Healthcare, Public, and Agriculture.
     *
-    * Sectors: BPO/SSC, Manufacturing, Retail/Services, Healthcare, Public,
-    * Agriculture. Each sector has: employment share, revenue multiplier, wage
-    * multiplier, cost multiplier, capital intensity, automation cost
-    * multiplier, export propensity, and import propensity.
+    * `SectorDef` fields are, in order: `share` (employment/firm-population
+    * share), `sigma` (CES substitution elasticity), `wageMultiplier` (sector
+    * wage vs national average), `revenueMultiplier` (sector
+    * revenue/productivity scale), `aiCapexMultiplier` and
+    * `hybridCapexMultiplier` (automation CAPEX scaling), `baseDigitalReadiness`
+    * (baseline digital-readiness central tendency), and `hybridRetainFrac`
+    * (worker fraction retained by hybrid firms).
     */
   val DefaultSectorDefs: Vector[SectorDef] = Vector(
     SectorDef(

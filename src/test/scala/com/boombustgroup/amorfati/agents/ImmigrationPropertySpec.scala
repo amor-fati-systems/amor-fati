@@ -25,8 +25,7 @@ class ImmigrationPropertySpec extends AnyFlatSpec with Matchers:
 
   it should "keep the default Poland wage-pull inflow in a moderated monthly band" in {
     val result = Immigration.computeInflow(PLN(9700), Share.decimal(6, 2))
-    result should be >= 60
-    result should be <= 100
+    result shouldBe 80
   }
 
   "Immigration.computeOutflow" should "always return non-negative" in {

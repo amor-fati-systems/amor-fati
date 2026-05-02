@@ -184,11 +184,9 @@ object SocialSecurity:
     * workers from macro labor supply without changing any household status.
     */
   def demographicsStep(prev: DemographicsState, employed: Int, netMigration: Int, representedLaborForce: Int)(using p: SimParams): DemographicsState =
-    val retirements       = p.social.demRetirementRate.applyTo(employed)
-    val workingAgeDecline = p.social.demWorkingAgeDecline.monthly.applyTo(prev.workingAgePop)
-    val externalRetirees  = retirements + workingAgeDecline
+    val retirements = p.social.demRetirementRate.applyTo(employed)
     DemographicsState(
-      retirees = prev.retirees + externalRetirees,
+      retirees = prev.retirees + retirements,
       workingAgePop = Math.max(0, representedLaborForce + netMigration),
-      monthlyRetirements = externalRetirees,
+      monthlyRetirements = retirements,
     )

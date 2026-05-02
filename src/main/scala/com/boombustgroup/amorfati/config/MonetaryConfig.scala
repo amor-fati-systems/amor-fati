@@ -98,6 +98,14 @@ case class MonetaryConfig(
   require(initialRate >= Rate.Zero, s"initialRate must be non-negative: $initialRate")
   require(initialExpectedRate >= Rate.Zero, s"initialExpectedRate must be non-negative: $initialExpectedRate")
   require(
+    initialRate >= rateFloor && initialRate <= rateCeiling,
+    s"initialRate must be within [rateFloor, rateCeiling]: initialRate=$initialRate rateFloor=$rateFloor rateCeiling=$rateCeiling",
+  )
+  require(
+    initialExpectedRate >= rateFloor && initialExpectedRate <= rateCeiling,
+    s"initialExpectedRate must be within [rateFloor, rateCeiling]: initialExpectedRate=$initialExpectedRate rateFloor=$rateFloor rateCeiling=$rateCeiling",
+  )
+  require(
     taylorExpectedInflationWeight >= Share.Zero && taylorExpectedInflationWeight <= Share.One,
     s"taylorExpectedInflationWeight must be in [0,1]: $taylorExpectedInflationWeight",
   )

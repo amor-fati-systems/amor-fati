@@ -155,6 +155,11 @@ class SimParamsSpec extends AnyFlatSpec with Matchers:
     an[IllegalArgumentException] should be thrownBy MonetaryConfig(rateFloor = Rate.decimal(5, 1), rateCeiling = Rate.decimal(1, 1))
   }
 
+  it should "reject initial rates outside the configured corridor" in {
+    an[IllegalArgumentException] should be thrownBy MonetaryConfig(initialRate = Rate.decimal(20, 2))
+    an[IllegalArgumentException] should be thrownBy MonetaryConfig(initialExpectedRate = Rate.decimal(20, 2))
+  }
+
   "BankingConfig" should "reject invalid minCar" in {
     an[IllegalArgumentException] should be thrownBy BankingConfig(minCar = Multiplier(0))
     an[IllegalArgumentException] should be thrownBy BankingConfig(minCar = Multiplier(1))
@@ -186,6 +191,10 @@ class SimParamsSpec extends AnyFlatSpec with Matchers:
 
   "ClimateConfig" should "reject wrong-length energyCostShares" in {
     an[IllegalArgumentException] should be thrownBy ClimateConfig(energyCostShares = Vector(Share.decimal(1, 1)))
+  }
+
+  "HousingConfig" should "reject negative initMortgage" in {
+    an[IllegalArgumentException] should be thrownBy HousingConfig(initMortgage = PLN(-1))
   }
 
   // ── Private constructor ──
