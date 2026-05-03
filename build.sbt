@@ -5,6 +5,7 @@ lazy val ledger = ProjectRef(file("modules/ledger"), "root")
 lazy val sfcMatrices = inputKey[Unit]("Generate symbolic SFC BSM/TFM matrix artifacts")
 lazy val robustnessReport = inputKey[Unit]("Generate lightweight sensitivity and robustness artifacts")
 lazy val scenarioRun = inputKey[Unit]("Run named scenario-registry experiments")
+lazy val empiricalValidation = inputKey[Unit]("Generate empirical validation baseline snapshot artifacts")
 
 lazy val baseScalacOptions = Seq(
   "-Werror",
@@ -72,6 +73,13 @@ lazy val root = project
         val parsedArgs = spaceDelimited("<scenario args>").parsed
         (Compile / runMain)
           .toTask(" com.boombustgroup.amorfati.diagnostics.ScenarioRunExport " + parsedArgs.mkString(" "))
+      }
+      .evaluated,
+    empiricalValidation := Def
+      .inputTaskDyn {
+        val parsedArgs = spaceDelimited("<empirical validation args>").parsed
+        (Compile / runMain)
+          .toTask(" com.boombustgroup.amorfati.diagnostics.EmpiricalValidationExport " + parsedArgs.mkString(" "))
       }
       .evaluated,
     Test / testOptions ++= {
