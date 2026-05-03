@@ -336,26 +336,23 @@ object EmpiricalValidationExport:
       )
 
   private def snapshotStatus(row: SourceManifestRow, modelAttempt: Either[String, BigDecimal]): SnapshotStatus =
-    if row.status == SourceStatus.MissingOutput then SnapshotStatus.MissingOutput
-    else
-      modelAttempt match
-        case Left(_)  => SnapshotStatus.MissingOutput
-        case Right(_) =>
-          row.status match
-            case SourceStatus.MissingDataBridge | SourceStatus.MissingSourceDetail =>
-              SnapshotStatus.MissingDataBridge
-            case SourceStatus.Partial                                              =>
-              SnapshotStatus.Partial
-            case SourceStatus.Ready | SourceStatus.BridgeAssumption                =>
-              (row.empiricalValue, row.tolerance) match
-                case (None, _)            => SnapshotStatus.MissingDataBridge
-                case (Some(_), None)      => SnapshotStatus.Partial
-                case (Some(emp), Some(t)) =>
-                  val model = modelAttempt.toOption.get
-                  if (model - emp).abs <= t.abs then SnapshotStatus.PassBaseline
-                  else SnapshotStatus.FailBaseline
-            case SourceStatus.MissingOutput                                        =>
-              SnapshotStatus.MissingOutput
+    row.status match
+      case SourceStatus.MissingOutput                                        =>
+        SnapshotStatus.MissingOutput
+      case SourceStatus.MissingDataBridge | SourceStatus.MissingSourceDetail =>
+        modelAttempt.fold(_ => SnapshotStatus.MissingOutput, _ => SnapshotStatus.MissingDataBridge)
+      case SourceStatus.Partial                                              =>
+        modelAttempt.fold(_ => SnapshotStatus.MissingOutput, _ => SnapshotStatus.Partial)
+      case SourceStatus.Ready | SourceStatus.BridgeAssumption                =>
+        modelAttempt match
+          case Left(_)      => SnapshotStatus.MissingOutput
+          case Right(model) =>
+            (row.empiricalValue, row.tolerance) match
+              case (None, _)            => SnapshotStatus.MissingDataBridge
+              case (Some(_), None)      => SnapshotStatus.Partial
+              case (Some(emp), Some(t)) =>
+                if (model - emp).abs <= t.abs then SnapshotStatus.PassBaseline
+                else SnapshotStatus.FailBaseline
 
   private def snapshotNotes(row: SourceManifestRow, modelAttempt: Either[String, BigDecimal]): String =
     val base    = Vector(row.notes).filter(_.nonEmpty)
