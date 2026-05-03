@@ -3,6 +3,7 @@ package com.boombustgroup.amorfati.montecarlo
 import com.boombustgroup.amorfati.agents.Banking
 import com.boombustgroup.amorfati.agents.Banking.BankState
 import com.boombustgroup.amorfati.agents.Firm
+import com.boombustgroup.amorfati.agents.HhStatus
 import com.boombustgroup.amorfati.agents.Household
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.flows.FlowSimulation
@@ -21,6 +22,25 @@ private[montecarlo] final case class McTerminalSummaryRows(seed: Long, rowsById:
 private[montecarlo] object McTerminalSummarySchema:
 
   private case class BankRow(bank: BankState, balances: LedgerFinancialState.BankBalances)
+  private case class HouseholdRow(aggregates: Household.Aggregates, households: Vector[Household.State]):
+    private lazy val employedWages: Vector[PLN] =
+      households
+        .flatMap: household =>
+          household.status match
+            case HhStatus.Employed(_, _, wage) => Some(wage)
+            case _                             => None
+        .sorted
+
+    def meanMonthlyIncome: PLN =
+      if households.nonEmpty then aggregates.totalIncome.divideBy(households.length) else PLN.Zero
+
+    def meanEmployedWage: PLN =
+      if employedWages.nonEmpty then employedWages.sumPln.divideBy(employedWages.length) else PLN.Zero
+
+    def wageP10: PLN = percentile(employedWages, Share.decimal(10, 2))
+    def wageP50: PLN = percentile(employedWages, Share.decimal(50, 2))
+    def wageP90: PLN = percentile(employedWages, Share.decimal(90, 2))
+
   private case class FirmSizeCounts(living: Int, micro: Int, small: Int, medium: Int, large: Int):
     private def share(count: Int): Share =
       if living > 0 then Share.fraction(count, living) else Share.Zero
@@ -42,26 +62,31 @@ private[montecarlo] object McTerminalSummarySchema:
       csvSchema: McCsvSchema[String],
   )
 
-  private val hhSchema: Vector[(String, Household.Aggregates => String)] = Vector(
-    ("HH_Employed", a => s"${a.employed}"),
-    ("HH_Unemployed", a => s"${a.unemployed}"),
-    ("HH_Retraining", a => s"${a.retraining}"),
-    ("HH_Bankrupt", a => s"${a.bankrupt}"),
-    ("MeanSavings", a => a.meanSavings.format(2)),
-    ("MedianSavings", a => a.medianSavings.format(2)),
-    ("Gini_Individual", a => a.giniIndividual.format(6)),
-    ("Gini_Wealth", a => a.giniWealth.format(6)),
-    ("MeanSkill", a => a.meanSkill.format(6)),
-    ("MeanHealthPenalty", a => a.meanHealthPenalty.format(6)),
-    ("RetrainingAttempts", a => s"${a.retrainingAttempts}"),
-    ("RetrainingSuccesses", a => s"${a.retrainingSuccesses}"),
-    ("ConsumptionP10", a => a.consumptionP10.format(2)),
-    ("ConsumptionP50", a => a.consumptionP50.format(2)),
-    ("ConsumptionP90", a => a.consumptionP90.format(2)),
-    ("BankruptcyRate", a => a.bankruptcyRate.format(6)),
-    ("MeanMonthsToRuin", a => a.meanMonthsToRuin.format(2)),
-    ("PovertyRate_50pct", a => a.povertyRate50.format(6)),
-    ("PovertyRate_30pct", a => a.povertyRate30.format(6)),
+  private val hhSchema: Vector[(String, HouseholdRow => String)] = Vector(
+    ("HH_Employed", row => s"${row.aggregates.employed}"),
+    ("HH_Unemployed", row => s"${row.aggregates.unemployed}"),
+    ("HH_Retraining", row => s"${row.aggregates.retraining}"),
+    ("HH_Bankrupt", row => s"${row.aggregates.bankrupt}"),
+    ("MeanMonthlyIncome", row => row.meanMonthlyIncome.format(2)),
+    ("MeanEmployedWage", row => row.meanEmployedWage.format(2)),
+    ("WageP10", row => row.wageP10.format(2)),
+    ("WageP50", row => row.wageP50.format(2)),
+    ("WageP90", row => row.wageP90.format(2)),
+    ("MeanSavings", row => row.aggregates.meanSavings.format(2)),
+    ("MedianSavings", row => row.aggregates.medianSavings.format(2)),
+    ("Gini_Individual", row => row.aggregates.giniIndividual.format(6)),
+    ("Gini_Wealth", row => row.aggregates.giniWealth.format(6)),
+    ("MeanSkill", row => row.aggregates.meanSkill.format(6)),
+    ("MeanHealthPenalty", row => row.aggregates.meanHealthPenalty.format(6)),
+    ("RetrainingAttempts", row => s"${row.aggregates.retrainingAttempts}"),
+    ("RetrainingSuccesses", row => s"${row.aggregates.retrainingSuccesses}"),
+    ("ConsumptionP10", row => row.aggregates.consumptionP10.format(2)),
+    ("ConsumptionP50", row => row.aggregates.consumptionP50.format(2)),
+    ("ConsumptionP90", row => row.aggregates.consumptionP90.format(2)),
+    ("BankruptcyRate", row => row.aggregates.bankruptcyRate.format(6)),
+    ("MeanMonthsToRuin", row => row.aggregates.meanMonthsToRuin.format(2)),
+    ("PovertyRate_50pct", row => row.aggregates.povertyRate50.format(6)),
+    ("PovertyRate_30pct", row => row.aggregates.povertyRate30.format(6)),
   )
 
   private val bankSchema: Vector[(String, BankRow => String)] = Vector(
@@ -121,7 +146,7 @@ private[montecarlo] object McTerminalSummarySchema:
     McTerminalSummaryRows(
       seed,
       Map(
-        McTerminalSummaryId.Household -> Vector(renderHouseholdRow(seed, terminalState.householdAggregates)),
+        McTerminalSummaryId.Household -> Vector(renderHouseholdRow(seed, HouseholdRow(terminalState.householdAggregates, terminalState.households))),
         McTerminalSummaryId.Banks     -> terminalState.banks.map(bank =>
           renderBankRow(seed, BankRow(bank, terminalState.ledgerFinancialState.banks(bank.id.toInt))),
         ),
@@ -129,8 +154,8 @@ private[montecarlo] object McTerminalSummarySchema:
       ),
     )
 
-  private def renderHouseholdRow(seed: Long, agg: Household.Aggregates): String =
-    s"$seed;" + hhSchema.map(_._2(agg)).mkString(";")
+  private def renderHouseholdRow(seed: Long, row: HouseholdRow): String =
+    s"$seed;" + hhSchema.map(_._2(row)).mkString(";")
 
   private def renderBankRow(seed: Long, row: BankRow): String =
     s"$seed;" + bankSchema.map(_._2(row)).mkString(";")
@@ -148,3 +173,9 @@ private[montecarlo] object McTerminalSummarySchema:
         case size if size <= 249 => acc.copy(medium = acc.medium + 1)
         case _                   => acc.copy(large = acc.large + 1)
     counts
+
+  private def percentile(values: Vector[PLN], p: Share): PLN =
+    if values.isEmpty then PLN.Zero
+    else
+      val idx = Math.min(values.length - 1, (values.length.toLong * p.toLong / com.boombustgroup.amorfati.fp.FixedPointBase.Scale).toInt)
+      values(idx)

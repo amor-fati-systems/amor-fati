@@ -30,6 +30,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     "TotalAdoption",
     "ExRate",
     "MarketWage",
+    "MeanEmployedWage",
     "GovDebt",
     "NPL",
     "RefRate",
@@ -61,6 +62,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     "IoGdpRatio",
     "NFA",
     "CurrentAccount",
+    "CurrentAccountToGdp",
     "CapitalAccount",
     "TradeBalance_OE",
     "Exports_OE",
@@ -141,10 +143,16 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     "WIBOR_1M",
     "WIBOR_3M",
     "WIBOR_6M",
+    "BankFirmLoans",
     "ConsumerLoans",
     "ConsumerNplRatio",
     "ConsumerOrigination",
     "ConsumerDebtService",
+    "TotalCreditStock",
+    "BankFirmLoansToGdp",
+    "ConsumerLoansToGdp",
+    "NbfiLoansToGdp",
+    "TotalCreditToGdp",
     "GpwIndex",
     "GpwMarketCap",
     "GpwPE",
@@ -264,6 +272,8 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     "FdiCitLoss",
     "FirmBirths",
     "FirmDeaths",
+    "HouseholdBankruptcies",
+    "HouseholdBankruptcyRate",
     "NetEntry",
     "LivingFirmCount",
     "NetFirmBirths",
@@ -307,7 +317,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     MetricValue.fromRaw((value / summon[SimParams].gdpRatio.toMultiplier).toLong)
 
   "McTimeseriesSchema" should "expose the stable schema contract" in {
-    McTimeseriesSchema.nCols shouldBe 259
+    McTimeseriesSchema.nCols shouldBe 269
     McTimeseriesSchema.colNames.toVector shouldBe expectedColNames
   }
 
@@ -345,6 +355,61 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     valueAt(row, "Health_Output") shouldBe polandScale(PLN(40))
     valueAt(row, "Public_Output") shouldBe polandScale(PLN(50))
     valueAt(row, "Agri_Output") shouldBe polandScale(PLN(60))
+  }
+
+  it should "emit validation-ready wage and current-account diagnostics" in {
+    val world = init.world.copy(
+      bop = init.world.bop.copy(currentAccount = PLN(5)),
+      flows = init.world.flows.copy(
+        monthlyGdpProxy = PLN(100),
+        sectorOutputs = Vector.fill(summon[SimParams].sectorDefs.length)(PLN.Zero),
+      ),
+    )
+    val row   = computeRow(world)
+
+    valueAt(row, "MeanEmployedWage") should be > MetricValue.Zero
+    valueAt(row, "CurrentAccount") shouldBe polandScale(PLN(5))
+    valueAt(row, "CurrentAccountToGdp") shouldBe MetricValue.fromRaw(Share.decimal(5, 2).toLong)
+  }
+
+  it should "emit validation-ready credit stock splits and GDP ratios" in {
+    val bankFirmLoans = PLN(10) * initState.ledgerFinancialState.banks.length
+    val consumerLoans = PLN(2) * initState.ledgerFinancialState.banks.length
+    val nbfiLoans     = PLN(6)
+    val totalCredit   = bankFirmLoans + consumerLoans + nbfiLoans
+    val annualGdp     = PLN(10) * 12
+    val ledger        = initState.ledgerFinancialState.copy(
+      households = initState.ledgerFinancialState.households.map(_.copy(mortgageLoan = PLN.Zero)),
+      banks = initState.ledgerFinancialState.banks.map(_.copy(firmLoan = PLN(10), consumerLoan = PLN(2))),
+      funds = initState.ledgerFinancialState.funds.copy(
+        nbfi = initState.ledgerFinancialState.funds.nbfi.copy(nbfiLoanStock = nbfiLoans),
+      ),
+    )
+    val world         = init.world.copy(
+      flows = init.world.flows.copy(
+        monthlyGdpProxy = PLN(10),
+        sectorOutputs = Vector.fill(summon[SimParams].sectorDefs.length)(PLN.Zero),
+      ),
+    )
+    val row           = computeRow(world, ledger)
+
+    valueAt(row, "BankFirmLoans") shouldBe polandScale(bankFirmLoans)
+    valueAt(row, "ConsumerLoans") shouldBe polandScale(consumerLoans)
+    valueAt(row, "NbfiLoanStock") shouldBe polandScale(nbfiLoans)
+    valueAt(row, "TotalCreditStock") shouldBe polandScale(totalCredit)
+    valueAt(row, "BankFirmLoansToGdp") shouldBe MetricValue.fromRaw((bankFirmLoans / annualGdp).toLong)
+    valueAt(row, "ConsumerLoansToGdp") shouldBe MetricValue.fromRaw((consumerLoans / annualGdp).toLong)
+    valueAt(row, "NbfiLoansToGdp") shouldBe MetricValue.fromRaw((nbfiLoans / annualGdp).toLong)
+    valueAt(row, "TotalCreditToGdp") shouldBe MetricValue.fromRaw((totalCredit / annualGdp).toLong)
+  }
+
+  it should "emit household bankruptcy validation fields alongside firm and bank failures" in {
+    val row = computeRow(init.world)
+
+    valueAt(row, "FirmDeaths") shouldBe MetricValue.fromInt(init.world.flows.firmDeaths)
+    valueAt(row, "HouseholdBankruptcies") shouldBe MetricValue.fromInt(init.householdAggregates.bankrupt)
+    valueAt(row, "HouseholdBankruptcyRate") shouldBe MetricValue.fromRaw(init.householdAggregates.bankruptcyRate.toLong)
+    valueAt(row, "BankFailures") shouldBe MetricValue.fromInt(init.banks.count(_.failed))
   }
 
   it should "emit annualized deficit-to-GDP consistently with fiscal rules" in {

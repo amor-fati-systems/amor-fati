@@ -239,15 +239,20 @@ object ScenarioRunExport:
     metric("Inflation"),
     metric("Unemployment"),
     metric("MarketWage"),
+    metric("MeanEmployedWage"),
     metric("DebtToGdp"),
     metric("DeficitToGdp"),
     metric("CurrentAccount"),
+    metric("CurrentAccountToGdp"),
     metric("ExRate"),
+    metric("TotalCreditToGdp"),
     metric("CreditToGdpGap"),
     metric("MinBankCAR"),
     metric("MinBankLCR"),
     metric("BankFailures"),
     metric("FirmDeaths"),
+    metric("HouseholdBankruptcies"),
+    metric("HouseholdBankruptcyRate"),
   )
 
   private val usage: String =
