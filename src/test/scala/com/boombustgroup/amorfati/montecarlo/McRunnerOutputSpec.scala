@@ -26,11 +26,16 @@ class McRunnerOutputSpec extends AnyFlatSpec with Matchers:
         withClue(s"$name: ") {
           Files.readAllLines(outputDir.resolve(name), UTF_8).asScala.toVector shouldBe lines
         }
-      val firmSummary = Files.readAllLines(outputDir.resolve(s"${filePrefix(rc)}_firms.csv"), UTF_8).asScala.toVector
+      val firmSummary      = Files.readAllLines(outputDir.resolve(s"${filePrefix(rc)}_firms.csv"), UTF_8).asScala.toVector
       firmSummary.head should include("FirmSize_Micro")
       firmSummary.head should include("FirmSize_LargeShare")
       firmSummary.tail should have size rc.nSeeds
       firmSummary.tail.foreach(_.split(";").length shouldBe firmSummary.head.split(";").length)
+      val householdSummary = Files.readAllLines(outputDir.resolve(s"${filePrefix(rc)}_hh.csv"), UTF_8).asScala.toVector
+      householdSummary.head should include("MeanMonthlyIncome")
+      householdSummary.head should include("WageP90")
+      householdSummary.tail should have size rc.nSeeds
+      householdSummary.tail.foreach(_.split(";").length shouldBe householdSummary.head.split(";").length)
 
   private def runToDir(rc: McRunConfig, outputDir: Path): Unit =
     Unsafe.unsafe: unsafe =>

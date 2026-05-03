@@ -86,6 +86,11 @@ object McTimeseriesSchema:
       ledgerFinancialState.households.foldLeft(PLN.Zero)((acc, household) => acc + household.equity)
     lazy val ledgerHouseholdMortgageStock: PLN                                                      =
       LedgerFinancialState.householdMortgageStock(ledgerFinancialState)
+    lazy val bankFirmLoans: PLN                                                                     = bankAgg.totalLoans
+    lazy val consumerLoanStock: PLN                                                                 = bankAgg.consumerLoans
+    lazy val nbfiLoanStock: PLN                                                                     = ledgerFinancialState.funds.nbfi.nbfiLoanStock
+    lazy val totalCreditStock: PLN                                                                  =
+      bankFirmLoans + consumerLoanStock + ledgerHouseholdMortgageStock + nbfiLoanStock
     lazy val ledgerFirmBalancesById: Map[FirmId, LedgerFinancialState.FirmBalances]                 =
       firms.zip(ledgerFinancialState.firms).map((firm, balances) => firm.id -> balances).toMap
     lazy val hhAgg: Household.Aggregates                                                            = householdAggregates
@@ -121,6 +126,23 @@ object McTimeseriesSchema:
       if p.gdpRatio > Scalar.Zero then p.gdpRatio.toMultiplier else Multiplier.One
 
     def polandScale(value: PLN): PLN = value / polandScaleFactor
+
+    def annualizedGdpRatio(stock: PLN): Scalar =
+      if annualizedGdp > PLN.Zero then stock / annualizedGdp else Scalar.Zero
+
+    def monthlyFlowToGdpRatio(flow: PLN): Scalar =
+      if monthlyGdp > PLN.Zero then flow / monthlyGdp else Scalar.Zero
+
+    lazy val meanEmployedWage: PLN =
+      var total = PLN.Zero
+      var count = 0
+      households.foreach: hh =>
+        hh.status match
+          case HhStatus.Employed(_, _, wage) =>
+            total += wage
+            count += 1
+          case _                             =>
+      if count > 0 then total.divideBy(count) else PLN.Zero
 
     def runtimeSectorIndex(name: String): Int =
       sectorIndexByName.getOrElse(name, throw IllegalStateException(s"Missing runtime sector named '$name' in SimParams.sectorDefs"))
@@ -165,6 +187,7 @@ object McTimeseriesSchema:
     ColumnDef("TotalAdoption", ctx => ctx.world.real.automationRatio + ctx.world.real.hybridRatio),
     ColumnDef("ExRate", ctx => ctx.world.forex.exchangeRate),
     ColumnDef("MarketWage", ctx => ctx.world.householdMarket.marketWage),
+    ColumnDef("MeanEmployedWage", ctx => ctx.meanEmployedWage),
     ColumnDef.macroPln("GovDebt", ctx => ctx.world.gov.cumulativeDebt),
     ColumnDef("NPL", ctx => ctx.bankAgg.nplRatio),
     ColumnDef("RefRate", ctx => ctx.world.nbp.referenceRate),
@@ -195,6 +218,7 @@ object McTimeseriesSchema:
   private def externalGroup: Vector[ColumnDef] = Vector(
     ColumnDef.macroPln("NFA", ctx => ctx.world.bop.nfa),
     ColumnDef.macroPln("CurrentAccount", ctx => ctx.world.bop.currentAccount),
+    ColumnDef("CurrentAccountToGdp", ctx => ctx.monthlyFlowToGdpRatio(ctx.world.bop.currentAccount)),
     ColumnDef.macroPln("CapitalAccount", ctx => ctx.world.bop.capitalAccount),
     ColumnDef.macroPln("TradeBalance_OE", ctx => ctx.world.bop.tradeBalance),
     ColumnDef.macroPln("Exports_OE", ctx => ctx.world.bop.exports),
@@ -349,16 +373,23 @@ object McTimeseriesSchema:
     ColumnDef("WIBOR_1M", ctx => ctx.world.bankingSector.interbankCurve.map(c => c.wibor1m).getOrElse(Rate.Zero)),
     ColumnDef("WIBOR_3M", ctx => ctx.world.bankingSector.interbankCurve.map(c => c.wibor3m).getOrElse(Rate.Zero)),
     ColumnDef("WIBOR_6M", ctx => ctx.world.bankingSector.interbankCurve.map(c => c.wibor6m).getOrElse(Rate.Zero)),
+    // Validation-ready credit aggregates: stocks use annualized GDP as denominator.
+    ColumnDef.macroPln("BankFirmLoans", ctx => ctx.bankFirmLoans),
     // Consumer Credit
-    ColumnDef.macroPln("ConsumerLoans", ctx => ctx.bankAgg.consumerLoans),
+    ColumnDef.macroPln("ConsumerLoans", ctx => ctx.consumerLoanStock),
     ColumnDef(
       "ConsumerNplRatio",
       ctx =>
-        if ctx.bankAgg.consumerLoans > PLN.Zero then ctx.bankAgg.consumerNpl / ctx.bankAgg.consumerLoans
+        if ctx.consumerLoanStock > PLN.Zero then ctx.bankAgg.consumerNpl / ctx.consumerLoanStock
         else Scalar.Zero,
     ),
     ColumnDef.macroPln("ConsumerOrigination", ctx => ctx.hhAgg.totalConsumerOrigination),
     ColumnDef.macroPln("ConsumerDebtService", ctx => ctx.hhAgg.totalConsumerDebtService),
+    ColumnDef.macroPln("TotalCreditStock", ctx => ctx.totalCreditStock),
+    ColumnDef("BankFirmLoansToGdp", ctx => ctx.annualizedGdpRatio(ctx.bankFirmLoans)),
+    ColumnDef("ConsumerLoansToGdp", ctx => ctx.annualizedGdpRatio(ctx.consumerLoanStock)),
+    ColumnDef("NbfiLoansToGdp", ctx => ctx.annualizedGdpRatio(ctx.nbfiLoanStock)),
+    ColumnDef("TotalCreditToGdp", ctx => ctx.annualizedGdpRatio(ctx.totalCreditStock)),
     // GPW Equity Market
     ColumnDef("GpwIndex", ctx => ctx.world.financialMarkets.equity.index),
     ColumnDef.macroPln("GpwMarketCap", ctx => ctx.world.financialMarkets.equity.marketCap),
@@ -402,7 +433,7 @@ object McTimeseriesSchema:
     // Shadow Banking / NBFI
     ColumnDef.macroPln("NbfiTfiAum", ctx => ctx.ledgerFinancialState.funds.nbfi.tfiUnit),
     ColumnDef.macroPln("NbfiTfiGovBondHoldings", ctx => ctx.ledgerFinancialState.funds.nbfi.govBondHoldings),
-    ColumnDef.macroPln("NbfiLoanStock", ctx => ctx.ledgerFinancialState.funds.nbfi.nbfiLoanStock),
+    ColumnDef.macroPln("NbfiLoanStock", ctx => ctx.nbfiLoanStock),
     ColumnDef.macroPln("NbfiOrigination", ctx => ctx.world.financialMarkets.nbfi.lastNbfiOrigination),
     ColumnDef.macroPln("NbfiDefaults", ctx => ctx.world.financialMarkets.nbfi.lastNbfiDefaultAmount),
     ColumnDef("NbfiBankTightness", ctx => ctx.world.financialMarkets.nbfi.lastBankTightness),
@@ -568,6 +599,8 @@ object McTimeseriesSchema:
     // Endogenous Firm Entry
     ColumnDef("FirmBirths", ctx => ctx.world.flows.firmBirths),
     ColumnDef("FirmDeaths", ctx => ctx.world.flows.firmDeaths),
+    ColumnDef("HouseholdBankruptcies", ctx => ctx.hhAgg.bankrupt),
+    ColumnDef("HouseholdBankruptcyRate", ctx => ctx.hhAgg.bankruptcyRate),
     ColumnDef("NetEntry", ctx => ctx.world.flows.firmBirths - ctx.world.flows.firmDeaths),
     ColumnDef("LivingFirmCount", ctx => ctx.nLiving),
     ColumnDef("NetFirmBirths", ctx => ctx.world.flows.netFirmBirths),
@@ -639,6 +672,7 @@ object McTimeseriesSchema:
     val TotalAdoption: Col          = lookup("TotalAdoption")
     val ExRate: Col                 = lookup("ExRate")
     val MarketWage: Col             = lookup("MarketWage")
+    val MeanEmployedWage: Col       = lookup("MeanEmployedWage")
     val GovDebt: Col                = lookup("GovDebt")
     val NPL: Col                    = lookup("NPL")
     val RefRate: Col                = lookup("RefRate")
@@ -670,6 +704,7 @@ object McTimeseriesSchema:
     val IoGdpRatio: Col             = lookup("IoGdpRatio")
     val NFA: Col                    = lookup("NFA")
     val CurrentAccount: Col         = lookup("CurrentAccount")
+    val CurrentAccountToGdp: Col    = lookup("CurrentAccountToGdp")
     val CapitalAccount: Col         = lookup("CapitalAccount")
     val TradeBalance: Col           = lookup("TradeBalance_OE")
     val Exports: Col                = lookup("Exports_OE")
@@ -696,6 +731,9 @@ object McTimeseriesSchema:
     val MinBankCAR: Col             = lookup("MinBankCAR")
     val MaxBankNPL: Col             = lookup("MaxBankNPL")
     val BankFailures: Col           = lookup("BankFailures")
+    val BankFirmLoans: Col          = lookup("BankFirmLoans")
+    val TotalCreditStock: Col       = lookup("TotalCreditStock")
+    val TotalCreditToGdp: Col       = lookup("TotalCreditToGdp")
     val ReserveInterest: Col        = lookup("ReserveInterest")
     val StandingFacilityNet: Col    = lookup("StandingFacilityNet")
     val DepositFacilityUsage: Col   = lookup("DepositFacilityUsage")
