@@ -137,6 +137,11 @@ Every future empirical extract should carry at least:
 | `model_target` | Config field, output column, scenario id, or validation row. |
 | `status` | `READY`, `PARTIAL`, `MISSING_OUTPUT`, `MISSING_SOURCE_DETAIL`, `BRIDGE_ASSUMPTION`. |
 
+The empirical validation source-manifest template lives at
+`docs/empirical-validation-source-manifest.csv`. It is consumed by
+`EmpiricalValidationExport`, which joins manifest rows with Monte Carlo
+timeseries and terminal summary CSVs to produce a baseline validation snapshot.
+
 ## Priority Gaps
 
 | Priority | Gap | Why it matters | Expected owner surface |

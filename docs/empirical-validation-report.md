@@ -60,16 +60,26 @@ Use the per-seed CSV files for monthly macro, meso, financial, and mechanism
 paths. Use the `_hh.csv`, `_banks.csv`, and `_firms.csv` files for terminal
 household, bank, and firm cross-section summaries.
 
-Manual update procedure after a baseline run:
+Runnable snapshot procedure after a baseline run:
 
 1. Run the command above from the repository root.
-2. Record commit hash, run id, duration, seed count, and parameter branch.
-3. For each target row below, compute the model statistic from the mapped CSV
-   column or terminal summary field.
-4. Use `docs/data-bridge-national-financial-accounts.md` to fill empirical
-   source, vintage, target value, model value, tolerance, and status in the
-   report snapshot.
-5. Keep rows with missing model output or missing empirical data in the table.
+2. Generate the empirical validation snapshot:
+
+   ```bash
+   sbt "empiricalValidation --source-manifest docs/empirical-validation-source-manifest.csv --mc-dir mc --run-id validation-baseline --output-prefix validation-baseline --duration 120 --seeds 3 --out target/empirical-validation"
+   ```
+
+3. Review `target/empirical-validation/baseline-validation-snapshot.csv` and
+   `target/empirical-validation/baseline-validation-snapshot.md`.
+4. Keep rows with missing model output or missing empirical data in the table.
+
+The source manifest is intentionally metadata-first. It records source
+provider, URL, dataset code, vintage, access date, license/reuse note,
+frequency, unit, transformation, model target, empirical value, tolerance, and
+status without vendoring raw proprietary or large external datasets. The
+generator also writes an effective `model-run-manifest.csv` with run id,
+output prefix, duration, seed count, commit, parameter branch, and output
+directory.
 
 ## Output Mapping
 

@@ -1,0 +1,758 @@
+package com.boombustgroup.amorfati.diagnostics
+
+import com.boombustgroup.amorfati.util.BuildInfo
+
+import java.nio.charset.StandardCharsets
+import java.nio.file.{Files, Path}
+import java.time.LocalDate
+import scala.jdk.CollectionConverters.*
+import scala.util.{Try, Using}
+
+object EmpiricalValidationExport:
+
+  final case class Config(
+      sourceManifest: Path = Path.of("docs/empirical-validation-source-manifest.csv"),
+      runManifest: Option[Path] = None,
+      mcDir: Path = Path.of("mc"),
+      out: Path = Path.of("target/empirical-validation"),
+      runId: String = "validation-baseline",
+      outputPrefix: String = "validation-baseline",
+      durationMonths: Int = 120,
+      seeds: Int = 0,
+      commit: String = BuildInfo.gitCommit,
+      parameterBranch: String = "unknown",
+  )
+
+  final case class ExportResult(paths: Vector[Path], rows: Vector[SnapshotRow])
+
+  final case class ModelRunManifest(
+      runId: String,
+      outputPrefix: String,
+      durationMonths: Int,
+      seedCount: Int,
+      commit: String,
+      parameterBranch: String,
+      outputDir: Path,
+  ):
+    def filePrefix: String = s"${outputPrefix}_${runId}_${durationMonths}m"
+    def label: String      = s"$runId, $seedCount seeds, ${durationMonths}m, $commit"
+
+  enum SourceStatus(val token: String):
+    case Ready               extends SourceStatus("READY")
+    case Partial             extends SourceStatus("PARTIAL")
+    case MissingOutput       extends SourceStatus("MISSING_OUTPUT")
+    case MissingDataBridge   extends SourceStatus("MISSING_DATA_BRIDGE")
+    case MissingSourceDetail extends SourceStatus("MISSING_SOURCE_DETAIL")
+    case BridgeAssumption    extends SourceStatus("BRIDGE_ASSUMPTION")
+
+  object SourceStatus:
+    def parse(value: String): Either[String, SourceStatus] =
+      normalize(value) match
+        case "READY" | "READY_FOR_BASELINE"      => Right(Ready)
+        case "PARTIAL" | "PARTIAL_OUTPUT"        => Right(Partial)
+        case "MISSING_OUTPUT"                    => Right(MissingOutput)
+        case "MISSING_DATA_BRIDGE"               => Right(MissingDataBridge)
+        case "MISSING_SOURCE_DETAIL"             => Right(MissingSourceDetail)
+        case "BRIDGE_ASSUMPTION"                 => Right(BridgeAssumption)
+        case "NOT_RUN"                           => Right(Partial)
+        case "PASS_BASELINE_PROBE" | "FOLLOW_UP" => Right(Partial)
+        case other                               => Left(s"Unknown manifest status: $other")
+
+  enum SnapshotStatus(val token: String):
+    case PassBaseline      extends SnapshotStatus("PASS_BASELINE")
+    case FailBaseline      extends SnapshotStatus("FAIL_BASELINE")
+    case Partial           extends SnapshotStatus("PARTIAL")
+    case MissingOutput     extends SnapshotStatus("MISSING_OUTPUT")
+    case MissingDataBridge extends SnapshotStatus("MISSING_DATA_BRIDGE")
+
+  enum ModelStatistic(val token: String):
+    case Terminal extends ModelStatistic("terminal")
+    case First    extends ModelStatistic("first")
+    case Mean     extends ModelStatistic("mean")
+    case Min      extends ModelStatistic("min")
+    case Max      extends ModelStatistic("max")
+    case Sum      extends ModelStatistic("sum")
+
+  object ModelStatistic:
+    def parse(value: String): Either[String, ModelStatistic] =
+      normalize(value) match
+        case "TERMINAL" | "LAST" => Right(Terminal)
+        case "FIRST"             => Right(First)
+        case "MEAN" | "AVG"      => Right(Mean)
+        case "MIN"               => Right(Min)
+        case "MAX"               => Right(Max)
+        case "SUM"               => Right(Sum)
+        case other               => Left(s"Unknown model statistic: $other")
+
+  enum ModelSurface(val token: String):
+    case TimeSeries        extends ModelSurface("timeseries")
+    case TerminalHousehold extends ModelSurface("terminal_hh")
+    case TerminalBanks     extends ModelSurface("terminal_banks")
+    case TerminalFirms     extends ModelSurface("terminal_firms")
+
+  object ModelSurface:
+    def parse(value: String): Either[String, ModelSurface] =
+      normalize(value) match
+        case "TIMESERIES" | "TIME_SERIES" | "SERIES" => Right(TimeSeries)
+        case "TERMINAL_HH" | "HH" | "HOUSEHOLD"      => Right(TerminalHousehold)
+        case "TERMINAL_BANKS" | "BANKS" | "BANK"     => Right(TerminalBanks)
+        case "TERMINAL_FIRMS" | "FIRMS" | "FIRM"     => Right(TerminalFirms)
+        case other                                   => Left(s"Unknown model target surface: $other")
+
+  final case class ModelTarget(surface: ModelSurface, column: String, statistic: ModelStatistic):
+    def render: String = s"${surface.token}:$column:${statistic.token}"
+
+  object ModelTarget:
+    def parse(value: String): Either[String, ModelTarget] =
+      value.split(":", -1).toVector match
+        case Vector(surface, column, statistic) if column.trim.nonEmpty =>
+          for
+            parsedSurface   <- ModelSurface.parse(surface)
+            parsedStatistic <- ModelStatistic.parse(statistic)
+          yield ModelTarget(parsedSurface, column.trim, parsedStatistic)
+        case _                                                          =>
+          Left("model_target must use <timeseries|terminal_hh|terminal_banks|terminal_firms>:<column>:<terminal|first|mean|min|max|sum>")
+
+  final case class SourceManifestRow(
+      target: String,
+      sourceProvider: String,
+      sourceUrl: String,
+      datasetCode: String,
+      vintage: String,
+      accessedAt: Option[LocalDate],
+      licenseOrReuseNote: String,
+      frequency: String,
+      unit: String,
+      transformation: String,
+      modelTarget: ModelTarget,
+      status: SourceStatus,
+      empiricalValue: Option[BigDecimal],
+      tolerance: Option[BigDecimal],
+      criterion: String,
+      notes: String,
+  )
+
+  final case class SnapshotRow(
+      target: String,
+      sourceProvider: String,
+      sourceUrl: String,
+      datasetCode: String,
+      vintage: String,
+      accessedAt: Option[LocalDate],
+      frequency: String,
+      unit: String,
+      transformation: String,
+      modelRun: String,
+      modelTarget: String,
+      empiricalValue: Option[BigDecimal],
+      modelValue: Option[BigDecimal],
+      tolerance: Option[BigDecimal],
+      criterion: String,
+      status: SnapshotStatus,
+      notes: String,
+  )
+
+  def main(args: Array[String]): Unit =
+    parseArgs(args.toVector) match
+      case Left(err)     =>
+        Console.err.println(err)
+        Console.err.println(usage)
+        sys.exit(2)
+      case Right(config) =>
+        run(config) match
+          case Left(err)     =>
+            Console.err.println(err)
+            sys.exit(1)
+          case Right(result) =>
+            result.paths.foreach(path => println(path.toString))
+
+  def run(config: Config): Either[String, ExportResult] =
+    validate(config).flatMap: validConfig =>
+      for
+        sourceRows <- readSourceManifest(validConfig.sourceManifest)
+        baseRun    <- readOrBuildRunManifest(validConfig)
+        modelRun   <- inferSeedCount(baseRun)
+        output     <- MonteCarloOutput.load(modelRun)
+        snapshot    = buildSnapshot(sourceRows, modelRun, output)
+        paths      <- writeArtifacts(validConfig.out, sourceRows, modelRun, snapshot)
+      yield ExportResult(paths, snapshot)
+
+  def parseArgs(args: Vector[String]): Either[String, Config] =
+    def missingValue(flag: String): Left[String, Config] = Left(s"Missing value for $flag")
+
+    def loop(rest: Seq[String], config: Config): Either[String, Config] =
+      rest match
+        case Seq()                                  => Right(config)
+        case Seq("--help", _*)                      => Left(usage)
+        case Seq(flag, tail*) if knownFlag(flag)    =>
+          tail match
+            case Seq()                                             => missingValue(flag)
+            case Seq(value, _*) if value.startsWith("--")          => missingValue(flag)
+            case Seq(value, next*) if flag == "--source-manifest"  =>
+              loop(next, config.copy(sourceManifest = Path.of(value)))
+            case Seq(value, next*) if flag == "--run-manifest"     =>
+              loop(next, config.copy(runManifest = Some(Path.of(value))))
+            case Seq(value, next*) if flag == "--mc-dir"           =>
+              loop(next, config.copy(mcDir = Path.of(value)))
+            case Seq(value, next*) if flag == "--out"              =>
+              loop(next, config.copy(out = Path.of(value)))
+            case Seq(value, next*) if flag == "--run-id"           =>
+              loop(next, config.copy(runId = value))
+            case Seq(value, next*) if flag == "--output-prefix"    =>
+              loop(next, config.copy(outputPrefix = value))
+            case Seq(value, next*) if flag == "--duration"         =>
+              parseInt(value, flag).flatMap(duration => loop(next, config.copy(durationMonths = duration)))
+            case Seq(value, next*) if flag == "--seeds"            =>
+              parseInt(value, flag).flatMap(seeds => loop(next, config.copy(seeds = seeds)))
+            case Seq(value, next*) if flag == "--commit"           =>
+              loop(next, config.copy(commit = value))
+            case Seq(value, next*) if flag == "--parameter-branch" =>
+              loop(next, config.copy(parameterBranch = value))
+            case Seq(_, _*)                                        => Left(s"Unknown argument: $flag")
+        case Seq(flag, _*) if flag.startsWith("--") => Left(s"Unknown argument: $flag")
+        case Seq(value, _*)                         => Left(s"Unexpected positional argument: $value")
+
+    loop(args, Config())
+
+  private def validate(config: Config): Either[String, Config] =
+    Either
+      .cond(Files.exists(config.sourceManifest), config, s"Source manifest does not exist: ${config.sourceManifest}")
+      .flatMap(valid => Either.cond(valid.durationMonths > 0, valid, "--duration must be a positive integer"))
+      .flatMap(valid => Either.cond(valid.seeds >= 0, valid, "--seeds must be zero or a positive integer"))
+      .flatMap(valid => Either.cond(valid.runId.trim.nonEmpty, valid, "--run-id must be non-empty"))
+      .flatMap(valid => Either.cond(valid.outputPrefix.trim.nonEmpty, valid, "--output-prefix must be non-empty"))
+      .flatMap(valid =>
+        valid.runManifest match
+          case Some(path) => Either.cond(Files.exists(path), valid, s"Run manifest does not exist: $path")
+          case None       => Right(valid),
+      )
+
+  private def readOrBuildRunManifest(config: Config): Either[String, ModelRunManifest] =
+    config.runManifest match
+      case Some(path) => readModelRunManifest(path, config.mcDir)
+      case None       =>
+        Right(
+          ModelRunManifest(
+            runId = config.runId,
+            outputPrefix = config.outputPrefix,
+            durationMonths = config.durationMonths,
+            seedCount = config.seeds,
+            commit = config.commit,
+            parameterBranch = config.parameterBranch,
+            outputDir = config.mcDir,
+          ),
+        )
+
+  private def inferSeedCount(manifest: ModelRunManifest): Either[String, ModelRunManifest] =
+    if manifest.seedCount > 0 then Right(manifest)
+    else
+      matchingSeedFiles(manifest).map: paths =>
+        manifest.copy(seedCount = paths.length)
+
+  private def readSourceManifest(path: Path): Either[String, Vector[SourceManifestRow]] =
+    SemicolonCsv
+      .readRows(path, SourceManifestHeader)
+      .flatMap: rows =>
+        sequence(rows.zipWithIndex.map((row, idx) => parseSourceRow(row).left.map(err => s"$path row ${idx + 2}: $err")))
+
+  private def parseSourceRow(row: CsvRow): Either[String, SourceManifestRow] =
+    for
+      target      <- row.required("target")
+      modelTarget <- row.required("model_target").flatMap(ModelTarget.parse)
+      status      <- row.required("status").flatMap(SourceStatus.parse)
+      accessedAt  <- parseOptionalDate(row.optional("accessed_at"), "accessed_at")
+      empirical   <- parseOptionalDecimal(row.optional("empirical_value"), "empirical_value")
+      tolerance   <- parseOptionalDecimal(row.optional("tolerance"), "tolerance")
+    yield SourceManifestRow(
+      target = target,
+      sourceProvider = row.optional("source_provider").getOrElse(""),
+      sourceUrl = row.optional("source_url").getOrElse(""),
+      datasetCode = row.optional("dataset_code").getOrElse(""),
+      vintage = row.optional("vintage").getOrElse(""),
+      accessedAt = accessedAt,
+      licenseOrReuseNote = row.optional("license_or_reuse_note").getOrElse(""),
+      frequency = row.optional("frequency").getOrElse(""),
+      unit = row.optional("unit").getOrElse(""),
+      transformation = row.optional("transformation").getOrElse(""),
+      modelTarget = modelTarget,
+      status = status,
+      empiricalValue = empirical,
+      tolerance = tolerance,
+      criterion = row.optional("criterion").getOrElse(""),
+      notes = row.optional("notes").getOrElse(""),
+    )
+
+  private def readModelRunManifest(path: Path, fallbackOutputDir: Path): Either[String, ModelRunManifest] =
+    SemicolonCsv
+      .readRows(path, ModelRunManifestHeader)
+      .flatMap:
+        case Vector(row) => parseModelRunManifest(row, fallbackOutputDir).left.map(err => s"$path row 2: $err")
+        case rows        => Left(s"$path must contain exactly one model run row, got ${rows.length}")
+
+  private def parseModelRunManifest(row: CsvRow, fallbackOutputDir: Path): Either[String, ModelRunManifest] =
+    for
+      runId          <- row.required("run_id")
+      outputPrefix   <- row.required("output_prefix")
+      durationMonths <- row.required("duration_months").flatMap(parsePositiveInt(_, "duration_months"))
+      seedCount      <- row.required("seed_count").flatMap(parseNonNegativeInt(_, "seed_count"))
+    yield ModelRunManifest(
+      runId = runId,
+      outputPrefix = outputPrefix,
+      durationMonths = durationMonths,
+      seedCount = seedCount,
+      commit = row.optional("commit").getOrElse("unknown"),
+      parameterBranch = row.optional("parameter_branch").getOrElse("unknown"),
+      outputDir = row.optional("output_dir").map(Path.of(_)).getOrElse(fallbackOutputDir),
+    )
+
+  private def buildSnapshot(
+      sourceRows: Vector[SourceManifestRow],
+      modelRun: ModelRunManifest,
+      output: MonteCarloOutput,
+  ): Vector[SnapshotRow] =
+    sourceRows.map: row =>
+      val modelAttempt = output.evaluate(row.modelTarget)
+      val modelValue   = modelAttempt.toOption
+      val status       = snapshotStatus(row, modelAttempt)
+      val notes        = snapshotNotes(row, modelAttempt)
+      SnapshotRow(
+        target = row.target,
+        sourceProvider = row.sourceProvider,
+        sourceUrl = row.sourceUrl,
+        datasetCode = row.datasetCode,
+        vintage = row.vintage,
+        accessedAt = row.accessedAt,
+        frequency = row.frequency,
+        unit = row.unit,
+        transformation = row.transformation,
+        modelRun = modelRun.label,
+        modelTarget = row.modelTarget.render,
+        empiricalValue = row.empiricalValue,
+        modelValue = modelValue,
+        tolerance = row.tolerance,
+        criterion = row.criterion,
+        status = status,
+        notes = notes,
+      )
+
+  private def snapshotStatus(row: SourceManifestRow, modelAttempt: Either[String, BigDecimal]): SnapshotStatus =
+    row.status match
+      case SourceStatus.MissingOutput                                        =>
+        SnapshotStatus.MissingOutput
+      case SourceStatus.MissingDataBridge | SourceStatus.MissingSourceDetail =>
+        modelAttempt.fold(_ => SnapshotStatus.MissingOutput, _ => SnapshotStatus.MissingDataBridge)
+      case SourceStatus.Partial                                              =>
+        modelAttempt.fold(_ => SnapshotStatus.MissingOutput, _ => SnapshotStatus.Partial)
+      case SourceStatus.Ready | SourceStatus.BridgeAssumption                =>
+        modelAttempt match
+          case Left(_)      => SnapshotStatus.MissingOutput
+          case Right(model) =>
+            (row.empiricalValue, row.tolerance) match
+              case (None, _)            => SnapshotStatus.MissingDataBridge
+              case (Some(_), None)      => SnapshotStatus.Partial
+              case (Some(emp), Some(t)) =>
+                if (model - emp).abs <= t.abs then SnapshotStatus.PassBaseline
+                else SnapshotStatus.FailBaseline
+
+  private def snapshotNotes(row: SourceManifestRow, modelAttempt: Either[String, BigDecimal]): String =
+    val base    = Vector(row.notes).filter(_.nonEmpty)
+    val derived = modelAttempt.left.toOption match
+      case Some(err) => base :+ s"Model output unavailable: $err"
+      case None      =>
+        row.status match
+          case SourceStatus.MissingDataBridge | SourceStatus.MissingSourceDetail =>
+            base :+ s"Source status: ${row.status.token}"
+          case SourceStatus.BridgeAssumption                                     =>
+            base :+ "Source uses a documented bridge assumption"
+          case _                                                                 =>
+            base
+    derived.mkString(" ")
+
+  private def writeArtifacts(
+      out: Path,
+      sourceRows: Vector[SourceManifestRow],
+      modelRun: ModelRunManifest,
+      snapshot: Vector[SnapshotRow],
+  ): Either[String, Vector[Path]] =
+    Try {
+      Files.createDirectories(out)
+      val sourceManifestPath = out.resolve("source-manifest.csv")
+      val runManifestPath    = out.resolve("model-run-manifest.csv")
+      val snapshotCsvPath    = out.resolve("baseline-validation-snapshot.csv")
+      val snapshotMdPath     = out.resolve("baseline-validation-snapshot.md")
+      Files.writeString(sourceManifestPath, renderSourceManifest(sourceRows), StandardCharsets.UTF_8)
+      Files.writeString(runManifestPath, renderModelRunManifest(modelRun), StandardCharsets.UTF_8)
+      Files.writeString(snapshotCsvPath, renderSnapshotCsv(snapshot), StandardCharsets.UTF_8)
+      Files.writeString(snapshotMdPath, renderSnapshotMarkdown(snapshot), StandardCharsets.UTF_8)
+      Vector(sourceManifestPath, runManifestPath, snapshotCsvPath, snapshotMdPath)
+    }.toEither.left.map(err => s"Failed to write empirical validation artifacts: ${err.getMessage}")
+
+  private final case class MonteCarloOutput(
+      timeSeries: Vector[Vector[CsvRow]],
+      household: Option[Vector[CsvRow]],
+      banks: Option[Vector[CsvRow]],
+      firms: Option[Vector[CsvRow]],
+  ):
+    def evaluate(target: ModelTarget): Either[String, BigDecimal] =
+      target.surface match
+        case ModelSurface.TimeSeries        => evaluateTimeSeries(target.column, target.statistic)
+        case ModelSurface.TerminalHousehold => evaluateTerminal("household", household, target.column, target.statistic)
+        case ModelSurface.TerminalBanks     => evaluateTerminal("banks", banks, target.column, target.statistic)
+        case ModelSurface.TerminalFirms     => evaluateTerminal("firms", firms, target.column, target.statistic)
+
+    private def evaluateTimeSeries(column: String, statistic: ModelStatistic): Either[String, BigDecimal] =
+      if timeSeries.isEmpty then Left("no per-seed timeseries CSV files found")
+      else
+        statistic match
+          case ModelStatistic.Terminal =>
+            sequence(timeSeries.map(rows => terminalValue(rows, column, "last"))).map(mean)
+          case ModelStatistic.First    =>
+            sequence(timeSeries.map(rows => firstValue(rows, column))).map(mean)
+          case ModelStatistic.Mean     =>
+            aggregate(allTimeSeriesValues(column), statistic)
+          case ModelStatistic.Min      =>
+            aggregate(allTimeSeriesValues(column), statistic)
+          case ModelStatistic.Max      =>
+            aggregate(allTimeSeriesValues(column), statistic)
+          case ModelStatistic.Sum      =>
+            aggregate(allTimeSeriesValues(column), statistic)
+
+    private def evaluateTerminal(
+        label: String,
+        rowsOpt: Option[Vector[CsvRow]],
+        column: String,
+        statistic: ModelStatistic,
+    ): Either[String, BigDecimal] =
+      rowsOpt match
+        case None       => Left(s"terminal $label summary CSV not found")
+        case Some(rows) =>
+          val values = sequence(rows.map(_.decimal(column)))
+          statistic match
+            case ModelStatistic.Terminal | ModelStatistic.Mean => aggregate(values, ModelStatistic.Mean)
+            case ModelStatistic.First                          => firstValue(rows, column)
+            case ModelStatistic.Min                            => aggregate(values, ModelStatistic.Min)
+            case ModelStatistic.Max                            => aggregate(values, ModelStatistic.Max)
+            case ModelStatistic.Sum                            => aggregate(values, ModelStatistic.Sum)
+
+    private def allTimeSeriesValues(column: String): Either[String, Vector[BigDecimal]] =
+      sequence(timeSeries.flatMap(rows => rows.map(_.decimal(column))))
+
+    private def terminalValue(rows: Vector[CsvRow], column: String, position: String): Either[String, BigDecimal] =
+      rows.lastOption.toRight(s"seed timeseries has no $position row").flatMap(_.decimal(column))
+
+    private def firstValue(rows: Vector[CsvRow], column: String): Either[String, BigDecimal] =
+      rows.headOption.toRight("CSV has no first row").flatMap(_.decimal(column))
+
+    private def aggregate(valuesAttempt: Either[String, Vector[BigDecimal]], statistic: ModelStatistic): Either[String, BigDecimal] =
+      valuesAttempt.flatMap: values =>
+        if values.isEmpty then Left("no numeric values found")
+        else
+          statistic match
+            case ModelStatistic.Mean | ModelStatistic.Terminal => Right(mean(values))
+            case ModelStatistic.Min                            => Right(values.min)
+            case ModelStatistic.Max                            => Right(values.max)
+            case ModelStatistic.Sum                            => Right(values.sum)
+            case ModelStatistic.First                          => Right(values.head)
+
+  private object MonteCarloOutput:
+    def load(manifest: ModelRunManifest): Either[String, MonteCarloOutput] =
+      if !Files.isDirectory(manifest.outputDir) then Left(s"Monte Carlo output directory does not exist: ${manifest.outputDir}")
+      else
+        for
+          seedFiles <- matchingSeedFiles(manifest)
+          series    <- sequence(seedFiles.map(path => SemicolonCsv.readRows(path)))
+          household <- readOptionalCsv(manifest.outputDir.resolve(s"${manifest.filePrefix}_hh.csv"))
+          banks     <- readOptionalCsv(manifest.outputDir.resolve(s"${manifest.filePrefix}_banks.csv"))
+          firms     <- readOptionalCsv(manifest.outputDir.resolve(s"${manifest.filePrefix}_firms.csv"))
+        yield MonteCarloOutput(series, household, banks, firms)
+
+  private def matchingSeedFiles(manifest: ModelRunManifest): Either[String, Vector[Path]] =
+    if !Files.isDirectory(manifest.outputDir) then Left(s"Monte Carlo output directory does not exist: ${manifest.outputDir}")
+    else if manifest.seedCount > 0 then
+      val expected = (1 to manifest.seedCount).map(seed => manifest.outputDir.resolve(f"${manifest.filePrefix}_seed$seed%03d.csv")).toVector
+      val existing = expected.filter(Files.exists(_))
+      if existing.isEmpty || existing.length == expected.length then Right(existing)
+      else
+        val missing = expected.filterNot(Files.exists(_)).map(_.getFileName.toString)
+        Left(s"Missing expected seed CSV files: ${missing.mkString(", ")}")
+    else
+      listDirectory(manifest.outputDir).map: paths =>
+        paths
+          .filter(path => path.getFileName.toString.matches(java.util.regex.Pattern.quote(manifest.filePrefix) + "_seed[0-9]+\\.csv"))
+          .sortBy(_.getFileName.toString)
+
+  private def readOptionalCsv(path: Path): Either[String, Option[Vector[CsvRow]]] =
+    if Files.exists(path) then SemicolonCsv.readRows(path).map(Some(_))
+    else Right(None)
+
+  private final case class CsvRow(values: Map[String, String]):
+    def required(column: String): Either[String, String] =
+      optional(column).toRight(s"Missing required column: $column")
+
+    def optional(column: String): Option[String] =
+      values.get(column).map(_.trim).filter(_.nonEmpty)
+
+    def decimal(column: String): Either[String, BigDecimal] =
+      required(column).flatMap(parseDecimal(_, column))
+
+  private object SemicolonCsv:
+    def readRows(path: Path, requiredColumns: Vector[String] = Vector.empty): Either[String, Vector[CsvRow]] =
+      Try(Files.readAllLines(path, StandardCharsets.UTF_8).asScala.toVector).toEither.left
+        .map(err => s"Failed to read $path: ${err.getMessage}")
+        .flatMap: lines =>
+          val dataLines = lines.zipWithIndex.filter((line, _) => line.trim.nonEmpty && !line.trim.startsWith("#"))
+          dataLines.headOption match
+            case None                     => Left(s"$path is empty")
+            case Some((headerLine, hidx)) =>
+              for
+                header <- parseLine(headerLine).left.map(err => s"$path line ${hidx + 1}: $err")
+                _      <- validateHeader(path, header, requiredColumns)
+                rows   <- sequence(
+                  dataLines.tail
+                    .map((line, idx) =>
+                      parseLine(line).left
+                        .map(err => s"$path line ${idx + 1}: $err")
+                        .flatMap(cells => rowFromCells(path, idx + 1, header, cells)),
+                    )
+                    .toVector,
+                )
+              yield rows
+
+    private def validateHeader(path: Path, header: Vector[String], requiredColumns: Vector[String]): Either[String, Unit] =
+      val missing = requiredColumns.filterNot(header.contains)
+      Either.cond(missing.isEmpty, (), s"$path is missing required columns: ${missing.mkString(", ")}")
+
+    private def rowFromCells(path: Path, lineNumber: Int, header: Vector[String], cells: Vector[String]): Either[String, CsvRow] =
+      Either.cond(
+        cells.length == header.length,
+        CsvRow(header.zip(cells).toMap),
+        s"$path line $lineNumber has ${cells.length} cells, expected ${header.length}",
+      )
+
+    private def parseLine(line: String): Either[String, Vector[String]] =
+      val cells  = Vector.newBuilder[String]
+      val cell   = new StringBuilder
+      var quoted = false
+      var i      = 0
+      while i < line.length do
+        val ch = line.charAt(i)
+        if quoted then
+          if ch == '"' then
+            if i + 1 < line.length && line.charAt(i + 1) == '"' then
+              cell.append('"')
+              i += 1
+            else quoted = false
+          else cell.append(ch)
+        else if ch == ';' then
+          cells += cell.toString
+          cell.clear()
+        else if ch == '"' && cell.isEmpty then quoted = true
+        else cell.append(ch)
+        i += 1
+      if quoted then Left("Unterminated quoted cell")
+      else
+        cells += cell.toString
+        Right(cells.result().map(_.trim))
+
+  private def renderSourceManifest(rows: Vector[SourceManifestRow]): String =
+    val body = rows.map: row =>
+      Vector(
+        row.target,
+        row.sourceProvider,
+        row.sourceUrl,
+        row.datasetCode,
+        row.vintage,
+        row.accessedAt.map(_.toString).getOrElse(""),
+        row.licenseOrReuseNote,
+        row.frequency,
+        row.unit,
+        row.transformation,
+        row.modelTarget.render,
+        row.status.token,
+        row.empiricalValue.map(formatDecimal).getOrElse(""),
+        row.tolerance.map(formatDecimal).getOrElse(""),
+        row.criterion,
+        row.notes,
+      ).map(csv).mkString(";")
+    (SourceManifestHeader.mkString(";") +: body).mkString("\n") + "\n"
+
+  private def renderModelRunManifest(manifest: ModelRunManifest): String =
+    val row = Vector(
+      manifest.runId,
+      manifest.outputPrefix,
+      manifest.durationMonths.toString,
+      manifest.seedCount.toString,
+      manifest.commit,
+      manifest.parameterBranch,
+      manifest.outputDir.toString,
+    ).map(csv).mkString(";")
+    Vector(ModelRunManifestHeader.mkString(";"), row).mkString("\n") + "\n"
+
+  private def renderSnapshotCsv(rows: Vector[SnapshotRow]): String =
+    val body = rows.map: row =>
+      Vector(
+        row.target,
+        row.sourceProvider,
+        row.sourceUrl,
+        row.datasetCode,
+        row.vintage,
+        row.accessedAt.map(_.toString).getOrElse(""),
+        row.frequency,
+        row.unit,
+        row.transformation,
+        row.modelRun,
+        row.modelTarget,
+        row.empiricalValue.map(formatSnapshotDecimal).getOrElse(""),
+        row.modelValue.map(formatSnapshotDecimal).getOrElse(""),
+        row.tolerance.map(formatSnapshotDecimal).getOrElse(""),
+        row.criterion,
+        row.status.token,
+        row.notes,
+      ).map(csv).mkString(";")
+    (SnapshotHeader.mkString(";") +: body).mkString("\n") + "\n"
+
+  private def renderSnapshotMarkdown(rows: Vector[SnapshotRow]): String =
+    val tableRows = rows.map: row =>
+      val toleranceOrCriterion = row.tolerance.map(formatSnapshotDecimal).orElse(Option(row.criterion).filter(_.nonEmpty)).getOrElse("TBD")
+      markdownRow(
+        Vector(
+          row.target,
+          sourceLabel(row),
+          row.empiricalValue.map(formatSnapshotDecimal).getOrElse("TBD"),
+          row.modelRun,
+          row.modelValue.map(formatSnapshotDecimal).getOrElse("TBD"),
+          toleranceOrCriterion,
+          row.status.token,
+          row.notes,
+        ),
+      )
+    val lines     = Vector(
+      "# Baseline Empirical Validation Snapshot",
+      "",
+      "Generated by `EmpiricalValidationExport`.",
+      "",
+      markdownRow(Vector("Target", "Empirical source and vintage", "Empirical value", "Model run", "Model value", "Tolerance / criterion", "Status", "Notes")),
+      markdownRow(Vector("---", "---", "---", "---", "---", "---", "---", "---")),
+    ) ++ tableRows
+    lines.mkString("\n") + "\n"
+
+  private def sourceLabel(row: SnapshotRow): String =
+    Vector(row.sourceProvider, row.datasetCode, row.vintage).filter(_.nonEmpty).mkString(" / ")
+
+  private def markdownRow(values: Vector[String]): String =
+    values.map(_.replace("|", "\\|")).mkString("| ", " | ", " |")
+
+  private def csv(value: String): String =
+    if value.exists(ch => ch == ';' || ch == '"' || ch == '\n') then "\"" + value.replace("\"", "\"\"") + "\""
+    else value
+
+  private def listDirectory(path: Path): Either[String, Vector[Path]] =
+    Try(Using.resource(Files.list(path))(_.iterator().asScala.toVector)).toEither.left.map(err => s"Failed to list $path: ${err.getMessage}")
+
+  private def parseOptionalDate(value: Option[String], field: String): Either[String, Option[LocalDate]] =
+    value match
+      case None        => Right(None)
+      case Some(input) => Try(LocalDate.parse(input)).toEither.left.map(_ => s"$field must use ISO date format yyyy-mm-dd").map(Some(_))
+
+  private def parseOptionalDecimal(value: Option[String], field: String): Either[String, Option[BigDecimal]] =
+    value match
+      case None        => Right(None)
+      case Some(input) => parseDecimal(input, field).map(Some(_))
+
+  private def parseDecimal(value: String, field: String): Either[String, BigDecimal] =
+    val trimmed = value.trim
+    val percent = trimmed.endsWith("%")
+    val raw     = if percent then trimmed.dropRight(1).trim else trimmed
+    Try(BigDecimal(raw)).toEither.left.map(_ => s"$field must be numeric").map(parsed => if percent then parsed / 100 else parsed)
+
+  private def parsePositiveInt(value: String, field: String): Either[String, Int] =
+    parseInt(value, field).flatMap(parsed => Either.cond(parsed > 0, parsed, s"$field must be a positive integer"))
+
+  private def parseNonNegativeInt(value: String, field: String): Either[String, Int] =
+    parseInt(value, field).flatMap(parsed => Either.cond(parsed >= 0, parsed, s"$field must be zero or a positive integer"))
+
+  private def parseInt(value: String, field: String): Either[String, Int] =
+    Try(value.toInt).toEither.left.map(_ => s"$field must be an integer")
+
+  private def mean(values: Vector[BigDecimal]): BigDecimal =
+    values.sum / BigDecimal(values.length)
+
+  private def formatDecimal(value: BigDecimal): String =
+    value.bigDecimal.stripTrailingZeros.toPlainString
+
+  private def formatSnapshotDecimal(value: BigDecimal): String =
+    value.setScale(2, BigDecimal.RoundingMode.HALF_UP).bigDecimal.toPlainString
+
+  private def normalize(value: String): String =
+    value.trim.replace('-', '_').replace(' ', '_').toUpperCase
+
+  private def knownFlag(flag: String): Boolean =
+    flag == "--source-manifest" ||
+      flag == "--run-manifest" ||
+      flag == "--mc-dir" ||
+      flag == "--out" ||
+      flag == "--run-id" ||
+      flag == "--output-prefix" ||
+      flag == "--duration" ||
+      flag == "--seeds" ||
+      flag == "--commit" ||
+      flag == "--parameter-branch"
+
+  private def sequence[A](values: Vector[Either[String, A]]): Either[String, Vector[A]] =
+    values.collectFirst { case Left(err) => err } match
+      case Some(err) => Left(err)
+      case None      => Right(values.collect { case Right(value) => value })
+
+  private val SourceManifestHeader: Vector[String] = Vector(
+    "target",
+    "source_provider",
+    "source_url",
+    "dataset_code",
+    "vintage",
+    "accessed_at",
+    "license_or_reuse_note",
+    "frequency",
+    "unit",
+    "transformation",
+    "model_target",
+    "status",
+    "empirical_value",
+    "tolerance",
+    "criterion",
+    "notes",
+  )
+
+  private val ModelRunManifestHeader: Vector[String] = Vector(
+    "run_id",
+    "output_prefix",
+    "duration_months",
+    "seed_count",
+    "commit",
+    "parameter_branch",
+    "output_dir",
+  )
+
+  private val SnapshotHeader: Vector[String] = Vector(
+    "Target",
+    "SourceProvider",
+    "SourceUrl",
+    "DatasetCode",
+    "Vintage",
+    "AccessedAt",
+    "Frequency",
+    "Unit",
+    "Transformation",
+    "ModelRun",
+    "ModelTarget",
+    "EmpiricalValue",
+    "ModelValue",
+    "Tolerance",
+    "Criterion",
+    "Status",
+    "Notes",
+  )
+
+  private val usage: String =
+    "Usage: EmpiricalValidationExport [--source-manifest <path>] [--run-manifest <path>] [--mc-dir <path>] [--out <path>] [--run-id <id>] [--output-prefix <prefix>] [--duration <months>] [--seeds <int>] [--commit <hash>] [--parameter-branch <name>]"
+
+end EmpiricalValidationExport
