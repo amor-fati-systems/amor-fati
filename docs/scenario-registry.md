@@ -50,21 +50,44 @@ target/scenarios/local-review/
 Each per-seed CSV uses `McTimeseriesSchema.colNames` as the header, so scenario
 outputs can be compared directly with validation and robustness artifacts.
 
+The generated registry and per-scenario metadata are code-backed by
+`ScenarioRegistry`. `scenario-deltas.csv` includes the parameter diff plus
+stable `ProvenanceClassification` ids, `SourceProvider`, `Vintage`, and
+`TransformationNotes` for each delta. The generated markdown files render
+human-readable provenance labels and repeat the per-delta transformation notes.
+
+## Provenance Contract
+
+`ScenarioRegistry.ParameterDelta` carries `DeltaProvenance` for every registered
+delta. The allowed `ProvenanceClassification` values are:
+
+| Classification | Meaning |
+| --- | --- |
+| `historical_analogue` | Stress magnitude or timing is based on an analogue event or stress pattern. |
+| `official_projection` | Scenario input follows an official forecast or projection path. |
+| `policy_counterfactual` | Scenario input is a deliberate policy alternative to the baseline. |
+| `explicit_assumption` | Scenario input is a documented modeling assumption without external-path backing. |
+
 ## Registered Scenarios
 
-| Scenario | Label | Category | Recommended months | Purpose |
-| --- | --- | --- | --- | --- |
-| `baseline` | Baseline | baseline | 120 | Reference scenario using `SimParams.defaults`. |
-| `monetary-tightening` | Monetary tightening | policy rates | 60 | Higher NBP policy stance for inflation and credit stress analysis. |
-| `fiscal-expansion` | Fiscal expansion | fiscal policy | 60 | Higher government demand and capital share for fiscal multiplier and debt-path comparisons. |
-| `credit-crunch` | Credit crunch | banking stress | 60 | Tighter credit supply and weaker recovery assumptions for credit and default stress testing. |
-| `energy-shock` | Energy shock | climate and commodity shock | 60 | ETS and commodity-price stress for import costs, inflation, green capital, and sector pressure. |
-| `tourism-shock` | Tourism shock | external demand shock | 36 | Tourism-demand loss for services demand, current account, employment, and FX flows. |
-| `bank-failure` | Bank failure stress | financial stability | 36 | Low bank-capital and deposit-panic stress for failures, liquidity, and resolution channels. |
-| `fx-capital-flight` | FX and capital-flight stress | external financial shock | 60 | Risk-off and carry-unwind stress for exchange rate, reserves, current account, and bond demand. |
-| `quasi-fiscal-program` | Quasi-fiscal program | quasi-fiscal policy | 60 | BGK/PFR-style off-budget financing stress for ESA debt, NBP absorption, and subsidized lending. |
+| Scenario | Label | Category | Provenance | Source/provider | Vintage | Recommended months | Purpose |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `baseline` | Baseline | baseline | explicit assumption | SimParams.defaults | Poland production baseline 2026-04-30 | 120 | Reference scenario using `SimParams.defaults`. |
+| `monetary-tightening` | Monetary tightening | policy rates | policy counterfactual | Internal policy scenario over the NBP rate channel | 2026-04-30 baseline counterfactual | 60 | Higher NBP policy stance for inflation and credit stress analysis. |
+| `fiscal-expansion` | Fiscal expansion | fiscal policy | policy counterfactual | Internal fiscal policy scenario | 2026-04-30 baseline counterfactual | 60 | Higher government demand and capital share for fiscal multiplier and debt-path comparisons. |
+| `credit-crunch` | Credit crunch | banking stress | historical analogue | Internal banking-stress analogue | post-2008 and pandemic credit-stress analogue | 60 | Tighter credit supply and weaker recovery assumptions for credit and default stress testing. |
+| `energy-shock` | Energy shock | climate and commodity shock | historical analogue | EU ETS and commodity-price stress analogue | 2021-2022 European energy shock analogue | 60 | ETS and commodity-price stress for import costs, inflation, green capital, and sector pressure. |
+| `tourism-shock` | Tourism shock | external demand shock | historical analogue | COVID-era tourism demand loss analogue | 2020-2021 tourism shock analogue | 36 | Tourism-demand loss for services demand, current account, employment, and FX flows. |
+| `bank-failure` | Bank failure stress | financial stability | historical analogue | Internal bank-run and resolution stress analogue | historical bank-run stress analogue | 36 | Low bank-capital and deposit-panic stress for failures, liquidity, and resolution channels. |
+| `fx-capital-flight` | FX and capital-flight stress | external financial shock | historical analogue | Emerging-market risk-off stress analogue | 2013 taper-tantrum and 2022 tightening analogue | 60 | Risk-off and carry-unwind stress for exchange rate, reserves, current account, and bond demand. |
+| `quasi-fiscal-program` | Quasi-fiscal program | quasi-fiscal policy | policy counterfactual | Internal BGK/PFR-style quasi-fiscal policy scenario | 2026-04-30 baseline counterfactual | 60 | BGK/PFR-style off-budget financing stress for ESA debt, NBP absorption, and subsidized lending. |
 
 ## Parameter Deltas
+
+The compact table below records the parameter diff. The generated
+`scenario-deltas.csv` appends provenance classification, source/provider,
+vintage, and transformation notes from the same `ScenarioRegistry` delta
+objects.
 
 | Scenario | Parameter | Baseline | Scenario value | Note |
 | --- | --- | --- | --- | --- |
