@@ -9,11 +9,27 @@ import com.boombustgroup.amorfati.types.*
   */
 object ScenarioRegistry:
 
+  enum ProvenanceClassification(val id: String, val label: String):
+    case HistoricalAnalogue   extends ProvenanceClassification("historical_analogue", "historical analogue")
+    case OfficialProjection   extends ProvenanceClassification("official_projection", "official projection")
+    case PolicyCounterfactual extends ProvenanceClassification("policy_counterfactual", "policy counterfactual")
+    case ExplicitAssumption   extends ProvenanceClassification("explicit_assumption", "explicit assumption")
+
+  import ProvenanceClassification.*
+
+  final case class DeltaProvenance(
+      classification: ProvenanceClassification,
+      sourceProvider: Option[String] = None,
+      vintage: Option[String] = None,
+      transformationNotes: Option[String] = None,
+  )
+
   final case class ParameterDelta(
       parameter: String,
       baseline: String,
       scenario: String,
       note: String,
+      provenance: DeltaProvenance,
   )
 
   final case class ScenarioSpec(
@@ -31,6 +47,82 @@ object ScenarioRegistry:
 
   private val Baseline = SimParams.defaults
 
+  private def provenance(
+      classification: ProvenanceClassification,
+      sourceProvider: String,
+      vintage: String,
+      transformationNotes: String,
+  ): DeltaProvenance =
+    DeltaProvenance(
+      classification = classification,
+      sourceProvider = Some(sourceProvider),
+      vintage = Some(vintage),
+      transformationNotes = Some(transformationNotes),
+    )
+
+  private val BaselineProvenance = provenance(
+    ExplicitAssumption,
+    "SimParams.defaults",
+    "Poland production baseline 2026-04-30",
+    "No scenario adjustment; the run uses the configured baseline.",
+  )
+
+  private val MonetaryTighteningProvenance = provenance(
+    PolicyCounterfactual,
+    "Internal policy scenario over the NBP rate channel",
+    "2026-04-30 baseline counterfactual",
+    "Raises the policy-rate starting point and Taylor-rule response relative to baseline.",
+  )
+
+  private val FiscalExpansionProvenance = provenance(
+    PolicyCounterfactual,
+    "Internal fiscal policy scenario",
+    "2026-04-30 baseline counterfactual",
+    "Scales government spending intensity, capital share, and stabilization response relative to baseline.",
+  )
+
+  private val CreditCrunchProvenance = provenance(
+    HistoricalAnalogue,
+    "Internal banking-stress analogue",
+    "post-2008 and pandemic credit-stress analogue",
+    "Raises spreads and prudential constraints, lowers recovery, and tightens household credit caps.",
+  )
+
+  private val EnergyShockProvenance = provenance(
+    HistoricalAnalogue,
+    "EU ETS and commodity-price stress analogue",
+    "2021-2022 European energy shock analogue",
+    "Raises ETS and energy-cost burden, then starts a commodity-price shock in month 6.",
+  )
+
+  private val TourismShockProvenance = provenance(
+    HistoricalAnalogue,
+    "COVID-era tourism demand loss analogue",
+    "2020-2021 tourism shock analogue",
+    "Applies a month-6 tourism-demand loss with faster recovery than the default setting.",
+  )
+
+  private val BankFailureProvenance = provenance(
+    HistoricalAnalogue,
+    "Internal bank-run and resolution stress analogue",
+    "historical bank-run stress analogue",
+    "Lowers opening bank capital and increases deposit panic and switching rates.",
+  )
+
+  private val FxCapitalFlightProvenance = provenance(
+    HistoricalAnalogue,
+    "Emerging-market risk-off stress analogue",
+    "2013 taper-tantrum and 2022 tightening analogue",
+    "Starts a month-6 risk-off episode with stronger exchange-rate and intervention responses.",
+  )
+
+  private val QuasiFiscalProgramProvenance = provenance(
+    PolicyCounterfactual,
+    "Internal BGK/PFR-style quasi-fiscal policy scenario",
+    "2026-04-30 baseline counterfactual",
+    "Raises off-budget issuance, subsidized-lending routing, NBP absorption, and QE capacity.",
+  )
+
   val defaultScenarioIds: Vector[String] =
     Vector("baseline", "monetary-tightening", "fiscal-expansion")
 
@@ -45,7 +137,7 @@ object ScenarioRegistry:
         recommendedMonths = 120,
         seedPolicy = "Use fixed seed bands; default smoke command uses seed 1.",
         outputFolder = "<out>/<run-id>/baseline",
-        deltas = Vector(ParameterDelta("SimParams", "SimParams.defaults", "SimParams.defaults", "No parameter change.")),
+        deltas = Vector(ParameterDelta("SimParams", "SimParams.defaults", "SimParams.defaults", "No parameter change.", BaselineProvenance)),
         params = Baseline,
       ),
       ScenarioSpec(
@@ -58,9 +150,9 @@ object ScenarioRegistry:
         seedPolicy = "Compare on the same seed band as baseline.",
         outputFolder = "<out>/<run-id>/monetary-tightening",
         deltas = Vector(
-          ParameterDelta("monetary.initialRate", "0.0375", "0.075", "Higher starting reference rate."),
-          ParameterDelta("monetary.neutralRate", "0.04", "0.05", "Higher neutral-rate anchor."),
-          ParameterDelta("monetary.taylorAlpha", "1.5", "1.8", "Stronger inflation response."),
+          ParameterDelta("monetary.initialRate", "0.0375", "0.075", "Higher starting reference rate.", MonetaryTighteningProvenance),
+          ParameterDelta("monetary.neutralRate", "0.04", "0.05", "Higher neutral-rate anchor.", MonetaryTighteningProvenance),
+          ParameterDelta("monetary.taylorAlpha", "1.5", "1.8", "Stronger inflation response.", MonetaryTighteningProvenance),
         ),
         params = Baseline.copy(
           monetary = Baseline.monetary.copy(
@@ -80,9 +172,15 @@ object ScenarioRegistry:
         seedPolicy = "Compare on the same seed band as baseline.",
         outputFolder = "<out>/<run-id>/fiscal-expansion",
         deltas = Vector(
-          ParameterDelta("fiscal.govBaseSpending", "scaled default", "scaled default * 1.15", "15% higher base government spending."),
-          ParameterDelta("fiscal.govInvestShare", "0.20", "0.30", "Higher capital-spending share."),
-          ParameterDelta("fiscal.govAutoStabMult", "3.0", "3.5", "Stronger automatic stabilization."),
+          ParameterDelta(
+            "fiscal.govBaseSpending",
+            "scaled default",
+            "scaled default * 1.15",
+            "15% higher base government spending.",
+            FiscalExpansionProvenance,
+          ),
+          ParameterDelta("fiscal.govInvestShare", "0.20", "0.30", "Higher capital-spending share.", FiscalExpansionProvenance),
+          ParameterDelta("fiscal.govAutoStabMult", "3.0", "3.5", "Stronger automatic stabilization.", FiscalExpansionProvenance),
         ),
         params = Baseline.copy(
           fiscal = Baseline.fiscal.copy(
@@ -102,11 +200,11 @@ object ScenarioRegistry:
         seedPolicy = "Compare on the same seed band as baseline.",
         outputFolder = "<out>/<run-id>/credit-crunch",
         deltas = Vector(
-          ParameterDelta("banking.baseSpread", "0.015", "0.035", "Higher firm-loan spread."),
-          ParameterDelta("banking.minCar", "0.08", "0.10", "Higher capital constraint."),
-          ParameterDelta("banking.loanRecovery", "0.30", "0.20", "Lower corporate-loan recovery."),
-          ParameterDelta("banking.eclMigrationSensitivity", "3.0", "4.5", "Faster IFRS 9 migration under stress."),
-          ParameterDelta("household.ccMaxDti", "0.40", "0.30", "Tighter household credit affordability cap."),
+          ParameterDelta("banking.baseSpread", "0.015", "0.035", "Higher firm-loan spread.", CreditCrunchProvenance),
+          ParameterDelta("banking.minCar", "0.08", "0.10", "Higher capital constraint.", CreditCrunchProvenance),
+          ParameterDelta("banking.loanRecovery", "0.30", "0.20", "Lower corporate-loan recovery.", CreditCrunchProvenance),
+          ParameterDelta("banking.eclMigrationSensitivity", "3.0", "4.5", "Faster IFRS 9 migration under stress.", CreditCrunchProvenance),
+          ParameterDelta("household.ccMaxDti", "0.40", "0.30", "Tighter household credit affordability cap.", CreditCrunchProvenance),
         ),
         params = Baseline.copy(
           banking = Baseline.banking.copy(
@@ -128,16 +226,17 @@ object ScenarioRegistry:
         seedPolicy = "Compare on the same seed band as baseline; shock starts at month 6.",
         outputFolder = "<out>/<run-id>/energy-shock",
         deltas = Vector(
-          ParameterDelta("climate.etsBasePrice", "80", "120", "Higher EU ETS starting price."),
+          ParameterDelta("climate.etsBasePrice", "80", "120", "Higher EU ETS starting price.", EnergyShockProvenance),
           ParameterDelta(
             "climate.energyCostShares",
             "[0.02,0.10,0.04,0.05,0.03,0.06]",
             "[0.03,0.15,0.06,0.075,0.045,0.09]",
             "50% higher sector energy-cost burden.",
+            EnergyShockProvenance,
           ),
-          ParameterDelta("climate.greenBudgetShare", "0.20", "0.12", "Lower discretionary green investment capacity under stress."),
-          ParameterDelta("gvc.commodityShockMonth", "0", "6", "Commodity-price shock starts in month 6."),
-          ParameterDelta("gvc.commodityShockMag", "0.0", "1.5", "One-time commodity-price shock magnitude."),
+          ParameterDelta("climate.greenBudgetShare", "0.20", "0.12", "Lower discretionary green investment capacity under stress.", EnergyShockProvenance),
+          ParameterDelta("gvc.commodityShockMonth", "0", "6", "Commodity-price shock starts in month 6.", EnergyShockProvenance),
+          ParameterDelta("gvc.commodityShockMag", "0.0", "1.5", "One-time commodity-price shock magnitude.", EnergyShockProvenance),
         ),
         params = Baseline.copy(
           climate = Baseline.climate.copy(
@@ -168,10 +267,10 @@ object ScenarioRegistry:
         seedPolicy = "Compare on the same seed band as baseline; shock starts at month 6.",
         outputFolder = "<out>/<run-id>/tourism-shock",
         deltas = Vector(
-          ParameterDelta("tourism.shockMonth", "0", "6", "Tourism shock starts in month 6."),
-          ParameterDelta("tourism.shockSize", "0.80", "0.60", "60% tourism-demand loss in the named scenario."),
-          ParameterDelta("tourism.shockRecovery", "0.03", "0.05", "Faster monthly recovery than default COVID-style setting."),
-          ParameterDelta("tourism.inboundShare", "0.05", "0.04", "Lower inbound tourism baseline share."),
+          ParameterDelta("tourism.shockMonth", "0", "6", "Tourism shock starts in month 6.", TourismShockProvenance),
+          ParameterDelta("tourism.shockSize", "0.80", "0.60", "60% tourism-demand loss in the named scenario.", TourismShockProvenance),
+          ParameterDelta("tourism.shockRecovery", "0.03", "0.05", "Faster monthly recovery than default COVID-style setting.", TourismShockProvenance),
+          ParameterDelta("tourism.inboundShare", "0.05", "0.04", "Lower inbound tourism baseline share.", TourismShockProvenance),
         ),
         params = Baseline.copy(
           tourism = Baseline.tourism.copy(
@@ -192,10 +291,10 @@ object ScenarioRegistry:
         seedPolicy = "Compare on the same seed band as baseline.",
         outputFolder = "<out>/<run-id>/bank-failure",
         deltas = Vector(
-          ParameterDelta("banking.initCapital", "scaled default", "scaled default * 0.55", "Lower opening banking-sector capital."),
-          ParameterDelta("banking.minCar", "0.08", "0.12", "Higher regulatory capital requirement."),
-          ParameterDelta("banking.depositPanicRate", "0.03", "0.08", "Higher deposit panic migration after failures."),
-          ParameterDelta("banking.maxDepositSwitchRate", "0.10", "0.18", "Higher maximum monthly deposit switching."),
+          ParameterDelta("banking.initCapital", "scaled default", "scaled default * 0.55", "Lower opening banking-sector capital.", BankFailureProvenance),
+          ParameterDelta("banking.minCar", "0.08", "0.12", "Higher regulatory capital requirement.", BankFailureProvenance),
+          ParameterDelta("banking.depositPanicRate", "0.03", "0.08", "Higher deposit panic migration after failures.", BankFailureProvenance),
+          ParameterDelta("banking.maxDepositSwitchRate", "0.10", "0.18", "Higher maximum monthly deposit switching.", BankFailureProvenance),
         ),
         params = Baseline.copy(
           banking = Baseline.banking.copy(
@@ -216,12 +315,12 @@ object ScenarioRegistry:
         seedPolicy = "Compare on the same seed band as baseline; shock starts at month 6.",
         outputFolder = "<out>/<run-id>/fx-capital-flight",
         deltas = Vector(
-          ParameterDelta("forex.riskOffShockMonth", "0", "6", "Risk-off shock starts in month 6."),
-          ParameterDelta("forex.riskOffMagnitude", "0.10", "0.20", "Larger capital outflow shock."),
-          ParameterDelta("forex.riskOffDurationMonths", "6", "9", "Longer elevated risk-off period."),
-          ParameterDelta("forex.irpSensitivity", "0.15", "0.30", "Stronger exchange-rate response to rate differentials."),
-          ParameterDelta("forex.exRateAdjSpeed", "0.02", "0.05", "Faster exchange-rate adjustment."),
-          ParameterDelta("monetary.fxMaxMonthly", "0.03", "0.06", "Larger allowed monthly FX intervention."),
+          ParameterDelta("forex.riskOffShockMonth", "0", "6", "Risk-off shock starts in month 6.", FxCapitalFlightProvenance),
+          ParameterDelta("forex.riskOffMagnitude", "0.10", "0.20", "Larger capital outflow shock.", FxCapitalFlightProvenance),
+          ParameterDelta("forex.riskOffDurationMonths", "6", "9", "Longer elevated risk-off period.", FxCapitalFlightProvenance),
+          ParameterDelta("forex.irpSensitivity", "0.15", "0.30", "Stronger exchange-rate response to rate differentials.", FxCapitalFlightProvenance),
+          ParameterDelta("forex.exRateAdjSpeed", "0.02", "0.05", "Faster exchange-rate adjustment.", FxCapitalFlightProvenance),
+          ParameterDelta("monetary.fxMaxMonthly", "0.03", "0.06", "Larger allowed monthly FX intervention.", FxCapitalFlightProvenance),
         ),
         params = Baseline.copy(
           forex = Baseline.forex.copy(
@@ -244,11 +343,11 @@ object ScenarioRegistry:
         seedPolicy = "Compare on the same seed band as baseline.",
         outputFolder = "<out>/<run-id>/quasi-fiscal-program",
         deltas = Vector(
-          ParameterDelta("quasiFiscal.issuanceShare", "0.40", "0.65", "Higher BGK/PFR share of capital programs."),
-          ParameterDelta("quasiFiscal.lendingShare", "0.50", "0.70", "More issuance routed to subsidized lending."),
-          ParameterDelta("quasiFiscal.nbpAbsorptionShare", "0.70", "0.85", "Higher NBP absorption when QE is active."),
-          ParameterDelta("fiscal.govInvestShare", "0.20", "0.30", "Higher capital-spending share feeding quasi-fiscal issuance."),
-          ParameterDelta("monetary.qeMaxGdpShare", "0.30", "0.40", "Higher QE stock ceiling."),
+          ParameterDelta("quasiFiscal.issuanceShare", "0.40", "0.65", "Higher BGK/PFR share of capital programs.", QuasiFiscalProgramProvenance),
+          ParameterDelta("quasiFiscal.lendingShare", "0.50", "0.70", "More issuance routed to subsidized lending.", QuasiFiscalProgramProvenance),
+          ParameterDelta("quasiFiscal.nbpAbsorptionShare", "0.70", "0.85", "Higher NBP absorption when QE is active.", QuasiFiscalProgramProvenance),
+          ParameterDelta("fiscal.govInvestShare", "0.20", "0.30", "Higher capital-spending share feeding quasi-fiscal issuance.", QuasiFiscalProgramProvenance),
+          ParameterDelta("monetary.qeMaxGdpShare", "0.30", "0.40", "Higher QE stock ceiling.", QuasiFiscalProgramProvenance),
         ),
         params = Baseline.copy(
           quasiFiscal = Baseline.quasiFiscal.copy(

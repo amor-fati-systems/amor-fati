@@ -2,10 +2,12 @@ package com.boombustgroup.amorfati.integration.montecarlo
 
 import com.boombustgroup.amorfati.FixedPointSpecSupport.*
 import com.boombustgroup.amorfati.agents.Banking
+import com.boombustgroup.amorfati.agents.HhStatus
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.SimulationMonth.ExecutionMonth
 import com.boombustgroup.amorfati.engine.ledger.LedgerFinancialState
 import com.boombustgroup.amorfati.montecarlo.{McRunConfig, McRunner, McTimeseriesSchema, RunResult, SimError}
+import com.boombustgroup.amorfati.types.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import zio.{Runtime, Unsafe, ZIO}
@@ -23,7 +25,7 @@ class McRunnerCsvIntegrationSpec extends AnyFlatSpec with Matchers:
   private val OutputPrefix       = "mc-it"
   private val RunId              = "csvspec"
   private val ExpectedHhHeader   =
-    "Seed;HH_Employed;HH_Unemployed;HH_Retraining;HH_Bankrupt;MeanSavings;MedianSavings;Gini_Individual;Gini_Wealth;MeanSkill;MeanHealthPenalty;RetrainingAttempts;RetrainingSuccesses;ConsumptionP10;ConsumptionP50;ConsumptionP90;BankruptcyRate;MeanMonthsToRuin;PovertyRate_50pct;PovertyRate_30pct"
+    "Seed;HH_Employed;HH_Unemployed;HH_Retraining;HH_Bankrupt;MeanMonthlyIncome;MeanEmployedWage;WageP10;WageP50;WageP90;MeanSavings;MedianSavings;Gini_Individual;Gini_Wealth;MeanSkill;MeanHealthPenalty;RetrainingAttempts;RetrainingSuccesses;ConsumptionP10;ConsumptionP50;ConsumptionP90;BankruptcyRate;MeanMonthsToRuin;PovertyRate_50pct;PovertyRate_30pct"
   private val ExpectedBankHeader =
     "Seed;BankId;Deposits;Loans;Capital;NPL;CAR;GovBonds;InterbankNet;Failed"
   private val ExpectedFirmHeader =
@@ -75,8 +77,21 @@ class McRunnerCsvIntegrationSpec extends AnyFlatSpec with Matchers:
     McRunner.runSingle(seed, DurationMonths).fold(err => fail(err.toString), identity)
 
   private def expectedHhRow(seed: Long, result: RunResult): String =
-    val a = result.terminalState.householdAggregates
+    val a             = result.terminalState.householdAggregates
+    val households    = result.terminalState.households
+    val employedWages = households
+      .flatMap: household =>
+        household.status match
+          case HhStatus.Employed(_, _, wage) => Some(wage)
+          case _                             => None
+      .sorted
+    val meanMonthlyIncome = if households.nonEmpty then a.totalIncome.divideBy(households.length) else PLN.Zero
+    val meanEmployedWage  = if employedWages.nonEmpty then employedWages.sumPln.divideBy(employedWages.length) else PLN.Zero
     s"$seed;${a.employed};${a.unemployed};${a.retraining};${a.bankrupt};" +
+      s"${meanMonthlyIncome.format(2)};${meanEmployedWage.format(2)};" +
+      s"${percentile(employedWages, Share.decimal(10, 2)).format(2)};" +
+      s"${percentile(employedWages, Share.decimal(50, 2)).format(2)};" +
+      s"${percentile(employedWages, Share.decimal(90, 2)).format(2)};" +
       s"${a.meanSavings.format(2)};${a.medianSavings.format(2)};" +
       s"${a.giniIndividual.format(6)};${a.giniWealth.format(6)};" +
       s"${a.meanSkill.format(6)};${a.meanHealthPenalty.format(6)};" +
@@ -85,6 +100,12 @@ class McRunnerCsvIntegrationSpec extends AnyFlatSpec with Matchers:
       s"${a.bankruptcyRate.format(6)};" +
       s"${a.meanMonthsToRuin.format(2)};" +
       s"${a.povertyRate50.format(6)};${a.povertyRate30.format(6)}"
+
+  private def percentile(values: Vector[PLN], p: Share): PLN =
+    if values.isEmpty then PLN.Zero
+    else
+      val idx = Math.min(values.length - 1, (values.length.toLong * p.toLong / com.boombustgroup.amorfati.fp.FixedPointBase.Scale).toInt)
+      values(idx)
 
   private def expectedBankRows(seed: Long, result: RunResult): Vector[String] =
     result.terminalState.banks.map: bank =>
