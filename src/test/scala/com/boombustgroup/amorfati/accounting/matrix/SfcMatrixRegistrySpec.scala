@@ -37,6 +37,8 @@ class SfcMatrixRegistrySpec extends AnyFlatSpec with Matchers:
     SfcMatrixRegistry.instrument(AssetType.Reserve).completeness shouldBe Complete
     SfcMatrixRegistry.instrument(AssetType.MortgageLoan).completeness shouldBe Complete
     SfcMatrixRegistry.instrument(AssetType.StandingFacility).completeness shouldBe Excluded
+    SfcMatrixRegistry.instrument(AssetType.Capital).completeness shouldBe Excluded
+    SfcMatrixRegistry.instrument(AssetType.Capital).category shouldBe SfcMatrixRegistry.InstrumentCategory.UnsupportedDiagnostic
   }
 
   it should "carry runtime survivability metadata for mechanism rows" in {

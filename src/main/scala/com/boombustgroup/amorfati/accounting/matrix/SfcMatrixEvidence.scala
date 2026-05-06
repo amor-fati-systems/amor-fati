@@ -24,6 +24,7 @@ object SfcMatrixEvidence:
     case TransactionReconciliation
     case Revaluation
     case DefaultOrWriteOff
+    case UnsupportedDiagnostic
     case CoverageGap
 
   final case class MatrixMetadata(
@@ -394,6 +395,7 @@ object SfcMatrixEvidence:
         otherChangeRaw: Long,
     ): (OtherChangeKind, String) =
       if otherChangeRaw == 0L then (OtherChangeKind.TransactionReconciliation, "Stock delta is explained by executed transaction flows.")
+      else if instrument.category == SfcMatrixRegistry.InstrumentCategory.UnsupportedDiagnostic then (OtherChangeKind.UnsupportedDiagnostic, instrument.note)
       else
         instrument.asset match
           case AssetType.ForeignAsset | AssetType.GovBondAFS | AssetType.GovBondHTM                                           =>
@@ -473,7 +475,7 @@ object SfcMatrixEvidence:
               FlowMechanism.BankBfgLevy,
               FlowMechanism.BankUnrealizedLoss,
             ),
-            "Includes non-batch htmRealizedLoss, eclProvisionChange, and bankCapitalDestruction from BankingEconomics.",
+            "Bank capital is a persisted unsupported diagnostic stock, not a supported transferable ledger asset; this identity validates its exact P&L delta, including non-batch htmRealizedLoss, eclProvisionChange, and bankCapitalDestruction from BankingEconomics.",
           )
         case BankDeposits                =>
           rowMetadata(
