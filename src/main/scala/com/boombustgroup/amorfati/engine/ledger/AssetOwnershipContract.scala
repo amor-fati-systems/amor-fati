@@ -198,8 +198,8 @@ object AssetOwnershipContract:
     PublicAssetContract(
       AssetType.MortgageLoan,
       PublicAssetStatus.SupportedPersistedStock,
-      Set(dynamic(EntitySector.Households)),
-      "Household-side mortgage liability; runtime principal batches use an explicit household settlement shell rather than a bank-side stock mirror.",
+      Set(dynamic(EntitySector.Households), dynamic(EntitySector.Banks)),
+      "Household mortgage liabilities and bank mortgage assets are persisted; runtime principal batches still use an explicit household settlement shell.",
     ),
     PublicAssetContract(
       AssetType.GovBondAFS,

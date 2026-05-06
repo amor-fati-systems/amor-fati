@@ -219,7 +219,7 @@ object BankingEconomics:
     val issuerSettledFirmBalances =
       CorporateBondOwnership.applyAmortization(in.s5.ledgerFinancialState.firms, multi.reassignedFirms, in.s8.corpBonds.corpBondAmort)
 
-    val ledgerFinancialState =
+    val rawLedgerFinancialState =
       in.s5.ledgerFinancialState.copy(
         households = LedgerFinancialState.settleHouseholdMortgageStock(in.s5.ledgerFinancialState.households, housing.housingAfterFlows.mortgageStock),
         firms = issuerSettledFirmBalances,
@@ -244,7 +244,8 @@ object BankingEconomics:
           quasiFiscal = quasiFiscalStep.stock,
         ),
       )
-    val monAgg               = computeMonetaryAggregates(multi.finalBanks, ledgerFinancialState)
+    val ledgerFinancialState    = LedgerFinancialState.withBankMortgageAssets(rawLedgerFinancialState)
+    val monAgg                  = computeMonetaryAggregates(multi.finalBanks, ledgerFinancialState)
 
     StepOutput(
       resolvedBank = multi.resolvedBank,
@@ -942,8 +943,17 @@ object BankingEconomics:
       finalBankCorpBondHoldings = afterResolveCorpBonds,
       finalBankLedgerBalances = reconciled.banks
         .zip(reconciled.financialStocks)
-        .map: (bank, stocks) =>
-          LedgerFinancialState.bankBalances(stocks, afterResolveCorpBonds.lift(bank.id.toInt).getOrElse(PLN.Zero)),
+        .map { case (bank, stocks) =>
+          val bankIndex    = bank.id.toInt
+          val mortgageLoan =
+            if bank.failed then PLN.Zero
+            else in.ledgerFinancialState.banks.lift(bankIndex).fold(PLN.Zero)(_.mortgageLoan)
+          LedgerFinancialState.bankBalances(
+            stocks,
+            afterResolveCorpBonds.lift(bankIndex).getOrElse(PLN.Zero),
+            mortgageLoan = mortgageLoan,
+          )
+        },
       finalBankingMarket = finalBankingMarket,
       reassignedFirms = reassignedFirms,
       reassignedHouseholds = reassignedHouseholds,

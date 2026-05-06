@@ -113,3 +113,14 @@ class InitCheckSpec extends AnyFlatSpec with Matchers:
     val errors         = InitCheck.validate(snap, result.banks, result.firms, result.households, tamperedLedger)
     errors should not be empty
     errors.exists(_.identity.startsWith("Consumer loan consistency")) shouldBe true
+
+  it should "detect tampered bank mortgage mirror" in:
+    val result         = defaultInit
+    val snap           = stockSnapshot(result)
+    val bankBalances   = result.ledgerFinancialState.banks
+    val tamperedLedger = result.ledgerFinancialState.copy(
+      banks = bankBalances.updated(0, bankBalances(0).copy(mortgageLoan = bankBalances(0).mortgageLoan + PLN(5000))),
+    )
+    val errors         = InitCheck.validate(snap, result.banks, result.firms, result.households, tamperedLedger)
+    errors should not be empty
+    errors.exists(_.identity == "Mortgage bank asset mirror") shouldBe true

@@ -137,7 +137,6 @@ The symbolic tables are complete paper-level matrices, but the mapping keeps
 runtime coverage explicit. Known incomplete rows remain visible as classified
 gaps in the ledger-derived validation layer. Examples include:
 
-- household mortgage liabilities without a supported bank-side mortgage stock;
 - firm and consumer loan rows where dynamic-population projections can leave
   small holder/issuer gaps across month boundaries;
 - insurance reserves without holder-resolved household assets;

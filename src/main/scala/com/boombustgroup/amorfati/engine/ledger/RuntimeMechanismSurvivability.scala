@@ -180,7 +180,7 @@ object RuntimeMechanismSurvivability:
     ),
     declared(
       ExecutionDeltaOnly,
-      "Mortgage principal flows use a household aggregate borrower shell plus the explicit mortgage principal settlement shell; no bank-side MortgageLoan stock is implied.",
+      "Mortgage principal flows use a household aggregate borrower shell plus the explicit mortgage principal settlement shell; bank-side MortgageLoan stock is materialized from the closing household mortgage book.",
       FlowMechanism.MortgageOrigination,
       FlowMechanism.MortgageRepayment,
       FlowMechanism.MortgageDefault,

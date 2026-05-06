@@ -1,5 +1,7 @@
-<!-- schema=sfc-matrix-v1 seed=1 month=12 commit=d0af0c91 sfc=pass matrix=pass output=symbolic -->
+<!-- schema=sfc-matrix-v1 seed=1 month=12 commit=70517a6b sfc=pass matrix=pass output=symbolic -->
+
 # Symbolic Balance Sheet Matrix
+
 | Instrument \\ Sector | Households | Firms | Banks | Government | NBP | Insurance | Funds | Foreign | Sum |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Cash and public balances | +H_h | +H_f | +H_b |  | -H |  | +H_{pub} |  | 0 |

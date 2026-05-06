@@ -68,5 +68,6 @@ class WorldAssemblyEconomicsSpec extends AnyFlatSpec with Matchers:
       LedgerFinancialState.bankBalances(
         LedgerFinancialState.projectBankFinancialStocks(balances),
         balances.corpBond,
+        mortgageLoan = balances.mortgageLoan,
       ) shouldBe balances
   }

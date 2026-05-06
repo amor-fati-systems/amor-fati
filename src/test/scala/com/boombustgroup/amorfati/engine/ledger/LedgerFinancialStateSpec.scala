@@ -73,6 +73,41 @@ class LedgerFinancialStateSpec extends AnyFlatSpec with Matchers:
     LedgerFinancialState.householdMortgageStock(settled) shouldBe PLN(30)
   }
 
+  "LedgerFinancialState.settleBankMortgageAssets" should "mirror the aggregate household mortgage stock into bank asset rows" in {
+    val banks = Vector(
+      LedgerFinancialState.BankBalances(
+        totalDeposits = PLN.Zero,
+        demandDeposit = PLN.Zero,
+        termDeposit = PLN.Zero,
+        firmLoan = PLN(100),
+        consumerLoan = PLN.Zero,
+        govBondAfs = PLN.Zero,
+        govBondHtm = PLN.Zero,
+        reserve = PLN.Zero,
+        interbankLoan = PLN.Zero,
+        corpBond = PLN.Zero,
+      ),
+      LedgerFinancialState.BankBalances(
+        totalDeposits = PLN.Zero,
+        demandDeposit = PLN.Zero,
+        termDeposit = PLN.Zero,
+        firmLoan = PLN(300),
+        consumerLoan = PLN.Zero,
+        govBondAfs = PLN.Zero,
+        govBondHtm = PLN.Zero,
+        reserve = PLN.Zero,
+        interbankLoan = PLN.Zero,
+        corpBond = PLN.Zero,
+      ),
+    )
+
+    val settled = LedgerFinancialState.settleBankMortgageAssets(banks, PLN(80))
+
+    LedgerFinancialState.bankMortgageStock(settled) shouldBe PLN(80)
+    settled.map(_.firmLoan) shouldBe banks.map(_.firmLoan)
+    settled.map(_.mortgageLoan) shouldBe Vector(PLN(20), PLN(60))
+  }
+
   "LedgerFinancialState.refreshFirmPopulationBalances" should "refresh execution stocks while preserving existing corporate bonds" in {
     val init          = defaultInit
     val existingIndex = init.firms.head.id.toInt
@@ -134,7 +169,7 @@ class LedgerFinancialStateSpec extends AnyFlatSpec with Matchers:
       reserve = PLN(44),
       interbankLoan = PLN(33),
     )
-    LedgerFinancialState.bankBalances(stocks, corpBond = PLN(22)) shouldBe LedgerFinancialState.BankBalances(
+    LedgerFinancialState.bankBalances(stocks, corpBond = PLN(22), mortgageLoan = PLN(11)) shouldBe LedgerFinancialState.BankBalances(
       totalDeposits = PLN(123),
       demandDeposit = PLN(100),
       termDeposit = PLN(23),
@@ -145,6 +180,7 @@ class LedgerFinancialStateSpec extends AnyFlatSpec with Matchers:
       reserve = PLN(44),
       interbankLoan = PLN(33),
       corpBond = PLN(22),
+      mortgageLoan = PLN(11),
     )
   }
 

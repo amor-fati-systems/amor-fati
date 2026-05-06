@@ -201,6 +201,7 @@ object SfcMatrixEvidence:
         (AssetType.FirmLoan, EntitySector.Firms, -ledger.firms.iterator.map(_.firmLoan).sumPln),
         (AssetType.ConsumerLoan, EntitySector.Banks, ledger.banks.iterator.map(_.consumerLoan).sumPln),
         (AssetType.ConsumerLoan, EntitySector.Households, -ledger.households.iterator.map(_.consumerLoan).sumPln),
+        (AssetType.MortgageLoan, EntitySector.Banks, ledger.banks.iterator.map(_.mortgageLoan).sumPln),
         (AssetType.MortgageLoan, EntitySector.Households, -ledger.households.iterator.map(_.mortgageLoan).sumPln),
         // Government and corporate bond circuits.
         (AssetType.GovBondHTM, EntitySector.Banks, bonds.bankHoldings),
@@ -551,7 +552,7 @@ object SfcMatrixEvidence:
             "Actual delta from household mortgage stock; expected delta from origination minus principal repayment and defaults.",
             Vector(AssetType.MortgageLoan),
             Vector(FlowMechanism.MortgageOrigination, FlowMechanism.MortgageRepayment, FlowMechanism.MortgageDefault),
-            "The current holder side is household-resolved; bank-side mortgage stock remains a documented BSM coverage gap.",
+            "The matching bank mortgage asset mirror is checked by BSM row validation and InitCheck; bank capital loss recognition is separately included in the bank-capital identity.",
           )
         case FlowOfFunds                 =>
           rowMetadata(

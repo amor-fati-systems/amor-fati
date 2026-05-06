@@ -5,12 +5,11 @@ import com.boombustgroup.ledger.{AssetType, EntitySector}
 
 /** Explicit runtime contract for aggregate mortgage principal execution.
   *
-  * The persisted mortgage stock slice is household-side only. Runtime execution
-  * therefore uses a household-sector principal settlement shell instead of a
-  * bank-sector `MortgageLoan` mirror. The shell keeps mortgage principal
-  * evidence O(1) per emitted mechanism; per-household mortgage stocks remain
-  * owned by the semantic housing state until a cheap holder-resolved projection
-  * exists.
+  * Runtime execution uses a household-sector principal settlement shell for the
+  * aggregate origination, repayment, and default legs. Persisted end-of-month
+  * stock evidence keeps household mortgage liabilities and a bank-side mortgage
+  * asset mirror in [[LedgerFinancialState]], so the BSM row can close without
+  * making every mortgage flow holder-resolved.
   */
 object MortgageRuntimeContract:
 

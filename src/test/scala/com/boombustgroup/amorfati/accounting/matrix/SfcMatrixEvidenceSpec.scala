@@ -23,6 +23,8 @@ class SfcMatrixEvidenceSpec extends AnyFlatSpec with Matchers:
 
     closing.row(AssetType.DemandDeposit).amountRaw(EntitySector.Households) should not be 0L
     closing.row(AssetType.FirmLoan).amountRaw(EntitySector.Banks) should not be 0L
+    closing.row(AssetType.MortgageLoan).amountRaw(EntitySector.Banks) shouldBe -closing.row(AssetType.MortgageLoan).amountRaw(EntitySector.Households)
+    closing.row(AssetType.MortgageLoan).gaps shouldBe empty
     closing.row(AssetType.GovBondHTM).amountRaw(EntitySector.Government) should be < 0L
     closing.row(AssetType.CorpBond).amountRaw(EntitySector.Funds) should not be 0L
     closing.row(AssetType.Reserve).amountRaw(EntitySector.NBP) shouldBe -closing.row(AssetType.Reserve).amountRaw(EntitySector.Banks)
@@ -43,6 +45,13 @@ class SfcMatrixEvidenceSpec extends AnyFlatSpec with Matchers:
       withClue(s"${bsm.snapshotKind} $asset") {
         bsm.row(asset).rowSumRaw shouldBe 0L
       }
+  }
+
+  it should "describe mortgage reconciliation as a household-stock identity with separate mirror validation" in {
+    val mortgageRow = bundle.reconciliation.rows.find(_.identity == Sfc.SfcIdentity.MortgageStock).get
+
+    mortgageRow.source shouldBe "Actual delta from household mortgage stock; expected delta from origination minus principal repayment and defaults."
+    mortgageRow.note should include("bank mortgage asset mirror is checked by BSM row validation and InitCheck")
   }
 
   "TfmEvidence" should "derive transaction rows from executed batches and reconcile sector totals to the delta ledger" in {

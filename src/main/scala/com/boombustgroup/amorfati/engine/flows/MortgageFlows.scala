@@ -6,9 +6,9 @@ import com.boombustgroup.ledger.*
 
 /** Housing/mortgage market emitting flows.
   *
-  * Batched runtime principal flows stay inside the household sector because
-  * `MortgageLoan` has no persisted bank-side stock owner. Cash interest remains
-  * an aggregate household-to-bank payment.
+  * Batched runtime principal flows stay inside the household sector and are
+  * mirrored into bank-side mortgage stock at the month boundary. Cash interest
+  * remains an aggregate household-to-bank payment.
   *
   * Legacy flat Account IDs: 0=HH, 1=Bank
   */

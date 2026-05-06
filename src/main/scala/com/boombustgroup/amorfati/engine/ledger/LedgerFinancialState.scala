@@ -61,6 +61,12 @@ object LedgerFinancialState:
   def householdMortgageStock(households: Vector[HouseholdBalances]): PLN =
     households.map(_.mortgageLoan).sumPln
 
+  def bankMortgageStock(ledgerFinancialState: LedgerFinancialState): PLN =
+    bankMortgageStock(ledgerFinancialState.banks)
+
+  def bankMortgageStock(banks: Vector[BankBalances]): PLN =
+    banks.map(_.mortgageLoan).sumPln
+
   /** Writes the aggregate mortgage model's closing principal back into
     * household ledger rows. Until origination/defaults are modeled per
     * household, the aggregate stock is distributed proportionally across the
@@ -87,6 +93,46 @@ object LedgerFinancialState:
           .zip(households)
           .map((rawStock, balances) => balances.copy(mortgageLoan = PLN.fromRaw(rawStock)))
           .toVector
+
+  /** Writes the aggregate mortgage book into bank-side ledger asset rows.
+    *
+    * Mortgage execution remains aggregate, so the bank-side stock is an
+    * explicit BSM mirror of the household liability. Existing bank mortgage
+    * weights are preserved when available; otherwise the mirror is allocated by
+    * each bank's current firm plus consumer loan book, falling back to equal
+    * weights.
+    */
+  def settleBankMortgageAssets(banks: Vector[BankBalances], closingStock: PLN): Vector[BankBalances] =
+    require(closingStock >= PLN.Zero, s"LedgerFinancialState.settleBankMortgageAssets requires non-negative closing stock, got $closingStock")
+    if banks.isEmpty then
+      require(
+        closingStock == PLN.Zero,
+        s"LedgerFinancialState.settleBankMortgageAssets cannot assign $closingStock to an empty bank ledger",
+      )
+      banks
+    else
+      val currentStock = bankMortgageStock(banks)
+      if currentStock == closingStock then banks
+      else
+        val existingMortgageWeights = banks.map(_.mortgageLoan.distributeRaw.max(0L)).toArray
+        val loanBookWeights         = banks.map(bank => (bank.firmLoan + bank.consumerLoan).distributeRaw.max(0L)).toArray
+        val weights                 =
+          if existingMortgageWeights.exists(_ > 0L) then existingMortgageWeights
+          else if loanBookWeights.exists(_ > 0L) then loanBookWeights
+          else Array.fill(banks.length)(1L)
+        Distribute
+          .distribute(closingStock.distributeRaw, weights)
+          .zip(banks)
+          .map((rawStock, balances) => balances.copy(mortgageLoan = PLN.fromRaw(rawStock)))
+          .toVector
+
+  def withBankMortgageAssets(ledgerFinancialState: LedgerFinancialState): LedgerFinancialState =
+    ledgerFinancialState.copy(
+      banks = settleBankMortgageAssets(
+        ledgerFinancialState.banks,
+        householdMortgageStock(ledgerFinancialState.households),
+      ),
+    )
 
   def refreshHouseholdBalances(
       households: Vector[Household.State],
@@ -141,7 +187,7 @@ object LedgerFinancialState:
     balances.zipWithIndex.map: (balance, index) =>
       firmBalances(balance, corpBond = previous.lift(index).fold(PLN.Zero)(_.corpBond))
 
-  def bankBalances(stocks: Banking.BankFinancialStocks, corpBond: PLN): BankBalances =
+  def bankBalances(stocks: Banking.BankFinancialStocks, corpBond: PLN, mortgageLoan: PLN = PLN.Zero): BankBalances =
     BankBalances(
       totalDeposits = stocks.totalDeposits,
       demandDeposit = stocks.demandDeposit,
@@ -153,6 +199,7 @@ object LedgerFinancialState:
       reserve = stocks.reserve,
       interbankLoan = stocks.interbankLoan,
       corpBond = corpBond,
+      mortgageLoan = mortgageLoan,
     )
 
   /** Project ledger-owned bank balances into the banking execution DTO.
@@ -316,6 +363,10 @@ object LedgerFinancialState:
       interbankLoan: PLN,
       /** Corporate bonds owned by the bank. */
       corpBond: PLN,
+      /** Mortgage-loan assets mirrored from household mortgage liabilities for
+        * BSM evidence.
+        */
+      mortgageLoan: PLN = PLN.Zero,
   )
 
   /** Ledger-backed financial balances issued by central government. */
