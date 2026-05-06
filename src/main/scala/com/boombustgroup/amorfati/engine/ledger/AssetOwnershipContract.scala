@@ -277,14 +277,14 @@ object AssetOwnershipContract:
     PublicAssetContract(
       AssetType.LifeReserve,
       PublicAssetStatus.SupportedPersistedStock,
-      Set(singleton(EntitySector.Insurance)),
-      "Insurance-side life reserve stock.",
+      Set(dynamic(EntitySector.Households), singleton(EntitySector.Insurance)),
+      "Household life-reserve assets and the matching insurance technical-reserve liability.",
     ),
     PublicAssetContract(
       AssetType.NonLifeReserve,
       PublicAssetStatus.SupportedPersistedStock,
-      Set(singleton(EntitySector.Insurance)),
-      "Insurance-side non-life reserve stock.",
+      Set(dynamic(EntitySector.Households), singleton(EntitySector.Insurance)),
+      "Household non-life reserve assets and the matching insurance technical-reserve liability.",
     ),
     PublicAssetContract(
       AssetType.TfiUnit,

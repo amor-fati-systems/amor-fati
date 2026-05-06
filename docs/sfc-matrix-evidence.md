@@ -106,6 +106,9 @@ Runtime channel coverage:
   `htmRealizedLoss` and `eclProvisionChange` from `BankingEconomics`.
 - Bond clearing: government and quasi-fiscal holder/issuer level checks over
   supported bank, NBP, insurance, fund, foreign, and issuer stocks.
+- Insurance technical reserves: household reserve assets are mirrored from the
+  insurance reserve liability at the month boundary, so life and non-life
+  reserve BSM rows are complete holder/issuer rows.
 - Equity valuation: equity returns enter insurance and NBFI investment-income
   channels. A holder-resolved exact equity-stock revaluation row still requires
   a first-class runtime equity revaluation mechanism and complete persisted
@@ -139,7 +142,6 @@ gaps in the ledger-derived validation layer. Examples include:
 
 - firm and consumer loan rows where dynamic-population projections can leave
   small holder/issuer gaps across month boundaries;
-- insurance reserves without holder-resolved household assets;
 - equity foreign ownership that remains metric-only.
 
 Bank capital is separate from those coverage gaps. It is persisted engine state

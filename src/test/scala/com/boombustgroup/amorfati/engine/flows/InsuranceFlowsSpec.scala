@@ -98,29 +98,31 @@ class InsuranceFlowsSpec extends AnyFlatSpec with Matchers:
     invBatches.map(_.asset).toSet shouldBe Set(AssetType.LifeReserve, AssetType.NonLifeReserve)
     invBatches.exists(batch => batch.asset == AssetType.Cash) shouldBe false
     all(invBatches.map(_.from)) shouldBe EntitySector.Insurance
-    all(invBatches.map(_.to)) shouldBe EntitySector.Insurance
+    all(invBatches.map(_.to)) shouldBe EntitySector.Households
     invBatches.map(RuntimeLedgerTopology.totalTransferred).sum shouldBe expectedInvIncome.toLong
     RuntimeLedgerTopology.totalTransferred(invBatches.find(_.asset == AssetType.LifeReserve).get) shouldBe expectedLifeInv.toLong
     RuntimeLedgerTopology.totalTransferred(invBatches.find(_.asset == AssetType.NonLifeReserve).get) shouldBe expectedNonLifeInv.toLong
   }
 
-  it should "keep reserve assets inside the insurance runtime sector" in {
+  it should "route reserve asset changes between households and the insurance liability owner" in {
     val batches        = InsuranceFlows.emitBatches(baseInput)
     val reserveBatches = batches.filter(batch => batch.asset == AssetType.LifeReserve || batch.asset == AssetType.NonLifeReserve)
 
     reserveBatches should not be empty
-    all(reserveBatches.map(_.from)) shouldBe EntitySector.Insurance
-    all(reserveBatches.map(_.to)) shouldBe EntitySector.Insurance
-    val aggregate      = summon[RuntimeLedgerTopology].insurance.aggregate
-    val persistedOwner = summon[RuntimeLedgerTopology].insurance.persistedOwner
+    val householdAggregate = summon[RuntimeLedgerTopology].households.aggregate
+    val persistedOwner     = summon[RuntimeLedgerTopology].insurance.persistedOwner
     reserveBatches.foreach:
       case broadcast: BatchedFlow.Broadcast =>
         if broadcast.mechanism == FlowMechanism.InsLifeClaim || broadcast.mechanism == FlowMechanism.InsNonLifeClaim then
-          broadcast.fromIndex shouldBe persistedOwner
-          broadcast.targetIndices.head shouldBe aggregate
-        else
-          broadcast.fromIndex shouldBe aggregate
+          broadcast.from shouldBe EntitySector.Households
+          broadcast.fromIndex shouldBe householdAggregate
+          broadcast.to shouldBe EntitySector.Insurance
           broadcast.targetIndices.head shouldBe persistedOwner
+        else
+          broadcast.from shouldBe EntitySector.Insurance
+          broadcast.fromIndex shouldBe persistedOwner
+          broadcast.to shouldBe EntitySector.Households
+          broadcast.targetIndices.head shouldBe householdAggregate
       case other                            => fail(s"Expected reserve broadcast, got $other")
   }
 
@@ -135,12 +137,12 @@ class InsuranceFlowsSpec extends AnyFlatSpec with Matchers:
     val lossLegs        = batches.filter(_.mechanism == FlowMechanism.InsInvestmentIncome)
 
     lossLegs should have size 2
-    all(lossLegs.map(_.from)) shouldBe EntitySector.Insurance
+    all(lossLegs.map(_.from)) shouldBe EntitySector.Households
     all(lossLegs.map(_.to)) shouldBe EntitySector.Insurance
     lossLegs.foreach:
       case broadcast: BatchedFlow.Broadcast =>
-        broadcast.fromIndex shouldBe summon[RuntimeLedgerTopology].insurance.persistedOwner
-        broadcast.targetIndices.head shouldBe summon[RuntimeLedgerTopology].insurance.aggregate
+        broadcast.fromIndex shouldBe summon[RuntimeLedgerTopology].households.aggregate
+        broadcast.targetIndices.head shouldBe summon[RuntimeLedgerTopology].insurance.persistedOwner
       case other                            => fail(s"Expected reserve loss broadcast, got $other")
     lossLegs.map(RuntimeLedgerTopology.totalTransferred).sum shouldBe expectedLoss.toLong
   }

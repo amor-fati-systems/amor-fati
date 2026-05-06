@@ -220,7 +220,10 @@ object WorldInit:
         quasiFiscal = initQuasiFiscalStock,
       ),
     )
-    val ledgerFinancialState    = LedgerFinancialState.withBankMortgageAssets(rawLedgerFinancialState)
+    val ledgerFinancialState    =
+      LedgerFinancialState.withBankMortgageAssets(
+        LedgerFinancialState.withHouseholdInsuranceReserveAssets(rawLedgerFinancialState),
+      )
 
     val world = world0.copy(
       real = world0.real.copy(
