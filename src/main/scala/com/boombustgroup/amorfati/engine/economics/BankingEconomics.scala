@@ -943,8 +943,14 @@ object BankingEconomics:
       finalBankCorpBondHoldings = afterResolveCorpBonds,
       finalBankLedgerBalances = reconciled.banks
         .zip(reconciled.financialStocks)
-        .map: (bank, stocks) =>
-          LedgerFinancialState.bankBalances(stocks, afterResolveCorpBonds.lift(bank.id.toInt).getOrElse(PLN.Zero)),
+        .map { case (bank, stocks) =>
+          val bankIndex = bank.id.toInt
+          LedgerFinancialState.bankBalances(
+            stocks,
+            afterResolveCorpBonds.lift(bankIndex).getOrElse(PLN.Zero),
+            mortgageLoan = in.ledgerFinancialState.banks.lift(bankIndex).fold(PLN.Zero)(_.mortgageLoan),
+          )
+        },
       finalBankingMarket = finalBankingMarket,
       reassignedFirms = reassignedFirms,
       reassignedHouseholds = reassignedHouseholds,

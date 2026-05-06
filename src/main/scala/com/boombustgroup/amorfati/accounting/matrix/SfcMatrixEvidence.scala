@@ -549,10 +549,10 @@ object SfcMatrixEvidence:
         case MortgageStock               =>
           rowMetadata(
             "Mortgage stock",
-            "Actual delta from household mortgage stock and matching bank mortgage asset mirror; expected delta from origination minus principal repayment and defaults.",
+            "Actual delta from household mortgage stock; expected delta from origination minus principal repayment and defaults.",
             Vector(AssetType.MortgageLoan),
             Vector(FlowMechanism.MortgageOrigination, FlowMechanism.MortgageRepayment, FlowMechanism.MortgageDefault),
-            "Bank capital loss recognition is separately included in the bank-capital identity.",
+            "The matching bank mortgage asset mirror is checked by BSM row validation and InitCheck; bank capital loss recognition is separately included in the bank-capital identity.",
           )
         case FlowOfFunds                 =>
           rowMetadata(

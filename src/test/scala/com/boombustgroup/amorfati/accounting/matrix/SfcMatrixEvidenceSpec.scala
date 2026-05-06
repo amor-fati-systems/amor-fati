@@ -47,6 +47,13 @@ class SfcMatrixEvidenceSpec extends AnyFlatSpec with Matchers:
       }
   }
 
+  it should "describe mortgage reconciliation as a household-stock identity with separate mirror validation" in {
+    val mortgageRow = bundle.reconciliation.rows.find(_.identity == Sfc.SfcIdentity.MortgageStock).get
+
+    mortgageRow.source shouldBe "Actual delta from household mortgage stock; expected delta from origination minus principal repayment and defaults."
+    mortgageRow.note should include("bank mortgage asset mirror is checked by BSM row validation and InitCheck")
+  }
+
   "TfmEvidence" should "derive transaction rows from executed batches and reconcile sector totals to the delta ledger" in {
     val tfm = bundle.tfm
 

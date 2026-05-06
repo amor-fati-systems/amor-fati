@@ -63,6 +63,26 @@ class BankingEconomicsSpec extends AnyFlatSpec with Matchers:
     Interpreter.totalWealth(Interpreter.applyAll(Map.empty[Int, Long], flows)).shouldBe(0L)
   }
 
+  it should "preserve per-bank mortgage mirror weights while closing the aggregate mortgage stock" in {
+    val prepared        = preparedBankingStep()
+    val openingMortgage = LedgerFinancialState.householdMortgageStock(prepared.ledgerFinancialState.households)
+    val weights         = prepared.ledgerFinancialState.banks.indices.map(index => (index + 1).toLong).toArray
+    val mortgageByBank  = Distribute.distribute(openingMortgage.toLong, weights).map(PLN.fromRaw).toVector
+    val shiftedLedger   = prepared.ledgerFinancialState.copy(
+      banks = prepared.ledgerFinancialState.banks.zip(mortgageByBank).map((bank, mortgageLoan) => bank.copy(mortgageLoan = mortgageLoan)),
+    )
+
+    val result = prepared.run(ledgerFinancialStateOverride = shiftedLedger)
+
+    val expectedMirror = LedgerFinancialState
+      .settleBankMortgageAssets(
+        shiftedLedger.banks,
+        LedgerFinancialState.householdMortgageStock(result.ledgerFinancialState.households),
+      )
+      .map(_.mortgageLoan)
+    result.ledgerFinancialState.banks.map(_.mortgageLoan) shouldBe expectedMirror
+  }
+
   it should "realign consumer-loan book distribution to household bank routing without changing the aggregate stock" in {
     val households        = Vector(
       TestHouseholdState(id = HhId(0), skill = Share.decimal(7, 1), mpc = Share.decimal(8, 1), status = HhStatus.Unemployed(0), bankId = BankId(0)),
