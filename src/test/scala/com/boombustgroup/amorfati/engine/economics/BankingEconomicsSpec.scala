@@ -83,6 +83,22 @@ class BankingEconomicsSpec extends AnyFlatSpec with Matchers:
     result.ledgerFinancialState.banks.map(_.mortgageLoan) shouldBe expectedMirror
   }
 
+  it should "not seed failed-bank mortgage mirrors from pre-resolution ledger rows" in {
+    val prepared        = preparedBankingStep()
+    val openingMortgage = LedgerFinancialState.householdMortgageStock(prepared.ledgerFinancialState.households)
+    val staleLedger     = prepared.ledgerFinancialState.copy(
+      banks = prepared.ledgerFinancialState.banks.zipWithIndex.map: (bank, index) =>
+        bank.copy(mortgageLoan = if index == 0 then openingMortgage else PLN(1)),
+    )
+    val failingBanks    = prepared.banks.updated(0, prepared.banks.head.copy(capital = PLN(-100000000000000L), status = Banking.BankStatus.Active(0)))
+
+    val result = prepared.run(ledgerFinancialStateOverride = staleLedger, banksOverride = failingBanks)
+
+    result.banks.head.failed shouldBe true
+    result.ledgerFinancialState.banks.head.mortgageLoan shouldBe PLN.Zero
+    LedgerFinancialState.bankMortgageStock(result.ledgerFinancialState) shouldBe LedgerFinancialState.householdMortgageStock(result.ledgerFinancialState)
+  }
+
   it should "realign consumer-loan book distribution to household bank routing without changing the aggregate stock" in {
     val households        = Vector(
       TestHouseholdState(id = HhId(0), skill = Share.decimal(7, 1), mpc = Share.decimal(8, 1), status = HhStatus.Unemployed(0), bankId = BankId(0)),
