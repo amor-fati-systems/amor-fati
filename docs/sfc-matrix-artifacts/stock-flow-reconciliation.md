@@ -2,6 +2,7 @@
 # Stock-Flow Reconciliation and Revaluation Evidence
 
 Rows compare independently sourced transaction, revaluation, default, write-off, and other-change channels with observed stock deltas or level identities. Residual is actual minus expected.
+
 | Identity | Expected | Actual | Residual | Status | Runtime channels | Source |
 | --- | --- | --- | --- | --- | --- | --- |
 | Bank capital | 23148773.9503 | 23148773.9503 | 0.0000 | pass | Bank capital (Capital)<br>Bank firm-loan interest [id: 76]<br>Household debt service [id: 35]<br>Bank government-bond income [id: 77]<br>Mortgage interest [id: 64]<br>Consumer credit debt service [id: 39]<br>Bank corporate-bond coupon [id: 95]<br>Household deposit interest [id: 36]<br>Bank reserve interest [id: 84]<br>Bank standing facility [id: 85]<br>Bank interbank interest [id: 86]<br>Bank firm NPL loss [id: 78]<br>Bank mortgage NPL loss [id: 79]<br>Bank consumer-credit NPL loss [id: 80]<br>Bank corporate-bond loss [id: 81]<br>Bank BFG levy [id: 82]<br>Bank unrealized bond loss [id: 83] | Actual delta from bank capital stocks; expected delta from bank P&L, default/write-off, valuation, provision, and capital-destruction channels. Includes non-batch htmRealizedLoss, eclProvisionChange, and bankCapitalDestruction from BankingEconomics. |

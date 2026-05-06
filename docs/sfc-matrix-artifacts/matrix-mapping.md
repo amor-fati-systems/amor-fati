@@ -1,5 +1,6 @@
 <!-- schema=sfc-matrix-v1 seed=1 month=12 commit=d0af0c91 sfc=pass matrix=pass output=symbolic-mapping -->
 # Symbolic Matrix Mapping
+
 | Matrix | Row | Symbols | Runtime assets | Runtime mechanisms | Note |
 | --- | --- | --- | --- | --- | --- |
 | symbolic-bsm | Cash and public balances | +H_h, +H_f, +H_b, -H, +H_{pub}, 0 | Cash and public fund balances (Cash) |  | Cash covers persisted firm, selected public-fund, and NBFI cash plus the paper-level currency shell. |
