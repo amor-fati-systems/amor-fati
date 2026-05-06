@@ -148,15 +148,16 @@ class LedgerFinancialStateSpec extends AnyFlatSpec with Matchers:
     )
   }
 
-  "LedgerFinancialState.nbpBalances" should "write NBP execution stocks directly" in {
+  "LedgerFinancialState.nbpBalances" should "write NBP execution stocks and reserve liabilities directly" in {
     val stocks = Nbp.FinancialStocks(
       govBondHoldings = PLN(123),
       foreignAssets = PLN(456),
     )
 
-    LedgerFinancialState.nbpBalances(stocks) shouldBe LedgerFinancialState.NbpBalances(
+    LedgerFinancialState.nbpBalances(stocks, reserveLiability = PLN(789)) shouldBe LedgerFinancialState.NbpBalances(
       govBondHoldings = PLN(123),
       foreignAssets = PLN(456),
+      reserveLiability = PLN(789),
     )
   }
 

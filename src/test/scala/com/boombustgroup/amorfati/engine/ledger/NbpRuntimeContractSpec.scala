@@ -1,13 +1,14 @@
 package com.boombustgroup.amorfati.engine.ledger
 
 import com.boombustgroup.amorfati.engine.ledger.AssetOwnershipContract.RuntimeShellCategory
+import com.boombustgroup.amorfati.engine.flows.RuntimeLedgerTopology
 import com.boombustgroup.ledger.{AssetType, EntitySector}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 class NbpRuntimeContractSpec extends AnyFlatSpec with Matchers:
 
-  "NbpRuntimeContract" should "separate persisted NBP assets from reserve settlement liabilities" in {
+  "NbpRuntimeContract" should "separate persisted NBP stocks from standing-facility shells" in {
     NbpRuntimeContract.GovBondAssetStock.persistedAsStock shouldBe true
     NbpRuntimeContract.GovBondAssetStock.sector shouldBe EntitySector.NBP
     NbpRuntimeContract.GovBondAssetStock.asset shouldBe AssetType.GovBondHTM
@@ -15,11 +16,14 @@ class NbpRuntimeContractSpec extends AnyFlatSpec with Matchers:
     NbpRuntimeContract.FxReserveAssetStock.persistedAsStock shouldBe true
     NbpRuntimeContract.FxReserveAssetStock.asset shouldBe AssetType.ForeignAsset
 
-    NbpRuntimeContract.ReserveSettlementLiability.persistedAsStock shouldBe false
+    NbpRuntimeContract.ReserveSettlementLiability.persistedAsStock shouldBe true
+    NbpRuntimeContract.ReserveSettlementLiability.index shouldBe 0
     NbpRuntimeContract.ReserveSettlementLiability.asset shouldBe AssetType.Reserve
+    NbpRuntimeContract.ReserveSettlementLiability.index shouldBe RuntimeLedgerTopology.zeroPopulation.nbp.reserveLiability
 
     NbpRuntimeContract.StandingFacilityBackstop.persistedAsStock shouldBe false
     NbpRuntimeContract.StandingFacilityBackstop.asset shouldBe AssetType.StandingFacility
+    NbpRuntimeContract.StandingFacilityBackstop.index shouldBe RuntimeLedgerTopology.zeroPopulation.nbp.standingFacilityBackstop
   }
 
   it should "align with the engine ownership contract" in {
@@ -39,7 +43,7 @@ class NbpRuntimeContractSpec extends AnyFlatSpec with Matchers:
       NbpRuntimeContract.ReserveSettlementLiability.sector,
       NbpRuntimeContract.ReserveSettlementLiability.asset,
       NbpRuntimeContract.ReserveSettlementLiability.index,
-    ) shouldBe false
+    ) shouldBe true
 
     AssetOwnershipContract.isSupportedPersistedPair(
       NbpRuntimeContract.StandingFacilityBackstop.sector,
@@ -47,11 +51,12 @@ class NbpRuntimeContractSpec extends AnyFlatSpec with Matchers:
       NbpRuntimeContract.StandingFacilityBackstop.index,
     ) shouldBe false
 
+    AssetOwnershipContract.nonPersistedRuntimeShells.map(_.name) should not contain NbpRuntimeContract.ReserveSettlementLiability.name
     AssetOwnershipContract.nonPersistedRuntimeShells should contain(
       AssetOwnershipContract.RuntimeShell(
-        NbpRuntimeContract.ReserveSettlementLiability.sector,
-        NbpRuntimeContract.ReserveSettlementLiability.index,
-        NbpRuntimeContract.ReserveSettlementLiability.name,
+        NbpRuntimeContract.StandingFacilityBackstop.sector,
+        NbpRuntimeContract.StandingFacilityBackstop.index,
+        NbpRuntimeContract.StandingFacilityBackstop.name,
         RuntimeShellCategory.SettlementShell,
       ),
     )

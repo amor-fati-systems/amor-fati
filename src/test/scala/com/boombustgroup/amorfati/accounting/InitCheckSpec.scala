@@ -82,6 +82,16 @@ class InitCheckSpec extends AnyFlatSpec with Matchers:
     errors should not be empty
     errors.exists(_.identity.startsWith("Deposit consistency")) shouldBe true
 
+  it should "detect tampered NBP reserve liability" in:
+    val result         = defaultInit
+    val snap           = stockSnapshot(result)
+    val tamperedLedger = result.ledgerFinancialState.copy(
+      nbp = result.ledgerFinancialState.nbp.copy(reserveLiability = result.ledgerFinancialState.nbp.reserveLiability + PLN(5000)),
+    )
+    val errors         = InitCheck.validate(snap, result.banks, result.firms, result.households, tamperedLedger)
+    errors should not be empty
+    errors.exists(_.identity == "NBP reserve liability") shouldBe true
+
   it should "detect tampered firm debt" in:
     val result         = defaultInit
     val snap           = stockSnapshot(result)

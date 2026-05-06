@@ -226,7 +226,10 @@ object BankingEconomics:
         banks = multi.finalBankLedgerBalances,
         government = LedgerFinancialState.GovernmentBalances(govBondOutstanding = govJst.newGovBondOutstanding),
         foreign = LedgerFinancialState.ForeignBalances(govBondHoldings = multi.foreignBondHoldings),
-        nbp = LedgerFinancialState.nbpBalances(multi.finalNbpFinancialStocks),
+        nbp = LedgerFinancialState.nbpBalances(
+          multi.finalNbpFinancialStocks,
+          reserveLiability = LedgerFinancialState.nbpReserveLiabilityFromBanks(multi.finalBankLedgerBalances),
+        ),
         insurance = LedgerFinancialState.insuranceBalances(multi.finalInsuranceBalances, in.s8.corpBonds.closingCorpBondProjection.insuranceHoldings),
         funds = LedgerFinancialState.fundBalances(
           zusCash = SocialSecurity.zusCashAfter(in.ledgerFinancialState.funds.zusCash, in.s2.newZus),

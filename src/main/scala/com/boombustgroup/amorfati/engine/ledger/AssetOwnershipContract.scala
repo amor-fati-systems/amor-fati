@@ -248,8 +248,8 @@ object AssetOwnershipContract:
     PublicAssetContract(
       AssetType.Reserve,
       PublicAssetStatus.SupportedPersistedStock,
-      Set(dynamic(EntitySector.Banks)),
-      "Bank reserve asset; the NBP-side reserve settlement liability remains a delta-only runtime shell.",
+      Set(dynamic(EntitySector.Banks), singleton(EntitySector.NBP)),
+      "Bank reserve assets and the NBP reserve liability are persisted as the supported reserve stock pair.",
     ),
     PublicAssetContract(
       AssetType.StandingFacility,
@@ -596,12 +596,6 @@ object AssetOwnershipContract:
       TreasuryRuntimeContract.TaxpayerCollection.sector,
       TreasuryRuntimeContract.TaxpayerCollection.index,
       TreasuryRuntimeContract.TaxpayerCollection.name,
-      RuntimeShellCategory.SettlementShell,
-    ),
-    RuntimeShell(
-      NbpRuntimeContract.ReserveSettlementLiability.sector,
-      NbpRuntimeContract.ReserveSettlementLiability.index,
-      NbpRuntimeContract.ReserveSettlementLiability.name,
       RuntimeShellCategory.SettlementShell,
     ),
     RuntimeShell(

@@ -112,6 +112,7 @@ object LedgerTestFixtures:
       nbp = LedgerFinancialState.NbpBalances(
         govBondHoldings = PLN(88000000),
         foreignAssets = PLN(99000000),
+        reserveLiability = bankBalances.map(_.reserve).sumPln,
       ),
       funds = base.ledgerFinancialState.funds.copy(
         zusCash = PLN(11000000),

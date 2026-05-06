@@ -185,8 +185,8 @@ object SfcMatrixRegistry:
         "Bank reserves",
         "Reserves",
         "R",
-        RowCompleteness.ClassifiedGap,
-        "Bank reserve assets are persisted; the NBP reserve liability is currently a runtime settlement shell.",
+        RowCompleteness.Complete,
+        "Bank reserve assets and the matching NBP reserve liability are persisted.",
       ),
       settlement(
         AssetType.StandingFacility,
