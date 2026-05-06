@@ -256,7 +256,7 @@ object SfcMatrixRegistry:
         "Bank capital",
         "Capital",
         "K_B",
-        "Bank capital is persisted engine state but outside the current supported ledger-owned stock slice.",
+        "Bank capital is persisted engine state and an explicit unsupported diagnostic row; it is outside the supported transferable ledger-owned stock slice and validated by the bank-capital SFC identity.",
       ),
       financial(
         AssetType.ForeignAsset,

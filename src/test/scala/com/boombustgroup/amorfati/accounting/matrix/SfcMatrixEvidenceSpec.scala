@@ -29,6 +29,8 @@ class SfcMatrixEvidenceSpec extends AnyFlatSpec with Matchers:
     closing.row(AssetType.CorpBond).amountRaw(EntitySector.Funds) should not be 0L
     closing.row(AssetType.Reserve).amountRaw(EntitySector.NBP) shouldBe -closing.row(AssetType.Reserve).amountRaw(EntitySector.Banks)
     closing.row(AssetType.Reserve).gaps shouldBe empty
+    closing.row(AssetType.Capital).amountRaw(EntitySector.Banks) should not be 0L
+    closing.row(AssetType.Capital).gaps.map(_.kind) should contain only GapKind.UnsupportedDiagnostic
     closing.row(AssetType.ForeignAsset).amountRaw(EntitySector.NBP) should not be 0L
     closing.row(AssetType.Cash).amountRaw(EntitySector.Funds) should not be 0L
   }
@@ -52,6 +54,38 @@ class SfcMatrixEvidenceSpec extends AnyFlatSpec with Matchers:
 
     mortgageRow.source shouldBe "Actual delta from household mortgage stock; expected delta from origination minus principal repayment and defaults."
     mortgageRow.note should include("bank mortgage asset mirror is checked by BSM row validation and InitCheck")
+  }
+
+  it should "classify bank capital residuals as unsupported diagnostics instead of coverage gaps" in {
+    val opening = BsmEvidence(
+      SnapshotKind.Opening,
+      Vector(BsmRow(AssetType.Capital, Map(EntitySector.Banks -> -100L), Vector.empty)),
+      Vector.empty,
+    )
+    val closing = BsmEvidence(
+      SnapshotKind.Closing,
+      Vector(BsmRow(AssetType.Capital, Map(EntitySector.Banks -> -90L), Vector.empty)),
+      Vector.empty,
+    )
+
+    val cell = OtherChangesEvidence
+      .from(
+        opening,
+        closing,
+        TfmEvidence(
+          rows = Vector.empty,
+          omittedZeroBatches = 0,
+          omittedZeroRows = 0,
+          droppedRows = Vector.empty,
+          droppedNonRegistrySectors = Vector.empty,
+        ),
+      )
+      .nonZeroCells
+      .find(cell => cell.asset == AssetType.Capital && cell.sector == EntitySector.Banks)
+      .get
+
+    cell.kind shouldBe OtherChangeKind.UnsupportedDiagnostic
+    cell.reason should include("unsupported diagnostic row")
   }
 
   "TfmEvidence" should "derive transaction rows from executed batches and reconcile sector totals to the delta ledger" in {
@@ -128,9 +162,11 @@ class SfcMatrixEvidenceSpec extends AnyFlatSpec with Matchers:
     reconciliation.rows.map(_.identity).toSet should contain(Sfc.SfcIdentity.BankCapital)
     reconciliation.failures shouldBe empty
 
-    val nfa = reconciliation.rows.find(_.identity == Sfc.SfcIdentity.Nfa).get
+    val nfa         = reconciliation.rows.find(_.identity == Sfc.SfcIdentity.Nfa).get
     nfa.source should include("current account")
     nfa.note should include("valuationEffect")
+    val bankCapital = reconciliation.rows.find(_.identity == Sfc.SfcIdentity.BankCapital).get
+    bankCapital.note should include("persisted unsupported diagnostic stock")
   }
 
   "MatrixValidation" should "report actionable BSM and TFM perturbations" in {

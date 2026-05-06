@@ -66,6 +66,8 @@ class AssetOwnershipContractSpec extends AnyFlatSpec with Matchers:
     publicAsset(AssetType.StandingFacility).status shouldBe PublicAssetStatus.PublicAssetWithoutEngineContract
     publicAsset(AssetType.Capital).status shouldBe PublicAssetStatus.UnsupportedPersistedStock
     publicAsset(AssetType.Capital).supportedSlots shouldBe Set(SectorId.Dynamic(EntitySector.Banks))
+    supportedPairs should not contain SupportedPair(SectorId.Dynamic(EntitySector.Banks), AssetType.Capital)
+    unsupportedFamilies.find(_.id == UnsupportedFamilyId.BankCapital).map(_.category) shouldBe Some(UnsupportedCategory.UnsupportedPersistedStock)
   }
 
   it should "expose non-persisted runtime shells separately from supported stock owners" in {

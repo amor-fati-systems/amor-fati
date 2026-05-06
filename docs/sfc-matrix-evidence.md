@@ -131,7 +131,7 @@ The Funds sector covers public and fund buckets such as ZUS, NFZ, FP, PFRON,
 FGSP, JST, PPK, NBFI, and quasi-fiscal vehicles where they are represented in
 the runtime ledger topology.
 
-## Coverage Gaps
+## Coverage Gaps And Diagnostic Exceptions
 
 The symbolic tables are complete paper-level matrices, but the mapping keeps
 runtime coverage explicit. Known incomplete rows remain visible as classified
@@ -140,11 +140,15 @@ gaps in the ledger-derived validation layer. Examples include:
 - firm and consumer loan rows where dynamic-population projections can leave
   small holder/issuer gaps across month boundaries;
 - insurance reserves without holder-resolved household assets;
-- equity foreign ownership that remains metric-only;
-- bank capital, which is persisted engine state but outside the supported
-  ledger-owned stock slice.
+- equity foreign ownership that remains metric-only.
 
-These gaps are review diagnostics. They are not balancing rows.
+Bank capital is separate from those coverage gaps. It is persisted engine state
+and SFC-validated through the bank-capital identity, but it is intentionally
+classified as an unsupported diagnostic row rather than a supported transferable
+ledger-owned asset.
+
+These gaps and diagnostic exceptions are review diagnostics. They are not
+balancing rows.
 
 ## Review Checklist
 
