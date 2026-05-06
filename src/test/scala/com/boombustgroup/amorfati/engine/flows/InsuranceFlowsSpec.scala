@@ -113,16 +113,19 @@ class InsuranceFlowsSpec extends AnyFlatSpec with Matchers:
     val persistedOwner     = summon[RuntimeLedgerTopology].insurance.persistedOwner
     reserveBatches.foreach:
       case broadcast: BatchedFlow.Broadcast =>
-        if broadcast.mechanism == FlowMechanism.InsLifeClaim || broadcast.mechanism == FlowMechanism.InsNonLifeClaim then
-          broadcast.from shouldBe EntitySector.Households
-          broadcast.fromIndex shouldBe householdAggregate
-          broadcast.to shouldBe EntitySector.Insurance
-          broadcast.targetIndices.head shouldBe persistedOwner
-        else
-          broadcast.from shouldBe EntitySector.Insurance
-          broadcast.fromIndex shouldBe persistedOwner
-          broadcast.to shouldBe EntitySector.Households
-          broadcast.targetIndices.head shouldBe householdAggregate
+        broadcast.mechanism match
+          case FlowMechanism.InsLifeClaim | FlowMechanism.InsNonLifeClaim                                         =>
+            broadcast.from shouldBe EntitySector.Households
+            broadcast.fromIndex shouldBe householdAggregate
+            broadcast.to shouldBe EntitySector.Insurance
+            broadcast.targetIndices.head shouldBe persistedOwner
+          case FlowMechanism.InsLifePremium | FlowMechanism.InsNonLifePremium | FlowMechanism.InsInvestmentIncome =>
+            broadcast.from shouldBe EntitySector.Insurance
+            broadcast.fromIndex shouldBe persistedOwner
+            broadcast.to shouldBe EntitySector.Households
+            broadcast.targetIndices.head shouldBe householdAggregate
+          case other                                                                                              =>
+            fail(s"Unexpected insurance reserve mechanism $other")
       case other                            => fail(s"Expected reserve broadcast, got $other")
   }
 

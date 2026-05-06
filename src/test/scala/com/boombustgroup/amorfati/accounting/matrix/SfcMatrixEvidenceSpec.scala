@@ -65,9 +65,10 @@ class SfcMatrixEvidenceSpec extends AnyFlatSpec with Matchers:
       asset  <- reserveAssets
       sector <- reserveSectors
     do
-      val cell = bundle.otherChanges.cells.find(cell => cell.asset == asset && cell.sector == sector).get
+      val maybeCell = bundle.otherChanges.cells.find(cell => cell.asset == asset && cell.sector == sector)
 
       withClue(s"$asset $sector") {
+        val cell = maybeCell.getOrElse(fail("Missing insurance reserve other-change cell"))
         cell.stockDeltaRaw should not be 0L
         cell.stockDeltaRaw shouldBe cell.transactionDeltaRaw
         cell.otherChangeRaw shouldBe 0L
