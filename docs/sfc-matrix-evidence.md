@@ -140,7 +140,6 @@ gaps in the ledger-derived validation layer. Examples include:
 - household mortgage liabilities without a supported bank-side mortgage stock;
 - firm and consumer loan rows where dynamic-population projections can leave
   small holder/issuer gaps across month boundaries;
-- bank reserves without a persisted NBP reserve-liability row;
 - insurance reserves without holder-resolved household assets;
 - equity foreign ownership that remains metric-only;
 - bank capital, which is persisted engine state but outside the supported

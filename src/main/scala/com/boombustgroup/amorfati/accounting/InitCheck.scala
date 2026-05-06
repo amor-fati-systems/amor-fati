@@ -69,6 +69,13 @@ object InitCheck:
       levelTol,
     )
 
+    val reserveLiability = check(
+      "NBP reserve liability",
+      expected = LedgerFinancialState.nbpReserveLiabilityFromBanks(ledgerFinancialState.banks),
+      actual = ledgerFinancialState.nbp.reserveLiability,
+      levelTol,
+    )
+
     // --- Per-bank agent cross-checks ---
 
     val firmRows         = firms.zip(ledgerFinancialState.firms)
@@ -127,7 +134,7 @@ object InitCheck:
       levelTol,
     )
 
-    val all = Vector(bondClearing, interbankNetting) ++ perBankChecks ++ Vector(aggDepositCheck, aggLoanCheck)
+    val all = Vector(bondClearing, interbankNetting, reserveLiability) ++ perBankChecks ++ Vector(aggDepositCheck, aggLoanCheck)
     all.filterNot(_.passed)
 
   private def check(identity: String, expected: PLN, actual: PLN, tolerance: PLN): InitCheckResult =

@@ -181,9 +181,10 @@ object RuntimeLedgerTopology:
     val sectorSize: Int               = 3
 
   final case class Nbp():
-    val persistedOwner: Int    = 0
-    val reserveSettlement: Int = 1
-    val sectorSize: Int        = 2
+    val persistedOwner: Int           = 0
+    val reserveLiability: Int         = persistedOwner
+    val standingFacilityBackstop: Int = 1
+    val sectorSize: Int               = 2
 
   final case class Insurance():
     val persistedOwner: Int = 0

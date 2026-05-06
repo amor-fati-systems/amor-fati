@@ -218,6 +218,7 @@ object SfcMatrixEvidence:
         (AssetType.CorpBond, EntitySector.Funds, corp.ppkHoldings + corp.otherHoldings + corp.nbfiHoldings),
         // Central-bank, equity, insurance, NBFI, public fund, and diagnostic stocks.
         (AssetType.Reserve, EntitySector.Banks, ledger.banks.iterator.map(_.reserve).sumPln),
+        (AssetType.Reserve, EntitySector.NBP, -ledger.nbp.reserveLiability),
         (AssetType.InterbankLoan, EntitySector.Banks, ledger.banks.iterator.map(_.interbankLoan).sumPln),
         (AssetType.Equity, EntitySector.Households, ledger.households.iterator.map(_.equity).sumPln),
         (AssetType.Equity, EntitySector.Firms, -ledger.firms.iterator.map(_.equity).sumPln),

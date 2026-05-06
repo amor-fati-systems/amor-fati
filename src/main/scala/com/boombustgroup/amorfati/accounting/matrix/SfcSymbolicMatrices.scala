@@ -78,7 +78,7 @@ object SfcSymbolicMatrices:
         ),
         row("reserves", "Bank reserves", Banks -> "+R", NBP -> "-R")(
           assets = Vector(AssetType.Reserve),
-          note = "The NBP reserve-liability side is a runtime settlement shell in the current engine.",
+          note = "Bank reserve assets and the NBP reserve liability are persisted.",
         ),
         row(
           "government-bonds",

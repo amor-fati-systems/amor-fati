@@ -25,6 +25,8 @@ class SfcMatrixEvidenceSpec extends AnyFlatSpec with Matchers:
     closing.row(AssetType.FirmLoan).amountRaw(EntitySector.Banks) should not be 0L
     closing.row(AssetType.GovBondHTM).amountRaw(EntitySector.Government) should be < 0L
     closing.row(AssetType.CorpBond).amountRaw(EntitySector.Funds) should not be 0L
+    closing.row(AssetType.Reserve).amountRaw(EntitySector.NBP) shouldBe -closing.row(AssetType.Reserve).amountRaw(EntitySector.Banks)
+    closing.row(AssetType.Reserve).gaps shouldBe empty
     closing.row(AssetType.ForeignAsset).amountRaw(EntitySector.NBP) should not be 0L
     closing.row(AssetType.Cash).amountRaw(EntitySector.Funds) should not be 0L
   }

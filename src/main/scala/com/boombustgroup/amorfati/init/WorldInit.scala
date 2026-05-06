@@ -204,6 +204,7 @@ object WorldInit:
           govBondHoldings = p.banking.initNbpGovBonds,
           foreignAssets = p.monetary.fxReserves,
         ),
+        reserveLiability = LedgerFinancialState.nbpReserveLiabilityFromBanks(initBankBalances),
       ),
       insurance = LedgerFinancialState.insuranceBalances(initInsuranceBalances, initCorporateBondStocks.insuranceHoldings),
       funds = LedgerFinancialState.fundBalances(

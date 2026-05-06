@@ -113,7 +113,7 @@ class SfcSpec extends AnyFlatSpec with Matchers:
     banks = Vector.empty,
     government = LedgerFinancialState.GovernmentBalances(govBondOutstanding = PLN.Zero),
     foreign = LedgerFinancialState.ForeignBalances(govBondHoldings = PLN.Zero),
-    nbp = LedgerFinancialState.NbpBalances(govBondHoldings = PLN.Zero, foreignAssets = PLN.Zero),
+    nbp = LedgerFinancialState.NbpBalances(govBondHoldings = PLN.Zero, foreignAssets = PLN.Zero, reserveLiability = PLN.Zero),
     insurance = LedgerFinancialState.InsuranceBalances(
       lifeReserve = PLN.Zero,
       nonLifeReserve = PLN.Zero,
@@ -362,7 +362,7 @@ class SfcSpec extends AnyFlatSpec with Matchers:
       ),
       government = LedgerFinancialState.GovernmentBalances(govBondOutstanding = PLN(100)),
       foreign = LedgerFinancialState.ForeignBalances(govBondHoldings = PLN(20)),
-      nbp = LedgerFinancialState.NbpBalances(govBondHoldings = PLN(30), foreignAssets = PLN.Zero),
+      nbp = LedgerFinancialState.NbpBalances(govBondHoldings = PLN(30), foreignAssets = PLN.Zero, reserveLiability = PLN.Zero),
       funds = zeroLedger.funds.copy(
         jstCash = PLN(40),
         zusCash = PLN(50),

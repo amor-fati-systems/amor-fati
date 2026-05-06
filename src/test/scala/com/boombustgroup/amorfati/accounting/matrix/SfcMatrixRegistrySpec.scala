@@ -34,6 +34,7 @@ class SfcMatrixRegistrySpec extends AnyFlatSpec with Matchers:
     SfcMatrixRegistry.instrument(AssetType.ConsumerLoan).completeness shouldBe ClassifiedGap
     SfcMatrixRegistry.instrument(AssetType.GovBondHTM).completeness shouldBe Complete
     SfcMatrixRegistry.instrument(AssetType.CorpBond).completeness shouldBe Complete
+    SfcMatrixRegistry.instrument(AssetType.Reserve).completeness shouldBe Complete
     SfcMatrixRegistry.instrument(AssetType.MortgageLoan).completeness shouldBe ClassifiedGap
     SfcMatrixRegistry.instrument(AssetType.StandingFacility).completeness shouldBe Excluded
   }

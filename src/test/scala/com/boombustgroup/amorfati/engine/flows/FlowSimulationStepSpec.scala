@@ -309,7 +309,8 @@ class FlowSimulationStepSpec extends AnyFlatSpec with Matchers:
     topology.government.treasuryBudgetSettlement shouldBe 1
     topology.government.taxpayerCollection shouldBe 2
     topology.nbp.persistedOwner shouldBe 0
-    topology.nbp.reserveSettlement shouldBe 1
+    topology.nbp.reserveLiability shouldBe 0
+    topology.nbp.standingFacilityBackstop shouldBe 1
     topology.sectorSizes shouldBe Map(
       EntitySector.Households -> expectedHouseholdSectorSize,
       EntitySector.Firms      -> expectedFirmSectorSize,

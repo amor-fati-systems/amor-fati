@@ -34,6 +34,8 @@ class AssetOwnershipContractSpec extends AnyFlatSpec with Matchers:
     isSupportedPersistedPair(topology, EntitySector.Firms, AssetType.Cash, topology.firms.persistedCount - 1) shouldBe true
     isSupportedPersistedPair(topology, EntitySector.Firms, AssetType.Cash, topology.firms.aggregate) shouldBe false
     isSupportedPersistedPair(topology, EntitySector.Banks, AssetType.Reserve, topology.banks.aggregate) shouldBe false
+    isSupportedPersistedPair(topology, EntitySector.NBP, AssetType.Reserve, topology.nbp.persistedOwner) shouldBe true
+    isSupportedPersistedPair(topology, EntitySector.NBP, AssetType.Reserve, topology.nbp.standingFacilityBackstop) shouldBe false
     isSupportedPersistedPair(EntitySector.Firms, AssetType.Cash, topology.firms.aggregate) shouldBe true
   }
 
@@ -75,7 +77,6 @@ class AssetOwnershipContractSpec extends AnyFlatSpec with Matchers:
     settlementShells shouldBe Set(
       (EntitySector.Government, TreasuryRuntimeContract.TreasuryBudgetSettlement.name),
       (EntitySector.Government, TreasuryRuntimeContract.TaxpayerCollection.name),
-      (EntitySector.NBP, NbpRuntimeContract.ReserveSettlementLiability.name),
       (EntitySector.NBP, NbpRuntimeContract.StandingFacilityBackstop.name),
       (EntitySector.Households, MortgageRuntimeContract.TemplatePrincipalSettlement.name),
       (EntitySector.Foreign, ForeignRuntimeContract.TradeSettlement.name),

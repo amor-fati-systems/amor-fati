@@ -125,6 +125,27 @@ class FlowSimulationRuntimeProjectionSpec extends AnyFlatSpec with Matchers:
     projection.ledgerFinancialState.funds.quasiFiscal should not equal stageOnlyQf
   }
 
+  it should "carry the NBP reserve liability from persisted bank reserve stocks" in {
+    val state   = stateFromSeed()
+    val opening = state.ledgerFinancialState
+    val banks   = opening.banks.zipWithIndex.map: (bank, index) =>
+      bank.copy(reserve = PLN(1000 + index.toLong))
+
+    val semanticClosing = opening.copy(
+      banks = banks,
+      nbp = opening.nbp.copy(reserveLiability = PLN.Zero),
+    )
+
+    val projection = RuntimeFlowProjection.materializeSupportedState(
+      opening = opening,
+      semanticClosing = semanticClosing,
+      deltaLedger = Map.empty,
+      topology = RuntimeLedgerTopology.fromState(state),
+    )
+
+    projection.ledgerFinancialState.nbp.reserveLiability shouldBe banks.map(_.reserve).sumPln
+  }
+
   it should "leave household mortgage stocks to semantic closing while runtime principal stays shell-only" in {
     val state    = stateFromSeed()
     val topology = RuntimeLedgerTopology.fromState(state)

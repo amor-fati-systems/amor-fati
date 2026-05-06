@@ -120,7 +120,7 @@ class BankingFlowsSpec extends AnyFlatSpec with Matchers:
         }
   }
 
-  it should "emit signed FX reserve settlement through the same NBP shell" in
+  it should "emit signed FX reserve settlement through the NBP reserve-liability stock" in
     runtimeTopologies.foreach:
       case (label, topology) =>
         withClue(s"$label: ") {

@@ -1,4 +1,4 @@
-<!-- schema=sfc-matrix-v1 seed=1 month=12 commit=50a565f7 sfc=pass matrix=pass output=symbolic-mapping -->
+<!-- schema=sfc-matrix-v1 seed=1 month=12 commit=d9501135-dirty sfc=pass matrix=pass output=symbolic-mapping -->
 # Symbolic Matrix Mapping
 | Matrix | Row | Symbols | Runtime assets | Runtime mechanisms | Note |
 | --- | --- | --- | --- | --- | --- |
@@ -6,7 +6,7 @@
 | symbolic-bsm | Demand deposits | +D_h, +D_f, -D, +D_{fnd}, 0 | Demand deposits (DemandDeposit) |  |  |
 | symbolic-bsm | Term deposits | +TD_h, -TD, 0 | Term deposits (TermDeposit) |  |  |
 | symbolic-bsm | Loans | -L_h, -L_f, +L, 0 | Firm loans (FirmLoan)<br>Consumer loans (ConsumerLoan)<br>Mortgage loans (MortgageLoan)<br>NBFI loans (NbfiLoan) |  | Loan rows aggregate firm, consumer, mortgage, and NBFI credit instruments. |
-| symbolic-bsm | Bank reserves | +R, -R, 0 | Bank reserves (Reserve) |  | The NBP reserve-liability side is a runtime settlement shell in the current engine. |
+| symbolic-bsm | Bank reserves | +R, -R, 0 | Bank reserves (Reserve) |  | Bank reserve assets and the NBP reserve liability are persisted. |
 | symbolic-bsm | Government bonds | +B_b, -B_g, +B_{nbp}, +B_{ins}, +B_{fnd}, +B_{row}, 0 | Government bonds (GovBondHTM)<br>Government bonds AFS (GovBondAFS) |  |  |
 | symbolic-bsm | Quasi-fiscal bonds | +Q_b, +Q_{nbp}, -Q, 0 | Quasi-fiscal bonds (QuasiFiscalBond) |  |  |
 | symbolic-bsm | Corporate bonds | -B_c, +B_{cb}, +B_{ci}, +B_{cf}, 0 | Corporate bonds (CorpBond) |  |  |

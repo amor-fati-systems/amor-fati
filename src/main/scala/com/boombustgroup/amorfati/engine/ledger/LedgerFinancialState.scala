@@ -227,10 +227,19 @@ object LedgerFinancialState:
       nbpHoldings = quasiFiscal.nbpHoldings,
     )
 
-  def nbpBalances(stocks: Nbp.FinancialStocks): NbpBalances =
+  def nbpReserveLiabilityFromBanks(banks: Vector[BankBalances]): PLN =
+    banks.iterator.map(_.reserve).sumPln
+
+  def withNbpReserveLiability(ledgerFinancialState: LedgerFinancialState): LedgerFinancialState =
+    ledgerFinancialState.copy(
+      nbp = ledgerFinancialState.nbp.copy(reserveLiability = nbpReserveLiabilityFromBanks(ledgerFinancialState.banks)),
+    )
+
+  def nbpBalances(stocks: Nbp.FinancialStocks, reserveLiability: PLN): NbpBalances =
     NbpBalances(
       govBondHoldings = stocks.govBondHoldings,
       foreignAssets = stocks.foreignAssets,
+      reserveLiability = reserveLiability,
     )
 
   def fundBalances(
@@ -321,12 +330,14 @@ object LedgerFinancialState:
       govBondHoldings: PLN,
   )
 
-  /** Ledger-backed financial balances owned by the central bank. */
+  /** Ledger-backed financial balances owned or owed by the central bank. */
   case class NbpBalances(
       /** Central-government bonds held by the NBP. */
       govBondHoldings: PLN,
       /** Foreign-asset stock held by the NBP. */
       foreignAssets: PLN,
+      /** Reserve liabilities owed by the NBP to commercial banks. */
+      reserveLiability: PLN,
   )
 
   /** Ledger-backed financial balances owned or owed by the insurance sector.

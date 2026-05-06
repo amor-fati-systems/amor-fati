@@ -2,21 +2,23 @@ package com.boombustgroup.amorfati.engine.ledger
 
 import com.boombustgroup.ledger.{AssetType, EntitySector}
 
-/** Explicit runtime contract for NBP settlement and asset-side stock roles.
+/** Explicit runtime contract for NBP settlement and stock roles.
   *
-  * The engine persists NBP asset-side stocks, while reserve-side monetary
-  * operations execute through an explicit runtime shell in the shared runtime
-  * topology. This contract names those roles explicitly:
+  * The engine persists NBP asset-side stocks and the reserve liability owed to
+  * commercial banks. Standing-facility backstop operations still execute
+  * through an explicit runtime shell in the shared runtime topology. This
+  * contract names those roles explicitly:
   *   - NBP government bond holdings are a persisted stock
   *   - NBP FX reserves are a persisted stock
-  *   - reserve settlement is a non-persisted delta-only liability shell
+  *   - reserve liabilities are a persisted stock
+  *   - standing-facility backstop is a non-persisted delta-only shell
   */
 object NbpRuntimeContract:
 
   enum RuntimeRole:
     case GovBondAssetStock
     case FxReserveAssetStock
-    case ReserveSettlementLiabilityShell
+    case ReserveLiabilityStock
     case StandingFacilityBackstopShell
 
   case class RuntimeNode(
@@ -52,9 +54,9 @@ object NbpRuntimeContract:
     RuntimeNode(
       name = "NBP.ReserveSettlementLiability",
       sector = EntitySector.NBP,
-      index = 1,
-      role = RuntimeRole.ReserveSettlementLiabilityShell,
-      persistedAsStock = false,
+      index = 0,
+      role = RuntimeRole.ReserveLiabilityStock,
+      persistedAsStock = true,
       asset = AssetType.Reserve,
     )
 

@@ -1,4 +1,4 @@
-<!-- schema=sfc-matrix-v1 seed=1 month=12 commit=50a565f7 sfc=pass matrix=pass output=symbolic -->
+<!-- schema=sfc-matrix-v1 seed=1 month=12 commit=d9501135-dirty sfc=pass matrix=pass output=symbolic -->
 # Symbolic Balance Sheet Matrix
 | Instrument \\ Sector | Households | Firms | Banks | Government | NBP | Insurance | Funds | Foreign | Sum |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
