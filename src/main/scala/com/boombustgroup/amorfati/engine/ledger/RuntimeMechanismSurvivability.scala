@@ -192,8 +192,12 @@ object RuntimeMechanismSurvivability:
     ),
     declared(
       ExecutionDeltaOnly,
-      "Bank settlement and recapitalisation flows use aggregate bank reserve/deposit shells; the NBP reserve liability side is persisted.",
+      "Bank reserve interest uses aggregate bank reserve shells; the NBP reserve liability side is persisted.",
       FlowMechanism.BankReserveInterest,
+    ),
+    declared(
+      ExecutionDeltaOnly,
+      "Bank settlement and recapitalisation flows use aggregate bank reserve/deposit shells.",
       FlowMechanism.BankStandingFacility,
       FlowMechanism.BankInterbankInterest,
       FlowMechanism.NbpFxSettlement,

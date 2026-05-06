@@ -1,4 +1,4 @@
-<!-- schema=sfc-matrix-v1 seed=1 month=12 commit=d9501135-dirty sfc=pass matrix=pass output=stock-flow-reconciliation -->
+<!-- schema=sfc-matrix-v1 seed=1 month=12 commit=d0af0c91 sfc=pass matrix=pass output=stock-flow-reconciliation -->
 # Stock-Flow Reconciliation and Revaluation Evidence
 
 Rows compare independently sourced transaction, revaluation, default, write-off, and other-change channels with observed stock deltas or level identities. Residual is actual minus expected.
