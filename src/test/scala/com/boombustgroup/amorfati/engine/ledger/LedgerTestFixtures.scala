@@ -92,8 +92,20 @@ object LedgerTestFixtures:
     val bankBalances = banks
       .zip(bankStocks)
       .map: (bank, stocks) =>
-        LedgerFinancialState.bankBalances(stocks, corpBond = base.ledgerFinancialState.banks.lift(bank.id.toInt).fold(PLN.Zero)(_.corpBond))
-      .updated(0, LedgerFinancialState.bankBalances(bankStocks.head, corpBond = PLN(309000000)))
+        val previous = base.ledgerFinancialState.banks.lift(bank.id.toInt)
+        LedgerFinancialState.bankBalances(
+          stocks,
+          corpBond = previous.fold(PLN.Zero)(_.corpBond),
+          mortgageLoan = previous.fold(PLN.Zero)(_.mortgageLoan),
+        )
+      .updated(
+        0,
+        LedgerFinancialState.bankBalances(
+          bankStocks.head,
+          corpBond = PLN(309000000),
+          mortgageLoan = base.ledgerFinancialState.banks.head.mortgageLoan,
+        ),
+      )
 
     val ledgerFinancialState = base.ledgerFinancialState.copy(
       households = base.ledgerFinancialState.households.updated(
