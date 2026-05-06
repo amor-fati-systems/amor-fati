@@ -145,8 +145,8 @@ object SfcMatrixRegistry:
         "Mortgage loans",
         "Mortgages",
         "L_M",
-        RowCompleteness.ClassifiedGap,
-        "Household mortgage principal is persisted; the bank-side mortgage stock is not yet a supported ledger-owned row.",
+        RowCompleteness.Complete,
+        "Household mortgage liabilities and the matching bank mortgage asset mirror are persisted.",
       ),
       financial(
         AssetType.GovBondAFS,

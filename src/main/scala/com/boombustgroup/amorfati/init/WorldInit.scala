@@ -193,7 +193,7 @@ object WorldInit:
       regionalWages = Region.all.map(r => r -> (p.household.baseWage * Region.normalizedWageMultiplier(r))).toMap,
     )
 
-    val ledgerFinancialState = LedgerFinancialState(
+    val rawLedgerFinancialState = LedgerFinancialState(
       households = householdStocks.map(LedgerFinancialState.householdBalances),
       firms = initFirmBalances,
       banks = initBankBalances,
@@ -220,6 +220,7 @@ object WorldInit:
         quasiFiscal = initQuasiFiscalStock,
       ),
     )
+    val ledgerFinancialState    = LedgerFinancialState.withBankMortgageAssets(rawLedgerFinancialState)
 
     val world = world0.copy(
       real = world0.real.copy(

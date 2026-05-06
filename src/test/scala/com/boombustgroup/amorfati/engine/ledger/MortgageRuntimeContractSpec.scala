@@ -8,7 +8,7 @@ import org.scalatest.matchers.should.Matchers
 
 class MortgageRuntimeContractSpec extends AnyFlatSpec with Matchers:
 
-  "MortgageRuntimeContract" should "keep mortgage principal settlement outside persisted stock owners" in {
+  "MortgageRuntimeContract" should "keep mortgage principal settlement outside persisted stock owners while bank assets persist" in {
     val topology = RuntimeLedgerTopology.nonZeroPopulation
     val node     = MortgageRuntimeContract.principalSettlement(topology)
 
@@ -21,11 +21,13 @@ class MortgageRuntimeContractSpec extends AnyFlatSpec with Matchers:
     // Topology-free checks are registry-level: dynamic household ownership is a sector wildcard.
     AssetOwnershipContract.isSupportedPersistedPair(EntitySector.Households, AssetType.MortgageLoan, 0) shouldBe true
     AssetOwnershipContract.isSupportedPersistedPair(EntitySector.Households, AssetType.MortgageLoan, node.index) shouldBe true
-    AssetOwnershipContract.isSupportedPersistedPair(EntitySector.Banks, AssetType.MortgageLoan, topology.banks.aggregate) shouldBe false
+    AssetOwnershipContract.isSupportedPersistedPair(EntitySector.Banks, AssetType.MortgageLoan, 0) shouldBe true
+    AssetOwnershipContract.isSupportedPersistedPair(EntitySector.Banks, AssetType.MortgageLoan, topology.banks.aggregate) shouldBe true
 
     // Topology-aware checks reject live aggregate/shell indices outside the persisted household slice.
     AssetOwnershipContract.isSupportedPersistedPair(topology, EntitySector.Households, AssetType.MortgageLoan, 0) shouldBe true
     AssetOwnershipContract.isSupportedPersistedPair(topology, EntitySector.Households, AssetType.MortgageLoan, node.index) shouldBe false
+    AssetOwnershipContract.isSupportedPersistedPair(topology, EntitySector.Banks, AssetType.MortgageLoan, 0) shouldBe true
     AssetOwnershipContract.isSupportedPersistedPair(topology, EntitySector.Banks, AssetType.MortgageLoan, topology.banks.aggregate) shouldBe false
   }
 

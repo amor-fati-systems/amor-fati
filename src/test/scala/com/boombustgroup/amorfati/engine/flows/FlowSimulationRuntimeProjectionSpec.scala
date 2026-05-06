@@ -146,7 +146,7 @@ class FlowSimulationRuntimeProjectionSpec extends AnyFlatSpec with Matchers:
     projection.ledgerFinancialState.nbp.reserveLiability shouldBe banks.map(_.reserve).sumPln
   }
 
-  it should "leave household mortgage stocks to semantic closing while runtime principal stays shell-only" in {
+  it should "mirror semantic closing household mortgage stocks into bank assets while runtime principal stays shell-only" in {
     val state    = stateFromSeed()
     val topology = RuntimeLedgerTopology.fromState(state)
     val opening  = state.ledgerFinancialState
@@ -171,6 +171,8 @@ class FlowSimulationRuntimeProjectionSpec extends AnyFlatSpec with Matchers:
     )
 
     projection.ledgerFinancialState.households shouldBe semanticClosing.households
+    LedgerFinancialState.bankMortgageStock(projection.ledgerFinancialState.banks) shouldBe
+      LedgerFinancialState.householdMortgageStock(semanticClosing.households)
   }
 
 end FlowSimulationRuntimeProjectionSpec

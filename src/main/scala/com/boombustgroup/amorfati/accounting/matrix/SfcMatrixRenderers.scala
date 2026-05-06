@@ -108,6 +108,7 @@ object SfcMatrixRenderers:
 
     renderMarkdownTable(
       s"""<!-- schema=${metadata.schemaVersion} seed=${metadata.seed} month=${metadata.executionMonth} commit=${metadata.commit} sfc=${metadata.sfcStatus} matrix=${metadata.matrixStatus} output=symbolic -->
+         |
          |# ${matrix.title}
          |""".stripMargin,
       header,
@@ -164,6 +165,7 @@ object SfcMatrixRenderers:
 
     renderMarkdownTable(
       s"""<!-- schema=${metadata.schemaVersion} seed=${metadata.seed} month=${metadata.executionMonth} commit=${metadata.commit} sfc=${metadata.sfcStatus} matrix=${metadata.matrixStatus} output=symbolic-mapping -->
+         |
          |# Symbolic Matrix Mapping
          |""".stripMargin,
       Vector("Matrix", "Row", "Symbols", "Runtime assets", "Runtime mechanisms", "Note"),
@@ -224,6 +226,7 @@ object SfcMatrixRenderers:
 
     renderMarkdownTable(
       s"""<!-- schema=${metadata.schemaVersion} seed=${metadata.seed} month=${metadata.executionMonth} commit=${metadata.commit} sfc=${metadata.sfcStatus} matrix=${metadata.matrixStatus} output=stock-flow-reconciliation -->
+         |
          |# Stock-Flow Reconciliation and Revaluation Evidence
          |
          |Rows compare independently sourced transaction, revaluation, default, write-off, and other-change channels with observed stock deltas or level identities. Residual is actual minus expected.
@@ -236,7 +239,7 @@ object SfcMatrixRenderers:
     val tableHeader = markdownRow(header)
     val separator   = markdownRow(header.map(_ => "---"))
     val body        = rows.map(markdownRow)
-    (Vector(prefix.trim, tableHeader, separator) ++ body).mkString("\n") + "\n"
+    (Vector(prefix.trim, "", tableHeader, separator) ++ body).mkString("\n") + "\n"
 
   private def markdownRow(values: Vector[String]): String =
     values.map(escapeMarkdown).mkString("| ", " | ", " |")

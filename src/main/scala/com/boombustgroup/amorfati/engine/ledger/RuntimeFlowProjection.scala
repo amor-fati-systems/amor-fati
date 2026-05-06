@@ -82,7 +82,9 @@ object RuntimeFlowProjection:
         nbpHoldings = quasiFiscal.nbpHoldings,
       ),
     )
-    val projectedLedger = LedgerFinancialState.withNbpReserveLiability(semanticClosing.copy(funds = projectedFunds))
+    val projectedLedger = LedgerFinancialState.withNbpReserveLiability(
+      LedgerFinancialState.withBankMortgageAssets(semanticClosing.copy(funds = projectedFunds)),
+    )
     Projection(
       ledgerFinancialState = projectedLedger,
       publicFundCash = publicFundCash,
