@@ -78,7 +78,10 @@ object CalibrationProvenance:
   object Baseline:
 
     lazy val parameters: Vector[CalibrationParameter] =
-      rawRows.flatMap(parseRow)
+      parsedRows.collect { case Right(parameter) => parameter }
+
+    lazy val parseErrors: Vector[String] =
+      parsedRows.collect { case Left(error) => error }
 
     lazy val statusCounts: Map[CalibrationStatus, Int] =
       parameters.groupMapReduce(_.status)(_ => 1)(_ + _)
@@ -89,27 +92,25 @@ object CalibrationProvenance:
     def rowsWithStatus(status: CalibrationStatus): Vector[CalibrationParameter] =
       parameters.filter(_.status == status)
 
-    private def parseRow(line: String): Option[CalibrationParameter] =
-      val trimmed = line.trim
-      if !trimmed.startsWith("| `") then None
+    private def parseRow(line: String): Either[String, CalibrationParameter] =
+      val cells = line.trim.stripPrefix("|").stripSuffix("|").split("\\|", -1).iterator.map(_.trim).toVector
+      if cells.length != 8 then Left(s"Expected 8 calibration columns, got ${cells.length}: $line")
       else
-        val cells        = trimmed.stripPrefix("|").stripSuffix("|").split("\\|", -1).iterator.map(_.trim).toVector
-        require(cells.length == 8, s"Expected 8 calibration columns, got ${cells.length}: $line")
         val parameterIds = splitParameterIds(cells(0))
         val ownerModules = splitCodeList(cells(6))
-        val status       = CalibrationStatus.parse(cells(7)).fold(error => throw IllegalArgumentException(error), identity)
-        Some(
-          CalibrationParameter(
-            id = parameterIds.head,
-            parameterIds = parameterIds,
-            renderedValue = stripCode(cells(1)),
-            unit = cells(2),
-            provenance = stripCode(cells(3)),
-            empiricalTarget = stripCode(cells(4)),
-            transformation = stripCode(cells(5)),
-            ownerModules = ownerModules,
-            status = status,
-          ),
+        for
+          id     <- parameterIds.headOption.toRight(s"Missing parameter id: $line")
+          status <- CalibrationStatus.parse(cells(7))
+        yield CalibrationParameter(
+          id = id,
+          parameterIds = parameterIds,
+          renderedValue = stripCode(cells(1)),
+          unit = cells(2),
+          provenance = stripCode(cells(3)),
+          empiricalTarget = stripCode(cells(4)),
+          transformation = stripCode(cells(5)),
+          ownerModules = ownerModules,
+          status = status,
         )
 
     private def splitCodeList(value: String): Vector[String] =
@@ -131,10 +132,10 @@ object CalibrationProvenance:
     private def stripCode(value: String): String =
       value.replace("`", "").trim
 
-    private def rawRows: Vector[String] =
-      RawRows.linesIterator.toVector
+    private lazy val parsedRows: Vector[Either[String, CalibrationParameter]] =
+      rawRows.map(parseRow)
 
-    private val RawRows: String =
+    private val rawRowsString: String =
       """
 | `pop.firmsCount` | `10000` | agents | Simulation design choice | Tractable heterogeneous firm population | Direct | `PopulationConfig` | `ASSUMED` |
 | `pop.workersPerFirm` | `10` | workers/firm normalizer | Simulation design choice | Normalizer for population and `gdpRatio` | Direct | `PopulationConfig` | `ASSUMED` |
@@ -375,3 +376,6 @@ object CalibrationProvenance:
 | `earmarked.fgspRate` | `0.001` | payroll rate | Code note bridge: employee claims law | FGSP levy | Direct | `EarmarkedConfig` | `EMPIRICAL` |
 | `earmarked.fgspPayoutPerWorker` | `10000` | PLN/worker | UNKNOWN_SOURCE | Bankruptcy wage payout | Direct | `EarmarkedConfig` | `UNKNOWN_SOURCE` |
       """
+
+    private val rawRows: Vector[String] =
+      rawRowsString.linesIterator.toVector.filter(_.trim.startsWith("| `"))

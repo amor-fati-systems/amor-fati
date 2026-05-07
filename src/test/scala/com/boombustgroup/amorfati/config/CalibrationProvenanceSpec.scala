@@ -10,6 +10,11 @@ class CalibrationProvenanceSpec extends AnyFlatSpec with Matchers:
   import CalibrationProvenance.CalibrationStatus.*
   import CalibrationProvenance.CalibrationStatusKind.*
 
+  private def baselineParameter(id: String): CalibrationParameter =
+    CalibrationProvenance.Baseline.parameters
+      .find(_.id == id)
+      .getOrElse(fail(s"Expected parameter '$id' not found in CalibrationProvenance.Baseline.parameters"))
+
   "CalibrationStatus" should "parse all documented status tokens" in {
     CalibrationStatus.values.foreach: status =>
       withClue(status.token) {
@@ -32,6 +37,7 @@ class CalibrationProvenanceSpec extends AnyFlatSpec with Matchers:
   }
 
   "Baseline calibration provenance" should "preserve the active default inventory status counts in code" in {
+    CalibrationProvenance.Baseline.parseErrors shouldBe empty
     CalibrationProvenance.Baseline.parameters should have size 238
     CalibrationProvenance.Baseline.statusCounts should contain(Empirical -> 35)
     CalibrationProvenance.Baseline.statusCounts should contain(EmpiricalTransformed -> 12)
@@ -52,7 +58,7 @@ class CalibrationProvenanceSpec extends AnyFlatSpec with Matchers:
   }
 
   it should "carry stable ids, owners, rendered values, source metadata, and transformations" in {
-    val baseWage = CalibrationProvenance.Baseline.parameters.find(_.id == "household.baseWage").get
+    val baseWage = baselineParameter("household.baseWage")
 
     baseWage.parameterIds shouldBe Vector("household.baseWage")
     baseWage.renderedValue shouldBe "9652"
@@ -65,14 +71,14 @@ class CalibrationProvenanceSpec extends AnyFlatSpec with Matchers:
   }
 
   it should "expand grouped shorthand parameter ids to stable fully-qualified ids" in {
-    val rent = CalibrationProvenance.Baseline.parameters.find(_.id == "household.rentMean").get
+    val rent = baselineParameter("household.rentMean")
 
     rent.parameterIds shouldBe Vector("household.rentMean", "household.rentStd", "household.rentFloor")
   }
 
   it should "preserve current gaps as typed data" in {
-    val revenueMultiplier = CalibrationProvenance.Baseline.parameters.find(_.id == "sectorDefs.revenueMultiplier").get
-    val mpc               = CalibrationProvenance.Baseline.parameters.find(_.id == "household.mpc").get
+    val revenueMultiplier = baselineParameter("sectorDefs.revenueMultiplier")
+    val mpc               = baselineParameter("household.mpc")
 
     revenueMultiplier.status shouldBe UnknownSource
     revenueMultiplier.needsSourceMetadata shouldBe true
@@ -81,9 +87,9 @@ class CalibrationProvenanceSpec extends AnyFlatSpec with Matchers:
   }
 
   it should "infer exemptions for structural, scenario, and startup-placeholder rows" in {
-    val bufferTarget = CalibrationProvenance.Baseline.parameters.find(_.id == "household.bufferTargetMonths").get
-    val riskOff      = CalibrationProvenance.Baseline.parameters.find(_.id == "forex.riskOffShockMonth").get
-    val govCapital   = CalibrationProvenance.Baseline.parameters.find(_.id == "fiscal.govInitCapital").get
+    val bufferTarget = baselineParameter("household.bufferTargetMonths")
+    val riskOff      = baselineParameter("forex.riskOffShockMonth")
+    val govCapital   = baselineParameter("fiscal.govInitCapital")
 
     bufferTarget.effectiveExemption shouldBe Some(StructuralAssumption)
     riskOff.effectiveExemption shouldBe Some(ScenarioSwitch)
