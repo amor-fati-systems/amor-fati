@@ -84,6 +84,10 @@ object LedgerFinancialState:
     marketCap * foreignOwnership
 
   def foreignEquityOwnershipShare(foreignEquityHoldings: PLN, marketCap: PLN): Share =
+    require(
+      marketCap > PLN.Zero || foreignEquityHoldings <= PLN.Zero,
+      s"LedgerFinancialState.foreignEquityOwnershipShare requires positive market cap for positive foreign equity holdings, foreignEquityHoldings=$foreignEquityHoldings marketCap=$marketCap",
+    )
     if marketCap > PLN.Zero then foreignEquityHoldings.ratioTo(marketCap).toShare.clamp(Share.Zero, Share.One)
     else Share.Zero
 

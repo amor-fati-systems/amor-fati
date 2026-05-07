@@ -136,7 +136,7 @@ object WorldAssemblyEconomics:
 
   /** Finalize GPW market-memory fields for this month. */
   private def finalizeEquity(in: StepInput): EquityMarket.State =
-    in.s7.equityAfterIssuance.copy(
+    in.s7.equityAfterForeignStock.copy(
       lastWealthEffect = PLN.Zero,
       lastDomesticDividends = in.s7.netDomesticDividends,
       lastForeignDividends = in.s7.foreignDividendOutflow,

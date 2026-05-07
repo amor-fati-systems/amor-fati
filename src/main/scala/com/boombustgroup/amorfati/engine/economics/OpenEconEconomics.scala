@@ -445,7 +445,7 @@ object OpenEconEconomics:
           unempRate = unempRate,
           govBondYield = newBondYield,
           corpBondYield = newCorpBondYield,
-          equityReturn = in.s7.equityAfterIssuance.monthlyReturn,
+          equityReturn = in.s7.equityAfterForeignStock.monthlyReturn,
           corpBondDefaultLoss = corpBondDefaultLoss,
         ),
       )
@@ -472,7 +472,7 @@ object OpenEconEconomics:
           bankNplRatio = bankAgg.nplRatio,
           govBondYield = newBondYield,
           corpBondYield = newCorpBondYield,
-          equityReturn = in.s7.equityAfterIssuance.monthlyReturn,
+          equityReturn = in.s7.equityAfterForeignStock.monthlyReturn,
           depositRate = nbfiDepositRate,
           domesticCons = in.s3.domesticCons,
           corpBondDefaultLoss = corpBondDefaultLoss,

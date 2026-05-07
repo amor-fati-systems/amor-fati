@@ -650,7 +650,7 @@ object FlowSimulation:
       equityForDividends = s7.foreignDividendOutflow,
       equityDivTax = s7.dividendTax,
       equityGovDividends = s7.stateOwnedGovDividends,
-      equityReturn = s7.equityAfterIssuance.monthlyReturn,
+      equityReturn = s7.equityAfterForeignStock.monthlyReturn,
       exports = externalFlowBop.exports,
       totalImports = externalFlowBop.totalImports,
       tourismExport = s6.tourismExport,

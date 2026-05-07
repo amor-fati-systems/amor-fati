@@ -33,7 +33,7 @@ object PriceEquityEconomics:
       newSigmas: Vector[Sigma],
       newInfl: Rate,
       newPrice: PriceIndex,
-      equityAfterIssuance: EquityMarket.State,
+      equityAfterForeignStock: EquityMarket.State,
       foreignEquityHoldings: PLN,
       netDomesticDividends: PLN,
       foreignDividendOutflow: PLN,
@@ -195,17 +195,17 @@ object PriceEquityEconomics:
     val newInfl  = priceUpd.inflation + firmStep.markupInflation
     val newPrice = priceUpd.priceLevel.applyGrowth(firmStep.markupInflation.monthly.toCoefficient)
 
-    val prevGdp                  = w.cachedMonthlyGdpProxy.max(PLN(1))
-    val deficitToGdp             = fiscalDeficitToGdp(w.gov.deficit.max(PLN.Zero), prevGdp)
-    val firmProfitsPnl           = firmStep.sumRealizedPostTaxProfit
-    val gdpGrowthForEquity       = gdp.ratioTo(prevGdp).toMultiplier.deviationFromOne
-    val equityInput              = w.financialMarkets.equity.copy(
+    val prevGdp                   = w.cachedMonthlyGdpProxy.max(PLN(1))
+    val deficitToGdp              = fiscalDeficitToGdp(w.gov.deficit.max(PLN.Zero), prevGdp)
+    val firmProfitsPnl            = firmStep.sumRealizedPostTaxProfit
+    val gdpGrowthForEquity        = gdp.ratioTo(prevGdp).toMultiplier.deviationFromOne
+    val equityInput               = w.financialMarkets.equity.copy(
       foreignOwnership = LedgerFinancialState.foreignEquityOwnershipShare(
         ledgerFinancialState.foreign.equityHoldings,
         w.financialMarkets.equity.marketCap,
       ),
     )
-    val equityAfterIndex         = EquityMarket.step(
+    val equityAfterIndex          = EquityMarket.step(
       EquityMarket.StepInput(
         prev = equityInput,
         refRate = w.nbp.referenceRate,
@@ -214,15 +214,17 @@ object PriceEquityEconomics:
         aggregateFirmProfits = firmProfitsPnl,
       ),
     )
-    val equityAfterIssuance      = EquityMarket.processIssuance(firmStep.sumEquityIssuance, equityAfterIndex)
-    val foreignEquityHoldings    = LedgerFinancialState.foreignEquityHoldings(equityAfterIssuance.marketCap, equityAfterIssuance.foreignOwnership)
-    val foreignEquityHolderShare = LedgerFinancialState.foreignEquityOwnershipShare(foreignEquityHoldings, equityAfterIssuance.marketCap)
-    val equityAfterForeignStock  = equityAfterIssuance.copy(foreignOwnership = foreignEquityHolderShare)
+    val equityAfterMarketIssuance = EquityMarket.processIssuance(firmStep.sumEquityIssuance, equityAfterIndex)
+    val foreignEquityHoldings     = LedgerFinancialState.foreignEquityHoldings(equityAfterMarketIssuance.marketCap, equityAfterMarketIssuance.foreignOwnership)
+    val foreignEquityHolderShare  = LedgerFinancialState.foreignEquityOwnershipShare(foreignEquityHoldings, equityAfterMarketIssuance.marketCap)
+    val dividendForeignShare      =
+      LedgerFinancialState.foreignEquityOwnershipShare(ledgerFinancialState.foreign.equityHoldings, equityAfterMarketIssuance.marketCap)
+    val equityAfterForeignStock   = equityAfterMarketIssuance.copy(foreignOwnership = foreignEquityHolderShare)
 
     val dividends              =
       EquityMarket.computeDividends(
         firmProfitsPnl,
-        foreignEquityHolderShare,
+        dividendForeignShare,
         stateOwnedProfits = firmStep.sumStateOwnedPostTaxProfit,
         deficitToGdp = deficitToGdp,
       )

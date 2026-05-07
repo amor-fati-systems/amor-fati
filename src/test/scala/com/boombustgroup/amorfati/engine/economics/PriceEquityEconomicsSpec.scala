@@ -108,8 +108,9 @@ class PriceEquityEconomicsSpec extends AnyFlatSpec with Matchers:
       sumStateOwnedPostTaxProfit = PLN.Zero,
     )
     val result            = runPriceStep(w, dividendSensitive)
+    val inputLedger       = init.ledgerFinancialState
     val stockShare        =
-      LedgerFinancialState.foreignEquityOwnershipShare(result.foreignEquityHoldings, result.equityAfterIssuance.marketCap)
+      LedgerFinancialState.foreignEquityOwnershipShare(inputLedger.foreign.equityHoldings, result.equityAfterForeignStock.marketCap)
     val expected          =
       EquityMarket.computeDividends(
         dividendSensitive.sumRealizedPostTaxProfit,
@@ -119,7 +120,7 @@ class PriceEquityEconomicsSpec extends AnyFlatSpec with Matchers:
       )
 
     result.foreignEquityHoldings shouldBe
-      LedgerFinancialState.foreignEquityHoldings(result.equityAfterIssuance.marketCap, result.equityAfterIssuance.foreignOwnership)
+      LedgerFinancialState.foreignEquityHoldings(result.equityAfterForeignStock.marketCap, result.equityAfterForeignStock.foreignOwnership)
     result.foreignDividendOutflow shouldBe expected.foreign
     result.netDomesticDividends shouldBe expected.netDomestic
   }

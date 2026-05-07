@@ -236,6 +236,14 @@ class LedgerFinancialStateSpec extends AnyFlatSpec with Matchers:
     )
   }
 
+  "LedgerFinancialState.foreignEquityOwnershipShare" should "fail fast on positive holdings without positive market cap" in {
+    val err = intercept[IllegalArgumentException]:
+      LedgerFinancialState.foreignEquityOwnershipShare(PLN(10), PLN.Zero)
+
+    err.getMessage should include(s"foreignEquityHoldings=${PLN(10)}")
+    err.getMessage should include(s"marketCap=${PLN.Zero}")
+  }
+
   "LedgerFinancialState.nbpBalances" should "write NBP execution stocks and reserve liabilities directly" in {
     val stocks = Nbp.FinancialStocks(
       govBondHoldings = PLN(123),

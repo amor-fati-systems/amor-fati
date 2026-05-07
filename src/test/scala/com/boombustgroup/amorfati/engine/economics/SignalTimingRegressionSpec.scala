@@ -229,7 +229,7 @@ class SignalTimingRegressionSpec extends AnyFlatSpec with Matchers:
 
   private def withSameMonthEquityReturn(s7: PriceEquityEconomics.Output, equityReturn: Rate): PriceEquityEconomics.Output =
     s7.copy(
-      equityAfterIssuance = s7.equityAfterIssuance.copy(monthlyReturn = equityReturn),
+      equityAfterForeignStock = s7.equityAfterForeignStock.copy(monthlyReturn = equityReturn),
     )
 
   private def entrySensitiveInput: WorldAssemblyEconomics.StepInput =
