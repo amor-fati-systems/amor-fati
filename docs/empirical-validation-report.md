@@ -8,8 +8,8 @@ gaps are documented in
 `docs/data-bridge-national-financial-accounts.md`.
 
 The goal is to keep failed, missing, or weak validation targets visible. A row
-with `MISSING_OUTPUT`, `MISSING_DATA_BRIDGE`, or `NOT_RUN` is part of the report
-surface, not an omission.
+with `MISSING_OUTPUT`, `MISSING_DATA_BRIDGE`, `MISSING_SOURCE_DETAIL`, or
+`BRIDGE_ASSUMPTION` is part of the report surface, not an omission.
 
 ## Validation Boundary
 
@@ -30,12 +30,12 @@ checks fail.
 
 | Status | Meaning |
 | --- | --- |
-| `READY_FOR_BASELINE` | Output columns exist and the empirical target family is identified. |
-| `PARTIAL_OUTPUT` | Output exists but requires a derived metric, normalization, or additional aggregation. |
+| `READY` | Output columns exist and the empirical target family is identified; pass/fail snapshots still require source manifest comparator metadata. |
+| `PARTIAL` | Output exists but requires a derived metric, normalization, additional aggregation, or partial source bridge. |
 | `MISSING_DATA_BRIDGE` | Model output exists, but external source extraction/transformation is not documented yet. |
 | `MISSING_OUTPUT` | Target is known, but the Monte Carlo output schema does not yet expose enough model state. |
-| `ACCOUNTING_ONLY` | This belongs to accounting validation, not empirical fit. |
-| `NOT_RUN` | The baseline validation run has not yet been summarized in this report. |
+| `MISSING_SOURCE_DETAIL` | Source family is identified, but the concrete table, vintage, or access path is missing. |
+| `BRIDGE_ASSUMPTION` | The target uses a documented empirical-to-model bridge assumption. |
 
 ## Reproducible Workflow
 
@@ -92,22 +92,22 @@ should not manually divide CSV values by `gdpRatio`.
 
 | Validation target | Empirical comparator | Model output mapping | Suggested statistic | Current status |
 | --- | --- | --- | --- | --- |
-| GDP growth | GUS national accounts real GDP growth | `MonthlyGdpProxy`, `AnnualizedGdpProxy` | Annual or quarterly growth of the emitted monthly GDP proxy, with real/nominal source convention stated by the validation manifest | `READY_FOR_BASELINE` |
-| Inflation | GUS CPI / HICP, NBP inflation target | `Inflation`, `PriceLevel`, `ExpectedInflation`, `InflationForecastError` | Mean, volatility, target deviation, persistence | `READY_FOR_BASELINE` |
-| Unemployment | GUS BAEL / registered unemployment | `Unemployment`, `Unemp_Central`, `Unemp_South`, `Unemp_East`, `Unemp_Northwest`, `Unemp_Southwest`, `Unemp_North` | Mean level, volatility, regional dispersion | `READY_FOR_BASELINE` |
-| Wages | GUS average wage, sector wage indices | `MarketWage`, `MeanEmployedWage`, `MinWageLevel`; terminal `_hh.csv` fields `MeanMonthlyIncome`, `MeanEmployedWage`, `WageP10`, `WageP50`, `WageP90` | Mean wage level and growth; minimum/market wage ratio; terminal wage distribution | `READY_FOR_BASELINE` |
-| Credit/GDP | NBP credit aggregates to GDP | `TotalCreditToGdp`, `TotalCreditStock`, `BankFirmLoans`, `BankFirmLoansToGdp`, `ConsumerLoans`, `ConsumerLoansToGdp`, `MortgageStock`, `MortgageToGdp`, `NbfiLoanStock`, `NbfiLoansToGdp`, `CreditToGdpGap`; terminal `_banks.csv` field `Loans` | Credit/GDP level, gap, household/firm/mortgage/NBFI split | `READY_FOR_BASELINE` |
-| Public debt/GDP | MF public debt, ESA2010 general-government debt | `DebtToGdp`, `Esa2010DebtToGdp`, `GovDebt`, `QfBondsOutstanding`, `BondsOutstanding` | Terminal debt/GDP and path against thresholds | `READY_FOR_BASELINE` |
-| Current account | NBP balance of payments | `CurrentAccount`, `CurrentAccountToGdp`, `TradeBalance_OE`, `Exports_OE`, `TotalImports_OE`, `NetRemittances`, `NetTourismBalance`, `FDI` | Annualized current-account/GDP and component signs | `READY_FOR_BASELINE` |
-| Firm-size distribution | GUS/REGON firm-size distribution | Terminal `_firms.csv` fields `FirmSize_Micro`, `FirmSize_Small`, `FirmSize_Medium`, `FirmSize_Large` and share fields | Terminal firm-size distribution (living firms only) | `READY_FOR_BASELINE` |
-| Bankruptcies | GUS / Ministry of Justice corporate insolvencies, consumer bankruptcy statistics | `FirmDeaths`, `FirmBirths`, `NetEntry`, `HouseholdBankruptcies`, `HouseholdBankruptcyRate`, `BankFailures`; terminal `_hh.csv` fields `HH_Bankrupt`, `BankruptcyRate`, `MeanMonthsToRuin` | Firm exit rate, household bankruptcy rate, bank failures | `READY_FOR_BASELINE` |
-| Bank capital and liquidity | KNF banking-sector CAR, LCR, NSFR, NPL | `MinBankCAR`, `MinBankLCR`, `MinBankNSFR`, `NPL`, `MaxBankNPL`; terminal `_banks.csv` fields `CAR`, `NPL`, `Capital`, `Deposits`, `Loans` | Minimum and distributional stress indicators | `READY_FOR_BASELINE` |
+| GDP growth | GUS national accounts real GDP growth | `MonthlyGdpProxy`, `AnnualizedGdpProxy` | Annual or quarterly growth of the emitted monthly GDP proxy, with real/nominal source convention stated by the validation manifest | `READY` |
+| Inflation | GUS CPI / HICP, NBP inflation target | `Inflation`, `PriceLevel`, `ExpectedInflation`, `InflationForecastError` | Mean, volatility, target deviation, persistence | `READY` |
+| Unemployment | GUS BAEL / registered unemployment | `Unemployment`, `Unemp_Central`, `Unemp_South`, `Unemp_East`, `Unemp_Northwest`, `Unemp_Southwest`, `Unemp_North` | Mean level, volatility, regional dispersion | `READY` |
+| Wages | GUS average wage, sector wage indices | `MarketWage`, `MeanEmployedWage`, `MinWageLevel`; terminal `_hh.csv` fields `MeanMonthlyIncome`, `MeanEmployedWage`, `WageP10`, `WageP50`, `WageP90` | Mean wage level and growth; minimum/market wage ratio; terminal wage distribution | `READY` |
+| Credit/GDP | NBP credit aggregates to GDP | `TotalCreditToGdp`, `TotalCreditStock`, `BankFirmLoans`, `BankFirmLoansToGdp`, `ConsumerLoans`, `ConsumerLoansToGdp`, `MortgageStock`, `MortgageToGdp`, `NbfiLoanStock`, `NbfiLoansToGdp`, `CreditToGdpGap`; terminal `_banks.csv` field `Loans` | Credit/GDP level, gap, household/firm/mortgage/NBFI split | `READY` |
+| Public debt/GDP | MF public debt, ESA2010 general-government debt | `DebtToGdp`, `Esa2010DebtToGdp`, `GovDebt`, `QfBondsOutstanding`, `BondsOutstanding` | Terminal debt/GDP and path against thresholds | `READY` |
+| Current account | NBP balance of payments | `CurrentAccount`, `CurrentAccountToGdp`, `TradeBalance_OE`, `Exports_OE`, `TotalImports_OE`, `NetRemittances`, `NetTourismBalance`, `FDI` | Annualized current-account/GDP and component signs | `READY` |
+| Firm-size distribution | GUS/REGON firm-size distribution | Terminal `_firms.csv` fields `FirmSize_Micro`, `FirmSize_Small`, `FirmSize_Medium`, `FirmSize_Large` and share fields | Terminal firm-size distribution (living firms only) | `READY` |
+| Bankruptcies | GUS / Ministry of Justice corporate insolvencies, consumer bankruptcy statistics | `FirmDeaths`, `FirmBirths`, `NetEntry`, `HouseholdBankruptcies`, `HouseholdBankruptcyRate`, `BankFailures`; terminal `_hh.csv` fields `HH_Bankrupt`, `BankruptcyRate`, `MeanMonthsToRuin` | Firm exit rate, household bankruptcy rate, bank failures | `READY` |
+| Bank capital and liquidity | KNF banking-sector CAR, LCR, NSFR, NPL | `MinBankCAR`, `MinBankLCR`, `MinBankNSFR`, `NPL`, `MaxBankNPL`; terminal `_banks.csv` fields `CAR`, `NPL`, `Capital`, `Deposits`, `Loans` | Minimum and distributional stress indicators | `READY` |
 | Inequality | GUS household surveys, EU-SILC, OECD income/wealth indicators | Terminal `_hh.csv` fields `Gini_Individual`, `Gini_Wealth`, `ConsumptionP10`, `ConsumptionP50`, `ConsumptionP90`, `PovertyRate_50pct`, `PovertyRate_30pct` | Terminal Gini, poverty rates, consumption percentile ratios | `MISSING_DATA_BRIDGE` |
-| Sectoral output | GUS national accounts by sector, supply-use tables | `BPO_Output`, `Manuf_Output`, `Retail_Output`, `Health_Output`, `Public_Output`, `Agri_Output` | Sector output shares and growth | `READY_FOR_BASELINE` |
-| External prices and FX | NBP exchange rate, ECB/Eurostat external prices | `ExRate`, `ForeignPriceIndex`, `GvcImportCostIndex`, `CommodityPriceIndex`, `FxReserves`, `FxInterventionAmt` | FX level/volatility, reserve path, import-cost shocks | `READY_FOR_BASELINE` |
-| Housing and mortgages | NBP housing prices, mortgage stock, KNF mortgage risk | `HousingPriceIndex`, `WawHpi`, `KrkHpi`, `WroHpi`, `GdnHpi`, `LdzHpi`, `PozHpi`, `RestHpi`, `MortgageToGdp`, `MortgageDefault` | HPI path, regional dispersion, mortgage/GDP, defaults | `READY_FOR_BASELINE` |
-| Fiscal stance | MF budget execution, Eurostat deficit/GDP | `DeficitToGdp`, `GovCurrentSpend`, `GovCapitalSpendDomestic`, `DebtService`, `FiscalRuleBinding`, `GovSpendingCutRatio` | Deficit/GDP, expenditure mix, fiscal-rule episodes | `READY_FOR_BASELINE` |
-| Monetary and financial market conditions | NBP reference rate, WIBOR, bond yields, GPW | `RefRate`, `WIBOR_1M`, `WIBOR_3M`, `WIBOR_6M`, `BondYield`, `GpwIndex`, `GpwMarketCap`, `CorpBondYield`, `CorpBondSpread` | Policy-rate path, spread behavior, market stress | `READY_FOR_BASELINE` |
+| Sectoral output | GUS national accounts by sector, supply-use tables | `BPO_Output`, `Manuf_Output`, `Retail_Output`, `Health_Output`, `Public_Output`, `Agri_Output` | Sector output shares and growth | `READY` |
+| External prices and FX | NBP exchange rate, ECB/Eurostat external prices | `ExRate`, `ForeignPriceIndex`, `GvcImportCostIndex`, `CommodityPriceIndex`, `FxReserves`, `FxInterventionAmt` | FX level/volatility, reserve path, import-cost shocks | `READY` |
+| Housing and mortgages | NBP housing prices, mortgage stock, KNF mortgage risk | `HousingPriceIndex`, `WawHpi`, `KrkHpi`, `WroHpi`, `GdnHpi`, `LdzHpi`, `PozHpi`, `RestHpi`, `MortgageToGdp`, `MortgageDefault` | HPI path, regional dispersion, mortgage/GDP, defaults | `READY` |
+| Fiscal stance | MF budget execution, Eurostat deficit/GDP | `DeficitToGdp`, `GovCurrentSpend`, `GovCapitalSpendDomestic`, `DebtService`, `FiscalRuleBinding`, `GovSpendingCutRatio` | Deficit/GDP, expenditure mix, fiscal-rule episodes | `READY` |
+| Monetary and financial market conditions | NBP reference rate, WIBOR, bond yields, GPW | `RefRate`, `WIBOR_1M`, `WIBOR_3M`, `WIBOR_6M`, `BondYield`, `GpwIndex`, `GpwMarketCap`, `CorpBondYield`, `CorpBondSpread` | Policy-rate path, spread behavior, market stress | `READY` |
 
 ## Baseline Report Snapshot
 
@@ -117,18 +117,22 @@ bridge and baseline analysis have been completed.
 
 | Target | Empirical source and vintage | Empirical value | Model run | Model value | Tolerance / criterion | Status | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| GDP growth | Poland 2026 projection band tracked by #461; final source manifest still TBD via `docs/data-bridge-national-financial-accounts.md` | 3.3%-3.7% real YoY | `main-baseline-clean_seeds10-48m`, 10 seeds, 48 months | m24 real proxy +3.56% YoY; nominal +6.69% YoY | m24 real proxy inside 3.3%-3.7% band | `PASS_BASELINE_PROBE` | Uses `MonthlyGdpProxy / PriceLevel`; CSV values are already Poland-scale. |
-| Inflation | TBD via `docs/data-bridge-national-financial-accounts.md` | TBD | `validation-baseline` | TBD | TBD | `NOT_RUN` | Use `Inflation` and `PriceLevel`. |
-| Unemployment | TBD via `docs/data-bridge-national-financial-accounts.md` | TBD | `validation-baseline` | TBD | TBD | `NOT_RUN` | Include regional dispersion. |
-| Wages | TBD via `docs/data-bridge-national-financial-accounts.md` | TBD | `validation-baseline` | TBD | TBD | `NOT_RUN` | Current output is aggregate market wage. |
-| Credit/GDP | TBD via `docs/data-bridge-national-financial-accounts.md` | TBD | `validation-baseline` | TBD | TBD | `NOT_RUN` | Firm-loan split depends partly on terminal bank summary. |
-| Public debt/GDP | TBD via `docs/data-bridge-national-financial-accounts.md` | TBD | `validation-baseline` | TBD | TBD | `NOT_RUN` | Compare `DebtToGdp` and `Esa2010DebtToGdp`. |
-| Current account | TBD via `docs/data-bridge-national-financial-accounts.md` | TBD | `validation-baseline` | TBD | TBD | `NOT_RUN` | External-balance calibration remains a follow-up surface. |
-| Firm-size distribution | TBD via `docs/data-bridge-national-financial-accounts.md` | TBD | `validation-baseline` | TBD | TBD | `NOT_RUN` | Use terminal `_firms.csv` firm-size counts and shares. |
-| Bankruptcies | TBD via `docs/data-bridge-national-financial-accounts.md` | TBD | `validation-baseline` | TBD | TBD | `NOT_RUN` | Use firm deaths and household bankruptcy separately. |
-| Bank capital/liquidity | TBD via `docs/data-bridge-national-financial-accounts.md` | TBD | `validation-baseline` | TBD | TBD | `NOT_RUN` | Use minima and terminal bank distribution. |
-| Inequality | TBD via `docs/data-bridge-national-financial-accounts.md` | TBD | `validation-baseline` | TBD | TBD | `NOT_RUN` | Terminal household summary has first-pass measures. |
-| Sectoral output | TBD via `docs/data-bridge-national-financial-accounts.md` | TBD | `validation-baseline` | TBD | TBD | `NOT_RUN` | Use emitted `*_Output` sector columns. |
+| GDP growth | Poland 2026 projection band tracked by #461; final source manifest still TBD via `docs/data-bridge-national-financial-accounts.md` | 3.3%-3.7% real YoY | `main-baseline-clean_seeds10-48m`, 10 seeds, 48 months | m24 real proxy +3.56% YoY; nominal +6.69% YoY | m24 real proxy inside 3.3%-3.7% band | `PASS_BASELINE` | Uses `MonthlyGdpProxy / PriceLevel`; CSV values are already Poland-scale. |
+| Inflation | TBD via `docs/data-bridge-national-financial-accounts.md` | TBD | `validation-baseline` | TBD | TBD | `MISSING_DATA_BRIDGE` | Use `Inflation` and `PriceLevel`. |
+| Unemployment | TBD via `docs/data-bridge-national-financial-accounts.md` | TBD | `validation-baseline` | TBD | TBD | `MISSING_DATA_BRIDGE` | Include regional dispersion. |
+| Wages | TBD via `docs/data-bridge-national-financial-accounts.md` | TBD | `validation-baseline` | TBD | TBD | `MISSING_DATA_BRIDGE` | Current output is aggregate market wage. |
+| Credit/GDP | TBD via `docs/data-bridge-national-financial-accounts.md` | TBD | `validation-baseline` | TBD | TBD | `MISSING_DATA_BRIDGE` | Firm-loan split depends partly on terminal bank summary. |
+| Public debt/GDP | TBD via `docs/data-bridge-national-financial-accounts.md` | TBD | `validation-baseline` | TBD | TBD | `MISSING_DATA_BRIDGE` | Compare `DebtToGdp` and `Esa2010DebtToGdp`. |
+| Current account | TBD via `docs/data-bridge-national-financial-accounts.md` | TBD | `validation-baseline` | TBD | TBD | `MISSING_DATA_BRIDGE` | External-balance calibration remains a follow-up surface. |
+| Firm-size distribution | TBD via `docs/data-bridge-national-financial-accounts.md` | TBD | `validation-baseline` | TBD | TBD | `MISSING_DATA_BRIDGE` | Use terminal `_firms.csv` firm-size counts and shares. |
+| Bankruptcies | TBD via `docs/data-bridge-national-financial-accounts.md` | TBD | `validation-baseline` | TBD | TBD | `MISSING_DATA_BRIDGE` | Use firm deaths and household bankruptcy separately. |
+| Bank capital/liquidity | TBD via `docs/data-bridge-national-financial-accounts.md` | TBD | `validation-baseline` | TBD | TBD | `MISSING_DATA_BRIDGE` | Use minima and terminal bank distribution. |
+| Inequality | TBD via `docs/data-bridge-national-financial-accounts.md` | TBD | `validation-baseline` | TBD | TBD | `MISSING_DATA_BRIDGE` | Terminal household summary has first-pass measures. |
+| Sectoral output | TBD via `docs/data-bridge-national-financial-accounts.md` | TBD | `validation-baseline` | TBD | TBD | `MISSING_DATA_BRIDGE` | Use emitted `*_Output` sector columns. |
+| External prices and FX | TBD via `docs/data-bridge-national-financial-accounts.md` | TBD | `validation-baseline` | TBD | TBD | `MISSING_DATA_BRIDGE` | Use `ExRate`, external price indices, FX reserves, and intervention columns. |
+| Housing and mortgages | TBD via `docs/data-bridge-national-financial-accounts.md` | TBD | `validation-baseline` | TBD | TBD | `MISSING_DATA_BRIDGE` | Use HPI, regional HPI, mortgage/GDP, and mortgage-default columns. |
+| Fiscal stance | TBD via `docs/data-bridge-national-financial-accounts.md` | TBD | `validation-baseline` | TBD | TBD | `MISSING_DATA_BRIDGE` | Use deficit/GDP, expenditure mix, debt service, and fiscal-rule columns. |
+| Monetary and financial market conditions | TBD via `docs/data-bridge-national-financial-accounts.md` | TBD | `validation-baseline` | TBD | TBD | `MISSING_DATA_BRIDGE` | Use reference rate, WIBOR, bond-yield, GPW, and corporate-spread columns. |
 
 ### Current main baseline sanity run
 
