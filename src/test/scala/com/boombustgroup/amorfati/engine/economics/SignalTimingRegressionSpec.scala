@@ -70,6 +70,7 @@ class SignalTimingRegressionSpec extends AnyFlatSpec with Matchers:
       sectorMults = s4.sectorMults,
       totalSystemLoans = ledgerFinancialState.banks.map(_.firmLoan).sumPln,
       firmStep = s5,
+      ledgerFinancialState = ledgerFinancialState,
     )
     val s8     =
       OpenEconEconomics.runStep(
@@ -228,7 +229,7 @@ class SignalTimingRegressionSpec extends AnyFlatSpec with Matchers:
 
   private def withSameMonthEquityReturn(s7: PriceEquityEconomics.Output, equityReturn: Rate): PriceEquityEconomics.Output =
     s7.copy(
-      equityAfterIssuance = s7.equityAfterIssuance.copy(monthlyReturn = equityReturn),
+      equityAfterForeignStock = s7.equityAfterForeignStock.copy(monthlyReturn = equityReturn),
     )
 
   private def entrySensitiveInput: WorldAssemblyEconomics.StepInput =

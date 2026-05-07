@@ -62,17 +62,17 @@ class AssetOwnershipContractSpec extends AnyFlatSpec with Matchers:
     presentUnsupportedFamilies(runtime) shouldBe unsupportedFamilies.map(_.id).toSet
   }
 
-  it should "classify foreign equity share and BoP stocks as metric-only audit exceptions" in {
+  it should "expose foreign equity as persisted holder stock while keeping BoP stocks metric-only" in {
     val metricOnlyIds = unsupportedFamilies
       .filter(_.category == UnsupportedCategory.MetricOnly)
       .map(_.id)
       .toSet
 
-    metricOnlyIds should contain allOf (
-      UnsupportedFamilyId.EquityForeignOwnershipShare,
-      UnsupportedFamilyId.BopExternalPositionMetrics,
-    )
-    isSupportedPersistedPair(EntitySector.Foreign, AssetType.Equity, 0) shouldBe false
+    metricOnlyIds should contain(UnsupportedFamilyId.BopExternalPositionMetrics)
+    publicAsset(AssetType.Equity).status shouldBe PublicAssetStatus.SupportedPersistedStock
+    publicAsset(AssetType.Equity).supportedSlots should contain(SectorId.Fixed(EntitySector.Foreign, 0))
+    supportedPairs should contain(SupportedPair(SectorId.Fixed(EntitySector.Foreign, 0), AssetType.Equity))
+    isSupportedPersistedPair(EntitySector.Foreign, AssetType.Equity, 0) shouldBe true
     publicAsset(AssetType.ForeignAsset).supportedSlots shouldBe Set(SectorId.Fixed(EntitySector.NBP, 0))
   }
 

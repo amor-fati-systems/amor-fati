@@ -225,7 +225,10 @@ object BankingEconomics:
         firms = issuerSettledFirmBalances,
         banks = multi.finalBankLedgerBalances,
         government = LedgerFinancialState.GovernmentBalances(govBondOutstanding = govJst.newGovBondOutstanding),
-        foreign = LedgerFinancialState.ForeignBalances(govBondHoldings = multi.foreignBondHoldings),
+        foreign = LedgerFinancialState.ForeignBalances(
+          govBondHoldings = multi.foreignBondHoldings,
+          equityHoldings = in.s7.foreignEquityHoldings,
+        ),
         nbp = LedgerFinancialState.nbpBalances(
           multi.finalNbpFinancialStocks,
           reserveLiability = LedgerFinancialState.nbpReserveLiabilityFromBanks(multi.finalBankLedgerBalances),

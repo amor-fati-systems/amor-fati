@@ -1,7 +1,7 @@
 package com.boombustgroup.amorfati.engine.ledger
 
 import com.boombustgroup.amorfati.engine.flows.{FlowSimulation, RuntimeLedgerTopology}
-import com.boombustgroup.amorfati.types.{PLN, Share}
+import com.boombustgroup.amorfati.types.PLN
 import com.boombustgroup.ledger.{AssetType, EntitySector}
 
 /** Engine-side ownership contract for the current ledger-backed financial
@@ -271,8 +271,9 @@ object AssetOwnershipContract:
         dynamic(EntitySector.Firms),
         singleton(EntitySector.Insurance),
         fund(FundRuntimeIndex.Nbfi),
+        singleton(EntitySector.Foreign),
       ),
-      "Supported stock family; FirmFlows owns current-month issuance while EquityFlows owns dividends.",
+      "Supported domestic and foreign holder stock family; FirmFlows owns current-month issuance while EquityFlows owns dividends.",
     ),
     PublicAssetContract(
       AssetType.LifeReserve,
@@ -385,7 +386,6 @@ object AssetOwnershipContract:
   enum UnsupportedFamilyId:
     case BankCapital
     case BankCreditRiskState
-    case EquityForeignOwnershipShare
     case BopExternalPositionMetrics
     case GovernmentFiscalCumulativeDebt
     case NbpQeCumulativePurchases
@@ -421,11 +421,6 @@ object AssetOwnershipContract:
       UnsupportedFamilyId.BankCreditRiskState,
       UnsupportedCategory.UnsupportedPersistedStock,
       "NPL and loan-maturity buckets are accounting/risk state rather than holder-tracked instruments.",
-    ),
-    UnsupportedFamily(
-      UnsupportedFamilyId.EquityForeignOwnershipShare,
-      UnsupportedCategory.MetricOnly,
-      "GPW foreign-ownership share is market memory for dividend/BoP splitting, not a holder-resolved equity stock.",
     ),
     UnsupportedFamily(
       UnsupportedFamilyId.BopExternalPositionMetrics,
@@ -471,7 +466,6 @@ object AssetOwnershipContract:
             bank.loansLong != PLN.Zero,
         ),
       )(UnsupportedFamilyId.BankCreditRiskState)
-      ++ Option.when(sim.world.financialMarkets.equity.foreignOwnership != Share.Zero)(UnsupportedFamilyId.EquityForeignOwnershipShare)
       ++ Option.when(
         sim.world.bop.nfa != PLN.Zero ||
           sim.world.bop.foreignAssets != PLN.Zero ||

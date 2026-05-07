@@ -34,9 +34,9 @@ object EquityMarket:
   private val ForeignReversionSpeed  = Share.decimal(1, 2)  // monthly mean-reversion speed
 
   /** GPW equity market state: aggregate index, valuation/yield memory, dividend
-    * diagnostics, and the calibrated foreign share used for BoP dividend
-    * splitting. Supported domestic equity owner balances live in
-    * LedgerFinancialState; this share is not a holder-resolved stock.
+    * diagnostics, and the calibrated foreign share used to materialize
+    * foreign-sector equity holder stock. Supported domestic and foreign equity
+    * owner balances live in LedgerFinancialState.
     */
   case class State(
       index: PriceIndex,

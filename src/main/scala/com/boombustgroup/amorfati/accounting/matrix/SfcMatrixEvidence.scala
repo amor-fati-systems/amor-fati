@@ -226,6 +226,7 @@ object SfcMatrixEvidence:
         (AssetType.Equity, EntitySector.Firms, -ledger.firms.iterator.map(_.equity).sumPln),
         (AssetType.Equity, EntitySector.Insurance, ledger.insurance.equityHoldings),
         (AssetType.Equity, EntitySector.Funds, ledger.funds.nbfi.equityHoldings),
+        (AssetType.Equity, EntitySector.Foreign, ledger.foreign.equityHoldings),
         (AssetType.LifeReserve, EntitySector.Households, ledger.households.iterator.map(_.lifeReserveAsset).sumPln),
         (AssetType.LifeReserve, EntitySector.Insurance, -ledger.insurance.lifeReserve),
         (AssetType.NonLifeReserve, EntitySector.Households, ledger.households.iterator.map(_.nonLifeReserveAsset).sumPln),

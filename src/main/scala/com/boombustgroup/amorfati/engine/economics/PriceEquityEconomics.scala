@@ -4,6 +4,7 @@ import com.boombustgroup.amorfati.agents.*
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.*
 import com.boombustgroup.amorfati.engine.SimulationMonth.ExecutionMonth
+import com.boombustgroup.amorfati.engine.ledger.LedgerFinancialState
 import com.boombustgroup.amorfati.engine.markets.{EquityMarket, LaborMarket, PriceLevel}
 import com.boombustgroup.amorfati.engine.mechanisms.{EuFunds, Macroprudential}
 import com.boombustgroup.amorfati.types.*
@@ -32,7 +33,8 @@ object PriceEquityEconomics:
       newSigmas: Vector[Sigma],
       newInfl: Rate,
       newPrice: PriceIndex,
-      equityAfterIssuance: EquityMarket.State,
+      equityAfterForeignStock: EquityMarket.State,
+      foreignEquityHoldings: PLN,
       netDomesticDividends: PLN,
       foreignDividendOutflow: PLN,
       dividendTax: PLN,
@@ -128,6 +130,7 @@ object PriceEquityEconomics:
       sectorMults: Vector[Multiplier],
       totalSystemLoans: PLN,
       firmStep: FirmEconomics.StepOutput,
+      ledgerFinancialState: LedgerFinancialState,
   )(using p: SimParams): Output =
     val expectedSectorCount = p.sectorDefs.length
     if sectorMults.length != expectedSectorCount then
@@ -192,25 +195,36 @@ object PriceEquityEconomics:
     val newInfl  = priceUpd.inflation + firmStep.markupInflation
     val newPrice = priceUpd.priceLevel.applyGrowth(firmStep.markupInflation.monthly.toCoefficient)
 
-    val prevGdp             = w.cachedMonthlyGdpProxy.max(PLN(1))
-    val deficitToGdp        = fiscalDeficitToGdp(w.gov.deficit.max(PLN.Zero), prevGdp)
-    val firmProfitsPnl      = firmStep.sumRealizedPostTaxProfit
-    val gdpGrowthForEquity  = gdp.ratioTo(prevGdp).toMultiplier.deviationFromOne
-    val equityAfterIndex    = EquityMarket.step(
+    val prevGdp                   = w.cachedMonthlyGdpProxy.max(PLN(1))
+    val deficitToGdp              = fiscalDeficitToGdp(w.gov.deficit.max(PLN.Zero), prevGdp)
+    val firmProfitsPnl            = firmStep.sumRealizedPostTaxProfit
+    val gdpGrowthForEquity        = gdp.ratioTo(prevGdp).toMultiplier.deviationFromOne
+    val equityInput               = w.financialMarkets.equity.copy(
+      foreignOwnership = LedgerFinancialState.foreignEquityOwnershipShare(
+        ledgerFinancialState.foreign.equityHoldings,
+        w.financialMarkets.equity.marketCap,
+      ),
+    )
+    val equityAfterIndex          = EquityMarket.step(
       EquityMarket.StepInput(
-        prev = w.financialMarkets.equity,
+        prev = equityInput,
         refRate = w.nbp.referenceRate,
         inflation = newInfl,
         gdpGrowth = gdpGrowthForEquity,
         aggregateFirmProfits = firmProfitsPnl,
       ),
     )
-    val equityAfterIssuance = EquityMarket.processIssuance(firmStep.sumEquityIssuance, equityAfterIndex)
+    val equityAfterMarketIssuance = EquityMarket.processIssuance(firmStep.sumEquityIssuance, equityAfterIndex)
+    val foreignEquityHoldings     = LedgerFinancialState.foreignEquityHoldings(equityAfterMarketIssuance.marketCap, equityAfterMarketIssuance.foreignOwnership)
+    val foreignEquityHolderShare  = LedgerFinancialState.foreignEquityOwnershipShare(foreignEquityHoldings, equityAfterMarketIssuance.marketCap)
+    val dividendForeignShare      =
+      LedgerFinancialState.foreignEquityOwnershipShare(ledgerFinancialState.foreign.equityHoldings, equityAfterMarketIssuance.marketCap)
+    val equityAfterForeignStock   = equityAfterMarketIssuance.copy(foreignOwnership = foreignEquityHolderShare)
 
     val dividends              =
       EquityMarket.computeDividends(
         firmProfitsPnl,
-        equityAfterIssuance.foreignOwnership,
+        dividendForeignShare,
         stateOwnedProfits = firmStep.sumStateOwnedPostTaxProfit,
         deficitToGdp = deficitToGdp,
       )
@@ -233,7 +247,8 @@ object PriceEquityEconomics:
       newSigmas,
       newInfl,
       newPrice,
-      equityAfterIssuance,
+      equityAfterForeignStock,
+      foreignEquityHoldings,
       netDomesticDividends,
       foreignDividendOutflow,
       dividendTax,

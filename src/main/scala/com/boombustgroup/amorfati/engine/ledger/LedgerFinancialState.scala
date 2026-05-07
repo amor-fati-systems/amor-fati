@@ -2,7 +2,7 @@ package com.boombustgroup.amorfati.engine.ledger
 
 import com.boombustgroup.amorfati.agents.{Banking, Firm, Household, Insurance, Nbfi, Nbp, QuasiFiscal}
 import com.boombustgroup.amorfati.engine.markets.CorporateBondMarket
-import com.boombustgroup.amorfati.types.{distributeRaw, sumPln, FirmId, HhId, PLN}
+import com.boombustgroup.amorfati.types.*
 import com.boombustgroup.ledger.Distribute
 
 /** Ledger-owned snapshot of ledger-contracted financial stocks used by the
@@ -78,6 +78,18 @@ object LedgerFinancialState:
 
   def bankMortgageStock(banks: Vector[BankBalances]): PLN =
     banks.map(_.mortgageLoan).sumPln
+
+  def foreignEquityHoldings(marketCap: PLN, foreignOwnership: Share): PLN =
+    require(marketCap >= PLN.Zero, s"LedgerFinancialState.foreignEquityHoldings requires non-negative market cap, got $marketCap")
+    marketCap * foreignOwnership
+
+  def foreignEquityOwnershipShare(foreignEquityHoldings: PLN, marketCap: PLN): Share =
+    require(
+      marketCap > PLN.Zero || foreignEquityHoldings <= PLN.Zero,
+      s"LedgerFinancialState.foreignEquityOwnershipShare requires positive market cap for positive foreign equity holdings, foreignEquityHoldings=$foreignEquityHoldings marketCap=$marketCap",
+    )
+    if marketCap > PLN.Zero then foreignEquityHoldings.ratioTo(marketCap).toShare.clamp(Share.Zero, Share.One)
+    else Share.Zero
 
   /** Writes the aggregate mortgage model's closing principal back into
     * household ledger rows. Until origination/defaults are modeled per
@@ -459,6 +471,8 @@ object LedgerFinancialState:
   case class ForeignBalances(
       /** Central-government bonds held by foreign investors. */
       govBondHoldings: PLN,
+      /** Listed domestic equity held by foreign investors at market value. */
+      equityHoldings: PLN = PLN.Zero,
   )
 
   /** Ledger-backed financial balances owned or owed by the central bank. */

@@ -12,7 +12,7 @@
 | symbolic-bsm | Government bonds | +B_b, -B_g, +B_{nbp}, +B_{ins}, +B_{fnd}, +B_{row}, 0 | Government bonds (GovBondHTM)<br>Government bonds AFS (GovBondAFS) |  |  |
 | symbolic-bsm | Quasi-fiscal bonds | +Q_b, +Q_{nbp}, -Q, 0 | Quasi-fiscal bonds (QuasiFiscalBond) |  |  |
 | symbolic-bsm | Corporate bonds | -B_c, +B_{cb}, +B_{ci}, +B_{cf}, 0 | Corporate bonds (CorpBond) |  |  |
-| symbolic-bsm | Equity | +E_h, -E, +E_i, +E_f, +E_{row}, 0 | Equity (Equity) |  | Foreign equity ownership is currently metric-level evidence rather than a holder-resolved persisted stock. |
+| symbolic-bsm | Equity | +E_h, -E, +E_i, +E_f, +E_{row}, 0 | Equity (Equity) |  | Foreign equity ownership is represented as a holder-resolved persisted stock; remaining residuals are equity valuation and coverage evidence. |
 | symbolic-bsm | Insurance reserves | +IR_h, -IR, 0 | Life insurance reserves (LifeReserve)<br>Non-life insurance reserves (NonLifeReserve) |  |  |
 | symbolic-bsm | Fund units | +U_h, -U, 0 | TFI units (TfiUnit) |  |  |
 | symbolic-bsm | Foreign assets | +FA, -FA, 0 | Foreign assets (ForeignAsset) |  |  |

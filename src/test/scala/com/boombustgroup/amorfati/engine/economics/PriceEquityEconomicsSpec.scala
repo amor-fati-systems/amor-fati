@@ -3,6 +3,8 @@ package com.boombustgroup.amorfati.engine.economics
 import com.boombustgroup.amorfati.FixedPointSpecSupport.*
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.SimulationMonth.ExecutionMonth
+import com.boombustgroup.amorfati.engine.ledger.LedgerFinancialState
+import com.boombustgroup.amorfati.engine.markets.EquityMarket
 import com.boombustgroup.amorfati.init.{InitRandomness, WorldInit}
 import com.boombustgroup.amorfati.random.RandomStream
 import com.boombustgroup.amorfati.types.*
@@ -41,6 +43,7 @@ class PriceEquityEconomicsSpec extends AnyFlatSpec with Matchers:
       sectorMults = s4.sectorMults,
       totalSystemLoans = init.ledgerFinancialState.banks.map(_.firmLoan).sumPln,
       firmStep = firmStep,
+      ledgerFinancialState = init.ledgerFinancialState,
     )
 
   "PriceEquityEconomics.governmentDemandContribution" should "scale with constrained runtime government purchases" in {
@@ -99,6 +102,29 @@ class PriceEquityEconomicsSpec extends AnyFlatSpec with Matchers:
     highDeficit.netDomesticDividends shouldBe lowDeficit.netDomesticDividends
   }
 
+  it should "split dividends from persisted foreign equity stock evidence" in {
+    val dividendSensitive = s5.copy(
+      sumRealizedPostTaxProfit = PLN(200000000),
+      sumStateOwnedPostTaxProfit = PLN.Zero,
+    )
+    val result            = runPriceStep(w, dividendSensitive)
+    val inputLedger       = init.ledgerFinancialState
+    val stockShare        =
+      LedgerFinancialState.foreignEquityOwnershipShare(inputLedger.foreign.equityHoldings, result.equityAfterForeignStock.marketCap)
+    val expected          =
+      EquityMarket.computeDividends(
+        dividendSensitive.sumRealizedPostTaxProfit,
+        stockShare,
+        stateOwnedProfits = dividendSensitive.sumStateOwnedPostTaxProfit,
+        deficitToGdp = Share.Zero,
+      )
+
+    result.foreignEquityHoldings shouldBe
+      LedgerFinancialState.foreignEquityHoldings(result.equityAfterForeignStock.marketCap, result.equityAfterForeignStock.foreignOwnership)
+    result.foreignDividendOutflow shouldBe expected.foreign
+    result.netDomesticDividends shouldBe expected.netDomestic
+  }
+
   it should "anchor GDP proxy to realized output instead of unmet expenditure demand" in {
     val base           = runPriceStep(w, s5)
     val inflatedDemand = PriceEquityEconomics.compute(
@@ -109,6 +135,7 @@ class PriceEquityEconomicsSpec extends AnyFlatSpec with Matchers:
       sectorMults = s4.sectorMults,
       totalSystemLoans = init.ledgerFinancialState.banks.map(_.firmLoan).sumPln,
       firmStep = s5,
+      ledgerFinancialState = init.ledgerFinancialState,
     )
 
     inflatedDemand.gdp shouldBe base.gdp
@@ -137,6 +164,7 @@ class PriceEquityEconomicsSpec extends AnyFlatSpec with Matchers:
         sectorMults = s4.sectorMults.dropRight(1),
         totalSystemLoans = init.ledgerFinancialState.banks.map(_.firmLoan).sumPln,
         firmStep = s5,
+        ledgerFinancialState = init.ledgerFinancialState,
       )
 
     err.getMessage should include("sectorMults")

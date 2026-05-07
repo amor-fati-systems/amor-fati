@@ -100,7 +100,7 @@ object SfcSymbolicMatrices:
         ),
         row("equity", "Equity", HH -> "+E_h", Firms -> "-E", Ins -> "+E_i", Funds -> "+E_f", ROW -> "+E_{row}")(
           assets = Vector(AssetType.Equity),
-          note = "Foreign equity ownership is currently metric-level evidence rather than a holder-resolved persisted stock.",
+          note = "Foreign equity ownership is represented as a holder-resolved persisted stock; remaining residuals are equity valuation and coverage evidence.",
         ),
         row("insurance-reserves", "Insurance reserves", HH -> "+IR_h", Ins -> "-IR")(
           assets = Vector(AssetType.LifeReserve, AssetType.NonLifeReserve),
