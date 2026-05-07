@@ -73,6 +73,58 @@ class LedgerFinancialStateSpec extends AnyFlatSpec with Matchers:
     LedgerFinancialState.householdMortgageStock(settled) shouldBe PLN(30)
   }
 
+  "LedgerFinancialState.settleHouseholdInsuranceReserveAssets" should "mirror aggregate insurance reserves into household asset rows" in {
+    val households = Vector(
+      LedgerFinancialState.HouseholdBalances(
+        demandDeposit = PLN(1),
+        mortgageLoan = PLN.Zero,
+        consumerLoan = PLN.Zero,
+        equity = PLN(5),
+        lifeReserveAsset = PLN(10),
+        nonLifeReserveAsset = PLN(20),
+      ),
+      LedgerFinancialState.HouseholdBalances(
+        demandDeposit = PLN(3),
+        mortgageLoan = PLN.Zero,
+        consumerLoan = PLN.Zero,
+        equity = PLN(7),
+        lifeReserveAsset = PLN(30),
+        nonLifeReserveAsset = PLN(20),
+      ),
+    )
+
+    val settled = LedgerFinancialState.settleHouseholdInsuranceReserveAssets(households, PLN(80), PLN(60))
+
+    LedgerFinancialState.householdLifeReserveAsset(settled) shouldBe PLN(80)
+    LedgerFinancialState.householdNonLifeReserveAsset(settled) shouldBe PLN(60)
+    settled.map(_.lifeReserveAsset) shouldBe Vector(PLN(20), PLN(60))
+    settled.map(_.nonLifeReserveAsset) shouldBe Vector(PLN(30), PLN(30))
+    settled.map(_.demandDeposit) shouldBe households.map(_.demandDeposit)
+    settled.map(_.equity) shouldBe households.map(_.equity)
+  }
+
+  it should "allocate initial household reserve assets by deposit weights when no reserve weights exist" in {
+    val households = Vector(
+      LedgerFinancialState.HouseholdBalances(
+        demandDeposit = PLN(1),
+        mortgageLoan = PLN.Zero,
+        consumerLoan = PLN.Zero,
+        equity = PLN.Zero,
+      ),
+      LedgerFinancialState.HouseholdBalances(
+        demandDeposit = PLN(3),
+        mortgageLoan = PLN.Zero,
+        consumerLoan = PLN.Zero,
+        equity = PLN.Zero,
+      ),
+    )
+
+    val settled = LedgerFinancialState.settleHouseholdInsuranceReserveAssets(households, PLN(80), PLN(40))
+
+    settled.map(_.lifeReserveAsset) shouldBe Vector(PLN(20), PLN(60))
+    settled.map(_.nonLifeReserveAsset) shouldBe Vector(PLN(10), PLN(30))
+  }
+
   "LedgerFinancialState.settleBankMortgageAssets" should "mirror the aggregate household mortgage stock into bank asset rows" in {
     val banks = Vector(
       LedgerFinancialState.BankBalances(

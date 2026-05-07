@@ -102,7 +102,7 @@ object RuntimeMechanismSurvivability:
     ),
     declared(
       ExecutionDeltaOnly,
-      "Insurance reserve flows use the persisted insurance reserve owner plus the aggregate insurance execution shell.",
+      "Insurance reserve flows use the persisted insurance reserve owner plus the aggregate household execution shell; per-household reserve assets are materialized as a stock mirror at the month boundary.",
       FlowMechanism.InsLifePremium,
       FlowMechanism.InsNonLifePremium,
       FlowMechanism.InsLifeClaim,

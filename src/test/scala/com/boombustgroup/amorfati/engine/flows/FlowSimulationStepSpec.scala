@@ -353,13 +353,13 @@ class FlowSimulationStepSpec extends AnyFlatSpec with Matchers:
     val insuranceIncomeBatches = result.flows.filter(_.mechanism == FlowMechanism.InsInvestmentIncome)
     insuranceIncomeBatches should not be empty
     insuranceIncomeBatches.map(_.asset).toSet shouldBe Set(AssetType.LifeReserve, AssetType.NonLifeReserve)
-    all(insuranceIncomeBatches.map(_.from)) shouldBe EntitySector.Insurance
-    all(insuranceIncomeBatches.map(_.to)) shouldBe EntitySector.Insurance
+    insuranceIncomeBatches.foreach: batch =>
+      Set(batch.from, batch.to) shouldBe Set(EntitySector.Households, EntitySector.Insurance)
 
     val insuranceReserveBatches = result.flows.filter(batch => batch.asset == AssetType.LifeReserve || batch.asset == AssetType.NonLifeReserve)
     insuranceReserveBatches should not be empty
-    all(insuranceReserveBatches.map(_.from)) shouldBe EntitySector.Insurance
-    all(insuranceReserveBatches.map(_.to)) shouldBe EntitySector.Insurance
+    insuranceReserveBatches.foreach: batch =>
+      Set(batch.from, batch.to) shouldBe Set(EntitySector.Households, EntitySector.Insurance)
 
     val insurancePremiums = mechanismTotal(result.flows, FlowMechanism.InsLifePremium) +
       mechanismTotal(result.flows, FlowMechanism.InsNonLifePremium)
@@ -368,6 +368,10 @@ class FlowSimulationStepSpec extends AnyFlatSpec with Matchers:
 
     result.trace.executedFlows.insNetDepositChange shouldBe insuranceClaims - insurancePremiums
     result.trace.executedFlows.insNetDepositChange shouldBe result.nextState.world.financialMarkets.insurance.lastNetDepositChange
+
+    val closingLedger = result.nextState.ledgerFinancialState
+    LedgerFinancialState.householdLifeReserveAsset(closingLedger) shouldBe closingLedger.insurance.lifeReserve
+    LedgerFinancialState.householdNonLifeReserveAsset(closingLedger) shouldBe closingLedger.insurance.nonLifeReserve
   }
 
   it should "read insurance flow inputs from LedgerFinancialState instead of World market memory" in {

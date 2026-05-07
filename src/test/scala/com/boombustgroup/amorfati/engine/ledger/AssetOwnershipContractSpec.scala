@@ -27,6 +27,21 @@ class AssetOwnershipContractSpec extends AnyFlatSpec with Matchers:
     isSupportedPersistedPair(EntitySector.Funds, AssetType.NbfiLoan, FundRuntimeIndex.QuasiFiscal) shouldBe true
   }
 
+  it should "expose insurance technical reserves as household assets and insurance liabilities" in {
+    val topology = RuntimeLedgerTopology.nonZeroPopulation
+
+    supportedPairs should contain(SupportedPair(SectorId.Dynamic(EntitySector.Households), AssetType.LifeReserve))
+    supportedPairs should contain(SupportedPair(SectorId.Fixed(EntitySector.Insurance, 0), AssetType.LifeReserve))
+    supportedPairs should contain(SupportedPair(SectorId.Dynamic(EntitySector.Households), AssetType.NonLifeReserve))
+    supportedPairs should contain(SupportedPair(SectorId.Fixed(EntitySector.Insurance, 0), AssetType.NonLifeReserve))
+
+    isSupportedPersistedPair(topology, EntitySector.Households, AssetType.LifeReserve, 0) shouldBe true
+    isSupportedPersistedPair(topology, EntitySector.Households, AssetType.NonLifeReserve, topology.households.persistedCount - 1) shouldBe true
+    isSupportedPersistedPair(topology, EntitySector.Households, AssetType.LifeReserve, topology.households.aggregate) shouldBe false
+    isSupportedPersistedPair(topology, EntitySector.Insurance, AssetType.NonLifeReserve, topology.insurance.persistedOwner) shouldBe true
+    isSupportedPersistedPair(topology, EntitySector.Insurance, AssetType.NonLifeReserve, topology.insurance.aggregate) shouldBe false
+  }
+
   it should "distinguish persisted dynamic owners from appended runtime shells" in {
     val topology = RuntimeLedgerTopology.nonZeroPopulation
 

@@ -83,6 +83,20 @@ object InitCheck:
       levelTol,
     )
 
+    val lifeReserveMirror = check(
+      "Life reserve household asset mirror",
+      expected = ledgerFinancialState.insurance.lifeReserve,
+      actual = LedgerFinancialState.householdLifeReserveAsset(ledgerFinancialState.households),
+      levelTol,
+    )
+
+    val nonLifeReserveMirror = check(
+      "Non-life reserve household asset mirror",
+      expected = ledgerFinancialState.insurance.nonLifeReserve,
+      actual = LedgerFinancialState.householdNonLifeReserveAsset(ledgerFinancialState.households),
+      levelTol,
+    )
+
     // --- Per-bank agent cross-checks ---
 
     val firmRows         = firms.zip(ledgerFinancialState.firms)
@@ -141,7 +155,8 @@ object InitCheck:
       levelTol,
     )
 
-    val all = Vector(bondClearing, interbankNetting, reserveLiability, mortgageMirror) ++ perBankChecks ++ Vector(aggDepositCheck, aggLoanCheck)
+    val all = Vector(bondClearing, interbankNetting, reserveLiability, mortgageMirror, lifeReserveMirror, nonLifeReserveMirror) ++
+      perBankChecks ++ Vector(aggDepositCheck, aggLoanCheck)
     all.filterNot(_.passed)
 
   private def check(identity: String, expected: PLN, actual: PLN, tolerance: PLN): InitCheckResult =

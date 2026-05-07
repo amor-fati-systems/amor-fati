@@ -70,9 +70,9 @@ object InsuranceFlows:
   )(using topology: RuntimeLedgerTopology): Vector[BatchedFlow] =
     AggregateBatchedEmission.transfer(
       EntitySector.Insurance,
-      topology.insurance.aggregate,
-      EntitySector.Insurance,
       topology.insurance.persistedOwner,
+      EntitySector.Households,
+      topology.households.aggregate,
       amount,
       asset,
       mechanism,
@@ -84,10 +84,10 @@ object InsuranceFlows:
       mechanism: MechanismId,
   )(using topology: RuntimeLedgerTopology): Vector[BatchedFlow] =
     AggregateBatchedEmission.transfer(
+      EntitySector.Households,
+      topology.households.aggregate,
       EntitySector.Insurance,
       topology.insurance.persistedOwner,
-      EntitySector.Insurance,
-      topology.insurance.aggregate,
       amount,
       asset,
       mechanism,

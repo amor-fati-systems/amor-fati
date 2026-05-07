@@ -244,7 +244,10 @@ object BankingEconomics:
           quasiFiscal = quasiFiscalStep.stock,
         ),
       )
-    val ledgerFinancialState    = LedgerFinancialState.withBankMortgageAssets(rawLedgerFinancialState)
+    val ledgerFinancialState    =
+      LedgerFinancialState.withBankMortgageAssets(
+        LedgerFinancialState.withHouseholdInsuranceReserveAssets(rawLedgerFinancialState),
+      )
     val monAgg                  = computeMonetaryAggregates(multi.finalBanks, ledgerFinancialState)
 
     StepOutput(

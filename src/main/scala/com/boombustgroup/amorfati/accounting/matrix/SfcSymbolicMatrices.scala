@@ -104,6 +104,7 @@ object SfcSymbolicMatrices:
         ),
         row("insurance-reserves", "Insurance reserves", HH -> "+IR_h", Ins -> "-IR")(
           assets = Vector(AssetType.LifeReserve, AssetType.NonLifeReserve),
+          note = "Household insurance-reserve assets and matching insurance technical-reserve liabilities are persisted.",
         ),
         row("fund-units", "Fund units", HH -> "+U_h", Funds -> "-U")(
           assets = Vector(AssetType.TfiUnit),

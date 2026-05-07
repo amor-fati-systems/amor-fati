@@ -29,6 +29,14 @@ class SfcMatrixEvidenceSpec extends AnyFlatSpec with Matchers:
     closing.row(AssetType.CorpBond).amountRaw(EntitySector.Funds) should not be 0L
     closing.row(AssetType.Reserve).amountRaw(EntitySector.NBP) shouldBe -closing.row(AssetType.Reserve).amountRaw(EntitySector.Banks)
     closing.row(AssetType.Reserve).gaps shouldBe empty
+    closing.row(AssetType.LifeReserve).amountRaw(EntitySector.Households) shouldBe -closing.row(AssetType.LifeReserve).amountRaw(EntitySector.Insurance)
+    closing.row(AssetType.LifeReserve).gaps shouldBe empty
+    closing.row(AssetType.NonLifeReserve).amountRaw(EntitySector.Households) shouldBe -closing
+      .row(AssetType.NonLifeReserve)
+      .amountRaw(
+        EntitySector.Insurance,
+      )
+    closing.row(AssetType.NonLifeReserve).gaps shouldBe empty
     closing.row(AssetType.Capital).amountRaw(EntitySector.Banks) should not be 0L
     closing.row(AssetType.Capital).gaps.map(_.kind) should contain only GapKind.UnsupportedDiagnostic
     closing.row(AssetType.ForeignAsset).amountRaw(EntitySector.NBP) should not be 0L
@@ -46,6 +54,25 @@ class SfcMatrixEvidenceSpec extends AnyFlatSpec with Matchers:
     do
       withClue(s"${bsm.snapshotKind} $asset") {
         bsm.row(asset).rowSumRaw shouldBe 0L
+      }
+  }
+
+  it should "reconcile insurance reserve stock deltas directly to transaction deltas" in {
+    val reserveAssets  = Vector(AssetType.LifeReserve, AssetType.NonLifeReserve)
+    val reserveSectors = Vector(EntitySector.Households, EntitySector.Insurance)
+
+    for
+      asset  <- reserveAssets
+      sector <- reserveSectors
+    do
+      val maybeCell = bundle.otherChanges.cells.find(cell => cell.asset == asset && cell.sector == sector)
+
+      withClue(s"$asset $sector") {
+        val cell = maybeCell.getOrElse(fail("Missing insurance reserve other-change cell"))
+        cell.stockDeltaRaw should not be 0L
+        cell.stockDeltaRaw shouldBe cell.transactionDeltaRaw
+        cell.otherChangeRaw shouldBe 0L
+        cell.kind shouldBe OtherChangeKind.TransactionReconciliation
       }
   }
 

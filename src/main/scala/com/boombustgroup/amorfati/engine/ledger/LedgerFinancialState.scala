@@ -61,6 +61,18 @@ object LedgerFinancialState:
   def householdMortgageStock(households: Vector[HouseholdBalances]): PLN =
     households.map(_.mortgageLoan).sumPln
 
+  def householdLifeReserveAsset(ledgerFinancialState: LedgerFinancialState): PLN =
+    householdLifeReserveAsset(ledgerFinancialState.households)
+
+  def householdLifeReserveAsset(households: Vector[HouseholdBalances]): PLN =
+    households.map(_.lifeReserveAsset).sumPln
+
+  def householdNonLifeReserveAsset(ledgerFinancialState: LedgerFinancialState): PLN =
+    householdNonLifeReserveAsset(ledgerFinancialState.households)
+
+  def householdNonLifeReserveAsset(households: Vector[HouseholdBalances]): PLN =
+    households.map(_.nonLifeReserveAsset).sumPln
+
   def bankMortgageStock(ledgerFinancialState: LedgerFinancialState): PLN =
     bankMortgageStock(ledgerFinancialState.banks)
 
@@ -131,6 +143,70 @@ object LedgerFinancialState:
       banks = settleBankMortgageAssets(
         ledgerFinancialState.banks,
         householdMortgageStock(ledgerFinancialState.households),
+      ),
+    )
+
+  private def settleHouseholdInsuranceReserveAsset(
+      households: Vector[HouseholdBalances],
+      closingStock: PLN,
+      current: HouseholdBalances => PLN,
+      update: (HouseholdBalances, PLN) => HouseholdBalances,
+      label: String,
+  ): Vector[HouseholdBalances] =
+    require(closingStock >= PLN.Zero, s"LedgerFinancialState.$label requires non-negative closing stock, got $closingStock")
+    if households.isEmpty then
+      require(
+        closingStock == PLN.Zero,
+        s"LedgerFinancialState.$label cannot assign $closingStock to an empty household ledger",
+      )
+      households
+    else if households.map(current).sumPln == closingStock then households
+    else
+      val existingReserveWeights = households.map(row => current(row).distributeRaw.max(0L)).toArray
+      val depositWeights         = households.map(_.demandDeposit.distributeRaw.max(0L)).toArray
+      val weights                =
+        if existingReserveWeights.exists(_ > 0L) then existingReserveWeights
+        else if depositWeights.exists(_ > 0L) then depositWeights
+        else Array.fill(households.length)(1L)
+      Distribute
+        .distribute(closingStock.distributeRaw, weights)
+        .zip(households)
+        .map((rawStock, balances) => update(balances, PLN.fromRaw(rawStock)))
+        .toVector
+
+  /** Writes aggregate insurance technical reserves into household asset rows.
+    *
+    * Insurance execution remains aggregate, so household policyholder assets
+    * are a BSM mirror of the insurance reserve liabilities. Existing household
+    * reserve weights are preserved when available; otherwise the mirror is
+    * allocated by demand-deposit weights, falling back to equal weights.
+    */
+  def settleHouseholdInsuranceReserveAssets(
+      households: Vector[HouseholdBalances],
+      closingLifeReserve: PLN,
+      closingNonLifeReserve: PLN,
+  ): Vector[HouseholdBalances] =
+    val withLife = settleHouseholdInsuranceReserveAsset(
+      households,
+      closingLifeReserve,
+      _.lifeReserveAsset,
+      (balances, reserve) => balances.copy(lifeReserveAsset = reserve),
+      "settleHouseholdInsuranceReserveAssets.life",
+    )
+    settleHouseholdInsuranceReserveAsset(
+      withLife,
+      closingNonLifeReserve,
+      _.nonLifeReserveAsset,
+      (balances, reserve) => balances.copy(nonLifeReserveAsset = reserve),
+      "settleHouseholdInsuranceReserveAssets.nonLife",
+    )
+
+  def withHouseholdInsuranceReserveAssets(ledgerFinancialState: LedgerFinancialState): LedgerFinancialState =
+    ledgerFinancialState.copy(
+      households = settleHouseholdInsuranceReserveAssets(
+        ledgerFinancialState.households,
+        ledgerFinancialState.insurance.lifeReserve,
+        ledgerFinancialState.insurance.nonLifeReserve,
       ),
     )
 
@@ -325,6 +401,10 @@ object LedgerFinancialState:
       consumerLoan: PLN,
       /** Listed equity owned by the household. */
       equity: PLN,
+      /** Life-insurance technical reserve asset owned by the household. */
+      lifeReserveAsset: PLN = PLN.Zero,
+      /** Non-life insurance technical reserve asset owned by the household. */
+      nonLifeReserveAsset: PLN = PLN.Zero,
   )
 
   /** Ledger-backed financial balances owned or issued by a single firm.

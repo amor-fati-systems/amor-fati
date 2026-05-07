@@ -66,9 +66,9 @@ object RuntimeFlowProjection:
       topology: RuntimeLedgerTopology,
   ): Projection =
     requireMaterializedSlotsAreSupported(topology)
-    val publicFundCash  = projectPublicFundCash(opening, deltaLedger)
-    val quasiFiscal     = projectQuasiFiscal(opening, deltaLedger, topology)
-    val projectedFunds  = semanticClosing.funds.copy(
+    val publicFundCash       = projectPublicFundCash(opening, deltaLedger)
+    val quasiFiscal          = projectQuasiFiscal(opening, deltaLedger, topology)
+    val projectedFunds       = semanticClosing.funds.copy(
       zusCash = publicFundCash.zusCash,
       nfzCash = publicFundCash.nfzCash,
       fpCash = publicFundCash.fpCash,
@@ -82,8 +82,9 @@ object RuntimeFlowProjection:
         nbpHoldings = quasiFiscal.nbpHoldings,
       ),
     )
-    val projectedLedger = LedgerFinancialState.withNbpReserveLiability(
-      LedgerFinancialState.withBankMortgageAssets(semanticClosing.copy(funds = projectedFunds)),
+    val stockMirroredClosing = LedgerFinancialState.withHouseholdInsuranceReserveAssets(semanticClosing.copy(funds = projectedFunds))
+    val projectedLedger      = LedgerFinancialState.withNbpReserveLiability(
+      LedgerFinancialState.withBankMortgageAssets(stockMirroredClosing),
     )
     Projection(
       ledgerFinancialState = projectedLedger,
