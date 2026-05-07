@@ -101,39 +101,44 @@ object EquityFlows:
     )
 
   private def householdRevaluationBatches(deltas: Vector[PLN])(using topology: RuntimeLedgerTopology): Vector[BatchedFlow] =
-    val indexed   = deltas.zipWithIndex.filter { case (delta, _) => delta != PLN.Zero }
-    val positives = indexed.collect { case (delta, index) if delta > PLN.Zero => delta.toLong -> index }
-    val negatives = indexed.collect { case (delta, index) if delta < PLN.Zero => delta.abs.toLong -> index }
+    val posAmounts  = Array.fill(deltas.length)(0L)
+    val posIndices  = Array.fill(deltas.length)(0)
+    val negAmounts  = Array.fill(topology.households.sectorSize)(0L)
+    var posCount    = 0
+    var hasNegative = false
+    var i           = 0
+    while i < deltas.length do
+      val delta = deltas(i)
+      if delta > PLN.Zero then
+        posAmounts(posCount) = delta.toLong
+        posIndices(posCount) = i
+        posCount += 1
+      else if delta < PLN.Zero then
+        negAmounts(i) = delta.abs.toLong
+        hasNegative = true
+      i += 1
 
-    Vector.concat(
-      Option
-        .when(positives.nonEmpty)(
-          BatchedFlow.Broadcast(
-            from = EntitySector.Firms,
-            fromIndex = topology.firms.aggregate,
-            to = EntitySector.Households,
-            amounts = positives.map(_._1).toArray,
-            targetIndices = positives.map(_._2).toArray,
-            asset = AssetType.Equity,
-            mechanism = FlowMechanism.EquityRevaluation,
-          ),
-        )
-        .toVector,
-      Option
-        .when(negatives.nonEmpty) {
-          val amounts = Array.fill(topology.households.sectorSize)(0L)
-          negatives.foreach { case (amount, householdIndex) => amounts(householdIndex) = amount }
-          BatchedFlow.Scatter(
-            from = EntitySector.Households,
-            to = EntitySector.Firms,
-            amounts = amounts,
-            targetIndices = Array.fill(topology.households.sectorSize)(topology.firms.aggregate),
-            asset = AssetType.Equity,
-            mechanism = FlowMechanism.EquityRevaluation,
-          )
-        }
-        .toVector,
-    )
+    val batches = Vector.newBuilder[BatchedFlow]
+    if posCount > 0 then
+      batches += BatchedFlow.Broadcast(
+        from = EntitySector.Firms,
+        fromIndex = topology.firms.aggregate,
+        to = EntitySector.Households,
+        amounts = java.util.Arrays.copyOf(posAmounts, posCount),
+        targetIndices = java.util.Arrays.copyOf(posIndices, posCount),
+        asset = AssetType.Equity,
+        mechanism = FlowMechanism.EquityRevaluation,
+      )
+    if hasNegative then
+      batches += BatchedFlow.Scatter(
+        from = EntitySector.Households,
+        to = EntitySector.Firms,
+        amounts = negAmounts,
+        targetIndices = Array.fill(topology.households.sectorSize)(topology.firms.aggregate),
+        asset = AssetType.Equity,
+        mechanism = FlowMechanism.EquityRevaluation,
+      )
+    batches.result()
 
   def emit(input: Input): Vector[Flow] =
     val flows = Vector.newBuilder[Flow]

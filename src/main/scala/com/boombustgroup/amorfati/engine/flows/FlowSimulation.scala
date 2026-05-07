@@ -789,12 +789,17 @@ object FlowSimulation:
       opening: LedgerFinancialState,
       closing: LedgerFinancialState,
   ): EquityFlows.RevaluationInput =
+    val householdDeltas = Array.fill(opening.households.length)(PLN.Zero)
+    var i               = 0
+    while i < opening.households.length do
+      val closingEquity = if i < closing.households.length then closing.households(i).equity else PLN.Zero
+      householdDeltas(i) = closingEquity - opening.households(i).equity
+      i += 1
+
     EquityFlows.RevaluationInput(
       // Runtime topology is keyed to opening households; entrants become
       // holder-addressable at the next month boundary.
-      householdDeltas = opening.households.indices.map { householdIndex =>
-        closing.households.lift(householdIndex).map(_.equity).getOrElse(PLN.Zero) - opening.households(householdIndex).equity
-      }.toVector,
+      householdDeltas = householdDeltas.toVector,
       insuranceDelta = closing.insurance.equityHoldings - opening.insurance.equityHoldings,
       fundsDelta = closing.funds.nbfi.equityHoldings - opening.funds.nbfi.equityHoldings,
       foreignDelta = closing.foreign.equityHoldings - opening.foreign.equityHoldings,

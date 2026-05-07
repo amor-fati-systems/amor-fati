@@ -134,13 +134,17 @@ class SfcMatrixEvidenceSpec extends AnyFlatSpec with Matchers:
 
   it should "surface equity revaluation evidence and reclassify remaining equity residuals" in {
     val equityRevaluationRows = bundle.tfm.rows.filter(row => row.mechanism == FlowMechanism.EquityRevaluation && row.asset == AssetType.Equity)
-    val foreignStockDelta     = bundle.closingBsm.row(AssetType.Equity).amountRaw(EntitySector.Foreign) -
-      bundle.openingBsm.row(AssetType.Equity).amountRaw(EntitySector.Foreign)
+    val openingEquity         = bundle.openingBsm.row(AssetType.Equity)
+    val closingEquity         = bundle.closingBsm.row(AssetType.Equity)
+    val holderSectors         = Vector(EntitySector.Households, EntitySector.Insurance, EntitySector.Funds, EntitySector.Foreign)
     val equityKinds           = bundle.otherChanges.nonZeroCells.filter(_.asset == AssetType.Equity).map(_.kind).toSet
 
     equityRevaluationRows should not be empty
     all(equityRevaluationRows.map(_.rowSumRaw)) shouldBe 0L
-    equityRevaluationRows.map(_.amountRaw(EntitySector.Foreign)).sum shouldBe foreignStockDelta
+    holderSectors.foreach: sector =>
+      withClue(s"EquityRevaluation $sector") {
+        equityRevaluationRows.map(_.amountRaw(sector)).sum shouldBe closingEquity.amountRaw(sector) - openingEquity.amountRaw(sector)
+      }
     equityKinds should contain(OtherChangeKind.Revaluation)
     equityKinds should not contain OtherChangeKind.CoverageGap
   }
