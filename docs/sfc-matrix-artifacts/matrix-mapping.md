@@ -12,7 +12,7 @@
 | symbolic-bsm | Government bonds | +B_b, -B_g, +B_{nbp}, +B_{ins}, +B_{fnd}, +B_{row}, 0 | Government bonds (GovBondHTM)<br>Government bonds AFS (GovBondAFS) |  |  |
 | symbolic-bsm | Quasi-fiscal bonds | +Q_b, +Q_{nbp}, -Q, 0 | Quasi-fiscal bonds (QuasiFiscalBond) |  |  |
 | symbolic-bsm | Corporate bonds | -B_c, +B_{cb}, +B_{ci}, +B_{cf}, 0 | Corporate bonds (CorpBond) |  |  |
-| symbolic-bsm | Equity | +E_h, -E, +E_i, +E_f, +E_{row}, 0 | Equity (Equity) |  | Foreign equity ownership is represented as a holder-resolved persisted stock; remaining residuals are equity valuation and coverage evidence. |
+| symbolic-bsm | Equity | +E_h, -E, +E_i, +E_f, +E_{row}, 0 | Equity (Equity) |  | Foreign equity ownership is represented as a holder-resolved persisted stock; holder-aware runtime equity revaluation evidence records supported holder stock deltas. |
 | symbolic-bsm | Insurance reserves | +IR_h, -IR, 0 | Life insurance reserves (LifeReserve)<br>Non-life insurance reserves (NonLifeReserve) |  |  |
 | symbolic-bsm | Fund units | +U_h, -U, 0 | TFI units (TfiUnit) |  |  |
 | symbolic-bsm | Foreign assets | +FA, -FA, 0 | Foreign assets (ForeignAsset) |  |  |
@@ -28,6 +28,7 @@
 | symbolic-tfm | Deposit and reserve interest | +rD_h, -rD+rR, -rR, 0 |  | Household deposit interest [id: 36]<br>Bank reserve interest [id: 84]<br>Bank standing facility [id: 85]<br>Bank interbank interest [id: 86] |  |
 | symbolic-tfm | Bond coupons | -iB_c, +iB_b, -iB_g, +iB_i, +iB_f, +iB_{row}, 0 |  | Government debt service [id: 22]<br>Bank government-bond income [id: 77]<br>Corporate bond coupon [id: 58]<br>Bank corporate-bond coupon [id: 95] |  |
 | symbolic-tfm | Dividends | +Div_h, -Div, +Div_g, +Div_i, +Div_f, +Div_{row}, 0 |  | Domestic equity dividend [id: 54]<br>Foreign equity dividend [id: 55]<br>Government equity dividend [id: 89] |  |
+| symbolic-tfm | Equity revaluation | +dE_h^v, -dE^v, +dE_i^v, +dE_f^v, +dE_{row}^v, 0 | Equity (Equity) | Equity revaluation [id: 57] | Holder-aware runtime equity stock revaluation evidence; remaining entrant or issuer coverage stays visible in other-change diagnostics. |
 | symbolic-tfm | External trade and income | +REM, +X-M, +EU, -NX-REM-EU, 0 |  | Trade exports [id: 66]<br>Trade imports [id: 67]<br>Tourism export [id: 68]<br>Tourism import [id: 69]<br>Primary income [id: 72]<br>EU funds [id: 73]<br>Diaspora inflow [id: 74]<br>Household remittance outflow [id: 37] |  |
 | symbolic-tfm | Loan origination | +dL_h, +dL_f, -dL, 0 | Firm loans (FirmLoan)<br>Consumer loans (ConsumerLoan)<br>Mortgage loans (MortgageLoan)<br>NBFI loans (NbfiLoan) | Consumer credit origination [id: 38]<br>Firm new loan [id: 44]<br>Mortgage origination [id: 62]<br>NBFI loan origination [id: 104]<br>Quasi-fiscal lending [id: 110] |  |
 | symbolic-tfm | Loan repayment and defaults | -repL_h, -repL_f, +repL, 0 | Firm loans (FirmLoan)<br>Consumer loans (ConsumerLoan)<br>Mortgage loans (MortgageLoan)<br>NBFI loans (NbfiLoan) | Consumer credit debt service [id: 39]<br>Consumer credit default [id: 40]<br>Firm loan repayment [id: 43]<br>Firm NPL default [id: 50]<br>Mortgage repayment [id: 63]<br>Mortgage default [id: 65]<br>NBFI repayment [id: 105]<br>NBFI default [id: 106]<br>Quasi-fiscal repayment [id: 111] |  |

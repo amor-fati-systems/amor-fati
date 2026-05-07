@@ -1,8 +1,10 @@
 package com.boombustgroup.amorfati.engine.flows
 
-import com.boombustgroup.amorfati.engine.ledger.{ForeignRuntimeContract, TreasuryRuntimeContract}
+import com.boombustgroup.amorfati.engine.ledger.{ForeignRuntimeContract, FundRuntimeIndex, TreasuryRuntimeContract}
 import com.boombustgroup.amorfati.types.*
 import com.boombustgroup.ledger.*
+
+import scala.IArray
 
 /** GPW equity market emitting dividend flows.
   *
@@ -24,6 +26,13 @@ object EquityFlows:
       foreignDividends: PLN,
       dividendTax: PLN,
       govDividends: PLN,
+  )
+
+  case class RevaluationInput(
+      householdDeltas: IArray[PLN],
+      insuranceDelta: PLN,
+      fundsDelta: PLN,
+      foreignDelta: PLN,
   )
 
   def emitBatches(input: Input)(using topology: RuntimeLedgerTopology): Vector[BatchedFlow] =
@@ -65,6 +74,73 @@ object EquityFlows:
         FlowMechanism.EquityGovDividend,
       ),
     )
+
+  def emitRevaluationBatches(input: RevaluationInput)(using topology: RuntimeLedgerTopology): Vector[BatchedFlow] =
+    require(
+      input.householdDeltas.length <= topology.households.persistedCount,
+      s"EquityFlows.emitRevaluationBatches received ${input.householdDeltas.length} household deltas but topology has ${topology.households.persistedCount} persisted households",
+    )
+    Vector.concat(
+      householdRevaluationBatches(input.householdDeltas),
+      holderRevaluationBatch(EntitySector.Insurance, topology.insurance.persistedOwner, input.insuranceDelta),
+      holderRevaluationBatch(EntitySector.Funds, FundRuntimeIndex.Nbfi, input.fundsDelta),
+      holderRevaluationBatch(EntitySector.Foreign, ForeignRuntimeContract.EquityHolderStock.index, input.foreignDelta),
+    )
+
+  private def holderRevaluationBatch(
+      holderSector: EntitySector,
+      holderIndex: Int,
+      signedAmount: PLN,
+  )(using topology: RuntimeLedgerTopology): Vector[BatchedFlow] =
+    AggregateBatchedEmission.signedTransfer(
+      positiveFrom = EntitySector.Firms,
+      positiveFromIndex = topology.firms.aggregate,
+      positiveTo = holderSector,
+      positiveToIndex = holderIndex,
+      signedAmount = signedAmount,
+      asset = AssetType.Equity,
+      mechanism = FlowMechanism.EquityRevaluation,
+    )
+
+  private def householdRevaluationBatches(deltas: IArray[PLN])(using topology: RuntimeLedgerTopology): Vector[BatchedFlow] =
+    val posAmounts  = Array.fill(deltas.length)(0L)
+    val posIndices  = Array.fill(deltas.length)(0)
+    val negAmounts  = Array.fill(topology.households.sectorSize)(0L)
+    var posCount    = 0
+    var hasNegative = false
+    var i           = 0
+    while i < deltas.length do
+      val delta = deltas(i)
+      if delta > PLN.Zero then
+        posAmounts(posCount) = delta.toLong
+        posIndices(posCount) = i
+        posCount += 1
+      else if delta < PLN.Zero then
+        negAmounts(i) = delta.abs.toLong
+        hasNegative = true
+      i += 1
+
+    val batches = Vector.newBuilder[BatchedFlow]
+    if posCount > 0 then
+      batches += BatchedFlow.Broadcast(
+        from = EntitySector.Firms,
+        fromIndex = topology.firms.aggregate,
+        to = EntitySector.Households,
+        amounts = java.util.Arrays.copyOf(posAmounts, posCount),
+        targetIndices = java.util.Arrays.copyOf(posIndices, posCount),
+        asset = AssetType.Equity,
+        mechanism = FlowMechanism.EquityRevaluation,
+      )
+    if hasNegative then
+      batches += BatchedFlow.Scatter(
+        from = EntitySector.Households,
+        to = EntitySector.Firms,
+        amounts = negAmounts,
+        targetIndices = Array.fill(topology.households.sectorSize)(topology.firms.aggregate),
+        asset = AssetType.Equity,
+        mechanism = FlowMechanism.EquityRevaluation,
+      )
+    batches.result()
 
   def emit(input: Input): Vector[Flow] =
     val flows = Vector.newBuilder[Flow]

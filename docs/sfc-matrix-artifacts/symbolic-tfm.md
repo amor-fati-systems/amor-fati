@@ -15,6 +15,7 @@
 | Deposit and reserve interest | +rD_h |  | -rD+rR |  | -rR |  |  |  | 0 |
 | Bond coupons |  | -iB_c | +iB_b | -iB_g |  | +iB_i | +iB_f | +iB_{row} | 0 |
 | Dividends | +Div_h | -Div |  | +Div_g |  | +Div_i | +Div_f | +Div_{row} | 0 |
+| Equity revaluation | +dE_h^v | -dE^v |  |  |  | +dE_i^v | +dE_f^v | +dE_{row}^v | 0 |
 | External trade and income | +REM | +X-M |  | +EU |  |  |  | -NX-REM-EU | 0 |
 | Loan origination | +dL_h | +dL_f | -dL |  |  |  |  |  | 0 |
 | Loan repayment and defaults | -repL_h | -repL_f | +repL |  |  |  |  |  | 0 |

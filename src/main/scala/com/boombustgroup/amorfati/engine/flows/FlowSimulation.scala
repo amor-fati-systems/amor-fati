@@ -11,6 +11,8 @@ import com.boombustgroup.amorfati.engine.markets.CorporateBondMarket
 import com.boombustgroup.amorfati.types.*
 import com.boombustgroup.ledger.*
 
+import scala.IArray
+
 /** New flow-based simulation pipeline.
   *
   * Three stages per month:
@@ -162,6 +164,8 @@ object FlowSimulation:
       bankUnrealizedLoss: PLN,
       bankBailIn: PLN,
       bankNbpRemittance: PLN,
+      // Stage 9: holder stock deltas after BankingEconomics.runStep
+      equityRevaluation: EquityFlows.RevaluationInput,
       // Stage 8/9: NBFI / TFI monetary channels
       nbfiDepositDrain: PLN,
       nbfiOrigination: PLN,
@@ -276,6 +280,7 @@ object FlowSimulation:
           c.equityGovDividends,
         ),
       ),
+      EquityFlows.emitRevaluationBatches(c.equityRevaluation),
       CorpBondFlows.emitBatches(
         CorpBondFlows.Input(
           coupon = c.corpBondCoupon,
@@ -597,6 +602,7 @@ object FlowSimulation:
     val corpBondIssuance  = CorporateBondMarket.processIssuance(CorporateBondMarket.StockState.zero, s5.actualBondIssuance)
     val laborForce        = s2.newDemographics.workingAgePop.max(1)
     val unemploymentRate  = Share.One - Share.fraction(Math.max(0, Math.min(s2.employed, laborForce)), laborForce)
+    val equityRevaluation = equityRevaluationInput(ledger, s9.ledgerFinancialState)
     val calc              = MonthlyCalculus(
       month = s1.month,
       resWage = s1.resWage,
@@ -686,6 +692,7 @@ object FlowSimulation:
       bankUnrealizedLoss = s9.unrealizedBondLoss,
       bankBailIn = s9.bailInLoss,
       bankNbpRemittance = s8.banking.nbpRemittance,
+      equityRevaluation = equityRevaluation,
       nbfiDepositDrain = s8.nonBank.nbfiDepositDrain,
       nbfiOrigination = s9.finalNbfi.lastNbfiOrigination,
       nbfiRepayment = s9.finalNbfi.lastNbfiRepayment,
@@ -779,6 +786,26 @@ object FlowSimulation:
       other = stock.otherHoldings,
       insurance = stock.insuranceHoldings,
       nbfi = stock.nbfiHoldings,
+    )
+
+  private def equityRevaluationInput(
+      opening: LedgerFinancialState,
+      closing: LedgerFinancialState,
+  ): EquityFlows.RevaluationInput =
+    val householdDeltas = Array.fill(opening.households.length)(PLN.Zero)
+    var i               = 0
+    while i < opening.households.length do
+      val closingEquity = if i < closing.households.length then closing.households(i).equity else PLN.Zero
+      householdDeltas(i) = closingEquity - opening.households(i).equity
+      i += 1
+
+    EquityFlows.RevaluationInput(
+      // Runtime topology is keyed to opening households; entrants become
+      // holder-addressable at the next month boundary.
+      householdDeltas = IArray.unsafeFromArray(householdDeltas),
+      insuranceDelta = closing.insurance.equityHoldings - opening.insurance.equityHoldings,
+      fundsDelta = closing.funds.nbfi.equityHoldings - opening.funds.nbfi.equityHoldings,
+      foreignDelta = closing.foreign.equityHoldings - opening.foreign.equityHoldings,
     )
 
   private def allocateCorpBondReduction(
