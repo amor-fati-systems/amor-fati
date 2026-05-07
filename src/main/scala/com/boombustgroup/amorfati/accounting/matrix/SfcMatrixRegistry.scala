@@ -209,7 +209,7 @@ object SfcMatrixRegistry:
         "Equity",
         "EQ",
         RowCompleteness.ClassifiedGap,
-        "Domestic and foreign supported holders and firm issuers are persisted; remaining residuals are equity valuation and coverage evidence.",
+        "Domestic and foreign supported holders and firm issuers are persisted; holder-aware equity revaluation is emitted as first-class runtime evidence.",
       ),
       financial(
         AssetType.LifeReserve,
@@ -348,6 +348,7 @@ object SfcMatrixRegistry:
       mech(FlowMechanism.EquityDomDividend, "Domestic equity dividend", "Dom dividend", "EQ_d"),
       mech(FlowMechanism.EquityForDividend, "Foreign equity dividend", "For dividend", "EQ_f"),
       mech(FlowMechanism.EquityDividendTax, "Equity dividend tax", "Div tax", "EQ_t"),
+      mech(FlowMechanism.EquityRevaluation, "Equity revaluation", "Equity reval.", "EQ_v"),
       mech(FlowMechanism.CorpBondCoupon, "Corporate bond coupon", "Corp coupon", "CB_c"),
       mech(FlowMechanism.CorpBondDefault, "Corporate bond default", "Corp default", "CB_d"),
       mech(FlowMechanism.CorpBondIssuance, "Corporate bond issuance", "Corp issue", "CB_i"),

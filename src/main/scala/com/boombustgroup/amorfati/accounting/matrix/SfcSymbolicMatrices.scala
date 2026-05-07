@@ -219,6 +219,19 @@ object SfcSymbolicMatrices:
             FlowMechanism.EquityGovDividend,
           ),
         ),
+        row(
+          "equity-revaluation",
+          "Equity revaluation",
+          HH    -> "+dE_h^v",
+          Firms -> "-dE^v",
+          Ins   -> "+dE_i^v",
+          Funds -> "+dE_f^v",
+          ROW   -> "+dE_{row}^v",
+        )(
+          assets = Vector(AssetType.Equity),
+          mechanisms = Vector(FlowMechanism.EquityRevaluation),
+          note = "Holder-aware runtime equity stock revaluation evidence; remaining entrant or issuer coverage stays visible in other-change diagnostics.",
+        ),
         row("external", "External trade and income", HH -> "+REM", Firms -> "+X-M", Gov -> "+EU", ROW -> "-NX-REM-EU")(
           mechanisms = Vector(
             FlowMechanism.TradeExports,

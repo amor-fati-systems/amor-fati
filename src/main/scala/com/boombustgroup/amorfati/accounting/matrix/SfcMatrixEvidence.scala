@@ -403,6 +403,8 @@ object SfcMatrixEvidence:
         instrument.asset match
           case AssetType.ForeignAsset | AssetType.GovBondAFS | AssetType.GovBondHTM                                           =>
             (OtherChangeKind.Revaluation, "Residual is classified as valuation or mark-to-market evidence for this instrument family.")
+          case AssetType.Equity                                                                                               =>
+            (OtherChangeKind.Revaluation, "Residual is classified as equity revaluation or remaining holder/issuer coverage evidence.")
           case AssetType.FirmLoan | AssetType.ConsumerLoan | AssetType.MortgageLoan | AssetType.CorpBond | AssetType.NbfiLoan =>
             (
               OtherChangeKind.DefaultOrWriteOff,

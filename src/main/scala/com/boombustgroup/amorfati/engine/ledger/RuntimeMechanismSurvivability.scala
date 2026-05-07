@@ -162,6 +162,7 @@ object RuntimeMechanismSurvivability:
       FlowMechanism.EquityForDividend,
       FlowMechanism.EquityDividendTax,
       FlowMechanism.EquityGovDividend,
+      FlowMechanism.EquityRevaluation,
       FlowMechanism.CorpBondCoupon,
       FlowMechanism.CorpBondDefault,
       FlowMechanism.CorpBondIssuance,

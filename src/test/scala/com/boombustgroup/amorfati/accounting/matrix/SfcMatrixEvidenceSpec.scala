@@ -132,6 +132,19 @@ class SfcMatrixEvidenceSpec extends AnyFlatSpec with Matchers:
     tfm.sectorTotals shouldBe expectedSectorTotals.toMap
   }
 
+  it should "surface equity revaluation evidence and reclassify remaining equity residuals" in {
+    val equityRevaluationRows = bundle.tfm.rows.filter(row => row.mechanism == FlowMechanism.EquityRevaluation && row.asset == AssetType.Equity)
+    val foreignStockDelta     = bundle.closingBsm.row(AssetType.Equity).amountRaw(EntitySector.Foreign) -
+      bundle.openingBsm.row(AssetType.Equity).amountRaw(EntitySector.Foreign)
+    val equityKinds           = bundle.otherChanges.nonZeroCells.filter(_.asset == AssetType.Equity).map(_.kind).toSet
+
+    equityRevaluationRows should not be empty
+    all(equityRevaluationRows.map(_.rowSumRaw)) shouldBe 0L
+    equityRevaluationRows.map(_.amountRaw(EntitySector.Foreign)).sum shouldBe foreignStockDelta
+    equityKinds should contain(OtherChangeKind.Revaluation)
+    equityKinds should not contain OtherChangeKind.CoverageGap
+  }
+
   it should "count all-zero batches separately from omitted transaction rows" in {
     val zero    = BatchedFlow.Broadcast(
       from = EntitySector.Government,

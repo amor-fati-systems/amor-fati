@@ -81,6 +81,7 @@ object FlowMechanism:
   val EquityDomDividend: MechanismId              = MechanismId(54)
   val EquityForDividend: MechanismId              = MechanismId(55)
   val EquityDividendTax: MechanismId              = MechanismId(56)
+  val EquityRevaluation: MechanismId              = MechanismId(57)
   // Corporate bonds
   val CorpBondCoupon: MechanismId                 = MechanismId(58)
   val CorpBondDefault: MechanismId                = MechanismId(59)
@@ -201,6 +202,7 @@ object FlowMechanism:
     EquityDomDividend,
     EquityForDividend,
     EquityDividendTax,
+    EquityRevaluation,
     CorpBondCoupon,
     CorpBondDefault,
     CorpBondIssuance,

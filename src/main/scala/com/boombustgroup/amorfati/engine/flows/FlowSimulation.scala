@@ -123,6 +123,7 @@ object FlowSimulation:
       equityDivTax: PLN,
       equityGovDividends: PLN,
       equityReturn: Rate,
+      equityRevaluation: EquityFlows.RevaluationInput,
       // Stage 8: Open economy
       exports: PLN,
       totalImports: PLN,
@@ -276,6 +277,7 @@ object FlowSimulation:
           c.equityGovDividends,
         ),
       ),
+      EquityFlows.emitRevaluationBatches(c.equityRevaluation),
       CorpBondFlows.emitBatches(
         CorpBondFlows.Input(
           coupon = c.corpBondCoupon,
@@ -597,6 +599,7 @@ object FlowSimulation:
     val corpBondIssuance  = CorporateBondMarket.processIssuance(CorporateBondMarket.StockState.zero, s5.actualBondIssuance)
     val laborForce        = s2.newDemographics.workingAgePop.max(1)
     val unemploymentRate  = Share.One - Share.fraction(Math.max(0, Math.min(s2.employed, laborForce)), laborForce)
+    val equityRevaluation = equityRevaluationInput(ledger, s9.ledgerFinancialState)
     val calc              = MonthlyCalculus(
       month = s1.month,
       resWage = s1.resWage,
@@ -651,6 +654,7 @@ object FlowSimulation:
       equityDivTax = s7.dividendTax,
       equityGovDividends = s7.stateOwnedGovDividends,
       equityReturn = s7.equityAfterForeignStock.monthlyReturn,
+      equityRevaluation = equityRevaluation,
       exports = externalFlowBop.exports,
       totalImports = externalFlowBop.totalImports,
       tourismExport = s6.tourismExport,
@@ -779,6 +783,21 @@ object FlowSimulation:
       other = stock.otherHoldings,
       insurance = stock.insuranceHoldings,
       nbfi = stock.nbfiHoldings,
+    )
+
+  private def equityRevaluationInput(
+      opening: LedgerFinancialState,
+      closing: LedgerFinancialState,
+  ): EquityFlows.RevaluationInput =
+    EquityFlows.RevaluationInput(
+      // Runtime topology is keyed to opening households; entrants become
+      // holder-addressable at the next month boundary.
+      householdDeltas = opening.households.indices.map { householdIndex =>
+        closing.households.lift(householdIndex).map(_.equity).getOrElse(PLN.Zero) - opening.households(householdIndex).equity
+      }.toVector,
+      insuranceDelta = closing.insurance.equityHoldings - opening.insurance.equityHoldings,
+      fundsDelta = closing.funds.nbfi.equityHoldings - opening.funds.nbfi.equityHoldings,
+      foreignDelta = closing.foreign.equityHoldings - opening.foreign.equityHoldings,
     )
 
   private def allocateCorpBondReduction(
