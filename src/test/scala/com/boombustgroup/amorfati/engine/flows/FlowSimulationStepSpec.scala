@@ -61,7 +61,10 @@ class FlowSimulationStepSpec extends AnyFlatSpec with Matchers:
 
     val result                = stepWithSeed(state)(using financingP)
     val firmIssuance          = mechanismTotal(result.flows, FlowMechanism.FirmEquityIssuance)
-    val equityIssuanceBatches = result.flows.filter(batch => batch.asset == AssetType.Equity && batch.to == EntitySector.Firms)
+    val equityIssuanceBatches = result.flows.filter: batch =>
+      batch.asset == AssetType.Equity &&
+        batch.to == EntitySector.Firms &&
+        batch.mechanism == FlowMechanism.FirmEquityIssuance
 
     firmIssuance should be > PLN.Zero
     equityIssuanceBatches.length shouldBe 1
