@@ -4,6 +4,8 @@ import com.boombustgroup.amorfati.engine.ledger.{ForeignRuntimeContract, FundRun
 import com.boombustgroup.amorfati.types.*
 import com.boombustgroup.ledger.*
 
+import scala.IArray
+
 /** GPW equity market emitting dividend flows.
   *
   * Dividends: domestic (Firm→HH net of Belka tax), foreign (Firm→Foreign).
@@ -27,7 +29,7 @@ object EquityFlows:
   )
 
   case class RevaluationInput(
-      householdDeltas: Vector[PLN],
+      householdDeltas: IArray[PLN],
       insuranceDelta: PLN,
       fundsDelta: PLN,
       foreignDelta: PLN,
@@ -100,7 +102,7 @@ object EquityFlows:
       mechanism = FlowMechanism.EquityRevaluation,
     )
 
-  private def householdRevaluationBatches(deltas: Vector[PLN])(using topology: RuntimeLedgerTopology): Vector[BatchedFlow] =
+  private def householdRevaluationBatches(deltas: IArray[PLN])(using topology: RuntimeLedgerTopology): Vector[BatchedFlow] =
     val posAmounts  = Array.fill(deltas.length)(0L)
     val posIndices  = Array.fill(deltas.length)(0)
     val negAmounts  = Array.fill(topology.households.sectorSize)(0L)

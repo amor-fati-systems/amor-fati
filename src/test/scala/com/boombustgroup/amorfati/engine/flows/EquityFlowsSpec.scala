@@ -6,6 +6,8 @@ import com.boombustgroup.ledger.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
+import scala.IArray
+
 class EquityFlowsSpec extends AnyFlatSpec with Matchers:
 
   "EquityFlows" should "preserve total wealth at exactly 0L" in {
@@ -37,7 +39,7 @@ class EquityFlowsSpec extends AnyFlatSpec with Matchers:
     val topology                = RuntimeLedgerTopology.nonZeroPopulation
     given RuntimeLedgerTopology = topology
     val input                   = EquityFlows.RevaluationInput(
-      householdDeltas = Vector(PLN(10), PLN(-5), PLN.Zero),
+      householdDeltas = IArray(PLN(10), PLN(-5), PLN.Zero),
       insuranceDelta = PLN(7),
       fundsDelta = PLN(-3),
       foreignDelta = PLN(11),

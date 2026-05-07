@@ -11,6 +11,8 @@ import com.boombustgroup.amorfati.engine.markets.CorporateBondMarket
 import com.boombustgroup.amorfati.types.*
 import com.boombustgroup.ledger.*
 
+import scala.IArray
+
 /** New flow-based simulation pipeline.
   *
   * Three stages per month:
@@ -123,7 +125,6 @@ object FlowSimulation:
       equityDivTax: PLN,
       equityGovDividends: PLN,
       equityReturn: Rate,
-      equityRevaluation: EquityFlows.RevaluationInput,
       // Stage 8: Open economy
       exports: PLN,
       totalImports: PLN,
@@ -163,6 +164,8 @@ object FlowSimulation:
       bankUnrealizedLoss: PLN,
       bankBailIn: PLN,
       bankNbpRemittance: PLN,
+      // Stage 9: holder stock deltas after BankingEconomics.runStep
+      equityRevaluation: EquityFlows.RevaluationInput,
       // Stage 8/9: NBFI / TFI monetary channels
       nbfiDepositDrain: PLN,
       nbfiOrigination: PLN,
@@ -654,7 +657,6 @@ object FlowSimulation:
       equityDivTax = s7.dividendTax,
       equityGovDividends = s7.stateOwnedGovDividends,
       equityReturn = s7.equityAfterForeignStock.monthlyReturn,
-      equityRevaluation = equityRevaluation,
       exports = externalFlowBop.exports,
       totalImports = externalFlowBop.totalImports,
       tourismExport = s6.tourismExport,
@@ -690,6 +692,7 @@ object FlowSimulation:
       bankUnrealizedLoss = s9.unrealizedBondLoss,
       bankBailIn = s9.bailInLoss,
       bankNbpRemittance = s8.banking.nbpRemittance,
+      equityRevaluation = equityRevaluation,
       nbfiDepositDrain = s8.nonBank.nbfiDepositDrain,
       nbfiOrigination = s9.finalNbfi.lastNbfiOrigination,
       nbfiRepayment = s9.finalNbfi.lastNbfiRepayment,
@@ -799,7 +802,7 @@ object FlowSimulation:
     EquityFlows.RevaluationInput(
       // Runtime topology is keyed to opening households; entrants become
       // holder-addressable at the next month boundary.
-      householdDeltas = householdDeltas.toVector,
+      householdDeltas = IArray.unsafeFromArray(householdDeltas),
       insuranceDelta = closing.insurance.equityHoldings - opening.insurance.equityHoldings,
       fundsDelta = closing.funds.nbfi.equityHoldings - opening.funds.nbfi.equityHoldings,
       foreignDelta = closing.foreign.equityHoldings - opening.foreign.equityHoldings,
