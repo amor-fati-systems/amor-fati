@@ -5,14 +5,16 @@ import com.boombustgroup.ledger.{AssetType, EntitySector}
 /** Explicit runtime contract for foreign-sector stock ownership and settlement
   * shells.
   *
-  * The engine persists only one foreign stock-bearing slice: non-resident
-  * government bond holdings. All other foreign-facing monthly cash channels are
-  * delta-only settlement shells grouped by economic role.
+  * The engine persists one foreign stock-bearing owner that can hold
+  * non-resident government bonds and domestic listed equity. All other
+  * foreign-facing monthly cash channels are delta-only settlement shells
+  * grouped by economic role.
   */
 object ForeignRuntimeContract:
 
   enum RuntimeRole:
     case GovBondHolderStock
+    case EquityHolderStock
     case TradeSettlementShell
     case IncomeSettlementShell
     case CapitalSettlementShell
@@ -35,6 +37,16 @@ object ForeignRuntimeContract:
       role = RuntimeRole.GovBondHolderStock,
       persistedAsStock = true,
       asset = AssetType.GovBondHTM,
+    )
+
+  val EquityHolderStock: RuntimeNode =
+    RuntimeNode(
+      name = "Foreign.EquityPortfolio",
+      sector = EntitySector.Foreign,
+      index = 0,
+      role = RuntimeRole.EquityHolderStock,
+      persistedAsStock = true,
+      asset = AssetType.Equity,
     )
 
   val TradeSettlement: RuntimeNode =
@@ -81,6 +93,6 @@ object ForeignRuntimeContract:
     Vector(TradeSettlement, IncomeSettlement, CapitalSettlement, TransferSettlement)
 
   val AllNodes: Vector[RuntimeNode] =
-    GovBondHolderStock +: RuntimeShells
+    Vector(GovBondHolderStock, EquityHolderStock) ++ RuntimeShells
 
 end ForeignRuntimeContract

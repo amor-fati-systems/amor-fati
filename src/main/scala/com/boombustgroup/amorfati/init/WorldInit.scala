@@ -76,6 +76,7 @@ object WorldInit:
     val initForeignGovBonds   = (p.fiscal.initGovDebt - initDomesticGovBonds).max(PLN.Zero)
     val initBondsOutstanding  = initDomesticGovBonds + initForeignGovBonds
     val initSocialState       = SocialState.zero.copy(demographics = initDemographics)
+    val initEquityMarket      = EquityMarket.initial
 
     // --- Steady-state gross investment ---
     val initGrossInvestment = PLN.fromRaw(firms.map(f => (f.capitalStock * p.capital.depRates(f.sector.toInt).monthly).toLong).sum)
@@ -162,7 +163,7 @@ object WorldInit:
       ),
       social = initSocialState,
       financialMarkets = FinancialMarketsState(
-        equity = EquityMarket.initial,
+        equity = initEquityMarket,
         corporateBonds = initCorporateBonds,
         insurance = initInsuranceState,
         nbfi = initNbfiState,
@@ -198,7 +199,10 @@ object WorldInit:
       firms = initFirmBalances,
       banks = initBankBalances,
       government = LedgerFinancialState.GovernmentBalances(govBondOutstanding = initBondsOutstanding),
-      foreign = LedgerFinancialState.ForeignBalances(govBondHoldings = initForeignGovBonds),
+      foreign = LedgerFinancialState.ForeignBalances(
+        govBondHoldings = initForeignGovBonds,
+        equityHoldings = LedgerFinancialState.foreignEquityHoldings(initEquityMarket.marketCap, initEquityMarket.foreignOwnership),
+      ),
       nbp = LedgerFinancialState.nbpBalances(
         Nbp.FinancialStocks(
           govBondHoldings = p.banking.initNbpGovBonds,

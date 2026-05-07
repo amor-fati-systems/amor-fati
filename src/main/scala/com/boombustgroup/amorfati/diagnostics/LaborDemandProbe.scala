@@ -232,6 +232,7 @@ object LaborDemandProbe:
         sectorMults = s4.sectorMults,
         totalSystemLoans = ledgerFinancialState.banks.map(_.firmLoan).sumPln,
         firmStep = s5,
+        ledgerFinancialState = ledgerFinancialState,
       )
       val s8      =
         OpenEconEconomics.runStep(

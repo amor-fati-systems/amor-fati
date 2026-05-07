@@ -550,6 +550,7 @@ object FlowSimulation:
       sectorMults = s4.sectorMults,
       totalSystemLoans = ledger.banks.map(_.firmLoan).sumPln,
       firmStep = s5,
+      ledgerFinancialState = ledger,
     )
     val s8                = OpenEconEconomics.runStep(
       OpenEconEconomics.StepInput(

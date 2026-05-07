@@ -37,6 +37,8 @@ class SfcMatrixEvidenceSpec extends AnyFlatSpec with Matchers:
         EntitySector.Insurance,
       )
     closing.row(AssetType.NonLifeReserve).gaps shouldBe empty
+    closing.row(AssetType.Equity).amountRaw(EntitySector.Foreign) shouldBe step.nextState.ledgerFinancialState.foreign.equityHoldings.toLong
+    closing.row(AssetType.Equity).gaps.map(_.reason).mkString(" ") should not include "metric-only"
     closing.row(AssetType.Capital).amountRaw(EntitySector.Banks) should not be 0L
     closing.row(AssetType.Capital).gaps.map(_.kind) should contain only GapKind.UnsupportedDiagnostic
     closing.row(AssetType.ForeignAsset).amountRaw(EntitySector.NBP) should not be 0L

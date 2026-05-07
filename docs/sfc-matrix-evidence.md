@@ -110,9 +110,9 @@ Runtime channel coverage:
   insurance reserve liability at the month boundary, so life and non-life
   reserve BSM rows are complete holder/issuer rows.
 - Equity valuation: equity returns enter insurance and NBFI investment-income
-  channels. A holder-resolved exact equity-stock revaluation row still requires
-  a first-class runtime equity revaluation mechanism and complete persisted
-  equity holder stocks.
+  channels. Foreign equity ownership is now persisted as a holder-resolved
+  foreign-sector equity stock. A holder-resolved exact equity-stock revaluation
+  row still requires a first-class runtime equity revaluation mechanism.
 - Other changes in volume: bank capital destruction, bail-in, amortization,
   repayment, and quasi-fiscal lending channels are explicit components of the
   exact identities where they affect supported stocks.
@@ -142,7 +142,8 @@ gaps in the ledger-derived validation layer. Examples include:
 
 - firm and consumer loan rows where dynamic-population projections can leave
   small holder/issuer gaps across month boundaries;
-- equity foreign ownership that remains metric-only.
+- equity valuation residuals until a first-class runtime equity revaluation
+  mechanism is added.
 
 Bank capital is separate from those coverage gaps. It is persisted engine state
 and SFC-validated through the bank-capital identity, but it is intentionally

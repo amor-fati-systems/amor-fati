@@ -209,7 +209,7 @@ object SfcMatrixRegistry:
         "Equity",
         "EQ",
         RowCompleteness.ClassifiedGap,
-        "Domestic supported holders and firm issuers are persisted; foreign ownership remains metric-only.",
+        "Domestic and foreign supported holders and firm issuers are persisted; remaining residuals are equity valuation and coverage evidence.",
       ),
       financial(
         AssetType.LifeReserve,

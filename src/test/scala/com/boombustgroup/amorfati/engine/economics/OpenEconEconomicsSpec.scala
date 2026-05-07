@@ -39,6 +39,7 @@ class OpenEconEconomicsSpec extends AnyFlatSpec with Matchers:
     sectorMults = s4.sectorMults,
     totalSystemLoans = baseLedgerFinancialState.banks.map(_.firmLoan).sumPln,
     firmStep = s5,
+    ledgerFinancialState = baseLedgerFinancialState,
   )
 
   private def runOpenEcon(world: World): OpenEconEconomics.StepOutput =
