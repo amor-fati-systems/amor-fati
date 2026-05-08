@@ -36,6 +36,7 @@ object CalibrationRegisterExport:
     args match
       case Vector()                                  => Right(Config())
       case Vector("--out", path)                     => Right(Config(Path.of(path)))
+      case Vector("--out")                           => Left("Missing path for --out")
       case Vector("--help")                          => Left(usage)
       case Vector(flag, _*) if flag.startsWith("--") =>
         Left(s"Unknown argument: $flag")
