@@ -10,13 +10,19 @@ object CalibrationRegisterExport:
 
   final case class Config(out: Path = Path.of("docs/calibration-register.md"))
 
+  enum CliCommand:
+    case Export(config: Config)
+    case Help
+
   def main(args: Array[String]): Unit =
     parseArgs(args.toVector) match
-      case Left(err)     =>
+      case Left(err)                        =>
         Console.err.println(err)
         Console.err.println(usage)
         sys.exit(2)
-      case Right(config) =>
+      case Right(CliCommand.Help)           =>
+        println(usage)
+      case Right(CliCommand.Export(config)) =>
         run(config) match
           case Left(err)   =>
             Console.err.println(err)
@@ -32,12 +38,12 @@ object CalibrationRegisterExport:
       config.out
     }.toEither.left.map(error => s"Failed to write calibration register: ${error.getMessage}")
 
-  def parseArgs(args: Vector[String]): Either[String, Config] =
+  def parseArgs(args: Vector[String]): Either[String, CliCommand] =
     args match
-      case Vector()                                  => Right(Config())
-      case Vector("--out", path)                     => Right(Config(Path.of(path)))
+      case Vector()                                  => Right(CliCommand.Export(Config()))
+      case Vector("--out", path)                     => Right(CliCommand.Export(Config(Path.of(path))))
       case Vector("--out")                           => Left("Missing path for --out")
-      case Vector("--help")                          => Left(usage)
+      case Vector("--help")                          => Right(CliCommand.Help)
       case Vector(flag, _*) if flag.startsWith("--") =>
         Left(s"Unknown argument: $flag")
       case Vector(value, _*)                         => Left(s"Unexpected positional argument: $value")
