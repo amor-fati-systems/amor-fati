@@ -37,6 +37,15 @@ checks fail.
 | `MISSING_SOURCE_DETAIL` | Source family is identified, but the concrete table, vintage, or access path is missing. |
 | `BRIDGE_ASSUMPTION` | The target uses a documented empirical-to-model bridge assumption. |
 
+### Snapshot Run-Result Taxonomy
+
+The Baseline Report Snapshot `Status` column uses run-result tokens after a
+baseline run. `PASS_BASELINE` means the model value is within the stated
+tolerance, `FAIL_BASELINE` means it is outside the stated tolerance, and
+`NOT_RUN` means the baseline snapshot has not been generated yet. Rows may
+still carry manifest blockers such as `MISSING_DATA_BRIDGE` when comparator
+metadata is not ready.
+
 ## Reproducible Workflow
 
 Run a small deterministic baseline Monte Carlo batch:
