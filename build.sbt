@@ -6,6 +6,7 @@ lazy val sfcMatrices = inputKey[Unit]("Generate symbolic SFC BSM/TFM matrix arti
 lazy val robustnessReport = inputKey[Unit]("Generate lightweight sensitivity and robustness artifacts")
 lazy val scenarioRun = inputKey[Unit]("Run named scenario-registry experiments")
 lazy val empiricalValidation = inputKey[Unit]("Generate empirical validation baseline snapshot artifacts")
+lazy val calibrationRegister = inputKey[Unit]("Generate calibration register docs from typed provenance registry")
 
 lazy val baseScalacOptions = Seq(
   "-Werror",
@@ -80,6 +81,13 @@ lazy val root = project
         val parsedArgs = spaceDelimited("<empirical validation args>").parsed
         (Compile / runMain)
           .toTask(" com.boombustgroup.amorfati.diagnostics.EmpiricalValidationExport " + parsedArgs.mkString(" "))
+      }
+      .evaluated,
+    calibrationRegister := Def
+      .inputTaskDyn {
+        val parsedArgs = spaceDelimited("<calibration register args>").parsed
+        (Compile / runMain)
+          .toTask(" com.boombustgroup.amorfati.diagnostics.CalibrationRegisterExport " + parsedArgs.mkString(" "))
       }
       .evaluated,
     Test / testOptions ++= {

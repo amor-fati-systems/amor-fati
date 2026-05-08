@@ -235,7 +235,7 @@ object CalibrationProvenance:
 | `io.crossSectorSpillover` | `0.65` | share | #461 GDP-growth calibration | Substitutable share of unmet sector demand | I-O-weighted partial spillover inside `DemandEconomics.applySpillover` | `DemandEconomics`, `IoConfig` | `TUNED_NEEDS_VALIDATION` |
 | `fiscal.govInvestShare` | `0.20` | share | Code note bridge: MF bridge prior | Capital share of government spending | Direct | `FiscalConfig` | `CODE_NOTE_EMPIRICAL` |
 | `fiscal.govCapitalMultiplier`, `govCurrentMultiplier` | `1.5`, `0.8` | multiplier | Code note bridge: Ilzetzki, Mendoza and Vegh 2013 | Fiscal multipliers | Direct | `FiscalConfig` | `CODE_NOTE_EMPIRICAL` |
-| `fiscal.govInitCapital` | `0` | PLN | Explicit startup simplification | Initial public capital stock | Built from investment flows | `FiscalConfig` | `PLACEHOLDER` |
+| `fiscal.govInitCapital` | `2332e9` | raw PLN | #461 fiscal-investment/GDP calibration | Initial public capital stock | Scaled by `gdpRatio` in `SimParams.defaults`; seeded into `WorldInit` public capital stock | `FiscalConfig`, `SimParams`, `WorldInit` | `TUNED_NEEDS_VALIDATION` |
 | `fiscal.euFundsTotalEur`, `euFundsAlpha`, `euFundsBeta` | `110e9`, `2`, `3` | EUR / beta shape | #461 GDP-growth calibration | EU cohesion plus KPO-style investment absorption window | Beta absorption path | `FiscalConfig`, `EuFunds` | `TUNED_NEEDS_VALIDATION` |
 | `fiscal.euCofinanceRate`, `euCapitalShare` | `0.15`, `0.60` | share | Code note bridge: MFiPR / EU funds | National cofinance and capex split | Direct | `FiscalConfig` | `CODE_NOTE_EMPIRICAL` |
 | `fiscal.minWageTargetRatio` | `0.50` | share | Code note bridge: minimum wage act | Target minimum/average wage ratio | Annual adjustment | `FiscalConfig` | `EMPIRICAL` |

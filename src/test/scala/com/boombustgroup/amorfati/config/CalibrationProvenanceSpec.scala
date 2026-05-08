@@ -42,9 +42,9 @@ class CalibrationProvenanceSpec extends AnyFlatSpec with Matchers:
     CalibrationProvenance.Baseline.statusCounts should contain(Empirical -> 35)
     CalibrationProvenance.Baseline.statusCounts should contain(EmpiricalTransformed -> 12)
     CalibrationProvenance.Baseline.statusCounts should contain(CodeNoteEmpirical -> 67)
-    CalibrationProvenance.Baseline.statusCounts should contain(TunedNeedsValidation -> 84)
+    CalibrationProvenance.Baseline.statusCounts should contain(TunedNeedsValidation -> 85)
     CalibrationProvenance.Baseline.statusCounts should contain(UnknownSource -> 20)
-    CalibrationProvenance.Baseline.statusCounts should contain(Placeholder -> 2)
+    CalibrationProvenance.Baseline.statusCounts should contain(Placeholder -> 1)
     CalibrationProvenance.Baseline.statusCounts should contain(Assumed -> 11)
     CalibrationProvenance.Baseline.statusCounts should contain(PolicyScenario -> 7)
   }
@@ -87,13 +87,20 @@ class CalibrationProvenanceSpec extends AnyFlatSpec with Matchers:
   }
 
   it should "infer exemptions for structural, scenario, and startup-placeholder rows" in {
-    val bufferTarget = baselineParameter("household.bufferTargetMonths")
-    val riskOff      = baselineParameter("forex.riskOffShockMonth")
-    val govCapital   = baselineParameter("fiscal.govInitCapital")
+    val bufferTarget   = baselineParameter("household.bufferTargetMonths")
+    val riskOff        = baselineParameter("forex.riskOffShockMonth")
+    val govCapital     = baselineParameter("fiscal.govInitCapital")
+    val immigrantStock = baselineParameter("immigration.initStock")
 
     bufferTarget.effectiveExemption shouldBe Some(StructuralAssumption)
     riskOff.effectiveExemption shouldBe Some(ScenarioSwitch)
-    govCapital.effectiveExemption shouldBe Some(StartupPlaceholder)
+    immigrantStock.effectiveExemption shouldBe Some(StartupPlaceholder)
+    govCapital.status shouldBe TunedNeedsValidation
+    govCapital.renderedValue shouldBe "2332e9"
+    govCapital.ownerModules should contain("FiscalConfig")
+    govCapital.ownerModules should contain("SimParams")
+    govCapital.ownerModules should contain("WorldInit")
+    govCapital.effectiveExemption shouldBe None
   }
 
 end CalibrationProvenanceSpec
