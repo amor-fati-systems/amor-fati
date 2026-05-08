@@ -33,4 +33,24 @@ class CalibrationRegisterRendererSpec extends AnyFlatSpec with Matchers:
     rendered should include("Opening migration-stock comparisons")
   }
 
+  it should "fail fast when a placeholder row lacks typed decision metadata" in {
+    val brokenPlaceholder = CalibrationProvenance.CalibrationParameter(
+      id = "immigration.initStock",
+      parameterIds = Vector("immigration.initStock"),
+      renderedValue = "0",
+      unit = "agents",
+      provenance = "test",
+      empiricalTarget = "test",
+      transformation = "test",
+      ownerModules = Vector("ImmigrationConfig"),
+      status = CalibrationProvenance.CalibrationStatus.Placeholder,
+    )
+
+    val thrown = intercept[IllegalArgumentException]:
+      CalibrationRegisterRenderer.render(Vector(brokenPlaceholder))
+
+    thrown.getMessage should include("Missing placeholder decision")
+    thrown.getMessage should include("immigration.initStock")
+  }
+
 end CalibrationRegisterRendererSpec

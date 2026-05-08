@@ -117,6 +117,9 @@ class CalibrationProvenanceSpec extends AnyFlatSpec with Matchers:
     decision.validationImpact should include("Opening migration-stock comparisons")
     decision.followUpPath should include("data-bridge initial stock")
     placeholders.head.placeholderDecision shouldBe Some(decision)
+    CalibrationProvenance.Baseline.parameters
+      .filterNot(_.status == Placeholder)
+      .flatMap(_.placeholderDecision) shouldBe empty
   }
 
 end CalibrationProvenanceSpec

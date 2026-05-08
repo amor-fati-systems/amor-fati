@@ -196,7 +196,13 @@ object CalibrationRegisterRenderer:
         "Parameter is active in the model but final provenance is not yet documented."
 
   private def placeholderDecisions(parameters: Vector[CalibrationParameter]): Vector[String] =
-    val decisions = parameters.filter(_.status == CalibrationStatus.Placeholder).flatMap(_.placeholderDecision)
+    val placeholders = parameters.filter(_.status == CalibrationStatus.Placeholder)
+    val missing      = placeholders.filter(_.placeholderDecision.isEmpty)
+    require(
+      missing.isEmpty,
+      s"Missing placeholder decision for calibration parameter(s): ${missing.map(_.id).mkString(", ")}",
+    )
+    val decisions    = placeholders.flatMap(_.placeholderDecision)
     if decisions.isEmpty then Vector.empty
     else
       Vector(

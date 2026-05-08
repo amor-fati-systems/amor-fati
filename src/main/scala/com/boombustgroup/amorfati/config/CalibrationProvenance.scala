@@ -129,7 +129,9 @@ object CalibrationProvenance:
           transformation = stripCode(cells(5)),
           ownerModules = ownerModules,
           status = status,
-          placeholderDecision = placeholderDecisionById.get(id),
+          placeholderDecision =
+            if status == CalibrationStatus.Placeholder then placeholderDecisionById.get(id)
+            else None,
         )
 
     private val placeholderDecisionById: Map[String, PlaceholderDecision] =
