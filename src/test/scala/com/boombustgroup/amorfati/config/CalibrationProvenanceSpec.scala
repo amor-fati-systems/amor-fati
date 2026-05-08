@@ -103,4 +103,23 @@ class CalibrationProvenanceSpec extends AnyFlatSpec with Matchers:
     govCapital.effectiveExemption shouldBe None
   }
 
+  it should "make remaining placeholder decisions visible as typed metadata" in {
+    val placeholders = CalibrationProvenance.Baseline.rowsWithStatus(Placeholder)
+
+    placeholders.map(_.id) shouldBe Vector("immigration.initStock")
+    CalibrationProvenance.Baseline.placeholderDecisionErrors shouldBe empty
+
+    val decision = CalibrationProvenance.Baseline.placeholderDecisions.headOption
+      .getOrElse(fail("Expected typed placeholder decision for immigration.initStock"))
+    decision.parameterId shouldBe "immigration.initStock"
+    decision.decision shouldBe StartupPlaceholder
+    decision.reason should include("zero immigrant households")
+    decision.validationImpact should include("Opening migration-stock comparisons")
+    decision.followUpPath should include("data-bridge initial stock")
+    placeholders.head.placeholderDecision shouldBe Some(decision)
+    CalibrationProvenance.Baseline.parameters
+      .filterNot(_.status == Placeholder)
+      .flatMap(_.placeholderDecision) shouldBe empty
+  }
+
 end CalibrationProvenanceSpec

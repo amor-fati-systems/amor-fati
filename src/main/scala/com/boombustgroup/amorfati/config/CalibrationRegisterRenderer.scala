@@ -46,6 +46,7 @@ object CalibrationRegisterRenderer:
     lines ++= header
     lines ++= statusTaxonomy
     lines ++= statusCounts(parameters)
+    lines ++= placeholderDecisions(parameters)
     lines ++= transformationRules
     Sections.foreach: (title, predicate) =>
       val sectionParameters = parameters.filter(predicate)
@@ -190,9 +191,38 @@ object CalibrationRegisterRenderer:
       case CalibrationStatus.PolicyScenario       =>
         "Scenario/shock switch or policy parameter, not a baseline empirical estimate."
       case CalibrationStatus.Placeholder          =>
-        "Explicit placeholder or simplified value awaiting data bridge."
+        "Explicit placeholder or simplified value with a typed decision and follow-up path."
       case CalibrationStatus.UnknownSource        =>
         "Parameter is active in the model but final provenance is not yet documented."
+
+  private def placeholderDecisions(parameters: Vector[CalibrationParameter]): Vector[String] =
+    val placeholders = parameters.filter(_.status == CalibrationStatus.Placeholder)
+    val missing      = placeholders.filter(_.placeholderDecision.isEmpty)
+    require(
+      missing.isEmpty,
+      s"Missing placeholder decision for calibration parameter(s): ${missing.map(_.id).mkString(", ")}",
+    )
+    val decisions    = placeholders.flatMap(_.placeholderDecision)
+    if decisions.isEmpty then Vector.empty
+    else
+      Vector(
+        "## Placeholder Decisions",
+        "",
+        "Remaining placeholders are explicit startup decisions carried in typed provenance metadata.",
+        "",
+        "| Parameter | Decision | Reason | Validation impact | Follow-up path |",
+        "| --- | --- | --- | --- | --- |",
+      ) ++ decisions.map(renderPlaceholderDecision) :+
+        ""
+
+  private def renderPlaceholderDecision(decision: PlaceholderDecision): String =
+    Vector(
+      codeCell(decision.parameterId),
+      codeCell(decision.decision.toString),
+      plainCell(decision.reason),
+      plainCell(decision.validationImpact),
+      plainCell(decision.followUpPath),
+    ).mkString("| ", " | ", " |")
 
   private def hasId(parameter: CalibrationParameter, id: String): Boolean =
     parameter.parameterIds.contains(id)
