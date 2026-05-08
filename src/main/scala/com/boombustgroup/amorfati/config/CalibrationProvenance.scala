@@ -51,6 +51,14 @@ object CalibrationProvenance:
     private def cleanToken(value: String): String =
       value.trim.stripPrefix("`").stripSuffix("`")
 
+  final case class PlaceholderDecision(
+      parameterId: String,
+      decision: CalibrationExemptionKind,
+      reason: String,
+      validationImpact: String,
+      followUpPath: String,
+  )
+
   final case class CalibrationParameter(
       id: String,
       parameterIds: Vector[String],
@@ -63,6 +71,7 @@ object CalibrationProvenance:
       status: CalibrationStatus,
       validationPath: Option[String] = None,
       exemption: Option[CalibrationExemptionKind] = None,
+      placeholderDecision: Option[PlaceholderDecision] = None,
   ):
     def effectiveExemption: Option[CalibrationExemptionKind] =
       exemption.orElse(status.inferredExemption)
@@ -92,6 +101,15 @@ object CalibrationProvenance:
     def rowsWithStatus(status: CalibrationStatus): Vector[CalibrationParameter] =
       parameters.filter(_.status == status)
 
+    lazy val placeholderDecisions: Vector[PlaceholderDecision] =
+      rowsWithStatus(CalibrationStatus.Placeholder).flatMap(_.placeholderDecision)
+
+    lazy val placeholderDecisionErrors: Vector[String] =
+      val placeholderIds = rowsWithStatus(CalibrationStatus.Placeholder).map(_.id).toSet
+      val decisionIds    = placeholderDecisionById.keySet
+      (placeholderIds -- decisionIds).toVector.sorted.map(id => s"Missing placeholder decision for $id") ++
+        (decisionIds -- placeholderIds).toVector.sorted.map(id => s"Placeholder decision is stale for non-placeholder $id")
+
     private def parseRow(line: String): Either[String, CalibrationParameter] =
       val cells = line.trim.stripPrefix("|").stripSuffix("|").split("\\|", -1).iterator.map(_.trim).toVector
       if cells.length != 8 then Left(s"Expected 8 calibration columns, got ${cells.length}: $line")
@@ -111,7 +129,19 @@ object CalibrationProvenance:
           transformation = stripCode(cells(5)),
           ownerModules = ownerModules,
           status = status,
+          placeholderDecision = placeholderDecisionById.get(id),
         )
+
+    private val placeholderDecisionById: Map[String, PlaceholderDecision] =
+      Vector(
+        PlaceholderDecision(
+          parameterId = "immigration.initStock",
+          decision = CalibrationExemptionKind.StartupPlaceholder,
+          reason = "The baseline starts with zero immigrant households; migration enters through monthly inflow dynamics.",
+          validationImpact = "Opening migration-stock comparisons are not meaningful until a data-bridge initial stock is added.",
+          followUpPath = "Add a data-bridge initial stock for immigrant households before validating opening migration-stock levels.",
+        ),
+      ).map(decision => decision.parameterId -> decision).toMap
 
     private def splitCodeList(value: String): Vector[String] =
       stripCode(value)
@@ -320,7 +350,7 @@ object CalibrationProvenance:
 | `immigration.returnRate`, `returnUnempThreshold`, `returnUnempSensitivity` | `0.005`, `0.20`, `0.10` | monthly share / coefficient | #461 labor-market calibration | Baseline and unemployment-sensitive return migration | Direct | `ImmigrationConfig`, `Immigration` | `TUNED_NEEDS_VALIDATION` |
 | `immigration.sectorShares` | `[0.05, 0.35, 0.25, 0.05, 0.05, 0.25]` | share by sector | Code note bridge: GUS LFS bridge prior | Immigrant sector allocation | CDF draw | `ImmigrationConfig` | `CODE_NOTE_EMPIRICAL` |
 | `immigration.skillMean` | `0.55` | share | #461 labor-market calibration | New immigrant productivity distribution used by job matching | Gaussian draw clamped by education tier | `ImmigrationConfig`, `Immigration` | `TUNED_NEEDS_VALIDATION` |
-| `immigration.initStock` | `0` | agents | Explicit startup simplification | Initial immigrant stock | Immigration accumulates from monthly flows | `ImmigrationConfig` | `PLACEHOLDER` |
+| `immigration.initStock` | `0` | agents | Explicit startup simplification | Initial immigrant stock | Zero opening stock; migration enters through monthly flows | `ImmigrationConfig` | `PLACEHOLDER` |
 | `remittance.perCapita` | `40` | PLN/person/month | Code note bridge: NBP BoP bridge prior | Diaspora remittance inflow | Direct | `RemittanceConfig` | `CODE_NOTE_EMPIRICAL` |
 | `tourism.inboundShare`, `outboundShare` | `0.05`, `0.03` | GDP share | Code note bridge: GUS TSA 2023 / NBP BoP 2023 | Tourism exports/imports | GDP-proportional | `TourismConfig` | `CODE_NOTE_EMPIRICAL` |
 | `tourism.seasonality`, `peakMonth` | `0.40`, `7` | share/month | Code note bridge: GUS TSA | Tourism seasonality | Cosine seasonal factor | `TourismConfig` | `CODE_NOTE_EMPIRICAL` |

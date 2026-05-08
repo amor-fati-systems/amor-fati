@@ -27,7 +27,7 @@ source. Missing or weak provenance is marked explicitly with searchable tokens:
 | `ASSUMED` | Structural modeling assumption or stylized calibration. |
 | `TUNED_NEEDS_VALIDATION` | Behavioral/dynamic coefficient chosen for model behavior; needs sensitivity and validation work. |
 | `POLICY_SCENARIO` | Scenario/shock switch or policy parameter, not a baseline empirical estimate. |
-| `PLACEHOLDER` | Explicit placeholder or simplified value awaiting data bridge. |
+| `PLACEHOLDER` | Explicit placeholder or simplified value with a typed decision and follow-up path. |
 | `UNKNOWN_SOURCE` | Parameter is active in the model but final provenance is not yet documented. |
 
 ## Status Counts
@@ -44,6 +44,14 @@ These counts are rendered from `CalibrationProvenance.Baseline` at generation ti
 | `POLICY_SCENARIO` | 7 |
 | `PLACEHOLDER` | 1 |
 | `UNKNOWN_SOURCE` | 20 |
+
+## Placeholder Decisions
+
+Remaining placeholders are explicit startup decisions carried in typed provenance metadata.
+
+| Parameter | Decision | Reason | Validation impact | Follow-up path |
+| --- | --- | --- | --- | --- |
+| `immigration.initStock` | `StartupPlaceholder` | The baseline starts with zero immigrant households; migration enters through monthly inflow dynamics. | Opening migration-stock comparisons are not meaningful until a data-bridge initial stock is added. | Add a data-bridge initial stock for immigrant households before validating opening migration-stock levels. |
 
 ## Transformation Rules
 
@@ -271,7 +279,7 @@ These counts are rendered from `CalibrationProvenance.Baseline` at generation ti
 | `immigration.returnRate`, `returnUnempThreshold`, `returnUnempSensitivity` | `0.005, 0.20, 0.10` | monthly share / coefficient | #461 labor-market calibration | Baseline and unemployment-sensitive return migration | Direct | `ImmigrationConfig`, `Immigration` | `TUNED_NEEDS_VALIDATION` |
 | `immigration.sectorShares` | `[0.05, 0.35, 0.25, 0.05, 0.05, 0.25]` | share by sector | Code note bridge: GUS LFS bridge prior | Immigrant sector allocation | CDF draw | `ImmigrationConfig` | `CODE_NOTE_EMPIRICAL` |
 | `immigration.skillMean` | `0.55` | share | #461 labor-market calibration | New immigrant productivity distribution used by job matching | Gaussian draw clamped by education tier | `ImmigrationConfig`, `Immigration` | `TUNED_NEEDS_VALIDATION` |
-| `immigration.initStock` | `0` | agents | Explicit startup simplification | Initial immigrant stock | Immigration accumulates from monthly flows | `ImmigrationConfig` | `PLACEHOLDER` |
+| `immigration.initStock` | `0` | agents | Explicit startup simplification | Initial immigrant stock | Zero opening stock; migration enters through monthly flows | `ImmigrationConfig` | `PLACEHOLDER` |
 | `remittance.perCapita` | `40` | PLN/person/month | Code note bridge: NBP BoP bridge prior | Diaspora remittance inflow | Direct | `RemittanceConfig` | `CODE_NOTE_EMPIRICAL` |
 | `tourism.inboundShare`, `outboundShare` | `0.05, 0.03` | GDP share | Code note bridge: GUS TSA 2023 / NBP BoP 2023 | Tourism exports/imports | GDP-proportional | `TourismConfig` | `CODE_NOTE_EMPIRICAL` |
 | `tourism.seasonality`, `peakMonth` | `0.40, 7` | share/month | Code note bridge: GUS TSA | Tourism seasonality | Cosine seasonal factor | `TourismConfig` | `CODE_NOTE_EMPIRICAL` |

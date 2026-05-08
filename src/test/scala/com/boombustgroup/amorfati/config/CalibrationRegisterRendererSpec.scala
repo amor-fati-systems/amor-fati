@@ -25,4 +25,12 @@ class CalibrationRegisterRendererSpec extends AnyFlatSpec with Matchers:
       rendered should include(s"| `${status.token}` | ${counts.getOrElse(status, 0)} |")
   }
 
+  it should "render typed placeholder decisions" in {
+    val rendered = CalibrationRegisterRenderer.render()
+
+    rendered should include("## Placeholder Decisions")
+    rendered should include("| `immigration.initStock` | `StartupPlaceholder` |")
+    rendered should include("Opening migration-stock comparisons")
+  }
+
 end CalibrationRegisterRendererSpec
