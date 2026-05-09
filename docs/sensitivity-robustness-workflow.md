@@ -62,7 +62,7 @@ review:
 
 | Category | Scenario | Parameter deltas |
 | --- | --- | --- |
-| Household propensity to consume | `mpc-low`, `mpc-high` | `household.mpc` around the baseline `0.82`. |
+| Household propensity to consume | `mpc-low`, `mpc-high` | `household.mpc` around the baseline `0.92`. |
 | Firm markup/pricing | `markup-high` | Higher `pricing.baseMarkup` and `pricing.costPassthrough`. |
 | Investment response | `investment-fast` | Higher `capital.adjustSpeed`. |
 | Credit/default behavior | `credit-tight` | Higher `banking.baseSpread`, lower `banking.loanRecovery`, higher `banking.eclMigrationSensitivity`. |

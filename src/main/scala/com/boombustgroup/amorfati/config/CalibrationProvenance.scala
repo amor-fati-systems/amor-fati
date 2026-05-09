@@ -1,5 +1,7 @@
 package com.boombustgroup.amorfati.config
 
+import java.nio.file.Path
+
 /** Typed baseline calibration provenance for active `SimParams.defaults`
   * parameters.
   *
@@ -67,6 +69,44 @@ object CalibrationProvenance:
       transformationNotes: String,
   )
 
+  enum CalibrationValidationMode(val token: String):
+    case HistoricalFit            extends CalibrationValidationMode("HISTORICAL_FIT")
+    case StylizedFactTarget       extends CalibrationValidationMode("STYLIZED_FACT_TARGET")
+    case SensitivityRange         extends CalibrationValidationMode("SENSITIVITY_RANGE")
+    case ModelBehaviorCalibration extends CalibrationValidationMode("MODEL_BEHAVIOR_CALIBRATION")
+
+  final case class CalibrationValidationEvidence(
+      mode: CalibrationValidationMode,
+      evidencePath: Option[String],
+      evidenceTarget: String,
+      notes: String,
+      artifactLabel: Option[String] = None,
+      scenarioIds: Vector[String] = Vector.empty,
+  ):
+    require(
+      evidencePath.forall(path => path == CalibrationValidationEvidence.normalizedPath(path)),
+      s"Validation evidence path must be normalized and path-only: ${evidencePath.getOrElse("")}",
+    )
+
+    def hasEvidencePath: Boolean =
+      evidencePath.nonEmpty
+
+  object CalibrationValidationEvidence:
+    def normalizedPath(rawPath: String): String =
+      val trimmed = rawPath.trim
+      require(trimmed.nonEmpty, "Validation evidence path cannot be empty")
+      require(!trimmed.exists(_.isWhitespace), s"Validation evidence path must be path-only, got: $rawPath")
+      require(!trimmed.contains(":"), s"Validation evidence path must not include URI or label prefixes, got: $rawPath")
+
+      val path = Path.of(trimmed).normalize()
+      require(path.getFileName != null, s"Validation evidence path must include a file name, got: $rawPath")
+      path.toString
+
+    def normalizedLabel(rawLabel: String): String =
+      val trimmed = rawLabel.trim
+      require(trimmed.nonEmpty, "Validation evidence label cannot be empty")
+      trimmed
+
   final case class CalibrationParameter(
       id: String,
       parameterIds: Vector[String],
@@ -77,7 +117,7 @@ object CalibrationProvenance:
       transformation: String,
       ownerModules: Vector[String],
       status: CalibrationStatus,
-      validationPath: Option[String] = None,
+      validationEvidence: Option[CalibrationValidationEvidence] = None,
       exemption: Option[CalibrationExemptionKind] = None,
       placeholderDecision: Option[PlaceholderDecision] = None,
       sourceMetadata: Option[SourceMetadata] = None,
@@ -87,6 +127,12 @@ object CalibrationProvenance:
 
     def needsValidationEvidence: Boolean =
       status == CalibrationStatus.TunedNeedsValidation
+
+    def hasValidationEvidencePath: Boolean =
+      validationEvidence.exists(_.hasEvidencePath)
+
+    def lacksValidationEvidencePath: Boolean =
+      needsValidationEvidence && !hasValidationEvidencePath
 
     def needsSourceMetadata: Boolean =
       status == CalibrationStatus.UnknownSource || status == CalibrationStatus.CodeNoteEmpirical
@@ -119,6 +165,24 @@ object CalibrationProvenance:
       (placeholderIds -- decisionIds).toVector.sorted.map(id => s"Missing placeholder decision for $id") ++
         (decisionIds -- placeholderIds).toVector.sorted.map(id => s"Placeholder decision is stale for non-placeholder $id")
 
+    lazy val tunedValidationModeCounts: Map[CalibrationValidationMode, Int] =
+      rowsWithStatus(CalibrationStatus.TunedNeedsValidation).flatMap(_.validationEvidence.map(_.mode)).groupMapReduce(identity)(_ => 1)(_ + _)
+
+    lazy val tunedValidationEvidencePathCounts: Map[String, Int] =
+      rowsWithStatus(CalibrationStatus.TunedNeedsValidation).groupMapReduce(parameter => if parameter.hasValidationEvidencePath then "linked" else "missing")(
+        _ => 1,
+      )(_ + _)
+
+    lazy val tunedValidationRowsMissingEvidence: Vector[CalibrationParameter] =
+      rowsWithStatus(CalibrationStatus.TunedNeedsValidation).filter(_.lacksValidationEvidencePath)
+
+    lazy val tunedValidationEvidenceErrors: Vector[String] =
+      val tunedRows      = rowsWithStatus(CalibrationStatus.TunedNeedsValidation)
+      val tunedIds       = tunedRows.map(_.id).toSet
+      val missingModeIds = tunedRows.filter(_.validationEvidence.isEmpty).map(parameter => s"Missing tuned validation mode for ${parameter.id}")
+      val staleLinkIds   = validationEvidenceById.keySet.diff(tunedIds).toVector.sorted.map(id => s"Tuned validation evidence is stale for non-tuned $id")
+      missingModeIds ++ staleLinkIds
+
     private def parseRow(line: String): Either[String, CalibrationParameter] =
       val cells = line.trim.stripPrefix("|").stripSuffix("|").split("\\|", -1).iterator.map(_.trim).toVector
       if cells.length != 8 then Left(s"Expected 8 calibration columns, got ${cells.length}: $line")
@@ -128,21 +192,23 @@ object CalibrationProvenance:
         for
           id     <- parameterIds.headOption.toRight(s"Missing parameter id: $line")
           status <- CalibrationStatus.parse(cells(7))
-        yield CalibrationParameter(
-          id = id,
-          parameterIds = parameterIds,
-          renderedValue = stripCode(cells(1)),
-          unit = cells(2),
-          provenance = stripCode(cells(3)),
-          empiricalTarget = stripCode(cells(4)),
-          transformation = stripCode(cells(5)),
-          ownerModules = ownerModules,
-          status = status,
-          placeholderDecision =
-            if status == CalibrationStatus.Placeholder then placeholderDecisionById.get(id)
-            else None,
-          sourceMetadata = sourceMetadataById.get(id),
-        )
+        yield
+          val parameter = CalibrationParameter(
+            id = id,
+            parameterIds = parameterIds,
+            renderedValue = stripCode(cells(1)),
+            unit = cells(2),
+            provenance = stripCode(cells(3)),
+            empiricalTarget = stripCode(cells(4)),
+            transformation = stripCode(cells(5)),
+            ownerModules = ownerModules,
+            status = status,
+            placeholderDecision =
+              if status == CalibrationStatus.Placeholder then placeholderDecisionById.get(id)
+              else None,
+            sourceMetadata = sourceMetadataById.get(id),
+          )
+          parameter.copy(validationEvidence = validationEvidenceFor(parameter))
 
     private val placeholderDecisionById: Map[String, PlaceholderDecision] =
       Vector(
@@ -200,6 +266,188 @@ object CalibrationProvenance:
           transformationNotes = "Mortgage lending-rate spread over the policy-rate anchor is used directly.",
         ),
       ).toMap
+
+    private val validationEvidenceById: Map[String, CalibrationValidationEvidence] =
+      Vector(
+        "pop.firmSizeDist"          -> linkedEvidence(
+          CalibrationValidationMode.StylizedFactTarget,
+          "docs/empirical-validation/baseline-validation-snapshot.csv",
+          "Firm-size distribution family",
+          "EmpiricalValidationExport exposes the current aggregate firm-size bridge.",
+          artifactLabel = Some("Firm-size distribution"),
+        ),
+        "pop.firmSizeMicroShare"    -> linkedEvidence(
+          CalibrationValidationMode.StylizedFactTarget,
+          "docs/empirical-validation/baseline-validation-snapshot.csv",
+          "Micro-enterprise share",
+          "EmpiricalValidationExport compares the terminal micro-firm share to the GUS active-enterprise comparator.",
+          artifactLabel = Some("Firm-size distribution - Micro"),
+        ),
+        "pop.firmSizeSmallShare"    -> linkedEvidence(
+          CalibrationValidationMode.StylizedFactTarget,
+          "docs/empirical-validation/baseline-validation-snapshot.csv",
+          "Small-enterprise share",
+          "EmpiricalValidationExport compares the terminal small-firm share to the GUS active-enterprise comparator.",
+          artifactLabel = Some("Firm-size distribution - Small"),
+        ),
+        "pop.firmSizeMediumShare"   -> linkedEvidence(
+          CalibrationValidationMode.StylizedFactTarget,
+          "docs/empirical-validation/baseline-validation-snapshot.csv",
+          "Medium-enterprise share",
+          "EmpiricalValidationExport compares the terminal medium-firm share to the GUS active-enterprise comparator.",
+          artifactLabel = Some("Firm-size distribution - Medium"),
+        ),
+        "pop.firmSizeLargeShare"    -> linkedEvidence(
+          CalibrationValidationMode.StylizedFactTarget,
+          "docs/empirical-validation/baseline-validation-snapshot.csv",
+          "Large-enterprise share",
+          "EmpiricalValidationExport compares the terminal large-firm share to the GUS active-enterprise comparator.",
+          artifactLabel = Some("Firm-size distribution - Large"),
+        ),
+        "sectorDefs.share"          -> linkedEvidence(
+          CalibrationValidationMode.StylizedFactTarget,
+          "docs/empirical-validation/baseline-validation-snapshot.csv",
+          "Six-sector output and employment bridge",
+          "EmpiricalValidationExport carries the sectoral-output bridge as missing-data evidence until a full source crosswalk is available.",
+          artifactLabel = Some("Sectoral output"),
+        ),
+        "household.mpc"             -> linkedEvidence(
+          CalibrationValidationMode.SensitivityRange,
+          "docs/sensitivity-robustness-workflow.md",
+          "Consumption-led demand sensitivity",
+          "SensitivityRobustnessExport contains one-at-a-time household MPC scenarios for output, inflation, credit, and fiscal metrics.",
+          artifactLabel = Some("sensitivity-summary.csv"),
+          scenarioIds = Vector("mpc-low", "mpc-high"),
+        ),
+        "firm.productivityGrowth"   -> linkedEvidence(
+          CalibrationValidationMode.HistoricalFit,
+          "docs/empirical-validation/baseline-validation-snapshot.csv",
+          "Baseline GDP growth path",
+          "EmpiricalValidationExport records the current GDP-growth bridge and model output used to judge the productivity/catch-up path.",
+          artifactLabel = Some("GDP growth"),
+        ),
+        "capital.adjustSpeed"       -> linkedEvidence(
+          CalibrationValidationMode.SensitivityRange,
+          "docs/sensitivity-robustness-workflow.md",
+          "Investment and balance-sheet sensitivity",
+          "SensitivityRobustnessExport varies capital adjustment speed and records terminal deltas against baseline.",
+          artifactLabel = Some("sensitivity-summary.csv"),
+          scenarioIds = Vector("investment-fast"),
+        ),
+        "fiscal.govInitCapital"     -> linkedEvidence(
+          CalibrationValidationMode.HistoricalFit,
+          "docs/empirical-validation/baseline-validation-snapshot.csv",
+          "Public investment and fiscal stance bridge",
+          "EmpiricalValidationExport keeps the current fiscal coverage bridge visible while public-capital stock validation remains partial.",
+          artifactLabel = Some("Fiscal stance - state budget expenditure plan 2026"),
+        ),
+        "monetary.neutralRate"      -> linkedEvidence(
+          CalibrationValidationMode.SensitivityRange,
+          "docs/sensitivity-robustness-workflow.md",
+          "Monetary-policy sensitivity",
+          "SensitivityRobustnessExport varies neutral rate and Taylor response together in the monetary-tight scenario.",
+          artifactLabel = Some("sensitivity-summary.csv"),
+          scenarioIds = Vector("monetary-tight"),
+        ),
+        "forex.irpSensitivity"      -> linkedEvidence(
+          CalibrationValidationMode.SensitivityRange,
+          "docs/sensitivity-robustness-workflow.md",
+          "FX and external-balance sensitivity",
+          "SensitivityRobustnessExport varies IRP sensitivity in the external-risk-off scenario and reports FX/current-account metrics.",
+          artifactLabel = Some("sensitivity-summary.csv"),
+          scenarioIds = Vector("external-risk-off"),
+        ),
+        "pricing.demandSensitivity" -> linkedEvidence(
+          CalibrationValidationMode.SensitivityRange,
+          "docs/sensitivity-robustness-workflow.md",
+          "Price-level and markup sensitivity",
+          "SensitivityRobustnessExport varies cost pass-through in the markup-high scenario and reports inflation and wage-path metrics.",
+          artifactLabel = Some("sensitivity-summary.csv"),
+          scenarioIds = Vector("markup-high"),
+        ),
+        "housing.originationRate"   -> linkedEvidence(
+          CalibrationValidationMode.HistoricalFit,
+          "docs/empirical-validation/baseline-validation-snapshot.csv",
+          "Mortgage origination/default bridge",
+          "EmpiricalValidationExport carries mortgage stock and default-flow validation rows for the housing credit channel.",
+          artifactLabel = Some("Housing and mortgages - mortgage default bridge"),
+        ),
+        "nbfi.creditBaseRate"       -> linkedEvidence(
+          CalibrationValidationMode.HistoricalFit,
+          "docs/empirical-validation/baseline-validation-snapshot.csv",
+          "Non-bank credit contribution to aggregate credit",
+          "EmpiricalValidationExport records the current credit/GDP bridge while NBFI split extraction remains partial.",
+          artifactLabel = Some("Credit/GDP"),
+        ),
+      ).toMap
+
+    private def linkedEvidence(
+        mode: CalibrationValidationMode,
+        evidencePath: String,
+        evidenceTarget: String,
+        notes: String,
+        artifactLabel: Option[String],
+        scenarioIds: Vector[String] = Vector.empty,
+    ): CalibrationValidationEvidence =
+      CalibrationValidationEvidence(
+        mode = mode,
+        evidencePath = Some(CalibrationValidationEvidence.normalizedPath(evidencePath)),
+        evidenceTarget = evidenceTarget,
+        notes = notes,
+        artifactLabel = artifactLabel.map(CalibrationValidationEvidence.normalizedLabel),
+        scenarioIds = scenarioIds.map(CalibrationValidationEvidence.normalizedLabel),
+      )
+
+    private def validationEvidenceFor(parameter: CalibrationParameter): Option[CalibrationValidationEvidence] =
+      if parameter.status != CalibrationStatus.TunedNeedsValidation then None
+      else
+        validationEvidenceById
+          .get(parameter.id)
+          .orElse:
+            Some(
+              CalibrationValidationEvidence(
+                mode = inferValidationMode(parameter),
+                evidencePath = None,
+                evidenceTarget = parameter.empiricalTarget,
+                notes = "Expected validation mode is classified, but no concrete validation artifact is linked yet.",
+              ),
+            )
+
+    private def inferValidationMode(parameter: CalibrationParameter): CalibrationValidationMode =
+      val ids         = parameter.parameterIds
+      val description = s"${parameter.provenance} ${parameter.empiricalTarget} ${parameter.transformation}".toLowerCase
+
+      if ids.exists(id => id.startsWith("pop.firmSize") || id.startsWith("sectorDefs") || id == "io.matrix") then CalibrationValidationMode.StylizedFactTarget
+      else if ids.exists(id =>
+          id.startsWith("firm.ai") ||
+            id.startsWith("firm.hybrid") ||
+            id.startsWith("firm.digi") ||
+            id.startsWith("firm.demo") ||
+            id.startsWith("firm.adoption") ||
+            id.startsWith("fdi.ma") ||
+            id.startsWith("regional.") ||
+            id.startsWith("soe.") ||
+            id.startsWith("informal."),
+        )
+      then CalibrationValidationMode.ModelBehaviorCalibration
+      else if containsAny(
+          description,
+          "gdp",
+          "inflation",
+          "unemployment",
+          "wage",
+          "debt",
+          "deficit",
+          "current account",
+          "mortgage",
+          "firm-size",
+          "reference rate",
+        )
+      then CalibrationValidationMode.HistoricalFit
+      else CalibrationValidationMode.SensitivityRange
+
+    private def containsAny(value: String, needles: String*): Boolean =
+      needles.exists(value.contains)
 
     private def splitCodeList(value: String): Vector[String] =
       stripCode(value)
