@@ -112,6 +112,63 @@ class EmpiricalValidationManifestSpec extends AnyFlatSpec with Matchers:
     gdp.value("notes") should include("quarterly growth extraction")
   }
 
+  it should "carry NBP ready comparators and documented bridge gaps" in {
+    val rows = readManifest()
+
+    val fx = rowByTarget(rows, "FX rate - EUR/PLN")
+    fx.status shouldBe "READY"
+    fx.value("source_provider") shouldBe "NBP"
+    fx.value("dataset_code") should include("082/A/NBP/2026")
+    fx.value("vintage") should include("2026-04-29")
+    fx.value("accessed_at") shouldBe "2026-05-09"
+    fx.value("empirical_value") shouldBe "4.2537"
+    fx.value("tolerance") shouldBe "0.1000"
+    fx.value("model_target") shouldBe "timeseries:ExRate:mean"
+
+    val referenceRate = rowByTarget(rows, "NBP reference rate")
+    referenceRate.status shouldBe "READY"
+    referenceRate.value("source_provider") shouldBe "NBP"
+    referenceRate.value("empirical_value") shouldBe "0.0375"
+    referenceRate.value("tolerance") shouldBe "0.0025"
+    referenceRate.value("model_target") shouldBe "timeseries:RefRate:mean"
+
+    val credit = rowByTarget(rows, "Credit/GDP")
+    credit.status shouldBe "PARTIAL"
+    credit.value("notes") should include("GDP denominator bridge")
+
+    val currentAccount = rowByTarget(rows, "Current account")
+    currentAccount.status shouldBe "PARTIAL"
+    currentAccount.value("notes") should include("BoP cadence")
+  }
+
+  it should "carry fiscal ready comparators and documented bridge gaps" in {
+    val rows = readManifest()
+
+    val domesticDebt = rowByTarget(rows, "Public debt/GDP - PDP forecast 2026")
+    domesticDebt.status shouldBe "READY"
+    domesticDebt.value("source_provider") shouldBe "MF"
+    domesticDebt.value("empirical_value") shouldBe "0.538"
+    domesticDebt.value("tolerance") shouldBe "0.050"
+    domesticDebt.value("model_target") shouldBe "timeseries:DebtToGdp:terminal"
+
+    val esaDebt = rowByTarget(rows, "Public debt/GDP - ESA2010 debt 2025")
+    esaDebt.status shouldBe "READY"
+    esaDebt.value("source_provider") shouldBe "Eurostat"
+    esaDebt.value("empirical_value") shouldBe "0.597"
+    esaDebt.value("model_target") shouldBe "timeseries:Esa2010DebtToGdp:terminal"
+
+    val deficit = rowByTarget(rows, "Fiscal stance - general government deficit 2025")
+    deficit.status shouldBe "READY"
+    deficit.value("source_provider") shouldBe "Eurostat"
+    deficit.value("empirical_value") shouldBe "0.073"
+    deficit.value("model_target") shouldBe "timeseries:DeficitToGdp:terminal"
+
+    val expenditure = rowByTarget(rows, "Fiscal stance - state budget expenditure plan 2026")
+    expenditure.status shouldBe "PARTIAL"
+    expenditure.value("empirical_value") shouldBe "918900000000"
+    expenditure.value("notes") should include("coverage bridge")
+  }
+
   private def validateMetadata(row: ManifestRow): Vector[String] =
     val commonRequired = Vector(
       "target",

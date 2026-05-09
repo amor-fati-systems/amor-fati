@@ -132,8 +132,8 @@ class EmpiricalValidationExportSpec extends AnyFlatSpec with Matchers:
     try {
       write(
         mc.resolve("fixture_real-economy_1m_seed001.csv"),
-        """Month;MonthlyGdpProxy;Inflation;Unemployment;MarketWage;CreditToGdpGap;Esa2010DebtToGdp;CurrentAccount;FirmDeaths;MinBankCAR;Manuf_Output;ExRate;HousingPriceIndex;DeficitToGdp;RefRate
-          |1;1000000;0.030;0.061;9652.19;0.50;0.55;0.01;102;0.18;200000;4.25;100;0.03;0.0375
+        """Month;MonthlyGdpProxy;Inflation;Unemployment;MarketWage;CreditToGdpGap;DebtToGdp;Esa2010DebtToGdp;CurrentAccount;FirmDeaths;MinBankCAR;Manuf_Output;ExRate;HousingPriceIndex;DeficitToGdp;GovDomesticBudgetOutlays;RefRate
+          |1;1000000;0.030;0.061;9652.19;0.50;0.538;0.597;0.01;102;0.18;200000;4.25;100;0.073;918900000000;0.0375
           |""".stripMargin,
       )
       write(
@@ -170,6 +170,12 @@ class EmpiricalValidationExportSpec extends AnyFlatSpec with Matchers:
       statuses("Unemployment") shouldBe SnapshotStatus.PassBaseline
       statuses("Firm-size distribution - Micro") shouldBe SnapshotStatus.PassBaseline
       statuses("Firm-size distribution - Large") shouldBe SnapshotStatus.PassBaseline
+      statuses("FX rate - EUR/PLN") shouldBe SnapshotStatus.PassBaseline
+      statuses("NBP reference rate") shouldBe SnapshotStatus.PassBaseline
+      statuses("Public debt/GDP - PDP forecast 2026") shouldBe SnapshotStatus.PassBaseline
+      statuses("Public debt/GDP - ESA2010 debt 2025") shouldBe SnapshotStatus.PassBaseline
+      statuses("Fiscal stance - general government deficit 2025") shouldBe SnapshotStatus.PassBaseline
+      statuses("Fiscal stance - state budget expenditure plan 2026") shouldBe SnapshotStatus.Partial
 
       Files.exists(out.resolve("baseline-validation-snapshot.csv")) shouldBe true
       Files.exists(out.resolve("source-manifest.csv")) shouldBe true
