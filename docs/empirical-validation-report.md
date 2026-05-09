@@ -77,10 +77,10 @@ Runnable snapshot procedure after a baseline run:
 2. Generate the empirical validation snapshot:
 
    ```bash
-   sbt "empiricalValidation --source-manifest docs/empirical-validation-source-manifest.csv --mc-dir mc --run-id main-79f5a36c --output-prefix validation-baseline --duration 120 --seeds 3 --commit 79f5a36c --parameter-branch main --out target/empirical-validation"
+   sbt "empiricalValidation --source-manifest docs/empirical-validation-source-manifest.csv --mc-dir mc --run-id main-79f5a36c --output-prefix validation-baseline --duration 120 --seeds 3 --commit 79f5a36c --parameter-branch main --out docs/empirical-validation"
    ```
 
-3. Review `target/empirical-validation/baseline-validation-snapshot.csv`.
+3. Review `docs/empirical-validation/baseline-validation-snapshot.csv`.
 4. Keep rows with missing model output or missing empirical data in the table.
 
 The source manifest is intentionally metadata-first. It records source
