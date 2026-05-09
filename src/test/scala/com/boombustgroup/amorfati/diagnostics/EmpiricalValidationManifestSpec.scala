@@ -84,6 +84,91 @@ class EmpiricalValidationManifestSpec extends AnyFlatSpec with Matchers:
     }
   }
 
+  it should "carry GUS real-economy ready comparators and documented bridge gaps" in {
+    val rows = readManifest()
+
+    val inflation = rowByTarget(rows, "Inflation")
+    inflation.status shouldBe "READY"
+    inflation.value("source_provider") shouldBe "GUS"
+    inflation.value("dataset_code") shouldBe "GUS CPI March 2026"
+    inflation.value("vintage") should include("March 2026")
+    inflation.value("accessed_at") shouldBe "2026-05-09"
+    inflation.value("empirical_value") shouldBe "0.030"
+    inflation.value("tolerance") shouldBe "0.010"
+    inflation.value("criterion") should include("absolute distance")
+
+    val firmSizeTargets = rows.map(_.target).filter(_.startsWith("Firm-size distribution - ")).toSet
+    firmSizeTargets shouldBe Set(
+      "Firm-size distribution - Micro",
+      "Firm-size distribution - Small",
+      "Firm-size distribution - Medium",
+      "Firm-size distribution - Large",
+    )
+    rowByTarget(rows, "Firm-size distribution - Micro").value("model_target") shouldBe "terminal_firms:FirmSize_MicroShare:mean"
+    rowByTarget(rows, "Firm-size distribution - Large").value("empirical_value") shouldBe "0.001"
+
+    val gdp = rowByTarget(rows, "GDP growth")
+    gdp.status shouldBe "PARTIAL"
+    gdp.value("notes") should include("quarterly growth extraction")
+  }
+
+  it should "carry NBP ready comparators and documented bridge gaps" in {
+    val rows = readManifest()
+
+    val fx = rowByTarget(rows, "FX rate - EUR/PLN")
+    fx.status shouldBe "READY"
+    fx.value("source_provider") shouldBe "NBP"
+    fx.value("dataset_code") should include("082/A/NBP/2026")
+    fx.value("vintage") should include("2026-04-29")
+    fx.value("accessed_at") shouldBe "2026-05-09"
+    fx.value("empirical_value") shouldBe "4.2537"
+    fx.value("tolerance") shouldBe "0.1000"
+    fx.value("model_target") shouldBe "timeseries:ExRate:mean"
+
+    val referenceRate = rowByTarget(rows, "NBP reference rate")
+    referenceRate.status shouldBe "READY"
+    referenceRate.value("source_provider") shouldBe "NBP"
+    referenceRate.value("empirical_value") shouldBe "0.0375"
+    referenceRate.value("tolerance") shouldBe "0.0025"
+    referenceRate.value("model_target") shouldBe "timeseries:RefRate:mean"
+
+    val credit = rowByTarget(rows, "Credit/GDP")
+    credit.status shouldBe "PARTIAL"
+    credit.value("notes") should include("GDP denominator bridge")
+
+    val currentAccount = rowByTarget(rows, "Current account")
+    currentAccount.status shouldBe "PARTIAL"
+    currentAccount.value("notes") should include("BoP cadence")
+  }
+
+  it should "carry fiscal ready comparators and documented bridge gaps" in {
+    val rows = readManifest()
+
+    val domesticDebt = rowByTarget(rows, "Public debt/GDP - PDP forecast 2026")
+    domesticDebt.status shouldBe "READY"
+    domesticDebt.value("source_provider") shouldBe "MF"
+    domesticDebt.value("empirical_value") shouldBe "0.538"
+    domesticDebt.value("tolerance") shouldBe "0.050"
+    domesticDebt.value("model_target") shouldBe "timeseries:DebtToGdp:terminal"
+
+    val esaDebt = rowByTarget(rows, "Public debt/GDP - ESA2010 debt 2025")
+    esaDebt.status shouldBe "READY"
+    esaDebt.value("source_provider") shouldBe "Eurostat"
+    esaDebt.value("empirical_value") shouldBe "0.597"
+    esaDebt.value("model_target") shouldBe "timeseries:Esa2010DebtToGdp:terminal"
+
+    val deficit = rowByTarget(rows, "Fiscal stance - general government deficit 2025")
+    deficit.status shouldBe "READY"
+    deficit.value("source_provider") shouldBe "Eurostat"
+    deficit.value("empirical_value") shouldBe "0.073"
+    deficit.value("model_target") shouldBe "timeseries:DeficitToGdp:terminal"
+
+    val expenditure = rowByTarget(rows, "Fiscal stance - state budget expenditure plan 2026")
+    expenditure.status shouldBe "PARTIAL"
+    expenditure.value("empirical_value") shouldBe "918900000000"
+    expenditure.value("notes") should include("coverage bridge")
+  }
+
   private def validateMetadata(row: ManifestRow): Vector[String] =
     val commonRequired = Vector(
       "target",
@@ -141,6 +226,9 @@ class EmpiricalValidationManifestSpec extends AnyFlatSpec with Matchers:
 
   private def parseStatus(row: ManifestRow): SourceStatus =
     SourceStatus.parse(row.status).fold(err => fail(error(row, err)), identity)
+
+  private def rowByTarget(rows: Vector[ManifestRow], target: String): ManifestRow =
+    rows.find(_.target == target).getOrElse(fail(s"Expected manifest target '$target'"))
 
   private def validateOptionalDate(row: ManifestRow, column: String): Option[String] =
     Option
