@@ -227,18 +227,10 @@ Labor demand probe:
 sbt "runMain com.boombustgroup.amorfati.diagnostics.runLaborDemandProbe 1 2"
 ```
 
-Generate scratch SFC matrix artifacts:
-
-```bash
-sbt "sfcMatrices --seed 1 --months 12 --out target/sfc-matrices"
-```
-
-Refresh the committed SFC matrix Markdown snapshots only when the matrix
-artifacts themselves intentionally change:
-
-```bash
-sbt "sfcMatrices --seed 1 --months 12 --out docs/sfc-matrix-artifacts --format md"
-```
+Generate scratch SFC matrix artifacts with
+`sbt "sfcMatrices --seed 1 --months 12 --out target/sfc-matrices"`. The
+committed snapshot refresh recipe lives in
+[sfc-matrix-evidence.md](sfc-matrix-evidence.md).
 
 ## Scenario And Robustness Runs
 

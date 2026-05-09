@@ -411,9 +411,9 @@ protocol-level model description, while that rule book carries equations,
 algorithmic rules, implementation references, output columns, and explicit
 simplifications.
 
-The empirical validation report skeleton is documented in
-`docs/empirical-validation-report.md`. It maps the current Monte Carlo output
-surface to macro, meso, micro, financial, and external validation targets and
+The empirical validation report is documented in
+`docs/empirical-validation-report.md`. It describes the manifest and snapshot
+workflow for macro, meso, micro, financial, and external validation targets and
 keeps missing data or output coverage visible.
 
 The sensitivity and robustness workflow is documented in

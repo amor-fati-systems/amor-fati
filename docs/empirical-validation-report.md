@@ -1,11 +1,11 @@
-# Empirical Validation Report Skeleton
+# Empirical Validation Report
 
 This report defines how Amor Fati outputs should be compared with empirical
-macro, meso, and micro stylized facts. It is deliberately a skeleton: the
-model already writes numeric simulation evidence, while external source
-selection, transformation rules, source vintages, and prioritized empirical
-gaps are documented in
-`docs/data-bridge-national-financial-accounts.md`.
+macro, meso, and micro stylized facts. It is the workflow document for the
+curated source manifest and generated baseline snapshot; readiness metadata
+lives in `docs/empirical-validation-source-manifest.csv`, while pass/fail
+baseline results live in
+`docs/empirical-validation/baseline-validation-snapshot.csv`.
 
 The goal is to keep failed, missing, or weak validation targets visible. A row
 with `MISSING_OUTPUT`, `MISSING_DATA_BRIDGE`, `MISSING_SOURCE_DETAIL`, or
@@ -36,6 +36,9 @@ checks fail.
 | `MISSING_OUTPUT` | Target is known, but the Monte Carlo output schema does not yet expose enough model state. |
 | `MISSING_SOURCE_DETAIL` | Source family is identified, but the concrete table, vintage, or access path is missing. |
 | `BRIDGE_ASSUMPTION` | The target uses a documented empirical-to-model bridge assumption. |
+
+Live status counts and per-row statuses are not duplicated here; read them from
+the source manifest and generated snapshot CSVs.
 
 ### Snapshot Run-Result Taxonomy
 
@@ -100,9 +103,11 @@ Terminal cross-sections come from
 Time-series macro PLN aggregates are emitted in Poland scale. Validation work
 should not manually divide CSV values by `gdpRatio`.
 
-This table is only the model-output mapping. Readiness and pass/fail status live
-in `docs/empirical-validation-source-manifest.csv` and the generated
-`docs/empirical-validation/baseline-validation-snapshot.csv`.
+This table is an illustrative family-level model-output mapping. The
+authoritative per-row mapping lives in
+`docs/empirical-validation-source-manifest.csv`, column `model_target`;
+readiness and pass/fail status live in the source manifest and generated
+snapshot CSVs.
 
 | Validation target | Empirical comparator | Model output mapping | Suggested statistic |
 | --- | --- | --- | --- |
@@ -157,12 +162,8 @@ sectoral-output source crosswalks. `FAIL_BASELINE` rows are interpreted as
 calibration evidence, not accounting failures; the ledger and SFC validation
 surfaces remain separate from this empirical fit table.
 
-Reproduce the committed snapshot from `main@79f5a36c`:
-
-```bash
-sbt "runMain com.boombustgroup.amorfati.Main 3 validation-baseline --duration 120 --run-id main-79f5a36c"
-sbt "empiricalValidation --source-manifest docs/empirical-validation-source-manifest.csv --mc-dir mc --run-id main-79f5a36c --output-prefix validation-baseline --duration 120 --seeds 3 --commit 79f5a36c --parameter-branch main --out docs/empirical-validation"
-```
+See [Reproducible Workflow](#reproducible-workflow) for the regeneration
+commands; this snapshot was produced from `main@79f5a36c`.
 
 ## Target-Specific Notes
 

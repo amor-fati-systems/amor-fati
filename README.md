@@ -158,7 +158,7 @@ replication, calibration, validation, and publication work:
 | [Behavioral equations and decision rules](docs/behavioral-equations-and-decision-rules.md) | Household, firm, bank, fiscal, monetary, external, insurance, NBFI, quasi-fiscal, and JST rules linked to implementation modules and numeric output columns. |
 | [Calibration register](docs/calibration-register.md) | Key parameter values, units, implementation owners, empirical targets, transformations, provenance status, and searchable gaps. |
 | [Data bridge to national and financial accounts](docs/data-bridge-national-financial-accounts.md) | Official Polish, EU, and financial-account sources mapped to initialization stocks, calibrated parameters, scenario inputs, validation targets, transformations, and prioritized empirical gaps. |
-| [Empirical validation report](docs/empirical-validation-report.md) | Macro, meso, micro, financial, and external validation targets mapped to Monte Carlo output columns, with missing data/output gaps kept visible. |
+| [Empirical validation report](docs/empirical-validation-report.md) | Workflow for the empirical-validation snapshot: the curated source manifest is the editable input, while generated baseline artifacts live under `docs/empirical-validation/`. |
 | [Sensitivity and robustness workflow](docs/sensitivity-robustness-workflow.md) | Seed envelopes and one-at-a-time parameter-sensitivity artifacts generated from the Monte Carlo runner. |
 | [Reproducible scenario registry](docs/scenario-registry.md) | Named policy and shock scenarios with exact parameter deltas from baseline, expected channels, seed/run metadata, and the `scenarioRun` execution path. |
 
@@ -174,21 +174,10 @@ matrix artifacts:
 | [Stock-Flow Reconciliation and Revaluation Evidence](docs/sfc-matrix-artifacts/stock-flow-reconciliation.md) | Executed-run evidence comparing observed stock deltas or level identities with independent transaction, revaluation, default, write-off, and other-change channels. |
 | [Symbolic-row to runtime mapping](docs/sfc-matrix-artifacts/matrix-mapping.md) | Traceability table linking each symbolic matrix row to runtime assets, mechanisms, ids, and coverage notes. |
 
-These snapshots are generated from an executed deterministic simulation step.
-To regenerate a scratch copy under `target/`:
-
-```bash
-sbt "sfcMatrices --seed 1 --months 12 --out target/sfc-matrices"
-```
-
-To refresh the committed Markdown snapshots:
-
-```bash
-sbt "sfcMatrices --seed 1 --months 12 --out docs/sfc-matrix-artifacts --format md"
-```
-
-The workflow, sign conventions, coverage gaps, exact reconciliation rows, and
-review checklist are documented in
+These snapshots are generated from an executed deterministic simulation step
+and committed as versioned evidence. The regeneration commands, sign
+conventions, coverage gaps, exact reconciliation rows, and review checklist are
+documented in
 [docs/sfc-matrix-evidence.md](docs/sfc-matrix-evidence.md).
 
 ## Tech Stack
