@@ -36,9 +36,9 @@ These counts are rendered from `CalibrationProvenance.Baseline` at generation ti
 
 | Status | Count |
 | --- | --- |
-| `EMPIRICAL` | 35 |
-| `EMPIRICAL_TRANSFORMED` | 12 |
-| `CODE_NOTE_EMPIRICAL` | 67 |
+| `EMPIRICAL` | 36 |
+| `EMPIRICAL_TRANSFORMED` | 17 |
+| `CODE_NOTE_EMPIRICAL` | 61 |
 | `ASSUMED` | 31 |
 | `TUNED_NEEDS_VALIDATION` | 85 |
 | `POLICY_SCENARIO` | 7 |
@@ -52,6 +52,19 @@ Remaining placeholders are explicit startup decisions carried in typed provenanc
 | Parameter | Decision | Reason | Validation impact | Follow-up path |
 | --- | --- | --- | --- | --- |
 | `immigration.initStock` | `StartupPlaceholder` | The baseline starts with zero immigrant households; migration enters through monthly inflow dynamics. | Opening migration-stock comparisons are not meaningful until a data-bridge initial stock is added. | Add a data-bridge initial stock for immigrant households before validating opening migration-stock levels. |
+
+## Structured Source Metadata
+
+Rows below have been migrated from informal code-note provenance to typed source metadata.
+
+| Parameter | Source family | Source table/code | Vintage/date | URL or manifest | Transformation notes |
+| --- | --- | --- | --- | --- | --- |
+| `pop.initialUnemploymentRate` | Labor market | `GUS registered unemployment` | March 2026 | https://stat.gov.pl/en/topics/labour-market/ | Registered-unemployment stock used as the opening household labor-force unemployment rate. |
+| `fiscal.govBaseSpending` | Fiscal stance | `MF state-budget 2026 spending plan` | 2026 budget plan | https://www.gov.pl/web/finance/state-budget | Annual expenditure plan 918.9bn PLN divided by 12 and scaled by gdpRatio at runtime. |
+| `banking.initGovBonds`, `initNbpGovBonds` | Banking and central-bank balance sheets | `NBP MFI and central-bank government securities bridge` | 2026-04-30 model-start bridge | https://nbp.pl/en/statistic-and-financial-reporting/monetary-and-financial-statistics/consolidated-balance-sheet-of-mfis/ | Bank and NBP government-bond opening stocks are mapped to model holder buckets and scaled by gdpRatio. |
+| `forex.importPropensity` | External sector | `GUS/NBP import-to-GDP bridge` | 2026-04-30 model-start bridge | docs/empirical-validation-source-manifest.csv target: Current account | Aggregate imports are normalized to GDP and used as the import-propensity coefficient. |
+| `equity.peMean`, `divYield` | Financial markets and non-bank finance | `policy-rates-market-yields-and-gpw` | 2026-04-30 model-start bridge | docs/empirical-validation-source-manifest.csv target: Monetary and financial market conditions | GPW valuation notes are reduced to long-run P/E and annual dividend-yield anchors. |
+| `housing.mortgageSpread` | Housing and mortgages | `NBP MIR housing-loan rate spread` | 2026-04-30 model-start bridge | https://nbp.pl/en/statistic-and-financial-reporting/monetary-and-financial-statistics/mir-statistics/ | Mortgage lending-rate spread over the policy-rate anchor is used directly. |
 
 ## Transformation Rules
 
@@ -85,7 +98,7 @@ Remaining placeholders are explicit startup decisions carried in typed provenanc
 | `pop.firmSizeMediumShare` | `0.008` | share | 2026-04-30 enterprise-size bridge residual | Medium firm share | Direct | `PopulationConfig` | `TUNED_NEEDS_VALIDATION` |
 | `pop.firmSizeLargeShare` | `0.002` | share | 2026-04-30 enterprise-size bridge | Large firm share | Direct | `PopulationConfig` | `TUNED_NEEDS_VALIDATION` |
 | `pop.realGdp` | `4160e9` | PLN/year | MF 2026 budget macro scale / GDP-implied budget ratios | Polish current-price GDP scale | Feeds gdpRatio | `PopulationConfig` | `CODE_NOTE_EMPIRICAL` |
-| `pop.initialUnemploymentRate` | `0.061` | share | GUS registered unemployment, March 2026 | Starting unemployment stock | Initial household labor-force stock | `PopulationConfig`, `Household.Init` | `CODE_NOTE_EMPIRICAL` |
+| `pop.initialUnemploymentRate` | `0.061` | share | GUS registered unemployment, March 2026 | Starting unemployment stock | Initial household labor-force stock | `PopulationConfig`, `Household.Init` | `EMPIRICAL` |
 | `gdpRatio` | `computeGdpRatio(pop, firm.baseRevenue)` | scalar | Derived from agent flow scale and current-price GDP | Map agent flows to Polish macro scale | Derived | `SimParams` | `ASSUMED` |
 | `topology` | `Watts-Strogatz` | enum | Network modeling convention | Small-world interaction topology | Direct | `SimParams` | `ASSUMED` |
 | `sectorDefs` | `6 sectors` | vector | 2026-04-30 sector bridge | Polish sector composition | Direct | `SimParams` | `TUNED_NEEDS_VALIDATION` |
@@ -183,7 +196,7 @@ Remaining placeholders are explicit startup decisions carried in typed provenanc
 | `fiscal.vatRates` | `[0.23, 0.19, 0.12, 0.06, 0.10, 0.07]` | rate by sector | Code note bridge: MF bridge prior effective rates | Sector VAT rates | Direct | `FiscalConfig` | `CODE_NOTE_EMPIRICAL` |
 | `fiscal.exciseRates` | `[0.01, 0.04, 0.03, 0.005, 0.002, 0.02]` | rate by sector | Code note bridge: MF bridge prior aggregate | Effective excise rates | Direct | `FiscalConfig` | `CODE_NOTE_EMPIRICAL` |
 | `fiscal.customsDutyRate` | `0.04` | rate | Code note bridge: EU CET/Eurostat TARIC | Average non-EU customs duty | Direct | `FiscalConfig` | `CODE_NOTE_EMPIRICAL` |
-| `fiscal.govBaseSpending` | `76.575e9` | raw PLN/month | MF 2026 budget spending plan (918.9e9 / 12) | Government base spending | Scaled by gdpRatio | `FiscalConfig`, `SimParams` | `CODE_NOTE_EMPIRICAL` |
+| `fiscal.govBaseSpending` | `76.575e9` | raw PLN/month | MF 2026 budget spending plan (918.9e9 / 12) | Government base spending | Scaled by gdpRatio | `FiscalConfig`, `SimParams` | `EMPIRICAL_TRANSFORMED` |
 | `fiscal.govWageIndexShare` | `0.75` | share | #461 GDP-growth calibration | Labor-cost indexation of government purchases | CPI/wage blended cost index in DemandEconomics.computeGovPurchases | `FiscalConfig`, `DemandEconomics` | `TUNED_NEEDS_VALIDATION` |
 | `fiscal.fofConsWeights`, `fofGovWeights` | `[0.02, 0.18, 0.59, 0.06, 0.07, 0.08], [0.04, 0.08, 0.08, 0.20, 0.58, 0.02]` | sector shares | #461 demand-allocation calibration | Flow-of-funds allocation of household consumption and government purchases | Direct sector allocation | `FiscalConfig`, `DemandEconomics` | `TUNED_NEEDS_VALIDATION` |
 | `io.crossSectorSpillover` | `0.65` | share | #461 GDP-growth calibration | Substitutable share of unmet sector demand | I-O-weighted partial spillover inside DemandEconomics.applySpillover | `DemandEconomics`, `IoConfig` | `TUNED_NEEDS_VALIDATION` |
@@ -227,7 +240,7 @@ Remaining placeholders are explicit startup decisions carried in typed provenanc
 | `banking.initCapital` | `168e9` | raw PLN | KNF February 2026 TCR 21.1%, mapped to model RWA proxy | Aggregate regulatory-capital proxy | Scaled by gdpRatio | `BankingConfig`, `SimParams` | `EMPIRICAL_TRANSFORMED` |
 | `banking.initDeposits` | `2542.3e9` | raw PLN | KNF monthly banking data, February 2026 | Aggregate banking-sector deposits | Scaled by gdpRatio | `BankingConfig`, `SimParams` | `EMPIRICAL` |
 | `banking.initLoans` | `557.4e9` | raw PLN | KNF monthly banking data, February 2026: SME + large enterprises + individual entrepreneurs + individual farmers | Corporate/nonfinancial business loans | Scaled by gdpRatio | `BankingConfig`, `SimParams` | `EMPIRICAL_TRANSFORMED` |
-| `banking.initGovBonds`, `initNbpGovBonds` | `400e9, 300e9` | raw PLN | Code note bridge: NBP bridge prior | Bank/NBP government-bond holdings | Scaled by gdpRatio | `BankingConfig`, `SimParams` | `CODE_NOTE_EMPIRICAL` |
+| `banking.initGovBonds`, `initNbpGovBonds` | `400e9, 300e9` | raw PLN | NBP MFI and central-bank balance-sheet bridge, 2026-04-30 | Bank/NBP government-bond holdings | Scaled by gdpRatio | `BankingConfig`, `SimParams` | `EMPIRICAL_TRANSFORMED` |
 | `banking.initConsumerLoans` | `225.2e9` | raw PLN | KNF monthly banking data, February 2026 | Consumer loan stock | Scaled by gdpRatio; household opening consumer loans are normalized to this target | `BankingConfig`, `SimParams`, `Household.Init` | `EMPIRICAL` |
 | `banking.baseSpread` | `0.015` | annual rate | Structural bank-pricing spread prior | Base firm-loan spread | Direct | `BankingConfig` | `ASSUMED` |
 | `banking.minCar` | `0.08` | multiplier/share | Code note bridge: Basel III CRR | Minimum capital adequacy | Direct | `BankingConfig` | `EMPIRICAL` |
@@ -250,7 +263,7 @@ Remaining placeholders are explicit startup decisions carried in typed provenanc
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `forex.baseExRate` | `4.2537` | PLN/EUR | NBP table A, 2026-04-29 | Starting exchange rate | Direct | `ForexConfig` | `EMPIRICAL` |
 | `forex.foreignRate` | `0.0215` | annual rate | ECB main refinancing rate | Foreign reference rate | Direct | `ForexConfig` | `EMPIRICAL` |
-| `forex.importPropensity` | `0.22` | GDP share | Code note bridge: GUS/NBP bridge prior | Aggregate import-to-GDP ratio | Direct | `ForexConfig` | `CODE_NOTE_EMPIRICAL` |
+| `forex.importPropensity` | `0.22` | GDP share | GUS/NBP imports-to-GDP bridge, 2026-04-30 | Aggregate import-to-GDP ratio | Direct | `ForexConfig` | `EMPIRICAL_TRANSFORMED` |
 | `forex.techImportShare` | `0.40` | share | Structural import-composition prior | Technology/capital goods share of imports | Direct | `ForexConfig` | `ASSUMED` |
 | `forex.irpSensitivity`, `exRateAdjSpeed` | `0.15, 0.02` | coefficient | IRP / FX adjustment model | Exchange-rate response speed | Direct | `ForexConfig` | `TUNED_NEEDS_VALIDATION` |
 | `forex.riskOffShockMonth` | `0` | month | Scenario switch | No baseline risk-off shock | Direct | `ForexConfig` | `POLICY_SCENARIO` |
@@ -284,7 +297,7 @@ Remaining placeholders are explicit startup decisions carried in typed provenanc
 | `tourism.inboundShare`, `outboundShare` | `0.05, 0.03` | GDP share | Code note bridge: GUS TSA 2023 / NBP BoP 2023 | Tourism exports/imports | GDP-proportional | `TourismConfig` | `CODE_NOTE_EMPIRICAL` |
 | `tourism.seasonality`, `peakMonth` | `0.40, 7` | share/month | Code note bridge: GUS TSA | Tourism seasonality | Cosine seasonal factor | `TourismConfig` | `CODE_NOTE_EMPIRICAL` |
 | `equity.initIndex`, `initMcap` | `128508.77, 1232.99264e9` | index/raw PLN | GPW Benchmark WIG close and GPW domestic-company market capitalization on 2026-04-30 | WIG index and market cap | initMcap scaled by gdpRatio | `EquityConfig`, `SimParams` | `EMPIRICAL` |
-| `equity.peMean`, `divYield` | `10.0, 0.057` | scalar/annual rate | Code note bridge: GPW bridge prior | Long-run P/E and dividend yield | Direct | `EquityConfig` | `CODE_NOTE_EMPIRICAL` |
+| `equity.peMean`, `divYield` | `10.0, 0.057` | scalar/annual rate | GPW market valuation bridge, 2026-04-30 | Long-run P/E and dividend yield | Direct | `EquityConfig` | `EMPIRICAL_TRANSFORMED` |
 | `equity.foreignShare` | `0.67` | share | Code note bridge: KNF/KDPW bridge prior | Foreign ownership share | Direct | `EquityConfig` | `CODE_NOTE_EMPIRICAL` |
 | `equity.listedProfitShare` | `0.10` | share | #461 calibration | Listed-company slice of aggregate modeled firm profits | Direct | `EquityConfig`, `EquityMarket` | `TUNED_NEEDS_VALIDATION` |
 | `corpBond.spread` | `0.025` | annual rate | Code note bridge: RRRF bridge prior BBB | Corporate bond spread | Direct | `CorpBondConfig` | `CODE_NOTE_EMPIRICAL` |
@@ -299,7 +312,7 @@ Remaining placeholders are explicit startup decisions carried in typed provenanc
 | `housing.initValue` | `7.8e12` | raw PLN | Latest NBP comprehensive residential-property stock estimate | Aggregate housing stock value | Scaled by gdpRatio | `HousingConfig`, `SimParams` | `EMPIRICAL_TRANSFORMED` |
 | `housing.initMortgage` | `506.3e9` | raw PLN | KNF monthly banking data, February 2026 | Aggregate mortgage stock | Scaled by gdpRatio | `HousingConfig`, `SimParams` | `EMPIRICAL` |
 | `housing.priceIncomeElast`, `priceRateElast`, `priceReversion` | `1.2, -0.8, 0.05` | coefficients | UNKNOWN_SOURCE | HPI response to income, rates, and fundamentals | Direct | `HousingConfig` | `TUNED_NEEDS_VALIDATION` |
-| `housing.mortgageSpread` | `0.025` | annual rate | Code note bridge: NBP bridge prior | Mortgage spread over policy rate | Direct | `HousingConfig` | `CODE_NOTE_EMPIRICAL` |
+| `housing.mortgageSpread` | `0.025` | annual rate | NBP MIR housing-loan spread bridge, 2026-04-30 | Mortgage spread over policy rate | Direct | `HousingConfig` | `EMPIRICAL_TRANSFORMED` |
 | `housing.mortgageMaturity`, `ltvMax` | `300, 0.80` | months/share | Code note bridge: KNF Recommendation S | Mortgage maturity and LTV cap | Direct | `HousingConfig` | `EMPIRICAL` |
 | `housing.originationRate`, `defaultBase`, `defaultUnempSens` | `0.003, 0.001, 0.05` | share/coefficient | UNKNOWN_SOURCE | Mortgage origination and default dynamics | Direct | `HousingConfig` | `TUNED_NEEDS_VALIDATION` |
 | `housing.mortgageRecovery` | `0.70` | share | Structural mortgage workout recovery prior | Defaulted mortgage recovery | Direct | `HousingConfig` | `ASSUMED` |

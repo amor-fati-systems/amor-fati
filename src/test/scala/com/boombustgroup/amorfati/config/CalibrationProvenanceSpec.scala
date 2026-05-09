@@ -39,9 +39,9 @@ class CalibrationProvenanceSpec extends AnyFlatSpec with Matchers:
   "Baseline calibration provenance" should "preserve the active default inventory status counts in code" in {
     CalibrationProvenance.Baseline.parseErrors shouldBe empty
     CalibrationProvenance.Baseline.parameters should have size 238
-    CalibrationProvenance.Baseline.statusCounts should contain(Empirical -> 35)
-    CalibrationProvenance.Baseline.statusCounts should contain(EmpiricalTransformed -> 12)
-    CalibrationProvenance.Baseline.statusCounts should contain(CodeNoteEmpirical -> 67)
+    CalibrationProvenance.Baseline.statusCounts should contain(Empirical -> 36)
+    CalibrationProvenance.Baseline.statusCounts should contain(EmpiricalTransformed -> 17)
+    CalibrationProvenance.Baseline.statusCounts should contain(CodeNoteEmpirical -> 61)
     CalibrationProvenance.Baseline.statusCounts should contain(TunedNeedsValidation -> 85)
     CalibrationProvenance.Baseline.statusCounts.getOrElse(UnknownSource, 0) shouldBe 0
     CalibrationProvenance.Baseline.statusCounts should contain(Placeholder -> 1)
@@ -68,6 +68,45 @@ class CalibrationProvenanceSpec extends AnyFlatSpec with Matchers:
     baseWage.transformation shouldBe "Direct"
     baseWage.ownerModules shouldBe Vector("HouseholdConfig")
     baseWage.status shouldBe Empirical
+  }
+
+  it should "carry typed source metadata for migrated code-note empirical rows" in {
+    val expectedSources = Vector(
+      ("pop.initialUnemploymentRate", "Labor market", "GUS registered unemployment", "March 2026", "stat.gov.pl", "opening household"),
+      ("fiscal.govBaseSpending", "Fiscal stance", "MF state-budget 2026 spending plan", "2026 budget plan", "gov.pl", "divided by 12"),
+      (
+        "banking.initGovBonds",
+        "Banking and central-bank balance sheets",
+        "NBP MFI and central-bank government securities bridge",
+        "2026-04-30",
+        "nbp.pl",
+        "model holder buckets",
+      ),
+      ("forex.importPropensity", "External sector", "GUS/NBP import-to-GDP bridge", "2026-04-30", "Current account", "normalized to GDP"),
+      (
+        "equity.peMean",
+        "Financial markets and non-bank finance",
+        "policy-rates-market-yields-and-gpw",
+        "2026-04-30",
+        "Monetary and financial market conditions",
+        "P/E",
+      ),
+      ("housing.mortgageSpread", "Housing and mortgages", "NBP MIR housing-loan rate spread", "2026-04-30", "mir-statistics", "spread over the policy-rate"),
+    )
+
+    expectedSources.foreach: (id, family, tableOrCode, vintage, referenceFragment, transformFragment) =>
+      withClue(id) {
+        val parameter = baselineParameter(id)
+        parameter.status should not equal CodeNoteEmpirical
+        val source    = parameter.sourceMetadata.getOrElse(fail(s"Expected typed source metadata for '$id'"))
+        source.sourceFamily shouldBe family
+        source.sourceTableOrCode shouldBe tableOrCode
+        source.vintage should include(vintage)
+        source.sourceReference should include(referenceFragment)
+        source.transformationNotes should include(transformFragment)
+      }
+
+    CalibrationProvenance.Baseline.rowsWithStatus(CodeNoteEmpirical).flatMap(_.sourceMetadata) shouldBe empty
   }
 
   it should "expand grouped shorthand parameter ids to stable fully-qualified ids" in {

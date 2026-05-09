@@ -33,6 +33,14 @@ class CalibrationRegisterRendererSpec extends AnyFlatSpec with Matchers:
     rendered should include("Opening migration-stock comparisons")
   }
 
+  it should "render structured source metadata" in {
+    val rendered = CalibrationRegisterRenderer.render()
+
+    rendered should include("## Structured Source Metadata")
+    rendered should include("| `fiscal.govBaseSpending` | Fiscal stance | `MF state-budget 2026 spending plan` |")
+    rendered should include("| `banking.initGovBonds`, `initNbpGovBonds` | Banking and central-bank balance sheets |")
+  }
+
   it should "fail fast when a placeholder row lacks typed decision metadata" in {
     val brokenPlaceholder = CalibrationProvenance.CalibrationParameter(
       id = "immigration.initStock",
