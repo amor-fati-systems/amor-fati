@@ -43,9 +43,9 @@ class CalibrationProvenanceSpec extends AnyFlatSpec with Matchers:
     CalibrationProvenance.Baseline.statusCounts should contain(EmpiricalTransformed -> 12)
     CalibrationProvenance.Baseline.statusCounts should contain(CodeNoteEmpirical -> 67)
     CalibrationProvenance.Baseline.statusCounts should contain(TunedNeedsValidation -> 85)
-    CalibrationProvenance.Baseline.statusCounts should contain(UnknownSource -> 20)
+    CalibrationProvenance.Baseline.statusCounts.getOrElse(UnknownSource, 0) shouldBe 0
     CalibrationProvenance.Baseline.statusCounts should contain(Placeholder -> 1)
-    CalibrationProvenance.Baseline.statusCounts should contain(Assumed -> 11)
+    CalibrationProvenance.Baseline.statusCounts should contain(Assumed -> 31)
     CalibrationProvenance.Baseline.statusCounts should contain(PolicyScenario -> 7)
   }
 
@@ -80,8 +80,11 @@ class CalibrationProvenanceSpec extends AnyFlatSpec with Matchers:
     val revenueMultiplier = baselineParameter("sectorDefs.revenueMultiplier")
     val mpc               = baselineParameter("household.mpc")
 
-    revenueMultiplier.status shouldBe UnknownSource
-    revenueMultiplier.needsSourceMetadata shouldBe true
+    CalibrationProvenance.Baseline.rowsWithStatus(UnknownSource) shouldBe empty
+    revenueMultiplier.status shouldBe Assumed
+    revenueMultiplier.provenance shouldBe "Structural sector productivity prior"
+    revenueMultiplier.effectiveExemption shouldBe Some(StructuralAssumption)
+    revenueMultiplier.needsSourceMetadata shouldBe false
     mpc.status shouldBe TunedNeedsValidation
     mpc.needsValidationEvidence shouldBe true
   }

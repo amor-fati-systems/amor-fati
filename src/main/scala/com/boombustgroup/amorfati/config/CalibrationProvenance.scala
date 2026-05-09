@@ -185,14 +185,14 @@ object CalibrationProvenance:
 | `sectorDefs.share` | `[0.03, 0.16, 0.45, 0.06, 0.22, 0.08]` | share by sector | 2026-04-30 sector bridge | Firm/employment sector weights | Direct | `SimParams` | `TUNED_NEEDS_VALIDATION` |
 | `sectorDefs.sigma` | `[50, 10, 5, 2, 1, 3]` | CES elasticity | Structural automation/substitution assumption | Sectoral substitutability ranking | Direct | `SimParams` | `TUNED_NEEDS_VALIDATION` |
 | `sectorDefs.wageMultiplier` | `[1.35, 0.94, 0.79, 0.97, 0.91, 0.67]` | multiplier | 2026-04-30 sector bridge | Relative sector wages | Direct | `SimParams` | `TUNED_NEEDS_VALIDATION` |
-| `sectorDefs.revenueMultiplier` | `[1.50, 1.05, 0.91, 1.10, 1.08, 0.80]` | multiplier | UNKNOWN_SOURCE | Relative sector revenue/productivity | Direct | `SimParams` | `UNKNOWN_SOURCE` |
+| `sectorDefs.revenueMultiplier` | `[1.50, 1.05, 0.91, 1.10, 1.08, 0.80]` | multiplier | Structural sector productivity prior | Relative sector revenue/productivity | Direct | `SimParams` | `ASSUMED` |
 | `household.baseWage` | `9652` | PLN/month | GUS March 2026 enterprise-sector wage, rounded from 9652.19 PLN | Mean monthly gross wage | Direct | `HouseholdConfig` | `EMPIRICAL` |
 | `household.baseReservationWage` | `4806` | PLN/month | Statutory 2026 minimum wage | Minimum acceptable wage | Direct | `HouseholdConfig` | `EMPIRICAL` |
 | `household.mpc` | `0.92` | share | #461 demand-side calibration | Aggregate mean MPC supporting Poland 2026 consumption-led growth | Direct | `HouseholdConfig` | `TUNED_NEEDS_VALIDATION` |
 | `household.mpcAlpha`, `household.mpcBeta` | `9.2`, `0.8` | beta params | #461 demand-side calibration | Heterogeneous MPC distribution centered on stronger private-consumption channel | Beta draw | `HouseholdConfig` | `TUNED_NEEDS_VALIDATION` |
-| `household.savingsMu`, `household.savingsSigma` | `9.6`, `1.2` | log PLN params | UNKNOWN_SOURCE | Initial savings distribution | Lognormal draw | `HouseholdConfig` | `UNKNOWN_SOURCE` |
+| `household.savingsMu`, `household.savingsSigma` | `9.6`, `1.2` | log PLN params | Structural initialization prior: household liquidity buffer | Initial savings distribution | Lognormal draw | `HouseholdConfig` | `ASSUMED` |
 | `household.debtFraction` | `0.40` | share | Code note bridge: BIK bridge prior | Household positive debt share | Bernoulli init | `HouseholdConfig` | `CODE_NOTE_EMPIRICAL` |
-| `household.debtMu`, `household.debtSigma` | `10.5`, `1.5` | log PLN params | UNKNOWN_SOURCE | Initial debt distribution | Lognormal draw | `HouseholdConfig` | `UNKNOWN_SOURCE` |
+| `household.debtMu`, `household.debtSigma` | `10.5`, `1.5` | log PLN params | Structural initialization prior: household debt dispersion | Initial debt distribution | Lognormal draw | `HouseholdConfig` | `ASSUMED` |
 | `household.rentMean`, `rentStd`, `rentFloor` | `3500`, `800`, `1200` | PLN/month | Otodom March 2026 provincial-city asking-rent bridge | Rent distribution | Truncated normal draw | `HouseholdConfig` | `EMPIRICAL_TRANSFORMED` |
 | `household.bufferTargetMonths` | `6.0` | months | Carroll-style buffer-stock model | Target liquid buffer | Direct | `HouseholdConfig` | `ASSUMED` |
 | `household.laborSupplySteepness` | `4.0` | coefficient | #461 labor-market calibration | Labor-supply response steepness; calibrated so wage clearing supports strong 2026 growth without forcing persistent labor shedding | Direct | `HouseholdConfig` | `TUNED_NEEDS_VALIDATION` |
@@ -201,13 +201,13 @@ object CalibrationProvenance:
 | `household.skillDecayRate` | `0.02` | monthly share | UNKNOWN_SOURCE | Skill decay under unemployment | Direct | `HouseholdConfig` | `TUNED_NEEDS_VALIDATION` |
 | `household.scarringRate`, `scarringCap`, `scarringOnset` | `0.02`, `0.50`, `3` | share/months | Literature note in code | Long-run unemployment scarring | Direct | `HouseholdConfig` | `TUNED_NEEDS_VALIDATION` |
 | `household.wageScarRate`, `wageScarCap`, `wageScarDecay` | `0.025`, `0.30`, `0.005` | share/month | Code note bridge: Jacobson et al.; Davis and von Wachter | Wage scar accumulation and recovery | Direct | `HouseholdConfig` | `TUNED_NEEDS_VALIDATION` |
-| `household.retrainingCost`, `retrainingDuration` | `5000`, `6` | PLN/months | UNKNOWN_SOURCE | Retraining cost and duration | Direct | `HouseholdConfig` | `UNKNOWN_SOURCE` |
+| `household.retrainingCost`, `retrainingDuration` | `5000`, `6` | PLN/months | Structural labor-reskilling program prior | Retraining cost and duration | Direct | `HouseholdConfig` | `ASSUMED` |
 | `household.retrainingBaseSuccess`, `retrainingProb` | `0.60`, `0.15` | share | UNKNOWN_SOURCE | Retraining success/enrollment | Direct | `HouseholdConfig` | `TUNED_NEEDS_VALIDATION` |
 | `household.bankruptcyDistressMonths` | `3` | months | ASSUMED | Distress persistence before bankruptcy | Direct | `HouseholdConfig` | `ASSUMED` |
-| `household.depositSpread` | `0.02` | annual rate | UNKNOWN_SOURCE | Deposit rate below policy rate | Direct | `HouseholdConfig` | `UNKNOWN_SOURCE` |
+| `household.depositSpread` | `0.02` | annual rate | Structural retail-deposit spread prior | Deposit rate below policy rate | Direct | `HouseholdConfig` | `ASSUMED` |
 | `household.ccSpread` | `0.04` | annual rate | Code note bridge: NBP MIR bridge prior | Consumer credit spread | Direct | `HouseholdConfig` | `CODE_NOTE_EMPIRICAL` |
 | `household.ccMaxDti` | `0.40` | share | Code note bridge: KNF Recommendation T | Consumer credit DTI cap | Direct | `HouseholdConfig` | `CODE_NOTE_EMPIRICAL` |
-| `household.ccMaxLoan` | `50000` | PLN | UNKNOWN_SOURCE | Maximum unsecured consumer loan | Direct | `HouseholdConfig` | `UNKNOWN_SOURCE` |
+| `household.ccMaxLoan` | `50000` | PLN | Structural unsecured-credit limit prior | Maximum unsecured consumer loan | Direct | `HouseholdConfig` | `ASSUMED` |
 | `household.ccNplRecovery` | `0.15` | share | Code note bridge: BIK bridge prior | Consumer loan recovery | Direct | `HouseholdConfig` | `CODE_NOTE_EMPIRICAL` |
 | `labor.frictionMatrix` | `DefaultFrictionMatrix` | 6x6 share | Code note bridge: GUS LFS bridge prior, Shimer 2005 | Cross-sector mobility friction | Direct | `LaborConfig` | `CODE_NOTE_EMPIRICAL` |
 | `labor.voluntarySearchProb` | `0.02` | monthly share | UNKNOWN_SOURCE | Employed voluntary sector search | Direct | `LaborConfig` | `TUNED_NEEDS_VALIDATION` |
@@ -228,14 +228,14 @@ object CalibrationProvenance:
 | `social.demInitialRetirees` | `pop.firmsCount * pop.workersPerFirm / 3` | agents | #461 pension-consumption/GDP calibration | Effective initial retiree stock | Derived in `SimParams.defaults`; consumed by `HouseholdIncomeEconomics` | `SocialConfig`, `SimParams`, `HouseholdIncomeEconomics` | `TUNED_NEEDS_VALIDATION` |
 | `firm.baseRevenue` | `180000` | PLN/month/worker | Code note bridge: GUS F-01 bridge prior | Revenue per worker before demand shocks | Direct, unscaled | `FirmConfig` | `CODE_NOTE_EMPIRICAL` |
 | `firm.productivityGrowth` | `0.020` | annual rate | #461 GDP-growth calibration | Baseline productivity/catch-up trend | `.monthly` in use | `FirmConfig` | `TUNED_NEEDS_VALIDATION` |
-| `firm.otherCosts` | `16667` | PLN/month/worker | UNKNOWN_SOURCE | Fixed non-wage operating cost | Direct, unscaled | `FirmConfig` | `UNKNOWN_SOURCE` |
+| `firm.otherCosts` | `16667` | PLN/month/worker | Structural fixed-cost prior | Fixed non-wage operating cost | Direct, unscaled | `FirmConfig` | `ASSUMED` |
 | `firm.aiCapex` | `1200000` | PLN/firm | UNKNOWN_SOURCE | Full automation capex | Direct | `FirmConfig` | `TUNED_NEEDS_VALIDATION` |
 | `firm.hybridCapex` | `350000` | PLN/firm | UNKNOWN_SOURCE | Hybrid automation capex | Direct | `FirmConfig` | `TUNED_NEEDS_VALIDATION` |
 | `firm.aiOpex`, `firm.hybridOpex` | `30000`, `12000` | PLN/month/firm | UNKNOWN_SOURCE | AI/hybrid operating cost | Direct | `FirmConfig` | `TUNED_NEEDS_VALIDATION` |
 | `firm.hybridReadinessMin`, `fullAiReadinessMin` | `0.20`, `0.55` | share | #461 calibration | Digital readiness adoption thresholds | Direct | `FirmConfig` | `TUNED_NEEDS_VALIDATION` |
 | `firm.entrySectorBarriers` | `[0.8, 0.6, 1.2, 0.5, 0.1, 0.7]` | coefficient by sector | Code note bridge: enterprise-size bridge prior | Entry barriers | Direct | `FirmConfig` | `CODE_NOTE_EMPIRICAL` |
 | `firm.entryAiThreshold`, `entryAiProb` | `0.15`, `0.20` | share | UNKNOWN_SOURCE | AI-native entrant trigger/probability | Direct | `FirmConfig` | `TUNED_NEEDS_VALIDATION` |
-| `firm.entryStartupCash` | `50000` | PLN | UNKNOWN_SOURCE | Entrant liquidity | Direct | `FirmConfig` | `UNKNOWN_SOURCE` |
+| `firm.entryStartupCash` | `50000` | PLN | Structural entrant-liquidity prior | Entrant liquidity | Direct | `FirmConfig` | `ASSUMED` |
 | `firm.replacementEntryRate` | `0.35` | monthly share | UNKNOWN_SOURCE | Replacement of dead firm slots | Direct | `FirmConfig` | `TUNED_NEEDS_VALIDATION` |
 | `firm.netEntryRate`, `netEntryMaxMonthly` | `0.08`, `175` | monthly share / firms | #461 labor/GDP calibration | Utilization-backed net births constrained by staffing feasibility | Direct | `FirmConfig`, `FirmEntry` | `TUNED_NEEDS_VALIDATION` |
 | `firm.laborAdjustSpeed`, `hiringWorkingCapitalMonths`, `startupHiringWorkingCapitalMonths` | `0.15`, `3`, `4` | monthly share / wage-months | #461 GDP-growth calibration | Firm hiring absorption and payroll working-capital runway | Direct in firm workforce decision | `FirmConfig`, `Firm` | `TUNED_NEEDS_VALIDATION` |
@@ -256,7 +256,7 @@ object CalibrationProvenance:
 | `climate.etsBasePrice` | `80` | EUR/tCO2 | Code note bridge: KOBiZE bridge prior | EU ETS starting price | Direct | `ClimateConfig` | `CODE_NOTE_EMPIRICAL` |
 | `climate.etsPriceDrift` | `0.03` | annual rate | Code note bridge: EC Fit for 55 trajectory | ETS trend | `.monthly` in use | `ClimateConfig` | `CODE_NOTE_EMPIRICAL` |
 | `climate.greenBudgetShare` | `0.20` | share | UNKNOWN_SOURCE | Green investment budget share | Direct | `ClimateConfig` | `TUNED_NEEDS_VALIDATION` |
-| `climate.greenImportShare` | `0.35` | share | UNKNOWN_SOURCE | Import share of green capex | Direct | `ClimateConfig` | `UNKNOWN_SOURCE` |
+| `climate.greenImportShare` | `0.35` | share | Structural green-capex import-content prior | Import share of green capex | Direct | `ClimateConfig` | `ASSUMED` |
 | `fiscal.citRate` | `0.19` | rate | Code note bridge: MF bridge prior / CIT law | Corporate income tax rate | Direct | `FiscalConfig` | `EMPIRICAL` |
 | `fiscal.vatRates` | `[0.23, 0.19, 0.12, 0.06, 0.10, 0.07]` | rate by sector | Code note bridge: MF bridge prior effective rates | Sector VAT rates | Direct | `FiscalConfig` | `CODE_NOTE_EMPIRICAL` |
 | `fiscal.exciseRates` | `[0.01, 0.04, 0.03, 0.005, 0.002, 0.02]` | rate by sector | Code note bridge: MF bridge prior aggregate | Effective excise rates | Direct | `FiscalConfig` | `CODE_NOTE_EMPIRICAL` |
@@ -307,9 +307,9 @@ object CalibrationProvenance:
 | `banking.initLoans` | `557.4e9` | raw PLN | KNF monthly banking data, February 2026: SME + large enterprises + individual entrepreneurs + individual farmers | Corporate/nonfinancial business loans | Scaled by `gdpRatio` | `BankingConfig`, `SimParams` | `EMPIRICAL_TRANSFORMED` |
 | `banking.initGovBonds`, `initNbpGovBonds` | `400e9`, `300e9` | raw PLN | Code note bridge: NBP bridge prior | Bank/NBP government-bond holdings | Scaled by `gdpRatio` | `BankingConfig`, `SimParams` | `CODE_NOTE_EMPIRICAL` |
 | `banking.initConsumerLoans` | `225.2e9` | raw PLN | KNF monthly banking data, February 2026 | Consumer loan stock | Scaled by `gdpRatio`; household opening consumer loans are normalized to this target | `BankingConfig`, `SimParams`, `Household.Init` | `EMPIRICAL` |
-| `banking.baseSpread` | `0.015` | annual rate | UNKNOWN_SOURCE | Base firm-loan spread | Direct | `BankingConfig` | `UNKNOWN_SOURCE` |
+| `banking.baseSpread` | `0.015` | annual rate | Structural bank-pricing spread prior | Base firm-loan spread | Direct | `BankingConfig` | `ASSUMED` |
 | `banking.minCar` | `0.08` | multiplier/share | Code note bridge: Basel III CRR | Minimum capital adequacy | Direct | `BankingConfig` | `EMPIRICAL` |
-| `banking.loanRecovery` | `0.30` | share | UNKNOWN_SOURCE | Corporate loan recovery | Direct | `BankingConfig` | `UNKNOWN_SOURCE` |
+| `banking.loanRecovery` | `0.30` | share | Structural corporate-loan workout recovery prior | Corporate loan recovery | Direct | `BankingConfig` | `ASSUMED` |
 | `banking.firmLoanAmortRate` | `1/60` | monthly rate | Code note bridge: NBP bridge prior maturity | Five-year average loan maturity | Direct | `BankingConfig` | `CODE_NOTE_EMPIRICAL` |
 | `banking.reserveReq` | `0.035` | share | Code note bridge: NBP bridge prior | Required reserve ratio | Direct | `BankingConfig` | `EMPIRICAL` |
 | `banking.lcrMin`, `nsfrMin` | `1.0`, `1.0` | multiplier | Basel III | Minimum LCR/NSFR | Direct | `BankingConfig` | `EMPIRICAL` |
@@ -324,7 +324,7 @@ object CalibrationProvenance:
 | `forex.baseExRate` | `4.2537` | PLN/EUR | NBP table A, 2026-04-29 | Starting exchange rate | Direct | `ForexConfig` | `EMPIRICAL` |
 | `forex.foreignRate` | `0.0215` | annual rate | ECB main refinancing rate | Foreign reference rate | Direct | `ForexConfig` | `EMPIRICAL` |
 | `forex.importPropensity` | `0.22` | GDP share | Code note bridge: GUS/NBP bridge prior | Aggregate import-to-GDP ratio | Direct | `ForexConfig` | `CODE_NOTE_EMPIRICAL` |
-| `forex.techImportShare` | `0.40` | share | UNKNOWN_SOURCE | Technology/capital goods share of imports | Direct | `ForexConfig` | `UNKNOWN_SOURCE` |
+| `forex.techImportShare` | `0.40` | share | Structural import-composition prior | Technology/capital goods share of imports | Direct | `ForexConfig` | `ASSUMED` |
 | `forex.irpSensitivity`, `exRateAdjSpeed` | `0.15`, `0.02` | coefficient | IRP / FX adjustment model | Exchange-rate response speed | Direct | `ForexConfig` | `TUNED_NEEDS_VALIDATION` |
 | `forex.riskOffShockMonth` | `0` | month | Scenario switch | No baseline risk-off shock | Direct | `ForexConfig` | `POLICY_SCENARIO` |
 | `openEcon.importContent` | `[0.15, 0.50, 0.20, 0.15, 0.05, 0.12]` | share by sector | Code note bridge: supply-use bridge prior | Import content of production | Direct | `OpenEconConfig` | `CODE_NOTE_EMPIRICAL` |
@@ -362,7 +362,7 @@ object CalibrationProvenance:
 | `equity.listedProfitShare` | `0.10` | share | #461 calibration | Listed-company slice of aggregate modeled firm profits | Direct | `EquityConfig`, `EquityMarket` | `TUNED_NEEDS_VALIDATION` |
 | `corpBond.spread` | `0.025` | annual rate | Code note bridge: RRRF bridge prior BBB | Corporate bond spread | Direct | `CorpBondConfig` | `CODE_NOTE_EMPIRICAL` |
 | `corpBond.initStock` | `108.5e9` | raw PLN | Catalyst corporate instruments on 2026-04-30, PLN stock plus EUR stock converted at model-start FX | Corporate bonds outstanding | Scaled by `gdpRatio` | `CorpBondConfig`, `SimParams` | `EMPIRICAL_TRANSFORMED` |
-| `corpBond.recovery` | `0.30` | share | UNKNOWN_SOURCE | Corporate bond recovery | Direct | `CorpBondConfig` | `UNKNOWN_SOURCE` |
+| `corpBond.recovery` | `0.30` | share | Structural corporate-bond recovery prior | Corporate bond recovery | Direct | `CorpBondConfig` | `ASSUMED` |
 | `housing.initHpi` | `100` | index | Base-index convention | National HPI starting point | Direct | `HousingConfig` | `ASSUMED` |
 | `housing.initValue` | `7.8e12` | raw PLN | Latest NBP comprehensive residential-property stock estimate | Aggregate housing stock value | Scaled by `gdpRatio` | `HousingConfig`, `SimParams` | `EMPIRICAL_TRANSFORMED` |
 | `housing.initMortgage` | `506.3e9` | raw PLN | KNF monthly banking data, February 2026 | Aggregate mortgage stock | Scaled by `gdpRatio` | `HousingConfig`, `SimParams` | `EMPIRICAL` |
@@ -370,7 +370,7 @@ object CalibrationProvenance:
 | `housing.mortgageSpread` | `0.025` | annual rate | Code note bridge: NBP bridge prior | Mortgage spread over policy rate | Direct | `HousingConfig` | `CODE_NOTE_EMPIRICAL` |
 | `housing.mortgageMaturity`, `ltvMax` | `300`, `0.80` | months/share | Code note bridge: KNF Recommendation S | Mortgage maturity and LTV cap | Direct | `HousingConfig` | `EMPIRICAL` |
 | `housing.originationRate`, `defaultBase`, `defaultUnempSens` | `0.003`, `0.001`, `0.05` | share/coefficient | UNKNOWN_SOURCE | Mortgage origination and default dynamics | Direct | `HousingConfig` | `TUNED_NEEDS_VALIDATION` |
-| `housing.mortgageRecovery` | `0.70` | share | UNKNOWN_SOURCE | Defaulted mortgage recovery | Direct | `HousingConfig` | `UNKNOWN_SOURCE` |
+| `housing.mortgageRecovery` | `0.70` | share | Structural mortgage workout recovery prior | Defaulted mortgage recovery | Direct | `HousingConfig` | `ASSUMED` |
 | `housing.wealthMpc`, `rentalYield` | `0.05`, `0.045` | share/annual rate | Code note bridge: Case, Quigley and Shiller 2005; Otodom/NBP | Housing wealth consumption effect and rental yield | Direct | `HousingConfig` | `CODE_NOTE_EMPIRICAL` |
 | `housing.regionalMarkets` | 7 regional rows | vector | Code note bridge: NBP/GUS bridge prior | Regional HPI, value share, mortgage share, income multipliers | Direct | `HousingConfig` | `CODE_NOTE_EMPIRICAL` |
 | `regional.baseMigrationRate` | `0.005` | monthly share | Code note bridge: GUS bridge prior | Internal migration probability for unemployed workers | Direct | `RegionalConfig` | `CODE_NOTE_EMPIRICAL` |
@@ -388,14 +388,14 @@ object CalibrationProvenance:
 | `soe.dividendFiscalThreshold`, `dividendFiscalSensitivity` | `0.03`, `5.0` | share/coefficient | UNKNOWN_SOURCE | Fiscal-pressure dividend response | Direct | `SoeConfig` | `TUNED_NEEDS_VALIDATION` |
 | `soe.firingReduction`, `investmentMultiplier`, `energyPassthrough` | `0.70`, `1.2`, `0.60` | share/multiplier | UNKNOWN_SOURCE | SOE labor buffer, directed investment, energy pass-through | Firing buffer applies to standard workforce adjustment and insolvency downsizing | `SoeConfig`, `Firm` | `TUNED_NEEDS_VALIDATION` |
 | `ins.lifeReserves`, `nonLifeReserves` | `76.981e9`, `105.869e9` | raw PLN | KNF insurance financial report, 2025Q4 technical provisions by life and non-life segment | Insurance reserve pools | Scaled by `gdpRatio` | `InsuranceConfig`, `SimParams` | `EMPIRICAL` |
-| `ins.govBondShare`, `corpBondShare`, `equityShare` | `0.35`, `0.08`, `0.12` | share | UNKNOWN_SOURCE | Insurance asset allocation | Portfolio rebalance target | `InsuranceConfig` | `UNKNOWN_SOURCE` |
-| `ins.lifePremiumRate`, `nonLifePremiumRate` | `0.003`, `0.0025` | wage-bill share | UNKNOWN_SOURCE | Insurance premium flow | Direct | `InsuranceConfig` | `UNKNOWN_SOURCE` |
-| `ins.lifeLossRatio`, `nonLifeLossRatio` | `0.85`, `0.70` | share | UNKNOWN_SOURCE | Insurance claims/premiums | Direct | `InsuranceConfig` | `UNKNOWN_SOURCE` |
+| `ins.govBondShare`, `corpBondShare`, `equityShare` | `0.35`, `0.08`, `0.12` | share | Structural insurance portfolio-allocation prior | Insurance asset allocation | Portfolio rebalance target | `InsuranceConfig` | `ASSUMED` |
+| `ins.lifePremiumRate`, `nonLifePremiumRate` | `0.003`, `0.0025` | wage-bill share | Structural insurance premium-rate prior | Insurance premium flow | Direct | `InsuranceConfig` | `ASSUMED` |
+| `ins.lifeLossRatio`, `nonLifeLossRatio` | `0.85`, `0.70` | share | Structural insurance loss-ratio prior | Insurance claims/premiums | Direct | `InsuranceConfig` | `ASSUMED` |
 | `nbfi.tfiInitAum` | `448.3e9` | raw PLN | Analizy/IZFiA fund assets, March 2026 | TFI AUM | Scaled by `gdpRatio` | `NbfiConfig`, `SimParams` | `EMPIRICAL` |
 | `nbfi.creditInitStock` | `234e9` | raw PLN | ZPL active leasing and leasing-loan portfolio, end-2025 | NBFI credit stock | Scaled by `gdpRatio` | `NbfiConfig`, `SimParams` | `EMPIRICAL_TRANSFORMED` |
-| `nbfi.tfiGovBondShare`, `tfiCorpBondShare`, `tfiEquityShare` | `0.40`, `0.10`, `0.10` | share | UNKNOWN_SOURCE | TFI portfolio allocation | Portfolio rebalance target | `NbfiConfig` | `UNKNOWN_SOURCE` |
+| `nbfi.tfiGovBondShare`, `tfiCorpBondShare`, `tfiEquityShare` | `0.40`, `0.10`, `0.10` | share | Structural TFI portfolio-allocation prior | TFI portfolio allocation | Portfolio rebalance target | `NbfiConfig` | `ASSUMED` |
 | `nbfi.creditBaseRate` | `0.005` | monthly share | UNKNOWN_SOURCE | NBFI credit origination rate | Direct | `NbfiConfig` | `TUNED_NEEDS_VALIDATION` |
-| `nbfi.creditRate` | `0.10` | annual rate | UNKNOWN_SOURCE | NBFI loan rate | `.monthly` in income | `NbfiConfig` | `UNKNOWN_SOURCE` |
+| `nbfi.creditRate` | `0.10` | annual rate | Structural NBFI loan-rate prior | NBFI loan rate | `.monthly` in income | `NbfiConfig` | `ASSUMED` |
 | `nbfi.defaultBase`, `defaultUnempSens` | `0.002`, `3.0` | share/coefficient | UNKNOWN_SOURCE | NBFI default dynamics | Direct | `NbfiConfig` | `TUNED_NEEDS_VALIDATION` |
 | `quasiFiscal.issuanceShare` | `0.40` | share | Code note bridge: NIK bridge prior | BGK/PFR share of capital programs | Direct | `QuasiFiscalConfig` | `CODE_NOTE_EMPIRICAL` |
 | `quasiFiscal.initBondsOutstanding` | `421.653e9` | raw PLN | MF public-debt release for IV kw. 2025: EDP debt ca. 2335.2 mld PLN less PDP 1913.5 mld PLN; exact bridge retains prior 2335.153 mld PLN EDP baseline | Opening BGK/PFR-style quasi-fiscal stock bridging PDP to ESA/EDP debt | Scaled by `gdpRatio`; added to domestic fiscal debt only in `Esa2010DebtToGdp` | `QuasiFiscalConfig`, `WorldInit`, `McTimeseriesSchema` | `EMPIRICAL_TRANSFORMED` |
@@ -406,7 +406,7 @@ object CalibrationProvenance:
 | `earmarked.fpRate` | `0.0245` | payroll rate | Code note bridge: employment promotion law | Fundusz Pracy levy | Direct | `EarmarkedConfig` | `EMPIRICAL` |
 | `earmarked.pfronMonthlyRevenue`, `pfronMonthlySpending` | `460e6`, `420e6` | PLN/month | Code note bridge: PFRON bridge prior | PFRON revenue/spending | Direct, currently unscaled | `EarmarkedConfig` | `CODE_NOTE_EMPIRICAL` |
 | `earmarked.fgspRate` | `0.001` | payroll rate | Code note bridge: employee claims law | FGSP levy | Direct | `EarmarkedConfig` | `EMPIRICAL` |
-| `earmarked.fgspPayoutPerWorker` | `10000` | PLN/worker | UNKNOWN_SOURCE | Bankruptcy wage payout | Direct | `EarmarkedConfig` | `UNKNOWN_SOURCE` |
+| `earmarked.fgspPayoutPerWorker` | `10000` | PLN/worker | Structural bankruptcy wage-payout prior | Bankruptcy wage payout | Direct | `EarmarkedConfig` | `ASSUMED` |
       """
 
     private val rawRows: Vector[String] =
