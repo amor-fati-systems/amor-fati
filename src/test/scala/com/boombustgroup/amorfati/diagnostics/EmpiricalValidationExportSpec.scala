@@ -114,11 +114,94 @@ class EmpiricalValidationExportSpec extends AnyFlatSpec with Matchers:
       snapshot should include("MISSING_OUTPUT")
       snapshot should include("terminal_hh:Gini_Individual:mean")
       snapshot should include(
-        "Inflation;GUS;https://stat.gov.pl;CPI;2026-04;2026-04-30;monthly;ratio;annualized mean;validation-baseline, 2 seeds, 2m, test-commit;timeseries:Inflation:terminal;0.05;0.05;0.01",
+        "Inflation;GUS;https://stat.gov.pl;CPI;2026-04;2026-04-30;monthly;ratio;annualized mean;test@test-commit, 2 seeds, 2m, run-id validation-baseline;timeseries:Inflation:terminal;0.05;0.045;0.01",
       )
       snapshot should include(
-        "Inequality Gini;GUS;https://stat.gov.pl;HBS;2025;2026-04-30;annual;ratio;terminal household distribution;validation-baseline, 2 seeds, 2m, test-commit;terminal_hh:Gini_Individual:mean;;0.31",
+        "Inequality Gini;GUS;https://stat.gov.pl;HBS;2025;2026-04-30;annual;ratio;terminal household distribution;test@test-commit, 2 seeds, 2m, run-id validation-baseline;terminal_hh:Gini_Individual:mean;;0.31",
       )
+    } finally deleteRecursively(root)
+  }
+
+  it should "fail clearly on malformed ready rows" in {
+    Files.createDirectories(Path.of("target"))
+    val root = Files.createTempDirectory(Path.of("target"), "empirical-validation-bad-ready-")
+
+    try {
+      val sourceManifest = root.resolve("source-manifest.csv")
+      write(
+        sourceManifest,
+        """target;source_provider;source_url;dataset_code;vintage;accessed_at;license_or_reuse_note;frequency;unit;transformation;model_target;status;empirical_value;tolerance;criterion;notes
+          |Inflation;GUS;https://stat.gov.pl;CPI;2026-04;2026-04-30;public citation;monthly;ratio;annualized mean;timeseries:Inflation:terminal;READY;;;;
+          |""".stripMargin,
+      )
+
+      val error = EmpiricalValidationExport
+        .run(
+          Config(
+            sourceManifest = sourceManifest,
+            mcDir = root.resolve("missing-mc"),
+            out = root.resolve("out"),
+            runId = "validation-baseline",
+            outputPrefix = "validation-baseline",
+            durationMonths = 2,
+            seeds = 1,
+            commit = "test-commit",
+            parameterBranch = "test",
+          ),
+        )
+        .left
+        .getOrElse(fail("Expected malformed READY row to fail"))
+
+      error should include("row 2")
+      error should include("READY row must have numeric empirical_value")
+      error should include("READY row must have numeric tolerance")
+      error should include("READY row must have criterion")
+    } finally deleteRecursively(root)
+  }
+
+  it should "preserve documented partial rows with model values" in {
+    Files.createDirectories(Path.of("target"))
+    val root = Files.createTempDirectory(Path.of("target"), "empirical-validation-partial-")
+    val mc   = root.resolve("mc")
+    val out  = root.resolve("out")
+    Files.createDirectories(mc)
+
+    try {
+      write(
+        mc.resolve("validation-baseline_validation-baseline_1m_seed001.csv"),
+        """Month;Inflation
+          |1;0.030000
+          |""".stripMargin,
+      )
+
+      val sourceManifest = root.resolve("source-manifest.csv")
+      write(
+        sourceManifest,
+        """target;source_provider;source_url;dataset_code;vintage;accessed_at;license_or_reuse_note;frequency;unit;transformation;model_target;status;empirical_value;tolerance;criterion;notes
+          |Inflation bridge;GUS;https://stat.gov.pl;CPI;2026-04;2026-04-30;public citation;monthly;ratio;annualized mean;timeseries:Inflation:terminal;PARTIAL;;;;documented bridge remains open
+          |""".stripMargin,
+      )
+
+      val result = EmpiricalValidationExport
+        .run(
+          Config(
+            sourceManifest = sourceManifest,
+            mcDir = mc,
+            out = out,
+            runId = "validation-baseline",
+            outputPrefix = "validation-baseline",
+            durationMonths = 1,
+            seeds = 1,
+            commit = "test-commit",
+            parameterBranch = "test",
+          ),
+        )
+        .fold(err => fail(err), identity)
+
+      val row = result.rows.find(_.target == "Inflation bridge").getOrElse(fail("Expected partial row"))
+      row.status shouldBe SnapshotStatus.Partial
+      row.modelValue.map(_.toDouble) shouldBe Some(0.03)
+      row.notes should include("documented bridge remains open")
     } finally deleteRecursively(root)
   }
 

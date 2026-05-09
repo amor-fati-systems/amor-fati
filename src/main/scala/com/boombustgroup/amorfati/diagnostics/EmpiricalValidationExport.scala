@@ -35,7 +35,11 @@ object EmpiricalValidationExport:
       outputDir: Path,
   ):
     def filePrefix: String = s"${outputPrefix}_${runId}_${durationMonths}m"
-    def label: String      = s"$runId, $seedCount seeds, ${durationMonths}m, $commit"
+    def label: String      =
+      val stableRef =
+        if parameterBranch.trim.nonEmpty && parameterBranch != "unknown" then s"$parameterBranch@$commit"
+        else commit
+      s"$stableRef, $seedCount seeds, ${durationMonths}m, run-id $runId"
 
   enum SourceStatus(val token: String):
     case Ready               extends SourceStatus("READY")
@@ -256,31 +260,45 @@ object EmpiricalValidationExport:
         sequence(rows.zipWithIndex.map((row, idx) => parseSourceRow(row).left.map(err => s"$path row ${idx + 2}: $err")))
 
   private def parseSourceRow(row: CsvRow): Either[String, SourceManifestRow] =
-    for
-      target      <- row.required("target")
-      modelTarget <- row.required("model_target").flatMap(ModelTarget.parse)
-      status      <- row.required("status").flatMap(SourceStatus.parse)
-      accessedAt  <- parseOptionalDate(row.optional("accessed_at"), "accessed_at")
-      empirical   <- parseOptionalDecimal(row.optional("empirical_value"), "empirical_value")
-      tolerance   <- parseOptionalDecimal(row.optional("tolerance"), "tolerance")
-    yield SourceManifestRow(
-      target = target,
-      sourceProvider = row.optional("source_provider").getOrElse(""),
-      sourceUrl = row.optional("source_url").getOrElse(""),
-      datasetCode = row.optional("dataset_code").getOrElse(""),
-      vintage = row.optional("vintage").getOrElse(""),
-      accessedAt = accessedAt,
-      licenseOrReuseNote = row.optional("license_or_reuse_note").getOrElse(""),
-      frequency = row.optional("frequency").getOrElse(""),
-      unit = row.optional("unit").getOrElse(""),
-      transformation = row.optional("transformation").getOrElse(""),
-      modelTarget = modelTarget,
-      status = status,
-      empiricalValue = empirical,
-      tolerance = tolerance,
-      criterion = row.optional("criterion").getOrElse(""),
-      notes = row.optional("notes").getOrElse(""),
-    )
+    val parsed =
+      for
+        target      <- row.required("target")
+        modelTarget <- row.required("model_target").flatMap(ModelTarget.parse)
+        status      <- row.required("status").flatMap(SourceStatus.parse)
+        accessedAt  <- parseOptionalDate(row.optional("accessed_at"), "accessed_at")
+        empirical   <- parseOptionalDecimal(row.optional("empirical_value"), "empirical_value")
+        tolerance   <- parseOptionalDecimal(row.optional("tolerance"), "tolerance")
+      yield SourceManifestRow(
+        target = target,
+        sourceProvider = row.optional("source_provider").getOrElse(""),
+        sourceUrl = row.optional("source_url").getOrElse(""),
+        datasetCode = row.optional("dataset_code").getOrElse(""),
+        vintage = row.optional("vintage").getOrElse(""),
+        accessedAt = accessedAt,
+        licenseOrReuseNote = row.optional("license_or_reuse_note").getOrElse(""),
+        frequency = row.optional("frequency").getOrElse(""),
+        unit = row.optional("unit").getOrElse(""),
+        transformation = row.optional("transformation").getOrElse(""),
+        modelTarget = modelTarget,
+        status = status,
+        empiricalValue = empirical,
+        tolerance = tolerance,
+        criterion = row.optional("criterion").getOrElse(""),
+        notes = row.optional("notes").getOrElse(""),
+      )
+    parsed.flatMap(validateSourceRowContract)
+
+  private def validateSourceRowContract(row: SourceManifestRow): Either[String, SourceManifestRow] =
+    row.status match
+      case SourceStatus.Ready =>
+        val errors = Vector(
+          Option.when(row.empiricalValue.isEmpty)("READY row must have numeric empirical_value"),
+          Option.when(row.tolerance.isEmpty)("READY row must have numeric tolerance"),
+          Option.when(row.criterion.trim.isEmpty)("READY row must have criterion"),
+        ).flatten
+        Either.cond(errors.isEmpty, row, s"${row.target}: ${errors.mkString("; ")}")
+      case _                  =>
+        Right(row)
 
   private def readModelRunManifest(path: Path, fallbackOutputDir: Path): Either[String, ModelRunManifest] =
     SemicolonCsv
@@ -681,7 +699,12 @@ object EmpiricalValidationExport:
     value.bigDecimal.stripTrailingZeros.toPlainString
 
   private def formatSnapshotDecimal(value: BigDecimal): String =
-    value.setScale(2, BigDecimal.RoundingMode.HALF_UP).bigDecimal.toPlainString
+    val absValue = value.abs
+    val scale    =
+      if absValue >= BigDecimal(100) then 2
+      else if absValue >= BigDecimal(1) then 4
+      else 6
+    value.setScale(scale, BigDecimal.RoundingMode.HALF_UP).bigDecimal.stripTrailingZeros.toPlainString
 
   private def normalize(value: String): String =
     value.trim.replace('-', '_').replace(' ', '_').toUpperCase

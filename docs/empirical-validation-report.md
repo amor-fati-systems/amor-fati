@@ -48,21 +48,23 @@ metadata is not ready.
 
 ## Reproducible Workflow
 
-Run a small deterministic baseline Monte Carlo batch:
+Run a small deterministic baseline Monte Carlo batch. For committed
+snapshots, choose the stable reference from `main` first and use the `run-id`
+only as a technical file key. The current snapshot uses `main@79f5a36c`:
 
 ```bash
-sbt "run 3 validation-baseline --duration 120 --run-id validation-baseline"
+sbt "runMain com.boombustgroup.amorfati.Main 3 validation-baseline --duration 120 --run-id main-79f5a36c"
 ```
 
 Expected output files:
 
 ```text
-mc/validation-baseline_validation-baseline_120m_seed001.csv
-mc/validation-baseline_validation-baseline_120m_seed002.csv
-mc/validation-baseline_validation-baseline_120m_seed003.csv
-mc/validation-baseline_validation-baseline_120m_hh.csv
-mc/validation-baseline_validation-baseline_120m_banks.csv
-mc/validation-baseline_validation-baseline_120m_firms.csv
+mc/validation-baseline_main-79f5a36c_120m_seed001.csv
+mc/validation-baseline_main-79f5a36c_120m_seed002.csv
+mc/validation-baseline_main-79f5a36c_120m_seed003.csv
+mc/validation-baseline_main-79f5a36c_120m_hh.csv
+mc/validation-baseline_main-79f5a36c_120m_banks.csv
+mc/validation-baseline_main-79f5a36c_120m_firms.csv
 ```
 
 Use the per-seed CSV files for monthly macro, meso, financial, and mechanism
@@ -75,7 +77,7 @@ Runnable snapshot procedure after a baseline run:
 2. Generate the empirical validation snapshot:
 
    ```bash
-   sbt "empiricalValidation --source-manifest docs/empirical-validation-source-manifest.csv --mc-dir mc --run-id validation-baseline --output-prefix validation-baseline --duration 120 --seeds 3 --out target/empirical-validation"
+   sbt "empiricalValidation --source-manifest docs/empirical-validation-source-manifest.csv --mc-dir mc --run-id main-79f5a36c --output-prefix validation-baseline --duration 120 --seeds 3 --commit 79f5a36c --parameter-branch main --out target/empirical-validation"
    ```
 
 3. Review `target/empirical-validation/baseline-validation-snapshot.csv` and
@@ -120,41 +122,53 @@ should not manually divide CSV values by `gdpRatio`.
 
 ## Baseline Report Snapshot
 
-This table is the publication-facing slot that should be filled after a
-baseline run. Placeholder values remain explicit until the empirical data
-bridge and baseline analysis have been completed.
+The current versioned baseline snapshot is commit-first. The technical
+`run-id` is retained only to route Monte Carlo files; the stable model
+reference is `main@79f5a36c`.
 
-| Target | Empirical source and vintage | Empirical value | Model run | Model value | Tolerance / criterion | Status | Notes |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| GDP growth | Poland 2026 projection band tracked by #461; final source manifest still TBD via `docs/data-bridge-national-financial-accounts.md` | 3.3%-3.7% real YoY | `main-baseline-clean_seeds10-48m`, 10 seeds, 48 months | m24 real proxy +3.56% YoY; nominal +6.69% YoY | m24 real proxy inside 3.3%-3.7% band | `PASS_BASELINE` | Uses `MonthlyGdpProxy / PriceLevel`; CSV values are already Poland-scale. |
-| Inflation | TBD via `docs/data-bridge-national-financial-accounts.md` | TBD | `validation-baseline` | TBD | TBD | `MISSING_DATA_BRIDGE` | Use `Inflation` and `PriceLevel`. |
-| Unemployment | TBD via `docs/data-bridge-national-financial-accounts.md` | TBD | `validation-baseline` | TBD | TBD | `MISSING_DATA_BRIDGE` | Include regional dispersion. |
-| Wages | TBD via `docs/data-bridge-national-financial-accounts.md` | TBD | `validation-baseline` | TBD | TBD | `MISSING_DATA_BRIDGE` | Current output is aggregate market wage. |
-| Credit/GDP | TBD via `docs/data-bridge-national-financial-accounts.md` | TBD | `validation-baseline` | TBD | TBD | `MISSING_DATA_BRIDGE` | Firm-loan split depends partly on terminal bank summary. |
-| Public debt/GDP | TBD via `docs/data-bridge-national-financial-accounts.md` | TBD | `validation-baseline` | TBD | TBD | `MISSING_DATA_BRIDGE` | Compare `DebtToGdp` and `Esa2010DebtToGdp`. |
-| Current account | TBD via `docs/data-bridge-national-financial-accounts.md` | TBD | `validation-baseline` | TBD | TBD | `MISSING_DATA_BRIDGE` | External-balance calibration remains a follow-up surface. |
-| Firm-size distribution | TBD via `docs/data-bridge-national-financial-accounts.md` | TBD | `validation-baseline` | TBD | TBD | `MISSING_DATA_BRIDGE` | Use terminal `_firms.csv` firm-size counts and shares. |
-| Bankruptcies | TBD via `docs/data-bridge-national-financial-accounts.md` | TBD | `validation-baseline` | TBD | TBD | `MISSING_DATA_BRIDGE` | Use firm deaths and household bankruptcy separately. |
-| Bank capital/liquidity | TBD via `docs/data-bridge-national-financial-accounts.md` | TBD | `validation-baseline` | TBD | TBD | `MISSING_DATA_BRIDGE` | Use minima and terminal bank distribution. |
-| Inequality | TBD via `docs/data-bridge-national-financial-accounts.md` | TBD | `validation-baseline` | TBD | TBD | `MISSING_DATA_BRIDGE` | Terminal household summary has first-pass measures. |
-| Sectoral output | TBD via `docs/data-bridge-national-financial-accounts.md` | TBD | `validation-baseline` | TBD | TBD | `MISSING_DATA_BRIDGE` | Use emitted `*_Output` sector columns. |
-| External prices and FX | TBD via `docs/data-bridge-national-financial-accounts.md` | TBD | `validation-baseline` | TBD | TBD | `MISSING_DATA_BRIDGE` | Use `ExRate`, external price indices, FX reserves, and intervention columns. |
-| Housing and mortgages | TBD via `docs/data-bridge-national-financial-accounts.md` | TBD | `validation-baseline` | TBD | TBD | `MISSING_DATA_BRIDGE` | Use HPI, regional HPI, mortgage/GDP, and mortgage-default columns. |
-| Fiscal stance | TBD via `docs/data-bridge-national-financial-accounts.md` | TBD | `validation-baseline` | TBD | TBD | `MISSING_DATA_BRIDGE` | Use deficit/GDP, expenditure mix, debt service, and fiscal-rule columns. |
-| Monetary and financial market conditions | TBD via `docs/data-bridge-national-financial-accounts.md` | TBD | `validation-baseline` | TBD | TBD | `MISSING_DATA_BRIDGE` | Use reference rate, WIBOR, bond-yield, GPW, and corporate-spread columns. |
+| Artifact | Path |
+| --- | --- |
+| Snapshot CSV | [`docs/empirical-validation/baseline-validation-snapshot.csv`](empirical-validation/baseline-validation-snapshot.csv) |
+| Snapshot Markdown | [`docs/empirical-validation/baseline-validation-snapshot.md`](empirical-validation/baseline-validation-snapshot.md) |
+| Model run manifest | [`docs/empirical-validation/model-run-manifest.csv`](empirical-validation/model-run-manifest.csv) |
+| Effective source manifest copy | [`docs/empirical-validation/source-manifest.csv`](empirical-validation/source-manifest.csv) |
 
-### Current main baseline sanity run
+Run metadata:
 
-Run: `main-baseline-clean_seeds10-48m`, commit `68f6e534`, 10 seeds, 48
-months. Real proxy is computed from emitted CSV columns as
-`MonthlyGdpProxy / PriceLevel`; no manual `gdpRatio` rescaling is applied.
+| Field | Value |
+| --- | --- |
+| Model commit | `main@79f5a36c` |
+| Seeds | 3 |
+| Duration | 120 months |
+| Monte Carlo output prefix | `validation-baseline` |
+| Technical run id | `main-79f5a36c` |
+| Ignored raw CSV inputs | `mc/validation-baseline_main-79f5a36c_120m_*` |
 
-| Month | Nominal GDP YoY | Real proxy YoY | Inflation YoY | Unemployment |
-| --- | ---: | ---: | ---: | ---: |
-| 13 | 8.40% | 3.92% | 4.31% | 6.77% |
-| 24 | 6.69% | 3.56% | 3.02% | 6.58% |
-| 36 | 5.78% | 3.00% | 2.70% | 6.41% |
-| 48 | 3.80% | 0.95% | 2.83% | 6.73% |
+Snapshot status summary:
+
+| Status | Count |
+| --- | ---: |
+| `PASS_BASELINE` | 5 |
+| `FAIL_BASELINE` | 8 |
+| `PARTIAL` | 15 |
+| `MISSING_DATA_BRIDGE` | 2 |
+| `MISSING_OUTPUT` | 0 |
+
+Remaining gaps are now visible in the generated table instead of hidden in
+placeholder rows. `PARTIAL` rows mostly represent source-definition or
+aggregation bridges, including GDP growth, wages, credit/GDP, current account,
+banking liquidity/NPL, housing default risk, fiscal expenditure coverage, and
+market-rate families. `MISSING_DATA_BRIDGE` remains for inequality and
+sectoral-output source crosswalks. `FAIL_BASELINE` rows are interpreted as
+calibration evidence, not accounting failures; the ledger and SFC validation
+surfaces remain separate from this empirical fit table.
+
+Reproduce the committed snapshot from `main@79f5a36c`:
+
+```bash
+sbt "runMain com.boombustgroup.amorfati.Main 3 validation-baseline --duration 120 --run-id main-79f5a36c"
+sbt "empiricalValidation --source-manifest docs/empirical-validation-source-manifest.csv --mc-dir mc --run-id main-79f5a36c --output-prefix validation-baseline --duration 120 --seeds 3 --commit 79f5a36c --parameter-branch main --out docs/empirical-validation"
+```
 
 ## Target-Specific Notes
 
