@@ -47,6 +47,7 @@ object CalibrationRegisterRenderer:
     lines ++= statusTaxonomy
     lines ++= statusCounts(parameters)
     lines ++= placeholderDecisions(parameters)
+    lines ++= structuredSourceMetadata(parameters)
     lines ++= transformationRules
     Sections.foreach: (title, predicate) =>
       val sectionParameters = parameters.filter(predicate)
@@ -222,6 +223,32 @@ object CalibrationRegisterRenderer:
       plainCell(decision.reason),
       plainCell(decision.validationImpact),
       plainCell(decision.followUpPath),
+    ).mkString("| ", " | ", " |")
+
+  private def structuredSourceMetadata(parameters: Vector[CalibrationParameter]): Vector[String] =
+    val sourced = parameters.filter(_.sourceMetadata.nonEmpty)
+    if sourced.isEmpty then Vector.empty
+    else
+      Vector(
+        "## Structured Source Metadata",
+        "",
+        "Rows below have been migrated from informal code-note provenance to typed source metadata.",
+        "",
+        "| Parameter | Source family | Source table/code | Vintage/date | URL or manifest | Transformation notes |",
+        "| --- | --- | --- | --- | --- | --- |",
+      ) ++ sourced.map(renderSourceMetadata) :+
+        ""
+
+  private def renderSourceMetadata(parameter: CalibrationParameter): String =
+    val source = parameter.sourceMetadata.getOrElse:
+      throw new IllegalArgumentException(s"Missing source metadata for calibration parameter: ${parameter.id}")
+    Vector(
+      renderParameterIds(parameter.parameterIds),
+      plainCell(source.sourceFamily),
+      codeCell(source.sourceTableOrCode),
+      plainCell(source.vintage),
+      plainCell(source.sourceReference),
+      plainCell(source.transformationNotes),
     ).mkString("| ", " | ", " |")
 
   private def hasId(parameter: CalibrationParameter, id: String): Boolean =
