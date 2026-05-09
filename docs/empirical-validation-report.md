@@ -146,15 +146,7 @@ Run metadata:
 | Technical run id | `main-79f5a36c` |
 | Ignored raw CSV inputs | `mc/validation-baseline_main-79f5a36c_120m_*` |
 
-Snapshot status summary:
-
-| Status | Count |
-| --- | ---: |
-| `PASS_BASELINE` | 5 |
-| `FAIL_BASELINE` | 8 |
-| `PARTIAL` | 15 |
-| `MISSING_DATA_BRIDGE` | 2 |
-| `MISSING_OUTPUT` | 0 |
+Use the snapshot CSV for current status counts and row-level baseline results.
 
 Remaining gaps are now visible in the generated table instead of hidden in
 placeholder rows. `PARTIAL` rows mostly represent source-definition or
