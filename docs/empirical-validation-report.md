@@ -53,7 +53,7 @@ metadata is not ready.
 
 Run a small deterministic baseline Monte Carlo batch. For committed
 snapshots, choose the stable reference from `main` first and use the `run-id`
-only as a technical file key. The current snapshot uses `main@79f5a36c`:
+only as a technical file key:
 
 ```bash
 sbt "runMain com.boombustgroup.amorfati.Main 3 validation-baseline --duration 120 --run-id main-79f5a36c"
@@ -142,13 +142,13 @@ reference is `main@79f5a36c`.
 
 Run metadata for the current snapshot lives in
 [`docs/empirical-validation/model-run-manifest.csv`](empirical-validation/model-run-manifest.csv);
-the model commit pin is `main@79f5a36c`. Use the snapshot CSV for current
-status counts and row-level baseline results. `FAIL_BASELINE` rows are
-interpreted as calibration evidence, not accounting failures; the ledger and
-SFC validation surfaces remain separate from this empirical fit table.
+use the snapshot CSV for current status counts and row-level baseline results.
+`FAIL_BASELINE` rows are interpreted as calibration evidence, not accounting
+failures; the ledger and SFC validation surfaces remain separate from this
+empirical fit table.
 
 See [Reproducible Workflow](#reproducible-workflow) for the regeneration
-commands; this snapshot was produced from `main@79f5a36c`.
+commands for this snapshot.
 
 ## Target-Specific Notes
 
