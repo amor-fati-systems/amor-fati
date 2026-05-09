@@ -84,6 +84,34 @@ class EmpiricalValidationManifestSpec extends AnyFlatSpec with Matchers:
     }
   }
 
+  it should "carry GUS real-economy ready comparators and documented bridge gaps" in {
+    val rows = readManifest()
+
+    val inflation = rowByTarget(rows, "Inflation")
+    inflation.status shouldBe "READY"
+    inflation.value("source_provider") shouldBe "GUS"
+    inflation.value("dataset_code") shouldBe "GUS CPI March 2026"
+    inflation.value("vintage") should include("March 2026")
+    inflation.value("accessed_at") shouldBe "2026-05-09"
+    inflation.value("empirical_value") shouldBe "0.030"
+    inflation.value("tolerance") shouldBe "0.010"
+    inflation.value("criterion") should include("absolute distance")
+
+    val firmSizeTargets = rows.map(_.target).filter(_.startsWith("Firm-size distribution - ")).toSet
+    firmSizeTargets shouldBe Set(
+      "Firm-size distribution - Micro",
+      "Firm-size distribution - Small",
+      "Firm-size distribution - Medium",
+      "Firm-size distribution - Large",
+    )
+    rowByTarget(rows, "Firm-size distribution - Micro").value("model_target") shouldBe "terminal_firms:FirmSize_MicroShare:mean"
+    rowByTarget(rows, "Firm-size distribution - Large").value("empirical_value") shouldBe "0.001"
+
+    val gdp = rowByTarget(rows, "GDP growth")
+    gdp.status shouldBe "PARTIAL"
+    gdp.value("notes") should include("quarterly growth extraction")
+  }
+
   private def validateMetadata(row: ManifestRow): Vector[String] =
     val commonRequired = Vector(
       "target",
@@ -141,6 +169,9 @@ class EmpiricalValidationManifestSpec extends AnyFlatSpec with Matchers:
 
   private def parseStatus(row: ManifestRow): SourceStatus =
     SourceStatus.parse(row.status).fold(err => fail(error(row, err)), identity)
+
+  private def rowByTarget(rows: Vector[ManifestRow], target: String): ManifestRow =
+    rows.find(_.target == target).getOrElse(fail(s"Expected manifest target '$target'"))
 
   private def validateOptionalDate(row: ManifestRow, column: String): Option[String] =
     Option

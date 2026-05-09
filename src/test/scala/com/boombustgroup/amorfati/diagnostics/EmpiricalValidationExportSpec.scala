@@ -122,6 +122,60 @@ class EmpiricalValidationExportSpec extends AnyFlatSpec with Matchers:
     } finally deleteRecursively(root)
   }
 
+  it should "consume the checked-in manifest with real-economy comparator rows" in {
+    Files.createDirectories(Path.of("target"))
+    val root = Files.createTempDirectory(Path.of("target"), "empirical-validation-real-economy-")
+    val mc   = root.resolve("mc")
+    val out  = root.resolve("out")
+    Files.createDirectories(mc)
+
+    try {
+      write(
+        mc.resolve("fixture_real-economy_1m_seed001.csv"),
+        """Month;MonthlyGdpProxy;Inflation;Unemployment;MarketWage;CreditToGdpGap;Esa2010DebtToGdp;CurrentAccount;FirmDeaths;MinBankCAR;Manuf_Output;ExRate;HousingPriceIndex;DeficitToGdp;RefRate
+          |1;1000000;0.030;0.061;9652.19;0.50;0.55;0.01;102;0.18;200000;4.25;100;0.03;0.0375
+          |""".stripMargin,
+      )
+      write(
+        mc.resolve("fixture_real-economy_1m_firms.csv"),
+        """Seed;FirmSize_MicroShare;FirmSize_SmallShare;FirmSize_MediumShare;FirmSize_LargeShare
+          |1;0.959;0.034;0.006;0.001
+          |""".stripMargin,
+      )
+      write(
+        mc.resolve("fixture_real-economy_1m_hh.csv"),
+        """Seed;Gini_Individual
+          |1;0.300
+          |""".stripMargin,
+      )
+
+      val result = EmpiricalValidationExport
+        .run(
+          Config(
+            sourceManifest = Path.of("docs/empirical-validation-source-manifest.csv"),
+            mcDir = mc,
+            out = out,
+            runId = "real-economy",
+            outputPrefix = "fixture",
+            durationMonths = 1,
+            seeds = 1,
+            commit = "test-commit",
+            parameterBranch = "test",
+          ),
+        )
+        .fold(err => fail(err), identity)
+
+      val statuses = result.rows.map(row => row.target -> row.status).toMap
+      statuses("Inflation") shouldBe SnapshotStatus.PassBaseline
+      statuses("Unemployment") shouldBe SnapshotStatus.PassBaseline
+      statuses("Firm-size distribution - Micro") shouldBe SnapshotStatus.PassBaseline
+      statuses("Firm-size distribution - Large") shouldBe SnapshotStatus.PassBaseline
+
+      Files.exists(out.resolve("baseline-validation-snapshot.csv")) shouldBe true
+      Files.exists(out.resolve("source-manifest.csv")) shouldBe true
+    } finally deleteRecursively(root)
+  }
+
   private def write(path: Path, contents: String): Unit =
     Files.writeString(path, contents, StandardCharsets.UTF_8)
 
