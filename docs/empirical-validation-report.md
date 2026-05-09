@@ -138,29 +138,14 @@ reference is `main@79f5a36c`.
 | --- | --- |
 | Snapshot CSV | [`docs/empirical-validation/baseline-validation-snapshot.csv`](empirical-validation/baseline-validation-snapshot.csv) |
 | Model run manifest | [`docs/empirical-validation/model-run-manifest.csv`](empirical-validation/model-run-manifest.csv) |
-| Effective source manifest copy | [`docs/empirical-validation/source-manifest.csv`](empirical-validation/source-manifest.csv) |
+| Source manifest snapshot (generated copy) | [`docs/empirical-validation/source-manifest.csv`](empirical-validation/source-manifest.csv) |
 
-Run metadata:
-
-| Field | Value |
-| --- | --- |
-| Model commit | `main@79f5a36c` |
-| Seeds | 3 |
-| Duration | 120 months |
-| Monte Carlo output prefix | `validation-baseline` |
-| Technical run id | `main-79f5a36c` |
-| Ignored raw CSV inputs | `mc/validation-baseline_main-79f5a36c_120m_*` |
-
-Use the snapshot CSV for current status counts and row-level baseline results.
-
-Remaining gaps are now visible in the generated table instead of hidden in
-placeholder rows. `PARTIAL` rows mostly represent source-definition or
-aggregation bridges, including GDP growth, wages, credit/GDP, current account,
-banking liquidity/NPL, housing default risk, fiscal expenditure coverage, and
-market-rate families. `MISSING_DATA_BRIDGE` remains for inequality and
-sectoral-output source crosswalks. `FAIL_BASELINE` rows are interpreted as
-calibration evidence, not accounting failures; the ledger and SFC validation
-surfaces remain separate from this empirical fit table.
+Run metadata for the current snapshot lives in
+[`docs/empirical-validation/model-run-manifest.csv`](empirical-validation/model-run-manifest.csv);
+the model commit pin is `main@79f5a36c`. Use the snapshot CSV for current
+status counts and row-level baseline results. `FAIL_BASELINE` rows are
+interpreted as calibration evidence, not accounting failures; the ledger and
+SFC validation surfaces remain separate from this empirical fit table.
 
 See [Reproducible Workflow](#reproducible-workflow) for the regeneration
 commands; this snapshot was produced from `main@79f5a36c`.
