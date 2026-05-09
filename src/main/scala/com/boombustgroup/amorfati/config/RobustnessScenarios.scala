@@ -105,12 +105,12 @@ object RobustnessScenarios:
         label = "Stronger automatic stabilizer",
         category = "fiscal rules",
         variedParameter = "fiscal.govAutoStabMult, fiscalConsolidationSpeed55",
-        variation = "3.0 -> 4.0, 0.10 -> 0.15",
+        variation = "3.0 -> 4.0, 0.18 -> 0.25",
         rationale = "Tests unemployment, deficit, and debt sensitivity to stronger fiscal stabilization and consolidation.",
         params = baseline.copy(
           fiscal = baseline.fiscal.copy(
             govAutoStabMult = Coefficient(4),
-            fiscalConsolidationSpeed55 = Share.decimal(15, 2),
+            fiscalConsolidationSpeed55 = Share.decimal(25, 2),
           ),
         ),
       ),

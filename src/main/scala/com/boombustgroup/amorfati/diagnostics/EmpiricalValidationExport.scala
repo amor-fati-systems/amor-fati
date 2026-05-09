@@ -23,6 +23,10 @@ object EmpiricalValidationExport:
       parameterBranch: String = "unknown",
   )
 
+  enum CliCommand:
+    case Export(config: Config)
+    case Help
+
   final case class ExportResult(paths: Vector[Path], rows: Vector[SnapshotRow])
 
   final case class ModelRunManifest(
@@ -158,11 +162,13 @@ object EmpiricalValidationExport:
 
   def main(args: Array[String]): Unit =
     parseArgs(args.toVector) match
-      case Left(err)     =>
+      case Left(err)                        =>
         Console.err.println(err)
         Console.err.println(usage)
         sys.exit(2)
-      case Right(config) =>
+      case Right(CliCommand.Help)           =>
+        println(usage)
+      case Right(CliCommand.Export(config)) =>
         run(config) match
           case Left(err)     =>
             Console.err.println(err)
@@ -181,13 +187,12 @@ object EmpiricalValidationExport:
         paths      <- writeArtifacts(validConfig.out, sourceRows, modelRun, snapshot)
       yield ExportResult(paths, snapshot)
 
-  def parseArgs(args: Vector[String]): Either[String, Config] =
+  def parseArgs(args: Vector[String]): Either[String, CliCommand] =
     def missingValue(flag: String): Left[String, Config] = Left(s"Missing value for $flag")
 
     def loop(rest: Seq[String], config: Config): Either[String, Config] =
       rest match
         case Seq()                                  => Right(config)
-        case Seq("--help", _*)                      => Left(usage)
         case Seq(flag, tail*) if knownFlag(flag)    =>
           tail match
             case Seq()                                             => missingValue(flag)
@@ -216,7 +221,9 @@ object EmpiricalValidationExport:
         case Seq(flag, _*) if flag.startsWith("--") => Left(s"Unknown argument: $flag")
         case Seq(value, _*)                         => Left(s"Unexpected positional argument: $value")
 
-    loop(args, Config())
+    args match
+      case Vector("--help") => Right(CliCommand.Help)
+      case _                => loop(args, Config()).map(CliCommand.Export.apply)
 
   private def validate(config: Config): Either[String, Config] =
     Either
@@ -487,7 +494,7 @@ object EmpiricalValidationExport:
     else if manifest.seedCount > 0 then
       val expected = (1 to manifest.seedCount).map(seed => manifest.outputDir.resolve(f"${manifest.filePrefix}_seed$seed%03d.csv")).toVector
       val existing = expected.filter(Files.exists(_))
-      if existing.isEmpty || existing.length == expected.length then Right(existing)
+      if existing.length == expected.length then Right(existing)
       else
         val missing = expected.filterNot(Files.exists(_)).map(_.getFileName.toString)
         Left(s"Missing expected seed CSV files: ${missing.mkString(", ")}")
@@ -743,6 +750,9 @@ object EmpiricalValidationExport:
   )
 
   private val usage: String =
-    "Usage: EmpiricalValidationExport [--source-manifest <path>] [--run-manifest <path>] [--mc-dir <path>] [--out <path>] [--run-id <id>] [--output-prefix <prefix>] [--duration <months>] [--seeds <int>] [--commit <hash>] [--parameter-branch <name>]"
+    """Usage: EmpiricalValidationExport [--help] [--source-manifest <path>] [--run-manifest <path>] [--mc-dir <path>] [--out <path>] [--run-id <id>] [--output-prefix <prefix>] [--duration <months>] [--seeds <int>] [--commit <hash>] [--parameter-branch <name>]
+      |
+      |Options:
+      |  --help      Show this help message""".stripMargin
 
 end EmpiricalValidationExport

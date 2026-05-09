@@ -227,18 +227,8 @@ Labor demand probe:
 sbt "runMain com.boombustgroup.amorfati.diagnostics.runLaborDemandProbe 1 2"
 ```
 
-Generate scratch SFC matrix artifacts:
-
-```bash
-sbt "sfcMatrices --seed 1 --months 12 --out target/sfc-matrices"
-```
-
-Refresh the committed SFC matrix Markdown snapshots only when the matrix
-artifacts themselves intentionally change:
-
-```bash
-sbt "sfcMatrices --seed 1 --months 12 --out docs/sfc-matrix-artifacts --format md"
-```
+For scratch and committed-snapshot SFC matrix exports, see
+[sfc-matrix-evidence.md](sfc-matrix-evidence.md).
 
 ## Scenario And Robustness Runs
 
@@ -301,6 +291,7 @@ Generated local outputs normally belong in ignored paths:
 | `target/scenarios/` | Scenario registry runs | No |
 | `target/robustness*` | Robustness reports | No |
 | `docs/sfc-matrix-artifacts/` | Intentional committed matrix snapshots | Yes, only when refreshed intentionally |
+| `docs/empirical-validation/` | Empirical-validation snapshot bundle | Yes, only when refreshed intentionally |
 
 ## Working Loop
 

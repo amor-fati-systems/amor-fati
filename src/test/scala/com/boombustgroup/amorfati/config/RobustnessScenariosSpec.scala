@@ -25,4 +25,22 @@ class RobustnessScenariosSpec extends AnyFlatSpec with Matchers:
     high.variation should include("0.92 -> 0.98")
   }
 
+  it should "make the fiscal stabilizer scenario stronger than the current baseline" in {
+    val baseline  = SimParams.defaults
+    val scenarios = RobustnessScenarios
+      .scenarios(RobustnessScenarios.ScenarioSet.Core)
+      .map(scenario => scenario.id -> scenario)
+      .toMap
+
+    val scenario = scenarios.getOrElse("fiscal-stabilizer-strong", fail("Expected fiscal-stabilizer-strong scenario"))
+
+    baseline.fiscal.govAutoStabMult shouldBe Coefficient(3)
+    baseline.fiscal.fiscalConsolidationSpeed55 shouldBe Share.decimal(18, 2)
+    scenario.params.fiscal.govAutoStabMult shouldBe Coefficient(4)
+    scenario.params.fiscal.fiscalConsolidationSpeed55 shouldBe Share.decimal(25, 2)
+    scenario.params.fiscal.fiscalConsolidationSpeed55 should be > baseline.fiscal.fiscalConsolidationSpeed55
+    scenario.variation should include("3.0 -> 4.0")
+    scenario.variation should include("0.18 -> 0.25")
+  }
+
 end RobustnessScenariosSpec

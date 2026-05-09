@@ -1,11 +1,11 @@
-# Empirical Validation Report Skeleton
+# Empirical Validation Report
 
 This report defines how Amor Fati outputs should be compared with empirical
-macro, meso, and micro stylized facts. It is deliberately a skeleton: the
-model already writes numeric simulation evidence, while external source
-selection, transformation rules, source vintages, and prioritized empirical
-gaps are documented in
-`docs/data-bridge-national-financial-accounts.md`.
+macro, meso, and micro stylized facts. It is the workflow document for the
+curated source manifest and generated baseline snapshot; readiness metadata
+lives in `docs/empirical-validation-source-manifest.csv`, while pass/fail
+baseline results live in
+`docs/empirical-validation/baseline-validation-snapshot.csv`.
 
 The goal is to keep failed, missing, or weak validation targets visible. A row
 with `MISSING_OUTPUT`, `MISSING_DATA_BRIDGE`, `MISSING_SOURCE_DETAIL`, or
@@ -37,6 +37,9 @@ checks fail.
 | `MISSING_SOURCE_DETAIL` | Source family is identified, but the concrete table, vintage, or access path is missing. |
 | `BRIDGE_ASSUMPTION` | The target uses a documented empirical-to-model bridge assumption. |
 
+Live status counts and per-row statuses are not duplicated here; read them from
+the source manifest and generated snapshot CSVs.
+
 ### Snapshot Run-Result Taxonomy
 
 The Baseline Report Snapshot `Status` column uses run-result tokens after a
@@ -50,7 +53,7 @@ metadata is not ready.
 
 Run a small deterministic baseline Monte Carlo batch. For committed
 snapshots, choose the stable reference from `main` first and use the `run-id`
-only as a technical file key. The current snapshot uses `main@79f5a36c`:
+only as a technical file key:
 
 ```bash
 sbt "runMain com.boombustgroup.amorfati.Main 3 validation-baseline --duration 120 --run-id main-79f5a36c"
@@ -100,24 +103,30 @@ Terminal cross-sections come from
 Time-series macro PLN aggregates are emitted in Poland scale. Validation work
 should not manually divide CSV values by `gdpRatio`.
 
-| Validation target | Empirical comparator | Model output mapping | Suggested statistic | Current status |
-| --- | --- | --- | --- | --- |
-| GDP growth | GUS national accounts real GDP growth | `MonthlyGdpProxy`, `AnnualizedGdpProxy` | Annual or quarterly growth of the emitted monthly GDP proxy, with real/nominal source convention stated by the validation manifest | `READY` |
-| Inflation | GUS CPI / HICP, NBP inflation target | `Inflation`, `PriceLevel`, `ExpectedInflation`, `InflationForecastError` | Mean, volatility, target deviation, persistence | `READY` |
-| Unemployment | GUS BAEL / registered unemployment | `Unemployment`, `Unemp_Central`, `Unemp_South`, `Unemp_East`, `Unemp_Northwest`, `Unemp_Southwest`, `Unemp_North` | Mean level, volatility, regional dispersion | `READY` |
-| Wages | GUS average wage, sector wage indices | `MarketWage`, `MeanEmployedWage`, `MinWageLevel`; terminal `_hh.csv` fields `MeanMonthlyIncome`, `MeanEmployedWage`, `WageP10`, `WageP50`, `WageP90` | Mean wage level and growth; minimum/market wage ratio; terminal wage distribution | `READY` |
-| Credit/GDP | NBP credit aggregates to GDP | `TotalCreditToGdp`, `TotalCreditStock`, `BankFirmLoans`, `BankFirmLoansToGdp`, `ConsumerLoans`, `ConsumerLoansToGdp`, `MortgageStock`, `MortgageToGdp`, `NbfiLoanStock`, `NbfiLoansToGdp`, `CreditToGdpGap`; terminal `_banks.csv` field `Loans` | Credit/GDP level, gap, household/firm/mortgage/NBFI split | `READY` |
-| Public debt/GDP | MF public debt, ESA2010 general-government debt | `DebtToGdp`, `Esa2010DebtToGdp`, `GovDebt`, `QfBondsOutstanding`, `BondsOutstanding` | Terminal debt/GDP and path against thresholds | `READY` |
-| Current account | NBP balance of payments | `CurrentAccount`, `CurrentAccountToGdp`, `TradeBalance_OE`, `Exports_OE`, `TotalImports_OE`, `NetRemittances`, `NetTourismBalance`, `FDI` | Annualized current-account/GDP and component signs | `READY` |
-| Firm-size distribution | GUS/REGON firm-size distribution | Terminal `_firms.csv` fields `FirmSize_Micro`, `FirmSize_Small`, `FirmSize_Medium`, `FirmSize_Large` and share fields | Terminal firm-size distribution (living firms only) | `READY` |
-| Bankruptcies | GUS / Ministry of Justice corporate insolvencies, consumer bankruptcy statistics | `FirmDeaths`, `FirmBirths`, `NetEntry`, `HouseholdBankruptcies`, `HouseholdBankruptcyRate`, `BankFailures`; terminal `_hh.csv` fields `HH_Bankrupt`, `BankruptcyRate`, `MeanMonthsToRuin` | Firm exit rate, household bankruptcy rate, bank failures | `READY` |
-| Bank capital and liquidity | KNF banking-sector CAR, LCR, NSFR, NPL | `MinBankCAR`, `MinBankLCR`, `MinBankNSFR`, `NPL`, `MaxBankNPL`; terminal `_banks.csv` fields `CAR`, `NPL`, `Capital`, `Deposits`, `Loans` | Minimum and distributional stress indicators | `READY` |
-| Inequality | GUS household surveys, EU-SILC, OECD income/wealth indicators | Terminal `_hh.csv` fields `Gini_Individual`, `Gini_Wealth`, `ConsumptionP10`, `ConsumptionP50`, `ConsumptionP90`, `PovertyRate_50pct`, `PovertyRate_30pct` | Terminal Gini, poverty rates, consumption percentile ratios | `MISSING_DATA_BRIDGE` |
-| Sectoral output | GUS national accounts by sector, supply-use tables | `BPO_Output`, `Manuf_Output`, `Retail_Output`, `Health_Output`, `Public_Output`, `Agri_Output` | Sector output shares and growth | `READY` |
-| External prices and FX | NBP exchange rate, ECB/Eurostat external prices | `ExRate`, `ForeignPriceIndex`, `GvcImportCostIndex`, `CommodityPriceIndex`, `FxReserves`, `FxInterventionAmt` | FX level/volatility, reserve path, import-cost shocks | `READY` |
-| Housing and mortgages | NBP housing prices, mortgage stock, KNF mortgage risk | `HousingPriceIndex`, `WawHpi`, `KrkHpi`, `WroHpi`, `GdnHpi`, `LdzHpi`, `PozHpi`, `RestHpi`, `MortgageToGdp`, `MortgageDefault` | HPI path, regional dispersion, mortgage/GDP, defaults | `READY` |
-| Fiscal stance | MF budget execution, Eurostat deficit/GDP | `DeficitToGdp`, `GovCurrentSpend`, `GovCapitalSpendDomestic`, `DebtService`, `FiscalRuleBinding`, `GovSpendingCutRatio` | Deficit/GDP, expenditure mix, fiscal-rule episodes | `READY` |
-| Monetary and financial market conditions | NBP reference rate, WIBOR, bond yields, GPW | `RefRate`, `WIBOR_1M`, `WIBOR_3M`, `WIBOR_6M`, `BondYield`, `GpwIndex`, `GpwMarketCap`, `CorpBondYield`, `CorpBondSpread` | Policy-rate path, spread behavior, market stress | `READY` |
+This table is an illustrative family-level model-output mapping. The
+authoritative per-row mapping lives in
+`docs/empirical-validation-source-manifest.csv`, column `model_target`;
+readiness and pass/fail status live in the source manifest and generated
+snapshot CSVs.
+
+| Validation target | Empirical comparator | Model output mapping | Suggested statistic |
+| --- | --- | --- | --- |
+| GDP growth | GUS national accounts real GDP growth | `MonthlyGdpProxy`, `AnnualizedGdpProxy` | Annual or quarterly growth of the emitted monthly GDP proxy, with real/nominal source convention stated by the validation manifest |
+| Inflation | GUS CPI / HICP, NBP inflation target | `Inflation`, `PriceLevel`, `ExpectedInflation`, `InflationForecastError` | Mean, volatility, target deviation, persistence |
+| Unemployment | GUS BAEL / registered unemployment | `Unemployment`, `Unemp_Central`, `Unemp_South`, `Unemp_East`, `Unemp_Northwest`, `Unemp_Southwest`, `Unemp_North` | Mean level, volatility, regional dispersion |
+| Wages | GUS average wage, sector wage indices | `MarketWage`, `MeanEmployedWage`, `MinWageLevel`; terminal `_hh.csv` fields `MeanMonthlyIncome`, `MeanEmployedWage`, `WageP10`, `WageP50`, `WageP90` | Mean wage level and growth; minimum/market wage ratio; terminal wage distribution |
+| Credit/GDP | NBP credit aggregates to GDP | `TotalCreditToGdp`, `TotalCreditStock`, `BankFirmLoans`, `BankFirmLoansToGdp`, `ConsumerLoans`, `ConsumerLoansToGdp`, `MortgageStock`, `MortgageToGdp`, `NbfiLoanStock`, `NbfiLoansToGdp`, `CreditToGdpGap`; terminal `_banks.csv` field `Loans` | Credit/GDP level, gap, household/firm/mortgage/NBFI split |
+| Public debt/GDP | MF public debt, ESA2010 general-government debt | `DebtToGdp`, `Esa2010DebtToGdp`, `GovDebt`, `QfBondsOutstanding`, `BondsOutstanding` | Terminal debt/GDP and path against thresholds |
+| Current account | NBP balance of payments | `CurrentAccount`, `CurrentAccountToGdp`, `TradeBalance_OE`, `Exports_OE`, `TotalImports_OE`, `NetRemittances`, `NetTourismBalance`, `FDI` | Annualized current-account/GDP and component signs |
+| Firm-size distribution | GUS/REGON firm-size distribution | Terminal `_firms.csv` fields `FirmSize_Micro`, `FirmSize_Small`, `FirmSize_Medium`, `FirmSize_Large` and share fields | Terminal firm-size distribution (living firms only) |
+| Bankruptcies | GUS / Ministry of Justice corporate insolvencies, consumer bankruptcy statistics | `FirmDeaths`, `FirmBirths`, `NetEntry`, `HouseholdBankruptcies`, `HouseholdBankruptcyRate`, `BankFailures`; terminal `_hh.csv` fields `HH_Bankrupt`, `BankruptcyRate`, `MeanMonthsToRuin` | Firm exit rate, household bankruptcy rate, bank failures |
+| Bank capital and liquidity | KNF banking-sector CAR, LCR, NSFR, NPL | `MinBankCAR`, `MinBankLCR`, `MinBankNSFR`, `NPL`, `MaxBankNPL`; terminal `_banks.csv` fields `CAR`, `NPL`, `Capital`, `Deposits`, `Loans` | Minimum and distributional stress indicators |
+| Inequality | GUS household surveys, EU-SILC, OECD income/wealth indicators | Terminal `_hh.csv` fields `Gini_Individual`, `Gini_Wealth`, `ConsumptionP10`, `ConsumptionP50`, `ConsumptionP90`, `PovertyRate_50pct`, `PovertyRate_30pct` | Terminal Gini, poverty rates, consumption percentile ratios |
+| Sectoral output | GUS national accounts by sector, supply-use tables | `BPO_Output`, `Manuf_Output`, `Retail_Output`, `Health_Output`, `Public_Output`, `Agri_Output` | Sector output shares and growth |
+| External prices and FX | NBP exchange rate, ECB/Eurostat external prices | `ExRate`, `ForeignPriceIndex`, `GvcImportCostIndex`, `CommodityPriceIndex`, `FxReserves`, `FxInterventionAmt` | FX level/volatility, reserve path, import-cost shocks |
+| Housing and mortgages | NBP housing prices, mortgage stock, KNF mortgage risk | `HousingPriceIndex`, `WawHpi`, `KrkHpi`, `WroHpi`, `GdnHpi`, `LdzHpi`, `PozHpi`, `RestHpi`, `MortgageToGdp`, `MortgageDefault` | HPI path, regional dispersion, mortgage/GDP, defaults |
+| Fiscal stance | MF budget execution, Eurostat deficit/GDP | `DeficitToGdp`, `GovCurrentSpend`, `GovCapitalSpendDomestic`, `DebtService`, `FiscalRuleBinding`, `GovSpendingCutRatio` | Deficit/GDP, expenditure mix, fiscal-rule episodes |
+| Monetary and financial market conditions | NBP reference rate, WIBOR, bond yields, GPW | `RefRate`, `WIBOR_1M`, `WIBOR_3M`, `WIBOR_6M`, `BondYield`, `GpwIndex`, `GpwMarketCap`, `CorpBondYield`, `CorpBondSpread` | Policy-rate path, spread behavior, market stress |
 
 ## Baseline Report Snapshot
 
@@ -129,44 +138,17 @@ reference is `main@79f5a36c`.
 | --- | --- |
 | Snapshot CSV | [`docs/empirical-validation/baseline-validation-snapshot.csv`](empirical-validation/baseline-validation-snapshot.csv) |
 | Model run manifest | [`docs/empirical-validation/model-run-manifest.csv`](empirical-validation/model-run-manifest.csv) |
-| Effective source manifest copy | [`docs/empirical-validation/source-manifest.csv`](empirical-validation/source-manifest.csv) |
+| Source manifest snapshot (generated copy) | [`docs/empirical-validation/source-manifest.csv`](empirical-validation/source-manifest.csv) |
 
-Run metadata:
+Run metadata for the current snapshot lives in
+[`docs/empirical-validation/model-run-manifest.csv`](empirical-validation/model-run-manifest.csv);
+use the snapshot CSV for current status counts and row-level baseline results.
+`FAIL_BASELINE` rows are interpreted as calibration evidence, not accounting
+failures; the ledger and SFC validation surfaces remain separate from this
+empirical fit table.
 
-| Field | Value |
-| --- | --- |
-| Model commit | `main@79f5a36c` |
-| Seeds | 3 |
-| Duration | 120 months |
-| Monte Carlo output prefix | `validation-baseline` |
-| Technical run id | `main-79f5a36c` |
-| Ignored raw CSV inputs | `mc/validation-baseline_main-79f5a36c_120m_*` |
-
-Snapshot status summary:
-
-| Status | Count |
-| --- | ---: |
-| `PASS_BASELINE` | 5 |
-| `FAIL_BASELINE` | 8 |
-| `PARTIAL` | 15 |
-| `MISSING_DATA_BRIDGE` | 2 |
-| `MISSING_OUTPUT` | 0 |
-
-Remaining gaps are now visible in the generated table instead of hidden in
-placeholder rows. `PARTIAL` rows mostly represent source-definition or
-aggregation bridges, including GDP growth, wages, credit/GDP, current account,
-banking liquidity/NPL, housing default risk, fiscal expenditure coverage, and
-market-rate families. `MISSING_DATA_BRIDGE` remains for inequality and
-sectoral-output source crosswalks. `FAIL_BASELINE` rows are interpreted as
-calibration evidence, not accounting failures; the ledger and SFC validation
-surfaces remain separate from this empirical fit table.
-
-Reproduce the committed snapshot from `main@79f5a36c`:
-
-```bash
-sbt "runMain com.boombustgroup.amorfati.Main 3 validation-baseline --duration 120 --run-id main-79f5a36c"
-sbt "empiricalValidation --source-manifest docs/empirical-validation-source-manifest.csv --mc-dir mc --run-id main-79f5a36c --output-prefix validation-baseline --duration 120 --seeds 3 --commit 79f5a36c --parameter-branch main --out docs/empirical-validation"
-```
+See [Reproducible Workflow](#reproducible-workflow) for the regeneration
+commands for this snapshot.
 
 ## Target-Specific Notes
 
