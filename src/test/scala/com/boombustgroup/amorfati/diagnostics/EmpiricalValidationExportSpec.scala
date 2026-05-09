@@ -1,6 +1,6 @@
 package com.boombustgroup.amorfati.diagnostics
 
-import com.boombustgroup.amorfati.diagnostics.EmpiricalValidationExport.{Config, SnapshotStatus}
+import com.boombustgroup.amorfati.diagnostics.EmpiricalValidationExport.{CliCommand, Config, SnapshotStatus}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -34,8 +34,16 @@ class EmpiricalValidationExportSpec extends AnyFlatSpec with Matchers:
       ),
     )
 
-    parsed.map(config => (config.sourceManifest, config.mcDir, config.out, config.durationMonths, config.seeds, config.commit, config.parameterBranch)) shouldBe
-      Right((Path.of("target/source.csv"), Path.of("target/mc"), Path.of("target/out"), 24, 3, "abc123", "main"))
+    val config = parsed match
+      case Right(CliCommand.Export(config)) => config
+      case other                            => fail(s"Expected export command, got $other")
+
+    (config.sourceManifest, config.mcDir, config.out, config.durationMonths, config.seeds, config.commit, config.parameterBranch) shouldBe
+      (Path.of("target/source.csv"), Path.of("target/mc"), Path.of("target/out"), 24, 3, "abc123", "main")
+  }
+
+  it should "parse help as a successful command" in {
+    EmpiricalValidationExport.parseArgs(Vector("--help")) shouldBe Right(CliCommand.Help)
   }
 
   it should "write a snapshot from timeseries and terminal household targets" in {
@@ -201,6 +209,37 @@ class EmpiricalValidationExportSpec extends AnyFlatSpec with Matchers:
       row.status shouldBe SnapshotStatus.Partial
       row.modelValue.map(_.toDouble) shouldBe Some(0.03)
       row.notes should include("documented bridge remains open")
+    } finally deleteRecursively(root)
+  }
+
+  it should "fail when an explicit seed count has no matching seed files" in {
+    Files.createDirectories(Path.of("target"))
+    val root = Files.createTempDirectory(Path.of("target"), "empirical-validation-missing-seeds-")
+    val mc   = root.resolve("mc")
+    Files.createDirectories(mc)
+
+    try {
+      val error = EmpiricalValidationExport
+        .run(
+          Config(
+            sourceManifest = Path.of("docs/empirical-validation-source-manifest.csv"),
+            mcDir = mc,
+            out = root.resolve("out"),
+            runId = "missing",
+            outputPrefix = "validation-baseline",
+            durationMonths = 120,
+            seeds = 3,
+            commit = "test-commit",
+            parameterBranch = "test",
+          ),
+        )
+        .left
+        .getOrElse(fail("Expected missing seed files to fail"))
+
+      error should include("Missing expected seed CSV files")
+      error should include("validation-baseline_missing_120m_seed001.csv")
+      error should include("validation-baseline_missing_120m_seed003.csv")
+      Files.exists(root.resolve("out").resolve("baseline-validation-snapshot.csv")) shouldBe false
     } finally deleteRecursively(root)
   }
 
