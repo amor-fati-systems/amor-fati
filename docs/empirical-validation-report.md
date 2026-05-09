@@ -80,8 +80,7 @@ Runnable snapshot procedure after a baseline run:
    sbt "empiricalValidation --source-manifest docs/empirical-validation-source-manifest.csv --mc-dir mc --run-id main-79f5a36c --output-prefix validation-baseline --duration 120 --seeds 3 --commit 79f5a36c --parameter-branch main --out target/empirical-validation"
    ```
 
-3. Review `target/empirical-validation/baseline-validation-snapshot.csv` and
-   `target/empirical-validation/baseline-validation-snapshot.md`.
+3. Review `target/empirical-validation/baseline-validation-snapshot.csv`.
 4. Keep rows with missing model output or missing empirical data in the table.
 
 The source manifest is intentionally metadata-first. It records source
@@ -129,7 +128,6 @@ reference is `main@79f5a36c`.
 | Artifact | Path |
 | --- | --- |
 | Snapshot CSV | [`docs/empirical-validation/baseline-validation-snapshot.csv`](empirical-validation/baseline-validation-snapshot.csv) |
-| Snapshot Markdown | [`docs/empirical-validation/baseline-validation-snapshot.md`](empirical-validation/baseline-validation-snapshot.md) |
 | Model run manifest | [`docs/empirical-validation/model-run-manifest.csv`](empirical-validation/model-run-manifest.csv) |
 | Effective source manifest copy | [`docs/empirical-validation/source-manifest.csv`](empirical-validation/source-manifest.csv) |
 

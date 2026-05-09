@@ -98,7 +98,6 @@ class EmpiricalValidationExportSpec extends AnyFlatSpec with Matchers:
         "source-manifest.csv",
         "model-run-manifest.csv",
         "baseline-validation-snapshot.csv",
-        "baseline-validation-snapshot.md",
       )
       result.rows.map(row => row.target -> row.status).toMap shouldBe Map(
         "Inflation"       -> SnapshotStatus.PassBaseline,
