@@ -141,6 +141,34 @@ class EmpiricalValidationManifestSpec extends AnyFlatSpec with Matchers:
     currentAccount.value("notes") should include("BoP cadence")
   }
 
+  it should "carry fiscal ready comparators and documented bridge gaps" in {
+    val rows = readManifest()
+
+    val domesticDebt = rowByTarget(rows, "Public debt/GDP - PDP forecast 2026")
+    domesticDebt.status shouldBe "READY"
+    domesticDebt.value("source_provider") shouldBe "MF"
+    domesticDebt.value("empirical_value") shouldBe "0.538"
+    domesticDebt.value("tolerance") shouldBe "0.050"
+    domesticDebt.value("model_target") shouldBe "timeseries:DebtToGdp:terminal"
+
+    val esaDebt = rowByTarget(rows, "Public debt/GDP - ESA2010 debt 2025")
+    esaDebt.status shouldBe "READY"
+    esaDebt.value("source_provider") shouldBe "Eurostat"
+    esaDebt.value("empirical_value") shouldBe "0.597"
+    esaDebt.value("model_target") shouldBe "timeseries:Esa2010DebtToGdp:terminal"
+
+    val deficit = rowByTarget(rows, "Fiscal stance - general government deficit 2025")
+    deficit.status shouldBe "READY"
+    deficit.value("source_provider") shouldBe "Eurostat"
+    deficit.value("empirical_value") shouldBe "0.073"
+    deficit.value("model_target") shouldBe "timeseries:DeficitToGdp:terminal"
+
+    val expenditure = rowByTarget(rows, "Fiscal stance - state budget expenditure plan 2026")
+    expenditure.status shouldBe "PARTIAL"
+    expenditure.value("empirical_value") shouldBe "918900000000"
+    expenditure.value("notes") should include("coverage bridge")
+  }
+
   private def validateMetadata(row: ManifestRow): Vector[String] =
     val commonRequired = Vector(
       "target",
