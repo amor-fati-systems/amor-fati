@@ -169,6 +169,31 @@ class EmpiricalValidationManifestSpec extends AnyFlatSpec with Matchers:
     expenditure.value("notes") should include("coverage bridge")
   }
 
+  it should "carry banking and mortgage-risk ready comparators and documented bridge gaps" in {
+    val rows = readManifest()
+
+    val capital = rowByTarget(rows, "Bank capital/liquidity - total capital ratio")
+    capital.status shouldBe "READY"
+    capital.value("source_provider") shouldBe "KNF"
+    capital.value("empirical_value") shouldBe "0.211"
+    capital.value("tolerance") shouldBe "0.020"
+    capital.value("model_target") shouldBe "terminal_banks:CAR:mean"
+
+    val liquidity = rowByTarget(rows, "Bank capital/liquidity - LCR NSFR NPL bridge")
+    liquidity.status shouldBe "PARTIAL"
+    liquidity.value("notes") should include("sector average versus model minimum")
+
+    val mortgageStock = rowByTarget(rows, "Housing and mortgages - mortgage stock/GDP")
+    mortgageStock.status shouldBe "READY"
+    mortgageStock.value("source_provider") shouldBe "KNF"
+    mortgageStock.value("empirical_value") shouldBe "0.1217"
+    mortgageStock.value("model_target") shouldBe "timeseries:MortgageToGdp:terminal"
+
+    val mortgageDefault = rowByTarget(rows, "Housing and mortgages - mortgage default bridge")
+    mortgageDefault.status shouldBe "PARTIAL"
+    mortgageDefault.value("notes") should include("default-flow bridge")
+  }
+
   private def validateMetadata(row: ManifestRow): Vector[String] =
     val commonRequired = Vector(
       "target",
