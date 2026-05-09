@@ -25,7 +25,7 @@ source. Missing or weak provenance is marked explicitly with searchable tokens:
 | `EMPIRICAL_TRANSFORMED` | Institutional/data target transformed to match the model perimeter or units. |
 | `CODE_NOTE_EMPIRICAL` | Code comments name source institution/year, but no source table or URL is attached yet. |
 | `ASSUMED` | Structural modeling assumption or stylized calibration. |
-| `TUNED_NEEDS_VALIDATION` | Behavioral/dynamic coefficient chosen for model behavior; needs sensitivity and validation work. |
+| `TUNED_NEEDS_VALIDATION` | Behavioral/dynamic coefficient chosen for model behavior; needs typed validation evidence. |
 | `POLICY_SCENARIO` | Scenario/shock switch or policy parameter, not a baseline empirical estimate. |
 | `PLACEHOLDER` | Explicit placeholder or simplified value with a typed decision and follow-up path. |
 | `UNKNOWN_SOURCE` | Parameter is active in the model but final provenance is not yet documented. |
@@ -65,6 +65,111 @@ Rows below have been migrated from informal code-note provenance to typed source
 | `forex.importPropensity` | External sector | `GUS/NBP import-to-GDP bridge` | 2026-04-30 model-start bridge | docs/empirical-validation-source-manifest.csv target: Current account | Aggregate imports are normalized to GDP and used as the import-propensity coefficient. |
 | `equity.peMean`, `divYield` | Financial markets and non-bank finance | `policy-rates-market-yields-and-gpw` | 2026-04-30 model-start bridge | docs/empirical-validation-source-manifest.csv target: Monetary and financial market conditions | GPW valuation notes are reduced to long-run P/E and annual dividend-yield anchors. |
 | `housing.mortgageSpread` | Housing and mortgages | `NBP MIR housing-loan rate spread` | 2026-04-30 model-start bridge | https://nbp.pl/en/statistic-and-financial-reporting/monetary-and-financial-statistics/mir-statistics/ | Mortgage lending-rate spread over the policy-rate anchor is used directly. |
+
+## Tuned Validation Evidence
+
+`TUNED_NEEDS_VALIDATION` rows carry a typed expected validation mode.
+`MISSING_VALIDATION_EVIDENCE` means the row is classified but still lacks
+a concrete diagnostic artifact path.
+
+### Mode Counts
+
+| Validation mode | Count | Linked evidence paths | Missing evidence paths |
+| --- | ---: | ---: | ---: |
+| `HISTORICAL_FIT` | 30 | 4 | 26 |
+| `STYLIZED_FACT_TARGET` | 10 | 6 | 4 |
+| `SENSITIVITY_RANGE` | 31 | 5 | 26 |
+| `MODEL_BEHAVIOR_CALIBRATION` | 14 | 0 | 14 |
+
+### Evidence Paths
+
+| Parameter | Validation mode | Evidence path | Evidence target | Notes |
+| --- | --- | --- | --- | --- |
+| `pop.firmSizeDist` | `STYLIZED_FACT_TARGET` | docs/empirical-validation/baseline-validation-snapshot.csv target: Firm-size distribution | Firm-size distribution family | EmpiricalValidationExport exposes the current aggregate firm-size bridge. |
+| `pop.firmSizeMicroShare` | `STYLIZED_FACT_TARGET` | docs/empirical-validation/baseline-validation-snapshot.csv target: Firm-size distribution - Micro | Micro-enterprise share | EmpiricalValidationExport compares the terminal micro-firm share to the GUS active-enterprise comparator. |
+| `pop.firmSizeSmallShare` | `STYLIZED_FACT_TARGET` | docs/empirical-validation/baseline-validation-snapshot.csv target: Firm-size distribution - Small | Small-enterprise share | EmpiricalValidationExport compares the terminal small-firm share to the GUS active-enterprise comparator. |
+| `pop.firmSizeMediumShare` | `STYLIZED_FACT_TARGET` | docs/empirical-validation/baseline-validation-snapshot.csv target: Firm-size distribution - Medium | Medium-enterprise share | EmpiricalValidationExport compares the terminal medium-firm share to the GUS active-enterprise comparator. |
+| `pop.firmSizeLargeShare` | `STYLIZED_FACT_TARGET` | docs/empirical-validation/baseline-validation-snapshot.csv target: Firm-size distribution - Large | Large-enterprise share | EmpiricalValidationExport compares the terminal large-firm share to the GUS active-enterprise comparator. |
+| `sectorDefs` | `STYLIZED_FACT_TARGET` | `MISSING_VALIDATION_EVIDENCE` | Polish sector composition | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `sectorDefs.share` | `STYLIZED_FACT_TARGET` | docs/empirical-validation/baseline-validation-snapshot.csv target: Sectoral output | Six-sector output and employment bridge | EmpiricalValidationExport carries the sectoral-output bridge as missing-data evidence until a full source crosswalk is available. |
+| `sectorDefs.sigma` | `STYLIZED_FACT_TARGET` | `MISSING_VALIDATION_EVIDENCE` | Sectoral substitutability ranking | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `sectorDefs.wageMultiplier` | `STYLIZED_FACT_TARGET` | `MISSING_VALIDATION_EVIDENCE` | Relative sector wages | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `household.mpc` | `SENSITIVITY_RANGE` | SensitivityRobustnessExport target/robustness/sensitivity-summary.csv scenarios: mpc-low, mpc-high | Consumption-led demand sensitivity | SensitivityRobustnessExport contains one-at-a-time household MPC scenarios for output, inflation, credit, and fiscal metrics. |
+| `household.mpcAlpha`, `mpcBeta` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` | Heterogeneous MPC distribution centered on stronger private-consumption channel | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `household.laborSupplySteepness` | `HISTORICAL_FIT` | `MISSING_VALIDATION_EVIDENCE` | Labor-supply response steepness; calibrated so wage clearing supports strong 2026 growth without forcing persistent labor shedding | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `household.bufferSensitivity` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` | MPC response to buffer gap | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `household.mpcUnemployedBoost` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` | Extra MPC while unemployed | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `household.skillDecayRate` | `HISTORICAL_FIT` | `MISSING_VALIDATION_EVIDENCE` | Skill decay under unemployment | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `household.scarringRate`, `scarringCap`, `scarringOnset` | `HISTORICAL_FIT` | `MISSING_VALIDATION_EVIDENCE` | Long-run unemployment scarring | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `household.wageScarRate`, `wageScarCap`, `wageScarDecay` | `HISTORICAL_FIT` | `MISSING_VALIDATION_EVIDENCE` | Wage scar accumulation and recovery | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `household.retrainingBaseSuccess`, `retrainingProb` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` | Retraining success/enrollment | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `labor.voluntarySearchProb` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` | Employed voluntary sector search | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `labor.voluntaryWageThreshold` | `HISTORICAL_FIT` | `MISSING_VALIDATION_EVIDENCE` | Required wage gain for voluntary search | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `labor.unionRigidity` | `HISTORICAL_FIT` | `MISSING_VALIDATION_EVIDENCE` | Downward nominal wage rigidity | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `labor.expLambda` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` | Adaptive expectations speed | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `labor.expCredibilityInit` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` | Initial NBP credibility | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `labor.expWagePassthrough`, `tightLaborWageSensitivity` | `HISTORICAL_FIT` | `MISSING_VALIDATION_EVIDENCE` | Nominal wage-setting pass-through and unemployment-below-NAIRU wage pressure | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `labor.structuralMatchRate`, `cyclicalMatchRate` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` | Beveridge-style matching capacity | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `social.nfzPerCapitaCost` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` | Health spending per effective capita | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `social.demInitialRetirees` | `HISTORICAL_FIT` | `MISSING_VALIDATION_EVIDENCE` | Effective initial retiree stock | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `firm.productivityGrowth` | `HISTORICAL_FIT` | docs/empirical-validation/baseline-validation-snapshot.csv target: GDP growth | Baseline GDP growth path | EmpiricalValidationExport records the current GDP-growth bridge and model output used to judge the productivity/catch-up path. |
+| `firm.aiCapex` | `MODEL_BEHAVIOR_CALIBRATION` | `MISSING_VALIDATION_EVIDENCE` | Full automation capex | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `firm.hybridCapex` | `MODEL_BEHAVIOR_CALIBRATION` | `MISSING_VALIDATION_EVIDENCE` | Hybrid automation capex | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `firm.aiOpex`, `hybridOpex` | `MODEL_BEHAVIOR_CALIBRATION` | `MISSING_VALIDATION_EVIDENCE` | AI/hybrid operating cost | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `firm.hybridReadinessMin`, `fullAiReadinessMin` | `MODEL_BEHAVIOR_CALIBRATION` | `MISSING_VALIDATION_EVIDENCE` | Digital readiness adoption thresholds | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `firm.entryAiThreshold`, `entryAiProb` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` | AI-native entrant trigger/probability | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `firm.replacementEntryRate` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` | Replacement of dead firm slots | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `firm.netEntryRate`, `netEntryMaxMonthly` | `HISTORICAL_FIT` | `MISSING_VALIDATION_EVIDENCE` | Utilization-backed net births constrained by staffing feasibility | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `firm.laborAdjustSpeed`, `hiringWorkingCapitalMonths`, `startupHiringWorkingCapitalMonths` | `HISTORICAL_FIT` | `MISSING_VALIDATION_EVIDENCE` | Firm hiring absorption and payroll working-capital runway | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `firm.digiDrift` | `MODEL_BEHAVIOR_CALIBRATION` | `MISSING_VALIDATION_EVIDENCE` | Exogenous digital readiness drift | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `firm.digiInvestCost`, `digiInvestBoost` | `MODEL_BEHAVIOR_CALIBRATION` | `MISSING_VALIDATION_EVIDENCE` | Discretionary digital investment | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `firm.demoEffectThresh`, `demoEffectBoost` | `MODEL_BEHAVIOR_CALIBRATION` | `MISSING_VALIDATION_EVIDENCE` | Peer adoption demonstration effect | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `firm.adoptionRampMonths` | `MODEL_BEHAVIOR_CALIBRATION` | `MISSING_VALIDATION_EVIDENCE` | Adoption willingness ramp | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `capital.klRatios` | `HISTORICAL_FIT` | `MISSING_VALIDATION_EVIDENCE` | Sector capital-labor ratios | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `capital.importShare` | `HISTORICAL_FIT` | `MISSING_VALIDATION_EVIDENCE` | Import share of investment | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `capital.adjustSpeed` | `SENSITIVITY_RANGE` | SensitivityRobustnessExport target/robustness/sensitivity-summary.csv scenario: investment-fast | Investment and balance-sheet sensitivity | SensitivityRobustnessExport varies capital adjustment speed and records terminal deltas against baseline. |
+| `capital.demandExpansionSensitivity` | `HISTORICAL_FIT` | `MISSING_VALIDATION_EVIDENCE` | Target-capital uplift under persistent excess demand | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `capital.investmentCreditShare` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` | Credit-financed share of cash-unfunded desired investment | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `climate.greenBudgetShare` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` | Green investment budget share | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `fiscal.govWageIndexShare` | `HISTORICAL_FIT` | `MISSING_VALIDATION_EVIDENCE` | Labor-cost indexation of government purchases | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `fiscal.fofConsWeights`, `fofGovWeights` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` | Flow-of-funds allocation of household consumption and government purchases | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `io.crossSectorSpillover` | `HISTORICAL_FIT` | `MISSING_VALIDATION_EVIDENCE` | Substitutable share of unmet sector demand | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `fiscal.govInitCapital` | `HISTORICAL_FIT` | docs/empirical-validation/baseline-validation-snapshot.csv target: Fiscal stance - state budget expenditure plan 2026 | Public investment and fiscal stance bridge | EmpiricalValidationExport keeps the current fiscal coverage bridge visible while public-capital stock validation remains partial. |
+| `fiscal.euFundsTotalEur`, `euFundsAlpha`, `euFundsBeta` | `HISTORICAL_FIT` | `MISSING_VALIDATION_EVIDENCE` | EU cohesion plus KPO-style investment absorption window | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `fiscal.govFiscalRiskBeta`, `fiscalRiskBeta55`, `fiscalRiskBeta60` | `HISTORICAL_FIT` | `MISSING_VALIDATION_EVIDENCE` | Bond-yield sensitivity to public-debt pressure without a 60% debt cliff | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `fiscal.govInitialWeightedCoupon` | `HISTORICAL_FIT` | `MISSING_VALIDATION_EVIDENCE` | Opening weighted coupon on Treasury debt stock | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `fiscal.sgpCorrectionSpeed` | `HISTORICAL_FIT` | `MISSING_VALIDATION_EVIDENCE` | Gradual excessive-deficit correction speed | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `fiscal.fiscalConsolidationSpeed55`, `fiscalConsolidationSpeed60` | `HISTORICAL_FIT` | `MISSING_VALIDATION_EVIDENCE` | Debt-threshold discretionary-spending consolidation path | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `monetary.initialExpectedInflation` | `HISTORICAL_FIT` | `MISSING_VALIDATION_EVIDENCE` | Starting expected inflation stock | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `monetary.neutralRate` | `SENSITIVITY_RANGE` | SensitivityRobustnessExport target/robustness/sensitivity-summary.csv scenario: monetary-tight | Monetary-policy sensitivity | SensitivityRobustnessExport varies neutral rate and Taylor response together in the monetary-tight scenario. |
+| `monetary.taylorAlpha`, `taylorBeta`, `taylorDelta` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` | Policy reaction coefficients | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `monetary.taylorExpectedInflationWeight` | `HISTORICAL_FIT` | `MISSING_VALIDATION_EVIDENCE` | Forward-looking inflation weight in the policy reaction | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `monetary.taylorInertia` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` | Policy-rate smoothing | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `monetary.maxRateChange` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` | Monthly policy-rate adjustment cap | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `monetary.nairu` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` | NAIRU | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `banking.depositPanicRate` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` | Panic switching after failure | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `forex.irpSensitivity`, `exRateAdjSpeed` | `SENSITIVITY_RANGE` | SensitivityRobustnessExport target/robustness/sensitivity-summary.csv scenario: external-risk-off | FX and external-balance sensitivity | SensitivityRobustnessExport varies IRP sensitivity in the external-risk-off scenario and reports FX/current-account metrics. |
+| `priceLevel.importPush` | `HISTORICAL_FIT` | `MISSING_VALIDATION_EVIDENCE` | Imported inflation pass-through to CPI | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `openEcon.erElasticity` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` | Exchange-rate elasticity of trade | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `openEcon.portfolioSensitivity`, `riskPremiumSensitivity` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` | Portfolio/risk premium response | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `fdi.profitShiftRate`, `repatriationRate` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` | Profit shifting and dividend repatriation | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `fdi.maProb`, `maSizeMin` | `MODEL_BEHAVIOR_CALIBRATION` | `MISSING_VALIDATION_EVIDENCE` | Domestic firm acquisition probability and eligibility | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `gvc.commodityVolatility`, `commodityMeanReversion` | `HISTORICAL_FIT` | `MISSING_VALIDATION_EVIDENCE` | No-shock baseline commodity path; explicit energy-shock scenario carries crisis dynamics | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `immigration.monthlyRate`, `foreignWage` | `HISTORICAL_FIT` | `MISSING_VALIDATION_EVIDENCE` | Base labor-immigration rate and reference wage; moderated after 48m diagnostics showed the prior pull channel added roughly 3% of represented working-age population per year and over-amplified real GDP catch-up | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `immigration.returnRate`, `returnUnempThreshold`, `returnUnempSensitivity` | `HISTORICAL_FIT` | `MISSING_VALIDATION_EVIDENCE` | Baseline and unemployment-sensitive return migration | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `immigration.skillMean` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` | New immigrant productivity distribution used by job matching | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `equity.listedProfitShare` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` | Listed-company slice of aggregate modeled firm profits | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `housing.priceIncomeElast`, `priceRateElast`, `priceReversion` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` | HPI response to income, rates, and fundamentals | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `housing.originationRate`, `defaultBase`, `defaultUnempSens` | `HISTORICAL_FIT` | docs/empirical-validation/baseline-validation-snapshot.csv target: Housing and mortgages - mortgage default bridge | Mortgage origination/default bridge | EmpiricalValidationExport carries mortgage stock and default-flow validation rows for the housing credit channel. |
+| `regional.housingBarrierThreshold` | `MODEL_BEHAVIOR_CALIBRATION` | `MISSING_VALIDATION_EVIDENCE` | Housing-cost migration barrier | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `pricing.demandSensitivity`, `costPassthrough` | `SENSITIVITY_RANGE` | SensitivityRobustnessExport target/robustness/sensitivity-summary.csv scenario: markup-high | Price-level and markup sensitivity | SensitivityRobustnessExport varies cost pass-through in the markup-high scenario and reports inflation and wage-path metrics. |
+| `io.matrix` | `STYLIZED_FACT_TARGET` | `MISSING_VALIDATION_EVIDENCE` | Inter-sector intermediate demand | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `informal.citEvasion`, `vatEvasion`, `pitEvasion`, `exciseEvasion` | `MODEL_BEHAVIOR_CALIBRATION` | `MISSING_VALIDATION_EVIDENCE` | Tax evasion rates by tax channel | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `informal.unempThreshold`, `cyclicalSens`, `smoothing` | `MODEL_BEHAVIOR_CALIBRATION` | `MISSING_VALIDATION_EVIDENCE` | Counter-cyclical informal-sector response | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `soe.dividendFiscalThreshold`, `dividendFiscalSensitivity` | `MODEL_BEHAVIOR_CALIBRATION` | `MISSING_VALIDATION_EVIDENCE` | Fiscal-pressure dividend response | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `soe.firingReduction`, `investmentMultiplier`, `energyPassthrough` | `MODEL_BEHAVIOR_CALIBRATION` | `MISSING_VALIDATION_EVIDENCE` | SOE labor buffer, directed investment, energy pass-through | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `nbfi.creditBaseRate` | `HISTORICAL_FIT` | docs/empirical-validation/baseline-validation-snapshot.csv target: Credit/GDP | Non-bank credit contribution to aggregate credit | EmpiricalValidationExport records the current credit/GDP bridge while NBFI split extraction remains partial. |
+| `nbfi.defaultBase`, `defaultUnempSens` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` | NBFI default dynamics | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
 
 ## Transformation Rules
 

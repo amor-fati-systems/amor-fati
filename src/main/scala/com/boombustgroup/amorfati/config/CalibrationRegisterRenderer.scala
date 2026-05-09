@@ -48,6 +48,7 @@ object CalibrationRegisterRenderer:
     lines ++= statusCounts(parameters)
     lines ++= placeholderDecisions(parameters)
     lines ++= structuredSourceMetadata(parameters)
+    lines ++= tunedValidationEvidence(parameters)
     lines ++= transformationRules
     Sections.foreach: (title, predicate) =>
       val sectionParameters = parameters.filter(predicate)
@@ -188,7 +189,7 @@ object CalibrationRegisterRenderer:
       case CalibrationStatus.Assumed              =>
         "Structural modeling assumption or stylized calibration."
       case CalibrationStatus.TunedNeedsValidation =>
-        "Behavioral/dynamic coefficient chosen for model behavior; needs sensitivity and validation work."
+        "Behavioral/dynamic coefficient chosen for model behavior; needs typed validation evidence."
       case CalibrationStatus.PolicyScenario       =>
         "Scenario/shock switch or policy parameter, not a baseline empirical estimate."
       case CalibrationStatus.Placeholder          =>
@@ -249,6 +250,55 @@ object CalibrationRegisterRenderer:
       plainCell(source.vintage),
       plainCell(source.sourceReference),
       plainCell(source.transformationNotes),
+    ).mkString("| ", " | ", " |")
+
+  private def tunedValidationEvidence(parameters: Vector[CalibrationParameter]): Vector[String] =
+    val tuned = parameters.filter(_.status == CalibrationStatus.TunedNeedsValidation)
+    if tuned.isEmpty then Vector.empty
+    else
+      val missing = tuned.filter(_.validationEvidence.isEmpty)
+      require(
+        missing.isEmpty,
+        s"Missing tuned validation evidence mode for calibration parameter(s): ${missing.map(_.id).mkString(", ")}",
+      )
+
+      val evidenceByMode = CalibrationValidationMode.values.toVector.map: mode =>
+        val rows    = tuned.filter(_.validationEvidence.exists(_.mode == mode))
+        val linked  = rows.count(_.hasValidationEvidencePath)
+        val missing = rows.length - linked
+        s"| `${mode.token}` | ${rows.length} | $linked | $missing |"
+
+      val evidenceRows = tuned.map(renderTunedValidationEvidence)
+
+      Vector(
+        "## Tuned Validation Evidence",
+        "",
+        "`TUNED_NEEDS_VALIDATION` rows carry a typed expected validation mode.",
+        "`MISSING_VALIDATION_EVIDENCE` means the row is classified but still lacks",
+        "a concrete diagnostic artifact path.",
+        "",
+        "### Mode Counts",
+        "",
+        "| Validation mode | Count | Linked evidence paths | Missing evidence paths |",
+        "| --- | ---: | ---: | ---: |",
+      ) ++ evidenceByMode ++ Vector(
+        "",
+        "### Evidence Paths",
+        "",
+        "| Parameter | Validation mode | Evidence path | Evidence target | Notes |",
+        "| --- | --- | --- | --- | --- |",
+      ) ++ evidenceRows :+
+        ""
+
+  private def renderTunedValidationEvidence(parameter: CalibrationParameter): String =
+    val evidence = parameter.validationEvidence.getOrElse:
+      throw new IllegalArgumentException(s"Missing tuned validation evidence mode for calibration parameter: ${parameter.id}")
+    Vector(
+      renderParameterIds(parameter.parameterIds),
+      codeCell(evidence.mode.token),
+      evidence.evidencePath.map(plainCell).getOrElse(codeCell("MISSING_VALIDATION_EVIDENCE")),
+      plainCell(evidence.evidenceTarget),
+      plainCell(evidence.notes),
     ).mkString("| ", " | ", " |")
 
   private def hasId(parameter: CalibrationParameter, id: String): Boolean =

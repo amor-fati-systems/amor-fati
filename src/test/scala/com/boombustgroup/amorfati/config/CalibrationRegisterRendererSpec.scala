@@ -41,6 +41,17 @@ class CalibrationRegisterRendererSpec extends AnyFlatSpec with Matchers:
     rendered should include("| `banking.initGovBonds`, `initNbpGovBonds` | Banking and central-bank balance sheets |")
   }
 
+  it should "render tuned validation evidence modes and missing evidence paths" in {
+    val rendered = CalibrationRegisterRenderer.render()
+
+    rendered should include("## Tuned Validation Evidence")
+    rendered should include("| Validation mode | Count | Linked evidence paths | Missing evidence paths |")
+    rendered should include(
+      "| `household.mpc` | `SENSITIVITY_RANGE` | SensitivityRobustnessExport target/robustness/sensitivity-summary.csv scenarios: mpc-low, mpc-high |",
+    )
+    rendered should include("| `banking.depositPanicRate` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` |")
+  }
+
   it should "fail fast when a placeholder row lacks typed decision metadata" in {
     val brokenPlaceholder = CalibrationProvenance.CalibrationParameter(
       id = "immigration.initStock",
@@ -59,6 +70,26 @@ class CalibrationRegisterRendererSpec extends AnyFlatSpec with Matchers:
 
     thrown.getMessage should include("Missing placeholder decision")
     thrown.getMessage should include("immigration.initStock")
+  }
+
+  it should "fail fast when a tuned row lacks validation evidence metadata" in {
+    val brokenTuned = CalibrationProvenance.CalibrationParameter(
+      id = "household.mpc",
+      parameterIds = Vector("household.mpc"),
+      renderedValue = "0.92",
+      unit = "share",
+      provenance = "test",
+      empiricalTarget = "test",
+      transformation = "test",
+      ownerModules = Vector("HouseholdConfig"),
+      status = CalibrationProvenance.CalibrationStatus.TunedNeedsValidation,
+    )
+
+    val thrown = intercept[IllegalArgumentException]:
+      CalibrationRegisterRenderer.render(Vector(brokenTuned))
+
+    thrown.getMessage should include("Missing tuned validation evidence mode")
+    thrown.getMessage should include("household.mpc")
   }
 
 end CalibrationRegisterRendererSpec
