@@ -47,7 +47,7 @@ class CalibrationRegisterRendererSpec extends AnyFlatSpec with Matchers:
     rendered should include("## Tuned Validation Evidence")
     rendered should include("| Validation mode | Count | Linked evidence paths | Missing evidence paths |")
     rendered should include(
-      "| `household.mpc` | `SENSITIVITY_RANGE` | SensitivityRobustnessExport target/robustness/sensitivity-summary.csv scenarios: mpc-low, mpc-high |",
+      "| `household.mpc` | `SENSITIVITY_RANGE` | docs/sensitivity-robustness-workflow.md | sensitivity-summary.csv | mpc-low, mpc-high |",
     )
     rendered should include("| `banking.depositPanicRate` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` |")
   }

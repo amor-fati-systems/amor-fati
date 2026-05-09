@@ -1,5 +1,7 @@
 package com.boombustgroup.amorfati.config
 
+import java.nio.file.Path
+
 /** Typed baseline calibration provenance for active `SimParams.defaults`
   * parameters.
   *
@@ -78,9 +80,32 @@ object CalibrationProvenance:
       evidencePath: Option[String],
       evidenceTarget: String,
       notes: String,
+      artifactLabel: Option[String] = None,
+      scenarioIds: Vector[String] = Vector.empty,
   ):
+    require(
+      evidencePath.forall(path => path == CalibrationValidationEvidence.normalizedPath(path)),
+      s"Validation evidence path must be normalized and path-only: ${evidencePath.getOrElse("")}",
+    )
+
     def hasEvidencePath: Boolean =
-      evidencePath.exists(_.trim.nonEmpty)
+      evidencePath.nonEmpty
+
+  object CalibrationValidationEvidence:
+    def normalizedPath(rawPath: String): String =
+      val trimmed = rawPath.trim
+      require(trimmed.nonEmpty, "Validation evidence path cannot be empty")
+      require(!trimmed.exists(_.isWhitespace), s"Validation evidence path must be path-only, got: $rawPath")
+      require(!trimmed.contains(":"), s"Validation evidence path must not include URI or label prefixes, got: $rawPath")
+
+      val path = Path.of(trimmed).normalize()
+      require(path.getFileName != null, s"Validation evidence path must include a file name, got: $rawPath")
+      path.toString
+
+    def normalizedLabel(rawLabel: String): String =
+      val trimmed = rawLabel.trim
+      require(trimmed.nonEmpty, "Validation evidence label cannot be empty")
+      trimmed
 
   final case class CalibrationParameter(
       id: String,
@@ -246,93 +271,113 @@ object CalibrationProvenance:
       Vector(
         "pop.firmSizeDist"          -> linkedEvidence(
           CalibrationValidationMode.StylizedFactTarget,
-          "docs/empirical-validation/baseline-validation-snapshot.csv target: Firm-size distribution",
+          "docs/empirical-validation/baseline-validation-snapshot.csv",
           "Firm-size distribution family",
           "EmpiricalValidationExport exposes the current aggregate firm-size bridge.",
+          artifactLabel = Some("Firm-size distribution"),
         ),
         "pop.firmSizeMicroShare"    -> linkedEvidence(
           CalibrationValidationMode.StylizedFactTarget,
-          "docs/empirical-validation/baseline-validation-snapshot.csv target: Firm-size distribution - Micro",
+          "docs/empirical-validation/baseline-validation-snapshot.csv",
           "Micro-enterprise share",
           "EmpiricalValidationExport compares the terminal micro-firm share to the GUS active-enterprise comparator.",
+          artifactLabel = Some("Firm-size distribution - Micro"),
         ),
         "pop.firmSizeSmallShare"    -> linkedEvidence(
           CalibrationValidationMode.StylizedFactTarget,
-          "docs/empirical-validation/baseline-validation-snapshot.csv target: Firm-size distribution - Small",
+          "docs/empirical-validation/baseline-validation-snapshot.csv",
           "Small-enterprise share",
           "EmpiricalValidationExport compares the terminal small-firm share to the GUS active-enterprise comparator.",
+          artifactLabel = Some("Firm-size distribution - Small"),
         ),
         "pop.firmSizeMediumShare"   -> linkedEvidence(
           CalibrationValidationMode.StylizedFactTarget,
-          "docs/empirical-validation/baseline-validation-snapshot.csv target: Firm-size distribution - Medium",
+          "docs/empirical-validation/baseline-validation-snapshot.csv",
           "Medium-enterprise share",
           "EmpiricalValidationExport compares the terminal medium-firm share to the GUS active-enterprise comparator.",
+          artifactLabel = Some("Firm-size distribution - Medium"),
         ),
         "pop.firmSizeLargeShare"    -> linkedEvidence(
           CalibrationValidationMode.StylizedFactTarget,
-          "docs/empirical-validation/baseline-validation-snapshot.csv target: Firm-size distribution - Large",
+          "docs/empirical-validation/baseline-validation-snapshot.csv",
           "Large-enterprise share",
           "EmpiricalValidationExport compares the terminal large-firm share to the GUS active-enterprise comparator.",
+          artifactLabel = Some("Firm-size distribution - Large"),
         ),
         "sectorDefs.share"          -> linkedEvidence(
           CalibrationValidationMode.StylizedFactTarget,
-          "docs/empirical-validation/baseline-validation-snapshot.csv target: Sectoral output",
+          "docs/empirical-validation/baseline-validation-snapshot.csv",
           "Six-sector output and employment bridge",
           "EmpiricalValidationExport carries the sectoral-output bridge as missing-data evidence until a full source crosswalk is available.",
+          artifactLabel = Some("Sectoral output"),
         ),
         "household.mpc"             -> linkedEvidence(
           CalibrationValidationMode.SensitivityRange,
-          "SensitivityRobustnessExport target/robustness/sensitivity-summary.csv scenarios: mpc-low, mpc-high",
+          "docs/sensitivity-robustness-workflow.md",
           "Consumption-led demand sensitivity",
           "SensitivityRobustnessExport contains one-at-a-time household MPC scenarios for output, inflation, credit, and fiscal metrics.",
+          artifactLabel = Some("sensitivity-summary.csv"),
+          scenarioIds = Vector("mpc-low", "mpc-high"),
         ),
         "firm.productivityGrowth"   -> linkedEvidence(
           CalibrationValidationMode.HistoricalFit,
-          "docs/empirical-validation/baseline-validation-snapshot.csv target: GDP growth",
+          "docs/empirical-validation/baseline-validation-snapshot.csv",
           "Baseline GDP growth path",
           "EmpiricalValidationExport records the current GDP-growth bridge and model output used to judge the productivity/catch-up path.",
+          artifactLabel = Some("GDP growth"),
         ),
         "capital.adjustSpeed"       -> linkedEvidence(
           CalibrationValidationMode.SensitivityRange,
-          "SensitivityRobustnessExport target/robustness/sensitivity-summary.csv scenario: investment-fast",
+          "docs/sensitivity-robustness-workflow.md",
           "Investment and balance-sheet sensitivity",
           "SensitivityRobustnessExport varies capital adjustment speed and records terminal deltas against baseline.",
+          artifactLabel = Some("sensitivity-summary.csv"),
+          scenarioIds = Vector("investment-fast"),
         ),
         "fiscal.govInitCapital"     -> linkedEvidence(
           CalibrationValidationMode.HistoricalFit,
-          "docs/empirical-validation/baseline-validation-snapshot.csv target: Fiscal stance - state budget expenditure plan 2026",
+          "docs/empirical-validation/baseline-validation-snapshot.csv",
           "Public investment and fiscal stance bridge",
           "EmpiricalValidationExport keeps the current fiscal coverage bridge visible while public-capital stock validation remains partial.",
+          artifactLabel = Some("Fiscal stance - state budget expenditure plan 2026"),
         ),
         "monetary.neutralRate"      -> linkedEvidence(
           CalibrationValidationMode.SensitivityRange,
-          "SensitivityRobustnessExport target/robustness/sensitivity-summary.csv scenario: monetary-tight",
+          "docs/sensitivity-robustness-workflow.md",
           "Monetary-policy sensitivity",
           "SensitivityRobustnessExport varies neutral rate and Taylor response together in the monetary-tight scenario.",
+          artifactLabel = Some("sensitivity-summary.csv"),
+          scenarioIds = Vector("monetary-tight"),
         ),
         "forex.irpSensitivity"      -> linkedEvidence(
           CalibrationValidationMode.SensitivityRange,
-          "SensitivityRobustnessExport target/robustness/sensitivity-summary.csv scenario: external-risk-off",
+          "docs/sensitivity-robustness-workflow.md",
           "FX and external-balance sensitivity",
           "SensitivityRobustnessExport varies IRP sensitivity in the external-risk-off scenario and reports FX/current-account metrics.",
+          artifactLabel = Some("sensitivity-summary.csv"),
+          scenarioIds = Vector("external-risk-off"),
         ),
         "pricing.demandSensitivity" -> linkedEvidence(
           CalibrationValidationMode.SensitivityRange,
-          "SensitivityRobustnessExport target/robustness/sensitivity-summary.csv scenario: markup-high",
+          "docs/sensitivity-robustness-workflow.md",
           "Price-level and markup sensitivity",
           "SensitivityRobustnessExport varies cost pass-through in the markup-high scenario and reports inflation and wage-path metrics.",
+          artifactLabel = Some("sensitivity-summary.csv"),
+          scenarioIds = Vector("markup-high"),
         ),
         "housing.originationRate"   -> linkedEvidence(
           CalibrationValidationMode.HistoricalFit,
-          "docs/empirical-validation/baseline-validation-snapshot.csv target: Housing and mortgages - mortgage default bridge",
+          "docs/empirical-validation/baseline-validation-snapshot.csv",
           "Mortgage origination/default bridge",
           "EmpiricalValidationExport carries mortgage stock and default-flow validation rows for the housing credit channel.",
+          artifactLabel = Some("Housing and mortgages - mortgage default bridge"),
         ),
         "nbfi.creditBaseRate"       -> linkedEvidence(
           CalibrationValidationMode.HistoricalFit,
-          "docs/empirical-validation/baseline-validation-snapshot.csv target: Credit/GDP",
+          "docs/empirical-validation/baseline-validation-snapshot.csv",
           "Non-bank credit contribution to aggregate credit",
           "EmpiricalValidationExport records the current credit/GDP bridge while NBFI split extraction remains partial.",
+          artifactLabel = Some("Credit/GDP"),
         ),
       ).toMap
 
@@ -341,12 +386,16 @@ object CalibrationProvenance:
         evidencePath: String,
         evidenceTarget: String,
         notes: String,
+        artifactLabel: Option[String],
+        scenarioIds: Vector[String] = Vector.empty,
     ): CalibrationValidationEvidence =
       CalibrationValidationEvidence(
         mode = mode,
-        evidencePath = Some(evidencePath),
+        evidencePath = Some(CalibrationValidationEvidence.normalizedPath(evidencePath)),
         evidenceTarget = evidenceTarget,
         notes = notes,
+        artifactLabel = artifactLabel.map(CalibrationValidationEvidence.normalizedLabel),
+        scenarioIds = scenarioIds.map(CalibrationValidationEvidence.normalizedLabel),
       )
 
     private def validationEvidenceFor(parameter: CalibrationParameter): Option[CalibrationValidationEvidence] =

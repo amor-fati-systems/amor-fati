@@ -19,6 +19,8 @@ class RobustnessScenariosSpec extends AnyFlatSpec with Matchers:
     baseline shouldBe Share.decimal(92, 2)
     low.params.household.mpc should be < baseline
     high.params.household.mpc should be > baseline
+    low.params.household.mpc shouldBe Share.decimal(82, 2)
+    high.params.household.mpc shouldBe Share.decimal(98, 2)
     low.variation should include("0.92 -> 0.82")
     high.variation should include("0.92 -> 0.98")
   }

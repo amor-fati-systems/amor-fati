@@ -285,8 +285,8 @@ object CalibrationRegisterRenderer:
         "",
         "### Evidence Paths",
         "",
-        "| Parameter | Validation mode | Evidence path | Evidence target | Notes |",
-        "| --- | --- | --- | --- | --- |",
+        "| Parameter | Validation mode | Evidence path | Artifact label | Scenario ids | Evidence target | Notes |",
+        "| --- | --- | --- | --- | --- | --- | --- |",
       ) ++ evidenceRows :+
         ""
 
@@ -297,6 +297,8 @@ object CalibrationRegisterRenderer:
       renderParameterIds(parameter.parameterIds),
       codeCell(evidence.mode.token),
       evidence.evidencePath.map(plainCell).getOrElse(codeCell("MISSING_VALIDATION_EVIDENCE")),
+      evidence.artifactLabel.map(plainCell).getOrElse(""),
+      if evidence.scenarioIds.isEmpty then "" else plainCell(evidence.scenarioIds.mkString(", ")),
       plainCell(evidence.evidenceTarget),
       plainCell(evidence.notes),
     ).mkString("| ", " | ", " |")

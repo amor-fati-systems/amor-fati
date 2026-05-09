@@ -147,12 +147,15 @@ class CalibrationProvenanceSpec extends AnyFlatSpec with Matchers:
 
     val firmSize = baselineParameter("pop.firmSizeMicroShare").validationEvidence.getOrElse(fail("Expected firm-size validation evidence"))
     firmSize.mode shouldBe StylizedFactTarget
-    firmSize.evidencePath.getOrElse(fail("Expected firm-size evidence path")) should include("baseline-validation-snapshot.csv")
+    firmSize.evidencePath.getOrElse(fail("Expected firm-size evidence path")) shouldBe "docs/empirical-validation/baseline-validation-snapshot.csv"
+    firmSize.artifactLabel shouldBe Some("Firm-size distribution - Micro")
     firmSize.evidenceTarget should include("Micro")
 
     val mpc = baselineParameter("household.mpc").validationEvidence.getOrElse(fail("Expected MPC validation evidence"))
     mpc.mode shouldBe SensitivityRange
-    mpc.evidencePath.getOrElse(fail("Expected MPC evidence path")) should include("SensitivityRobustnessExport")
+    mpc.evidencePath.getOrElse(fail("Expected MPC evidence path")) shouldBe "docs/sensitivity-robustness-workflow.md"
+    mpc.artifactLabel shouldBe Some("sensitivity-summary.csv")
+    mpc.scenarioIds shouldBe Vector("mpc-low", "mpc-high")
     mpc.notes should include("one-at-a-time household MPC")
 
     val depositPanic = baselineParameter("banking.depositPanicRate").validationEvidence.getOrElse(fail("Expected deposit panic validation mode"))
