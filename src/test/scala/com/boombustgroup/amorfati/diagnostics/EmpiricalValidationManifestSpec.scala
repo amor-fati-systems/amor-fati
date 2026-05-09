@@ -112,6 +112,35 @@ class EmpiricalValidationManifestSpec extends AnyFlatSpec with Matchers:
     gdp.value("notes") should include("quarterly growth extraction")
   }
 
+  it should "carry NBP ready comparators and documented bridge gaps" in {
+    val rows = readManifest()
+
+    val fx = rowByTarget(rows, "FX rate - EUR/PLN")
+    fx.status shouldBe "READY"
+    fx.value("source_provider") shouldBe "NBP"
+    fx.value("dataset_code") should include("082/A/NBP/2026")
+    fx.value("vintage") should include("2026-04-29")
+    fx.value("accessed_at") shouldBe "2026-05-09"
+    fx.value("empirical_value") shouldBe "4.2537"
+    fx.value("tolerance") shouldBe "0.1000"
+    fx.value("model_target") shouldBe "timeseries:ExRate:mean"
+
+    val referenceRate = rowByTarget(rows, "NBP reference rate")
+    referenceRate.status shouldBe "READY"
+    referenceRate.value("source_provider") shouldBe "NBP"
+    referenceRate.value("empirical_value") shouldBe "0.0375"
+    referenceRate.value("tolerance") shouldBe "0.0025"
+    referenceRate.value("model_target") shouldBe "timeseries:RefRate:mean"
+
+    val credit = rowByTarget(rows, "Credit/GDP")
+    credit.status shouldBe "PARTIAL"
+    credit.value("notes") should include("GDP denominator bridge")
+
+    val currentAccount = rowByTarget(rows, "Current account")
+    currentAccount.status shouldBe "PARTIAL"
+    currentAccount.value("notes") should include("BoP cadence")
+  }
+
   private def validateMetadata(row: ManifestRow): Vector[String] =
     val commonRequired = Vector(
       "target",

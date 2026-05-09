@@ -170,6 +170,8 @@ class EmpiricalValidationExportSpec extends AnyFlatSpec with Matchers:
       statuses("Unemployment") shouldBe SnapshotStatus.PassBaseline
       statuses("Firm-size distribution - Micro") shouldBe SnapshotStatus.PassBaseline
       statuses("Firm-size distribution - Large") shouldBe SnapshotStatus.PassBaseline
+      statuses("FX rate - EUR/PLN") shouldBe SnapshotStatus.PassBaseline
+      statuses("NBP reference rate") shouldBe SnapshotStatus.PassBaseline
 
       Files.exists(out.resolve("baseline-validation-snapshot.csv")) shouldBe true
       Files.exists(out.resolve("source-manifest.csv")) shouldBe true
