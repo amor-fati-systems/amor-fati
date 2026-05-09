@@ -750,6 +750,9 @@ object EmpiricalValidationExport:
   )
 
   private val usage: String =
-    "Usage: EmpiricalValidationExport [--source-manifest <path>] [--run-manifest <path>] [--mc-dir <path>] [--out <path>] [--run-id <id>] [--output-prefix <prefix>] [--duration <months>] [--seeds <int>] [--commit <hash>] [--parameter-branch <name>]"
+    """Usage: EmpiricalValidationExport [--help] [--source-manifest <path>] [--run-manifest <path>] [--mc-dir <path>] [--out <path>] [--run-id <id>] [--output-prefix <prefix>] [--duration <months>] [--seeds <int>] [--commit <hash>] [--parameter-branch <name>]
+      |
+      |Options:
+      |  --help      Show this help message""".stripMargin
 
 end EmpiricalValidationExport
