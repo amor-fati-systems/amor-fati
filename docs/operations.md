@@ -77,8 +77,9 @@ z3 --version
 This is a developer and CI-like validation shell, not a hermetic sbt/Nix
 package build. sbt still resolves Scala, plugins, and library dependencies
 through its normal Coursier path. Existing non-Nix workflows continue to work.
-GitHub Actions also validates the flake in a separate `nix-dev-shell` job while
-leaving the existing CI and Codecov workflow unchanged.
+GitHub Actions runs the project CI commands through `nix develop` so the
+checked shell is the same baseline used for formatting, tests, heavy tests,
+and integration tests.
 
 For `direnv` users, create a local `.envrc` from the checked-in example and
 approve it:
