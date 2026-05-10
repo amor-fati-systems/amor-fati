@@ -7,34 +7,36 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    env:
-      SBT_OPTS: "-Xmx4G -XX:+UseG1GC"
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 21
+      - uses: cachix/install-nix-action@v31.10.6
 
-      - name: Install sbt
+      - name: Check Nix flake
+        run: nix flake check --print-build-logs
+
+      - name: Validate Nix development shell
         run: |
-          curl -fsSL "https://github.com/sbt/sbt/releases/download/v1.11.6/sbt-1.11.6.tgz" | sudo tar xz -C /usr/local
-          echo "/usr/local/sbt/bin" >> "$GITHUB_PATH"
+          nix develop --command bash -c '
+            set -euo pipefail
+            java -version 2>&1 | head -1 | grep -E "^openjdk version \"21\\."
+            python3 --version
+            z3 --version
+          '
 
       - name: Check formatting
-        run: sbt scalafmtCheckAll
+        run: nix develop --command sbt scalafmtCheckAll
 
       - name: Run non-heavy unit tests with coverage
-        run: sbt coverage "root / Test / test" coverageReport
+        run: nix develop --command sbt coverage "root / Test / test" coverageReport
 
       - name: Run heavy unit tests without coverage
-        run: sbt -DamorFati.includeHeavyTests=true "root / Test / testOnly * -- -n com.boombustgroup.amorfati.tags.Heavy"
+        run: nix develop --command sbt -DamorFati.includeHeavyTests=true "root / Test / testOnly * -- -n com.boombustgroup.amorfati.tags.Heavy"
 
       - name: Run integration tests
-        run: sbt "integrationTests / Test / test"
+        run: nix develop --command sbt "integrationTests / Test / test"
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5

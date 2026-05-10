@@ -11,12 +11,14 @@ Use the same toolchain shape as CI:
 - JDK 21 as the supported baseline, Temurin in CI
 - sbt 1.11.6, pinned in `project/build.properties`
 - Scala 3.8.2, pinned in `build.sbt`
+- Python 3 for local scripts such as `scripts/complexity.py`
 
 Newer local JDKs may work, but diagnose toolchain failures against JDK 21
 first.
 
-No Docker, Nix, or binary release artifact is required for the current local
-workflow.
+No Docker or binary release artifact is required for the current local
+workflow. Nix is optional; `flake.nix` provides a reproducible developer shell
+for users who want CI-like tooling without installing the stack globally.
 
 The runtime depends on `amor-fati-ledger`, checked out as the Git submodule at
 `modules/ledger`. A checkout without that submodule is incomplete.
@@ -44,6 +46,75 @@ sbt test
 
 The first run may spend most of its time downloading the sbt launcher,
 plugins, Scala compiler artifacts, and library dependencies through Coursier.
+
+## Nix Development Shell
+
+The repository includes a flake-based developer shell:
+
+```bash
+nix develop
+```
+
+The shell provides:
+
+- JDK 21
+- the nixpkgs sbt launcher, which respects the versions pinned by
+  `project/build.properties` and `modules/ledger/project/build.properties`
+- Python 3
+- Z3
+- Git, Bash, curl, unzip, and standard GNU shell utilities
+- `SBT_OPTS=-Xmx4G -XX:+UseG1GC`, matching CI
+
+`flake.lock` pins the nixpkgs revision used by both local Nix shells and CI.
+Update it intentionally with `nix flake update`.
+
+Validate the shell with the same commands used outside Nix:
+
+```bash
+java -version
+sbt scalafmtCheckAll
+sbt test
+z3 --version
+```
+
+This is a developer and CI-like validation shell, not a hermetic sbt/Nix
+package build. sbt still resolves Scala, plugins, and library dependencies
+through its normal Coursier path. Existing non-Nix workflows continue to work.
+GitHub Actions runs the project CI commands through `nix develop` so the
+checked shell is the same baseline used for formatting, tests, heavy tests,
+and integration tests.
+
+For `direnv` users, create a local `.envrc` from the checked-in example and
+approve it:
+
+```bash
+cp .envrc.example .envrc
+direnv allow
+```
+
+to enter the shell automatically when changing into the repository. `.envrc` is
+ignored by git so non-Nix workflows do not see `direnv` warnings by default.
+
+### Ledger Verification Tools
+
+The Nix shell includes Z3 for ledger verification workflows. Stainless remains
+controlled by `STAINLESS_DIR` and is not required for normal `sbt test` runs.
+With the current `flake.lock`, the `z3` package resolves to Z3 4.15.4 from the
+pinned nixos-25.11 snapshot. Treat Z3 version changes as verification-relevant:
+Stainless proof search can be solver-version sensitive, so re-run ledger
+verification after intentional Nix lock updates.
+The ledger verification script defaults to `/tmp/stainless-standalone`:
+
+```bash
+nix develop
+cd modules/ledger
+STAINLESS_DIR=/tmp/stainless-standalone ./verify.sh
+```
+
+Install or download the Stainless standalone distribution separately and point
+`STAINLESS_DIR` at that directory. When running from `nix develop`, `z3` is on
+`PATH`; if a Stainless bundle insists on its bundled solver, replace the
+bundle's `z3` binary with the one from `command -v z3`.
 
 ## Independent Clone Or Fork Workflow
 

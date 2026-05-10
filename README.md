@@ -57,6 +57,18 @@ Requirements:
 - JDK 21 as the supported baseline, matching CI's Temurin 21 runtime
 - sbt 1.11.6, pinned in `project/build.properties`
 
+Alternatively, enter the optional Nix developer shell:
+
+```bash
+nix develop
+```
+
+The flake provides JDK 21, the nixpkgs sbt launcher, Python 3, Z3, Git,
+standard shell utilities, and the same `SBT_OPTS` baseline used by CI. The sbt
+launcher respects `project/build.properties`, so the root build still runs with
+the pinned sbt version. `flake.lock` pins the nixpkgs revision used by both
+local Nix shells and CI.
+
 Clone the repository with its ledger submodule:
 
 ```bash
