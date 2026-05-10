@@ -24,7 +24,6 @@
           default = pkgs.mkShell {
             packages = with pkgs; [
               bashInteractive
-              cacert
               coreutils
               curl
               findutils
@@ -46,12 +45,6 @@
             SBT_OPTS = "-Xmx4G -XX:+UseG1GC";
             SSL_CERT_FILE = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
             GIT_SSL_CAINFO = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
-
-            shellHook = ''
-              export PATH="$JAVA_HOME/bin:$PATH"
-              echo "Amor Fati dev shell: JDK 21, sbt, Python 3, Z3"
-              echo "SBT_OPTS=$SBT_OPTS"
-            '';
           };
         });
     };

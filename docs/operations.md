@@ -58,12 +58,15 @@ nix develop
 The shell provides:
 
 - JDK 21
-- an sbt launcher that uses the versions pinned by `project/build.properties`
-  and `modules/ledger/project/build.properties`
+- the nixpkgs sbt launcher, which respects the versions pinned by
+  `project/build.properties` and `modules/ledger/project/build.properties`
 - Python 3
 - Z3
 - Git, Bash, curl, unzip, and standard GNU shell utilities
 - `SBT_OPTS=-Xmx4G -XX:+UseG1GC`, matching CI
+
+`flake.lock` pins the nixpkgs revision used by both local Nix shells and CI.
+Update it intentionally with `nix flake update`.
 
 Validate the shell with the same commands used outside Nix:
 
@@ -106,9 +109,8 @@ STAINLESS_DIR=/tmp/stainless-standalone ./verify.sh
 
 Install or download the Stainless standalone distribution separately and point
 `STAINLESS_DIR` at that directory. When running from `nix develop`, `z3` is on
-`PATH`; if a Stainless bundle insists on its bundled solver, match the CI
-workflow by replacing the bundle's `z3` binary with the one from
-`command -v z3`.
+`PATH`; if a Stainless bundle insists on its bundled solver, replace the
+bundle's `z3` binary with the one from `command -v z3`.
 
 ## Independent Clone Or Fork Workflow
 

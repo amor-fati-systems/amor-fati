@@ -63,9 +63,11 @@ Alternatively, enter the optional Nix developer shell:
 nix develop
 ```
 
-The flake provides JDK 21, an sbt launcher compatible with the pinned project
-version, Python 3, Z3, Git, standard shell utilities, and the same `SBT_OPTS`
-baseline used by CI.
+The flake provides JDK 21, the nixpkgs sbt launcher, Python 3, Z3, Git,
+standard shell utilities, and the same `SBT_OPTS` baseline used by CI. The sbt
+launcher respects `project/build.properties`, so the root build still runs with
+the pinned sbt version. `flake.lock` pins the nixpkgs revision used by both
+local Nix shells and CI.
 
 Clone the repository with its ledger submodule:
 
