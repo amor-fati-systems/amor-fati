@@ -38,6 +38,8 @@
               sbt
               unzip
               which
+              # flake.lock currently pins z3 4.15.4 from nixos-25.11. Changes
+              # can affect Stainless/ledger verification behavior.
               z3
             ];
 

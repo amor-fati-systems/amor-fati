@@ -12,7 +12,7 @@ jobs:
         with:
           submodules: recursive
 
-      - uses: cachix/install-nix-action@v31
+      - uses: cachix/install-nix-action@v31.10.6
 
       - name: Check Nix flake
         run: nix flake check --print-build-logs

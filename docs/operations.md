@@ -99,6 +99,10 @@ ignored by git so non-Nix workflows do not see `direnv` warnings by default.
 
 The Nix shell includes Z3 for ledger verification workflows. Stainless remains
 controlled by `STAINLESS_DIR` and is not required for normal `sbt test` runs.
+With the current `flake.lock`, the `z3` package resolves to Z3 4.15.4 from the
+pinned nixos-25.11 snapshot. Treat Z3 version changes as verification-relevant:
+Stainless proof search can be solver-version sensitive, so re-run ledger
+verification after intentional Nix lock updates.
 The ledger verification script defaults to `/tmp/stainless-standalone`:
 
 ```bash
