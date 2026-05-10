@@ -42,3 +42,24 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: target/scala-3.8.2/scoverage-report/scoverage.xml
           fail_ci_if_error: false
+
+  nix-dev-shell:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: cachix/install-nix-action@v31
+
+      - name: Validate Nix development shell
+        run: |
+          nix flake check --print-build-logs
+          nix develop --command bash -lc '
+            set -euo pipefail
+            java -version 2>&1 | grep "version \"21"
+            sbt scalafmtCheckAll
+            sbt test
+            python3 --version
+            z3 --version
+          '
