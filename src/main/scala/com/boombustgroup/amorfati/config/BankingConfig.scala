@@ -5,11 +5,13 @@ import com.boombustgroup.amorfati.types.*
 /** Commercial banking system: balance sheets, credit risk, LCR/NSFR,
   * macroprudential, and KNF/BFG supervision.
   *
-  * Models a multi-bank system (7 banks by default, calibrated to the Poland
-  * 2026-04-30 production baseline) with heterogeneous balance sheets, credit
-  * spreads, NPL dynamics, capital adequacy (Basel III CRR), liquidity coverage
-  * (LCR/NSFR), macroprudential buffers (CCyB, O-SII), KNF BION/SREP P2R
-  * add-ons, BFG resolution levy and bail-in, and interbank market.
+  * Models a multi-bank system with seven banking-sector rows by default: six
+  * named bank archetypes and one aggregate `Others` bucket for the remaining
+  * sector, calibrated to the Poland 2026-04-30 production baseline. Rows have
+  * heterogeneous balance sheets, credit spreads, NPL dynamics, capital adequacy
+  * (Basel III CRR), liquidity coverage (LCR/NSFR), macroprudential buffers
+  * (CCyB, O-SII), KNF BION/SREP P2R add-ons, BFG resolution levy and bail-in,
+  * and interbank market.
   *
   * Stock values (`initCapital`, `initDeposits`, etc.) are in raw PLN — scaled
   * by `gdpRatio` in `SimParams.defaults`.
@@ -54,7 +56,8 @@ import com.boombustgroup.amorfati.types.*
   * @param termDepositFrac
   *   fraction of deposits that are term (stable for NSFR purposes)
   * @param p2rAddons
-  *   per-bank BION/SREP P2R capital add-ons (KNF bridge prior, 7 banks)
+  *   per-row BION/SREP P2R capital add-ons (KNF bridge prior, six named bank
+  *   archetypes plus aggregate Others)
   * @param bfgLevyRate
   *   annual BFG resolution fund levy as fraction of deposits (BFG bridge prior)
   * @param bailInDepositHaircut

@@ -85,8 +85,8 @@ object Banking:
   // Aggregate balance sheet (sum over all per-bank BankStates)
   // ---------------------------------------------------------------------------
 
-  /** Aggregate banking-sector balance sheet — sum over all 7 per-bank
-    * BankStates.
+  /** Aggregate banking-sector balance sheet — sum over all seven banking-sector
+    * rows (six named bank archetypes plus aggregate Others).
     *
     * Pure DTO recomputed from bank operational state plus explicit financial
     * stock rows. Read-only snapshot consumed by output columns, SFC identities,
@@ -312,7 +312,8 @@ object Banking:
   )
 
   // ---------------------------------------------------------------------------
-  // Default configs (7 Polish bank archetypes, Poland 2026-04-30 baseline)
+  // Default configs: six named Polish bank archetypes plus aggregate Others,
+  // Poland 2026-04-30 baseline.
   // ---------------------------------------------------------------------------
 
   private def affinity(xs: Share*): Vector[Share] = xs.toVector

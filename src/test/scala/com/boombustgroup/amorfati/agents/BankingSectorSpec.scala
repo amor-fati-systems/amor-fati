@@ -73,7 +73,7 @@ class BankingSectorSpec extends AnyFlatSpec with Matchers:
   private def govBonds(stocks: Banking.BankFinancialStocks): PLN =
     Banking.govBondHoldings(stocks)
 
-  "Generators.testBankingSector" should "create 7 banks with explicit financial stocks preserving totals" in {
+  "Generators.testBankingSector" should "create 7 bank rows with explicit financial stocks preserving totals" in {
     val bs = Generators.testBankingSector(totalDeposits = PLN(1000000), totalCapital = PLN(100000), totalLoans = PLN.Zero, configs = configs)
 
     bs.banks.length shouldBe 7
