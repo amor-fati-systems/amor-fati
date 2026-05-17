@@ -6,7 +6,7 @@ import com.boombustgroup.amorfati.agents.HhStatus
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.SimulationMonth.ExecutionMonth
 import com.boombustgroup.amorfati.engine.ledger.LedgerFinancialState
-import com.boombustgroup.amorfati.montecarlo.{McRunConfig, McRunner, McTimeseriesSchema, RunResult, SimError}
+import com.boombustgroup.amorfati.montecarlo.{McFirmSnapshotSchedule, McRunConfig, McRunner, McTimeseriesSchema, RunResult, SimError}
 import com.boombustgroup.amorfati.types.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -30,6 +30,8 @@ class McRunnerCsvIntegrationSpec extends AnyFlatSpec with Matchers:
     "Seed;BankId;Deposits;Loans;Capital;NPL;CAR;GovBonds;InterbankNet;Failed"
   private val ExpectedFirmHeader =
     "Seed;Firm_Living;FirmSize_Micro;FirmSize_Small;FirmSize_Medium;FirmSize_Large;FirmSize_MicroShare;FirmSize_SmallShare;FirmSize_MediumShare;FirmSize_LargeShare"
+  private val ExpectedFirmSnapshotHeader =
+    "RunId;Seed;Month;FirmId;Sector;Region;SizeClass;Workers;TechState;BankruptcyReason;DigitalReadiness;Cash;FirmLoan;Equity;BankId;RiskProfile;InitialSize;CapitalStock;Inventory;GreenCapital;ForeignOwned;StateOwned"
 
   private def rc =
     McRunConfig(
@@ -171,6 +173,51 @@ class McRunnerCsvIntegrationSpec extends AnyFlatSpec with Matchers:
           fields.length.shouldBe(ExpectedFirmHeader.split(';').length)
           fields.head.shouldBe(seed.toString)
         }
+    }
+  }
+
+  it.should("write terminal firm snapshots aligned with terminal firm-size counts when enabled").in {
+    withTempDir { outputDir =>
+      val snapshotRc = McRunConfig(
+        nSeeds = 1,
+        outputPrefix = "mc-it-snap",
+        runDurationMonths = DurationMonths,
+        runId = "snap",
+        firmSnapshotSchedule = McFirmSnapshotSchedule.TerminalOnly,
+      )
+
+      unsafeRun(McRunner.runZIO(snapshotRc, outputDir.toFile))
+
+      val expectedRun = McRunner.runSingle(1L, DurationMonths).fold(err => fail(err.toString), identity)
+      val snapshotLines = readLines(outputDir.resolve(s"${filePrefix(snapshotRc)}_firm_snapshots.csv"))
+      val snapshotHeader = snapshotLines.head.split(';').toVector
+      snapshotLines.head.shouldBe(ExpectedFirmSnapshotHeader)
+      snapshotLines.tail.size.shouldBe(expectedRun.terminalState.firms.length)
+
+      val monthIdx = snapshotHeader.indexOf("Month")
+      monthIdx should be >= 0
+      snapshotLines.tail.map(_.split(';')(monthIdx)).toSet.shouldBe(Set(DurationMonths.toString))
+
+      val sizeClassIdx = snapshotHeader.indexOf("SizeClass")
+      val techStateIdx = snapshotHeader.indexOf("TechState")
+      sizeClassIdx should be >= 0
+      techStateIdx should be >= 0
+      val snapshotCounts = snapshotLines.tail
+        .map(_.split(';').toVector)
+        .filter(row => row(techStateIdx) != "Bankrupt")
+        .groupBy(row => row(sizeClassIdx))
+        .view
+        .mapValues(_.size)
+        .toMap
+
+      val firmSummaryLine = readLines(outputDir.resolve(s"${filePrefix(snapshotRc)}_firms.csv"))(1)
+      val summaryFields   = ExpectedFirmHeader.split(';').toVector.zip(firmSummaryLine.split(';').toVector).toMap
+
+      snapshotCounts.getOrElse("Micro", 0).shouldBe(summaryFields("FirmSize_Micro").toInt)
+      snapshotCounts.getOrElse("Small", 0).shouldBe(summaryFields("FirmSize_Small").toInt)
+      snapshotCounts.getOrElse("Medium", 0).shouldBe(summaryFields("FirmSize_Medium").toInt)
+      snapshotCounts.getOrElse("Large", 0).shouldBe(summaryFields("FirmSize_Large").toInt)
+      snapshotCounts.values.sum.shouldBe(summaryFields("Firm_Living").toInt)
     }
   }
 

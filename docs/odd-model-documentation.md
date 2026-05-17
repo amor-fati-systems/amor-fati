@@ -331,7 +331,8 @@ Observation surfaces include:
 
 - `MonthTrace` for boundary, randomness, validation, and timing diagnostics;
 - Monte Carlo per-seed CSV time series;
-- household and bank terminal summary CSVs;
+- household, bank, and firm terminal summary CSVs;
+- optional selected-month firm micro snapshot CSVs;
 - SFC validation results;
 - ledger-derived symbolic BSM, TFM, and stock-flow reconciliation artifacts;
 - symbolic-row to runtime-ledger mapping.

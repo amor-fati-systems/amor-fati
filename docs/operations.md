@@ -196,7 +196,7 @@ branch or opening a PR is optional and outside the assumed operating path.
 The main runtime entrypoint is:
 
 ```bash
-sbt "runMain com.boombustgroup.amorfati.Main <nSeeds> <prefix> [--duration <months>] [--run-id <id>]"
+sbt "runMain com.boombustgroup.amorfati.Main <nSeeds> <prefix> [--duration <months>] [--run-id <id>] [--firm-snapshots <terminal|every:N|months:M1,M2,...>]"
 ```
 
 Example smoke run:
@@ -218,6 +218,14 @@ Per-seed time-series CSV files emit macro PLN aggregates in Poland scale, ready
 for empirical analysis. The internal `gdpRatio` scaling factor is not emitted
 as a CSV column; it remains a model-computation boundary. Agent-level prices,
 wages, indexes, rates, shares, and counts remain in their native units.
+
+Firm-level micro snapshots are optional and off by default. Enable them with
+`--firm-snapshots terminal`, `--firm-snapshots every:12`, or
+`--firm-snapshots months:1,6,12`. When enabled, the runner also writes:
+
+```text
+mc/<prefix>_<run-id>_<months>m_firm_snapshots.csv
+```
 
 `mc/` is ignored by git. Keep committed research-facing artifacts under `docs/`
 only when the command explicitly targets a committed documentation path.

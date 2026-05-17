@@ -11,11 +11,13 @@ case class McRunConfig(
     outputPrefix: String,
     runDurationMonths: Int = McRunConfig.DefaultRunDuration,
     runId: String = McRunConfig.autoRunId(),
+    firmSnapshotSchedule: McFirmSnapshotSchedule = McFirmSnapshotSchedule.Disabled,
 ):
   McRunConfig.requirePositiveSeeds(nSeeds)
   McRunConfig.requireNonBlankOutputPrefix(outputPrefix)
   McRunConfig.requirePositiveDuration(runDurationMonths)
   McRunConfig.requireNonBlankRunId(runId)
+  McRunConfig.requireFirmSnapshotSchedule(firmSnapshotSchedule)
 
 object McRunConfig:
   val DefaultRunDuration: Int        = 120
@@ -36,3 +38,6 @@ object McRunConfig:
 
   def requireNonBlankRunId(runId: String): Unit =
     require(runId != null && runId.trim.nonEmpty, "runId must be non-blank")
+
+  def requireFirmSnapshotSchedule(schedule: McFirmSnapshotSchedule): Unit =
+    require(schedule != null, "firmSnapshotSchedule must be non-null")

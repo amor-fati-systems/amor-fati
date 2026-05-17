@@ -27,9 +27,15 @@ private[montecarlo] object McOutputFiles:
   def firmFile(outputDir: File, rc: McRunConfig): File =
     new File(outputDir, s"${filePrefix(rc)}_firms.csv")
 
+  def firmSnapshotFile(outputDir: File, rc: McRunConfig): File =
+    new File(outputDir, s"${filePrefix(rc)}_firm_snapshots.csv")
+
   def savedFiles(outputDir: File, rc: McRunConfig): Vector[File] =
-    (1L to rc.nSeeds.toLong).map(seed => seedFile(outputDir, seed, rc)).toVector ++
-      Vector(householdFile(outputDir, rc), bankFile(outputDir, rc), firmFile(outputDir, rc))
+    val baselineFiles =
+      (1L to rc.nSeeds.toLong).map(seed => seedFile(outputDir, seed, rc)).toVector ++
+        Vector(householdFile(outputDir, rc), bankFile(outputDir, rc), firmFile(outputDir, rc))
+    if rc.firmSnapshotSchedule.enabled then baselineFiles :+ firmSnapshotFile(outputDir, rc)
+    else baselineFiles
 
   private def filePrefix(rc: McRunConfig): String =
     s"${rc.outputPrefix}_${rc.runId}_${rc.runDurationMonths}m"
