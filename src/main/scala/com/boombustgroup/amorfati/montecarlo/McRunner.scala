@@ -40,6 +40,7 @@ object McRunner:
           runSeed(seed, rc, outputDir)
         .runCollect
       _         <- McTerminalSummaryCsv.writeAll(rc, outputDir, summaries)
+      _         <- McFirmSnapshotCsv.combineSeedFiles(rc, outputDir)
       _         <- McRunnerConsole.emit(Event.BlankLine)
       _         <- McRunnerConsole.emitAll(McOutputFiles.savedFiles(outputDir, rc).map(file => Event.SavedFile(file.getPath)))
       t1        <- Clock.currentTime(TimeUnit.MILLISECONDS)
@@ -120,10 +121,20 @@ object McRunner:
   private def runSeed(seed: Long, rc: McRunConfig, outputDir: File)(using p: SimParams): ZIO[Any, SimError, McTerminalSummaryRows] =
     for
       st       <- Clock.currentTime(TimeUnit.MILLISECONDS)
+      snapshots =
+        McFirmSnapshotCsv.tapSeedSnapshots(
+          seed = seed,
+          rc = rc,
+          outputDir = outputDir,
+          rows = seedStream(seed, rc.runDurationMonths)
+            .tap(snapshot => McRunnerConsole.emit(monthProgressEvent(seed, rc.nSeeds, snapshot.executionMonth, rc.runDurationMonths))),
+        )(
+          executionMonth = _.executionMonth,
+          state = _.state,
+        )
       terminal <- McTimeseriesCsv.writeStreaming(
         McOutputFiles.seedFile(outputDir, seed, rc),
-        seedStream(seed, rc.runDurationMonths)
-          .tap(snapshot => McRunnerConsole.emit(monthProgressEvent(seed, rc.nSeeds, snapshot.executionMonth, rc.runDurationMonths)))
+        snapshots
           .map(snapshot => SeedTerminalSnapshot(snapshot.executionMonth, snapshot.monthData, snapshot.state)),
         McTimeseriesSchema.csvSchema.contramap(snapshot => (snapshot.executionMonth, snapshot.lastMonthData)),
         SimError.RuntimeFailure(

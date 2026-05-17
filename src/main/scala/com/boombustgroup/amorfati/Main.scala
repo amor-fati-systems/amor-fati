@@ -1,7 +1,7 @@
 package com.boombustgroup.amorfati
 
 import com.boombustgroup.amorfati.config.SimParams
-import com.boombustgroup.amorfati.montecarlo.{McRunConfig, McRunner}
+import com.boombustgroup.amorfati.montecarlo.{McFirmSnapshotSchedule, McRunConfig, McRunner}
 import com.boombustgroup.amorfati.util.BuildInfo
 import zio.*
 
@@ -34,15 +34,58 @@ object Main extends ZIOAppDefault:
        |  Apache 2.0 | Copyright 2026 BoomBustGroup | www.boombustgroup.com
        |""".stripMargin
 
-  private def parseArgs(args: Chunk[String]): ZIO[Any, IllegalArgumentException, McRunConfig] =
-    val usage = "Usage: amor-fati <nSeeds> <prefix> [--duration <months>] [--run-id <id>]"
+  private[amorfati] def parseArgs(args: Chunk[String]): ZIO[Any, IllegalArgumentException, McRunConfig] =
+    val usage = "Usage: amor-fati <nSeeds> <prefix> [--duration <months>] [--run-id <id>] [--firm-snapshots <terminal|every:N|months:M1,M2,...>]"
 
-    def findFlag(name: String): Option[String] =
-      val idx = args.indexOf(name)
-      if idx >= 0 && idx + 1 < args.length then Some(args(idx + 1)) else None
+    final case class ParsedFlags(
+        runDuration: Int = McRunConfig.DefaultRunDuration,
+        runId: Option[String] = None,
+        firmSnapshots: McFirmSnapshotSchedule = McFirmSnapshotSchedule.Disabled,
+    )
+
+    def knownFlag(flag: String): Boolean =
+      flag == "--duration" || flag == "--run-id" || flag == "--firm-snapshots"
+
+    def missingValue(flag: String): Left[String, ParsedFlags] =
+      Left(s"Missing value for $flag")
 
     def parseInt(value: String, label: String): Either[String, Int] =
       scala.util.Try(value.toInt).toOption.toRight(s"$label must be an integer")
+
+    def parseFirmSnapshotSchedule(value: String): Either[String, McFirmSnapshotSchedule] =
+      val normalized = value.trim.toLowerCase(java.util.Locale.ROOT)
+      if normalized == "none" || normalized == "disabled" then Right(McFirmSnapshotSchedule.Disabled)
+      else if normalized == "terminal" || normalized == "terminal-only" then Right(McFirmSnapshotSchedule.TerminalOnly)
+      else if normalized.startsWith("every:") then
+        parseInt(normalized.stripPrefix("every:"), "--firm-snapshots every:N").flatMap: months =>
+          scala.util.Try(McFirmSnapshotSchedule.EveryNMonths(months)).toEither.left.map(_.getMessage)
+      else if normalized.startsWith("months:") then
+        val rawMonths = normalized.stripPrefix("months:").split(',').toVector.filter(_.nonEmpty)
+        val parsed    = rawMonths.foldLeft[Either[String, Set[Int]]](Right(Set.empty)): (acc, raw) =>
+          for
+            months <- acc
+            month  <- parseInt(raw, "--firm-snapshots months:M1,M2,...")
+          yield months + month
+        parsed.flatMap: months =>
+          scala.util.Try(McFirmSnapshotSchedule.ExplicitMonths(months)).toEither.left.map(_.getMessage)
+      else Left("--firm-snapshots must be terminal, every:N, months:M1,M2,..., or none")
+
+    def parseFlags(rest: Seq[String], flags: ParsedFlags): Either[String, ParsedFlags] =
+      rest match
+        case Seq()                                  => Right(flags)
+        case Seq(flag, tail*) if knownFlag(flag)    =>
+          tail match
+            case Seq()                                           => missingValue(flag)
+            case Seq(value, _*) if value.startsWith("--")        => missingValue(flag)
+            case Seq(value, next*) if flag == "--duration"       =>
+              parseInt(value, flag).flatMap(duration => parseFlags(next, flags.copy(runDuration = duration)))
+            case Seq(value, next*) if flag == "--run-id"         =>
+              parseFlags(next, flags.copy(runId = Some(value)))
+            case Seq(value, next*) if flag == "--firm-snapshots" =>
+              parseFirmSnapshotSchedule(value).flatMap(schedule => parseFlags(next, flags.copy(firmSnapshots = schedule)))
+            case Seq(_, _*)                                      => Left(s"Unknown argument: $flag")
+        case Seq(flag, _*) if flag.startsWith("--") => Left(s"Unknown argument: $flag")
+        case Seq(value, _*)                         => Left(s"Unexpected positional argument: $value")
 
     ZIO
       .fromEither(for
@@ -50,14 +93,12 @@ object Main extends ZIOAppDefault:
         nSeedsValue <- args.headOption.toRight(usage)
         nSeeds      <- parseInt(nSeedsValue, "<nSeeds>")
         prefix      <- args.lift(1).toRight(usage)
-        runDuration <- findFlag("--duration") match
-          case Some(value) => parseInt(value, "--duration")
-          case None        => Right(McRunConfig.DefaultRunDuration)
+        flags       <- parseFlags(args.drop(2), ParsedFlags())
         mcRunConfig <- scala.util
           .Try:
-            findFlag("--run-id") match
-              case Some(id) => McRunConfig(nSeeds, prefix, runDuration, id)
-              case None     => McRunConfig(nSeeds, prefix, runDuration)
+            flags.runId match
+              case Some(id) => McRunConfig(nSeeds, prefix, flags.runDuration, id, flags.firmSnapshots)
+              case None     => McRunConfig(nSeeds, prefix, flags.runDuration, firmSnapshotSchedule = flags.firmSnapshots)
           .toEither
           .left
           .map(_.getMessage)

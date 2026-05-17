@@ -167,11 +167,11 @@ private[montecarlo] object McTerminalSummarySchema:
   private def firmSizeCounts(firms: Vector[Firm.State])(using SimParams): FirmSizeCounts =
     val living = firms.filter(Firm.isAlive)
     val counts = living.foldLeft(FirmSizeCounts(living = living.length, micro = 0, small = 0, medium = 0, large = 0)): (acc, firm) =>
-      Firm.workerCount(firm) match
-        case size if size <= 9   => acc.copy(micro = acc.micro + 1)
-        case size if size <= 49  => acc.copy(small = acc.small + 1)
-        case size if size <= 249 => acc.copy(medium = acc.medium + 1)
-        case _                   => acc.copy(large = acc.large + 1)
+      McFirmSizeClass.fromWorkerCount(Firm.workerCount(firm)) match
+        case McFirmSizeClass.Micro  => acc.copy(micro = acc.micro + 1)
+        case McFirmSizeClass.Small  => acc.copy(small = acc.small + 1)
+        case McFirmSizeClass.Medium => acc.copy(medium = acc.medium + 1)
+        case McFirmSizeClass.Large  => acc.copy(large = acc.large + 1)
     counts
 
   private def percentile(values: Vector[PLN], p: Share): PLN =
