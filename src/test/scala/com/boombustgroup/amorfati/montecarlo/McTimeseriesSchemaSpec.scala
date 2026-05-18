@@ -308,6 +308,21 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     "Unemp_Northwest",
     "Unemp_Southwest",
     "Unemp_North",
+    "HouseholdLiquidity_NetDemandDeposit",
+    "HouseholdLiquidity_PositiveDemandDeposits",
+    "HouseholdLiquidity_ImplicitOverdraft",
+    "HouseholdLiquidity_NegativeDepositCount",
+    "HouseholdLiquidity_NegativeDepositShare",
+    "HouseholdLiquidity_MinDemandDeposit",
+    "HouseholdLiquidity_DepositP01",
+    "HouseholdLiquidity_DepositP05",
+    "HouseholdLiquidity_DepositP10",
+    "HouseholdLiquidity_DepositP25",
+    "HouseholdLiquidity_DepositP50",
+    "HouseholdLiquidity_DepositP75",
+    "HouseholdLiquidity_DepositP90",
+    "HouseholdLiquidity_DepositP95",
+    "HouseholdLiquidity_DepositP99",
   )
 
   private def computeRow(
@@ -341,7 +356,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     MetricValue.fromRaw(Share.fraction(numerator, denominator).toLong)
 
   "McTimeseriesSchema" should "expose the stable schema contract" in {
-    McTimeseriesSchema.nCols shouldBe 288
+    McTimeseriesSchema.nCols shouldBe 303
     McTimeseriesSchema.colNames.toVector shouldBe expectedColNames
   }
 
@@ -449,6 +464,42 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     valueAt(row, "Adoption_DebtQ2") shouldBe shareMetric(2, 2)
     valueAt(row, "Adoption_DebtQ3") shouldBe shareMetric(1, 2)
     valueAt(row, "Adoption_DebtQ4") shouldBe shareMetric(1, 2)
+  }
+
+  it should "emit household liquidity distribution diagnostics from ledger balances" in {
+    def balance(deposit: PLN): LedgerFinancialState.HouseholdBalances =
+      LedgerFinancialState.HouseholdBalances(
+        demandDeposit = deposit,
+        mortgageLoan = PLN.Zero,
+        consumerLoan = PLN.Zero,
+        equity = PLN.Zero,
+      )
+
+    val ledger = initState.ledgerFinancialState.copy(
+      households = Vector(
+        balance(PLN(-100)),
+        balance(PLN.Zero),
+        balance(PLN(50)),
+        balance(PLN(200)),
+      ),
+    )
+    val row    = computeRow(init.world, ledgerFinancialState = ledger)
+
+    valueAt(row, "HouseholdLiquidity_NetDemandDeposit") shouldBe polandScale(PLN(150))
+    valueAt(row, "HouseholdLiquidity_PositiveDemandDeposits") shouldBe polandScale(PLN(250))
+    valueAt(row, "HouseholdLiquidity_ImplicitOverdraft") shouldBe polandScale(PLN(100))
+    valueAt(row, "HouseholdLiquidity_NegativeDepositCount") shouldBe MetricValue.fromInt(1)
+    valueAt(row, "HouseholdLiquidity_NegativeDepositShare") shouldBe shareMetric(1, 4)
+    valueAt(row, "HouseholdLiquidity_MinDemandDeposit") shouldBe polandScale(PLN(-100))
+    valueAt(row, "HouseholdLiquidity_DepositP01") shouldBe polandScale(PLN(-100))
+    valueAt(row, "HouseholdLiquidity_DepositP05") shouldBe polandScale(PLN(-100))
+    valueAt(row, "HouseholdLiquidity_DepositP10") shouldBe polandScale(PLN(-100))
+    valueAt(row, "HouseholdLiquidity_DepositP25") shouldBe polandScale(PLN.Zero)
+    valueAt(row, "HouseholdLiquidity_DepositP50") shouldBe polandScale(PLN(50))
+    valueAt(row, "HouseholdLiquidity_DepositP75") shouldBe polandScale(PLN(200))
+    valueAt(row, "HouseholdLiquidity_DepositP90") shouldBe polandScale(PLN(200))
+    valueAt(row, "HouseholdLiquidity_DepositP95") shouldBe polandScale(PLN(200))
+    valueAt(row, "HouseholdLiquidity_DepositP99") shouldBe polandScale(PLN(200))
   }
 
   it should "emit validation-ready wage and current-account diagnostics" in {

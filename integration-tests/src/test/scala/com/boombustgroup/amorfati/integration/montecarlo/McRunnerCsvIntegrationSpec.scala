@@ -24,8 +24,11 @@ class McRunnerCsvIntegrationSpec extends AnyFlatSpec with Matchers:
   private val Seeds              = Vector(1L, 2L)
   private val OutputPrefix       = "mc-it"
   private val RunId              = "csvspec"
+  private val HhLiquidityHeader  =
+    "HouseholdLiquidity_NetDemandDeposit;HouseholdLiquidity_PositiveDemandDeposits;HouseholdLiquidity_ImplicitOverdraft;HouseholdLiquidity_NegativeDepositCount;HouseholdLiquidity_NegativeDepositShare;HouseholdLiquidity_MinDemandDeposit;HouseholdLiquidity_DepositP01;HouseholdLiquidity_DepositP05;HouseholdLiquidity_DepositP10;HouseholdLiquidity_DepositP25;HouseholdLiquidity_DepositP50;HouseholdLiquidity_DepositP75;HouseholdLiquidity_DepositP90;HouseholdLiquidity_DepositP95;HouseholdLiquidity_DepositP99"
   private val ExpectedHhHeader   =
-    "Seed;HH_Employed;HH_Unemployed;HH_Retraining;HH_Bankrupt;MeanMonthlyIncome;MeanEmployedWage;WageP10;WageP50;WageP90;MeanSavings;MedianSavings;Gini_Individual;Gini_Wealth;MeanSkill;MeanHealthPenalty;RetrainingAttempts;RetrainingSuccesses;ConsumptionP10;ConsumptionP50;ConsumptionP90;BankruptcyRate;MeanMonthsToRuin;PovertyRate_50pct;PovertyRate_30pct"
+    "Seed;HH_Employed;HH_Unemployed;HH_Retraining;HH_Bankrupt;MeanMonthlyIncome;MeanEmployedWage;WageP10;WageP50;WageP90;MeanSavings;MedianSavings;Gini_Individual;Gini_Wealth;MeanSkill;MeanHealthPenalty;RetrainingAttempts;RetrainingSuccesses;ConsumptionP10;ConsumptionP50;ConsumptionP90;BankruptcyRate;MeanMonthsToRuin;PovertyRate_50pct;PovertyRate_30pct;" +
+      HhLiquidityHeader
   private val ExpectedBankHeader =
     "Seed;BankId;Deposits;Loans;Capital;NPL;CAR;GovBonds;InterbankNet;Failed"
   private val ExpectedFirmHeader =
@@ -101,7 +104,35 @@ class McRunnerCsvIntegrationSpec extends AnyFlatSpec with Matchers:
       s"${a.consumptionP10.format(2)};${a.consumptionP50.format(2)};${a.consumptionP90.format(2)};" +
       s"${a.bankruptcyRate.format(6)};" +
       s"${a.meanMonthsToRuin.format(2)};" +
-      s"${a.povertyRate50.format(6)};${a.povertyRate30.format(6)}"
+      s"${a.povertyRate50.format(6)};${a.povertyRate30.format(6)};" +
+      expectedHhLiquiditySuffix(result)
+
+  private def expectedHhLiquiditySuffix(result: RunResult): String =
+    val deposits      = result.terminalState.ledgerFinancialState.households.map(_.demandDeposit).sorted
+    val net           = deposits.sumPln
+    val positive      = deposits.filter(_ > PLN.Zero).sumPln
+    val overdraft     = deposits.filter(_ < PLN.Zero).foldLeft(PLN.Zero)((acc, deposit) => acc - deposit)
+    val negativeCount = deposits.count(_ < PLN.Zero)
+    val negativeShare = if deposits.nonEmpty then Share.fraction(negativeCount, deposits.length) else Share.Zero
+    val minDeposit    = deposits.headOption.getOrElse(PLN.Zero)
+
+    Vector(
+      net.format(2),
+      positive.format(2),
+      overdraft.format(2),
+      negativeCount.toString,
+      negativeShare.format(6),
+      minDeposit.format(2),
+      percentile(deposits, Share.decimal(1, 2)).format(2),
+      percentile(deposits, Share.decimal(5, 2)).format(2),
+      percentile(deposits, Share.decimal(10, 2)).format(2),
+      percentile(deposits, Share.decimal(25, 2)).format(2),
+      percentile(deposits, Share.decimal(50, 2)).format(2),
+      percentile(deposits, Share.decimal(75, 2)).format(2),
+      percentile(deposits, Share.decimal(90, 2)).format(2),
+      percentile(deposits, Share.decimal(95, 2)).format(2),
+      percentile(deposits, Share.decimal(99, 2)).format(2),
+    ).mkString(";")
 
   private def percentile(values: Vector[PLN], p: Share): PLN =
     if values.isEmpty then PLN.Zero

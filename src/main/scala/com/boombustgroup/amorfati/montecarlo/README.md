@@ -18,6 +18,7 @@ pipeline has no dependency on this package.
 | `McFirmDecisionTraceSchema.scala` | `McFirmDecisionTraceSchema` | Generic per-firm decision trace CSV header and row rendering |
 | `McFirmDecisionTraceCsv.scala` | `McFirmDecisionTraceCsv` | Optional per-seed firm decision trace chunk writer and combined CSV finalizer |
 | `McFirmSizeClass.scala` | `McFirmSizeClass` | Shared worker-count size-class boundary used by terminal counts and firm snapshots |
+| `McHouseholdLiquidityDiagnostics.scala` | `McHouseholdLiquidityDiagnostics` | Shared household demand-deposit distribution diagnostics for timeseries and terminal summaries |
 | `McTimeseriesSchema.scala` | `McTimeseriesSchema` | Timeseries schema with typed `Col` definitions, `compute`, and shared `csvSchema` |
 | `McTimeseriesCsv.scala` | `McTimeseriesCsv` | Streaming per-seed timeseries CSV sink with temp-file finalization |
 | `McTerminalSummarySchema.scala` | `McTerminalSummarySchema` | Household/bank/firm terminal summary schemas and terminal-state row extraction; bank stock columns read `LedgerFinancialState` |
@@ -99,6 +100,34 @@ absorption constraint. It excludes accepted corporate bonds and equity issuance.
 adoption means `Hybrid` or `Automated`. Size cohorts use `McFirmSizeClass`.
 Cash and debt quartiles sort living firms by closing ledger cash or firm-loan
 principal respectively; `Q1` is the lowest cash/debt quartile.
+
+## Household Liquidity Diagnostics
+
+The timeseries schema and terminal `_hh.csv` summary include generic household
+liquidity diagnostics from ledger-owned household demand-deposit balances:
+
+```text
+HouseholdLiquidity_NetDemandDeposit
+HouseholdLiquidity_PositiveDemandDeposits
+HouseholdLiquidity_ImplicitOverdraft
+HouseholdLiquidity_NegativeDepositCount
+HouseholdLiquidity_NegativeDepositShare
+HouseholdLiquidity_MinDemandDeposit
+HouseholdLiquidity_DepositP01
+HouseholdLiquidity_DepositP05
+HouseholdLiquidity_DepositP10
+HouseholdLiquidity_DepositP25
+HouseholdLiquidity_DepositP50
+HouseholdLiquidity_DepositP75
+HouseholdLiquidity_DepositP90
+HouseholdLiquidity_DepositP95
+HouseholdLiquidity_DepositP99
+```
+
+`PositiveDemandDeposits` sums `max(demandDeposit, 0)`;
+`ImplicitOverdraft` sums `max(-demandDeposit, 0)`. These fields keep legacy
+`MeanSavings` and `MedianSavings` intact while making the signed liquidity tail
+observable without writing household-level microdata by default.
 
 ## Firm Snapshots
 
