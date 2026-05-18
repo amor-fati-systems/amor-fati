@@ -271,6 +271,13 @@ case class FlowState(
     aggInventoryStock: PLN = PLN.Zero,          // aggregate firm inventory stock
     aggInventoryChange: PLN = PLN.Zero,         // ΔInventories (enters GDP)
     aggEnergyCost: PLN = PLN.Zero,              // aggregate energy + CO₂ costs
+    automationTechCapex: PLN = PLN.Zero,        // technology CAPEX for automation/hybrid upgrades
+    automationTechImports: PLN = PLN.Zero,      // import content of technology CAPEX
+    automationTechLoans: PLN = PLN.Zero,        // bank-credit component of technology financing
+    automationUpgradeFailures: Int = 0,         // implementation failures causing firm bankruptcy
+    automationAiDebtTrap: Int = 0,              // AI debt-trap bankruptcies
+    automationNewFullAi: Int = 0,               // new full-AI adopters
+    automationNewHybrid: Int = 0,               // new hybrid adopters
     firmBirths: Int = 0,                        // new firms (recycled + net new)
     firmDeaths: Int = 0,                        // firms bankrupt this step
     netFirmBirths: Int = 0,                     // net new firms appended to vector

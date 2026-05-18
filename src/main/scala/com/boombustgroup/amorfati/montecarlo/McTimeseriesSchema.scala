@@ -117,6 +117,12 @@ object McTimeseriesSchema:
       if secFirms.isEmpty then Share.Zero
       else Share.fraction(secFirms.count(f => f.tech.isInstanceOf[TechState.Automated] || f.tech.isInstanceOf[TechState.Hybrid]), secFirms.length)
     }
+    lazy val adoptionMicroShare: Share                                                              = adoptionShare(living.filter(f => McFirmSizeClass.fromWorkerCount(Firm.workerCount(f)) == McFirmSizeClass.Micro))
+    lazy val adoptionSmallShare: Share                                                              = adoptionShare(living.filter(f => McFirmSizeClass.fromWorkerCount(Firm.workerCount(f)) == McFirmSizeClass.Small))
+    lazy val adoptionMediumShare: Share                                                             = adoptionShare(living.filter(f => McFirmSizeClass.fromWorkerCount(Firm.workerCount(f)) == McFirmSizeClass.Medium))
+    lazy val adoptionLargeShare: Share                                                              = adoptionShare(living.filter(f => McFirmSizeClass.fromWorkerCount(Firm.workerCount(f)) == McFirmSizeClass.Large))
+    lazy val adoptionCashQuartiles: Vector[Share]                                                   = adoptionQuartiles(_.cash)
+    lazy val adoptionDebtQuartiles: Vector[Share]                                                   = adoptionQuartiles(_.firmLoan)
     lazy val housingRegionsByMarket: Map[HousingConfig.RegionalMarket, HousingMarket.RegionalState] =
       world.real.housing.regions
         .map(_.iterator.map(state => state.market -> state).toMap)
@@ -146,6 +152,29 @@ object McTimeseriesSchema:
 
     def runtimeSectorIndex(name: String): Int =
       sectorIndexByName.getOrElse(name, throw IllegalStateException(s"Missing runtime sector named '$name' in SimParams.sectorDefs"))
+
+    private def adopted(firm: Firm.State): Boolean =
+      firm.tech.isInstanceOf[TechState.Automated] || firm.tech.isInstanceOf[TechState.Hybrid]
+
+    private def adoptionShare(firms: Vector[Firm.State]): Share =
+      if firms.isEmpty then Share.Zero
+      else Share.fraction(firms.count(adopted), firms.length)
+
+    private def firmBalances(firm: Firm.State): LedgerFinancialState.FirmBalances =
+      ledgerFirmBalancesById.getOrElse(firm.id, throw IllegalStateException(s"Missing ledger firm balances for firm ${firm.id.toInt}"))
+
+    private def adoptionQuartiles(metric: LedgerFinancialState.FirmBalances => PLN): Vector[Share] =
+      if living.isEmpty then Vector.fill(4)(Share.Zero)
+      else
+        val sorted        = living.sortBy(firm => (metric(firmBalances(firm)).toLong, firm.id.toInt))
+        val counts        = Array.fill(4)(0)
+        val adoptedCounts = Array.fill(4)(0)
+        sorted.zipWithIndex.foreach: (firm, idx) =>
+          val quartile = idx * 4 / sorted.length
+          counts(quartile) += 1
+          if adopted(firm) then adoptedCounts(quartile) += 1
+        Vector.tabulate(4): quartile =>
+          if counts(quartile) > 0 then Share.fraction(adoptedCounts(quartile), counts(quartile)) else Share.Zero
 
     def sectorSigma(idx: Int): Sigma                                        = world.currentSigmas(idx)
     def housingRegionHpi(market: HousingConfig.RegionalMarket): MetricValue =
@@ -196,6 +225,31 @@ object McTimeseriesSchema:
     ColumnDef.macroPln("AnnualizedGdpProxy", ctx => ctx.annualizedGdp),
     ColumnDef("AutoRatio", ctx => ctx.world.real.automationRatio),
     ColumnDef("HybridRatio", ctx => ctx.world.real.hybridRatio),
+  )
+
+  private def automationGroup: Vector[ColumnDef] = Vector(
+    ColumnDef.macroPln("Automation_TechCapex", ctx => ctx.world.flows.automationTechCapex),
+    ColumnDef.macroPln("Automation_TechImports", ctx => ctx.world.flows.automationTechImports),
+    ColumnDef.macroPln("Automation_TechLoans", ctx => ctx.world.flows.automationTechLoans),
+    ColumnDef("Automation_UpgradeFailures", ctx => ctx.world.flows.automationUpgradeFailures),
+    ColumnDef("Automation_AiDebtTrap", ctx => ctx.world.flows.automationAiDebtTrap),
+    ColumnDef("Automation_NewFullAi", ctx => ctx.world.flows.automationNewFullAi),
+    ColumnDef("Automation_NewHybrid", ctx => ctx.world.flows.automationNewHybrid),
+  )
+
+  private def adoptionHeterogeneityGroup: Vector[ColumnDef] = Vector(
+    ColumnDef("Adoption_MicroShare", ctx => ctx.adoptionMicroShare),
+    ColumnDef("Adoption_SmallShare", ctx => ctx.adoptionSmallShare),
+    ColumnDef("Adoption_MediumShare", ctx => ctx.adoptionMediumShare),
+    ColumnDef("Adoption_LargeShare", ctx => ctx.adoptionLargeShare),
+    ColumnDef("Adoption_CashQ1", ctx => ctx.adoptionCashQuartiles(0)),
+    ColumnDef("Adoption_CashQ2", ctx => ctx.adoptionCashQuartiles(1)),
+    ColumnDef("Adoption_CashQ3", ctx => ctx.adoptionCashQuartiles(2)),
+    ColumnDef("Adoption_CashQ4", ctx => ctx.adoptionCashQuartiles(3)),
+    ColumnDef("Adoption_DebtQ1", ctx => ctx.adoptionDebtQuartiles(0)),
+    ColumnDef("Adoption_DebtQ2", ctx => ctx.adoptionDebtQuartiles(1)),
+    ColumnDef("Adoption_DebtQ3", ctx => ctx.adoptionDebtQuartiles(2)),
+    ColumnDef("Adoption_DebtQ4", ctx => ctx.adoptionDebtQuartiles(3)),
   )
 
   private def sectoralGroup: Vector[ColumnDef] =
@@ -640,6 +694,8 @@ object McTimeseriesSchema:
 
   private val schema: Array[ColumnDef] =
     (coreGroup
+      ++ automationGroup
+      ++ adoptionHeterogeneityGroup
       ++ sectoralGroup
       ++ externalGroup
       ++ fiscalGroup
@@ -664,80 +720,99 @@ object McTimeseriesSchema:
     private def lookup(name: String): Col =
       nameToIdx.getOrElse(name, throw new NoSuchElementException(s"Unknown column: $name"))
 
-    val Month: Col                  = lookup("Month")
-    val Inflation: Col              = lookup("Inflation")
-    val Unemployment: Col           = lookup("Unemployment")
-    val UnemployedShare: Col        = lookup("UnemployedShare")
-    val RetrainingShare: Col        = lookup("RetrainingShare")
-    val TotalAdoption: Col          = lookup("TotalAdoption")
-    val ExRate: Col                 = lookup("ExRate")
-    val MarketWage: Col             = lookup("MarketWage")
-    val MeanEmployedWage: Col       = lookup("MeanEmployedWage")
-    val GovDebt: Col                = lookup("GovDebt")
-    val NPL: Col                    = lookup("NPL")
-    val RefRate: Col                = lookup("RefRate")
-    val PriceLevel: Col             = lookup("PriceLevel")
-    val MonthlyGdpProxy: Col        = lookup("MonthlyGdpProxy")
-    val AnnualizedGdpProxy: Col     = lookup("AnnualizedGdpProxy")
-    val AutoRatio: Col              = lookup("AutoRatio")
-    val HybridRatio: Col            = lookup("HybridRatio")
-    val BpoAuto: Col                = lookup("BPO_Auto")
-    val ManufAuto: Col              = lookup("Manuf_Auto")
-    val RetailAuto: Col             = lookup("Retail_Auto")
-    val HealthAuto: Col             = lookup("Health_Auto")
-    val PublicAuto: Col             = lookup("Public_Auto")
-    val AgriAuto: Col               = lookup("Agri_Auto")
-    val BpoOutput: Col              = lookup("BPO_Output")
-    val ManufOutput: Col            = lookup("Manuf_Output")
-    val RetailOutput: Col           = lookup("Retail_Output")
-    val HealthOutput: Col           = lookup("Health_Output")
-    val PublicOutput: Col           = lookup("Public_Output")
-    val AgriOutput: Col             = lookup("Agri_Output")
-    val BpoSigma: Col               = lookup("BPO_Sigma")
-    val ManufSigma: Col             = lookup("Manuf_Sigma")
-    val RetailSigma: Col            = lookup("Retail_Sigma")
-    val HealthSigma: Col            = lookup("Health_Sigma")
-    val PublicSigma: Col            = lookup("Public_Sigma")
-    val AgriSigma: Col              = lookup("Agri_Sigma")
-    val MeanDegree: Col             = lookup("MeanDegree")
-    val IoFlows: Col                = lookup("IoFlows")
-    val IoGdpRatio: Col             = lookup("IoGdpRatio")
-    val NFA: Col                    = lookup("NFA")
-    val CurrentAccount: Col         = lookup("CurrentAccount")
-    val CurrentAccountToGdp: Col    = lookup("CurrentAccountToGdp")
-    val CapitalAccount: Col         = lookup("CapitalAccount")
-    val TradeBalance: Col           = lookup("TradeBalance_OE")
-    val Exports: Col                = lookup("Exports_OE")
-    val TotalImports: Col           = lookup("TotalImports_OE")
-    val ImportedInterm: Col         = lookup("ImportedInterm")
-    val FDI: Col                    = lookup("FDI")
-    val UnempBenefitSpend: Col      = lookup("UnempBenefitSpend")
-    val OutputGap: Col              = lookup("OutputGap")
-    val BondYield: Col              = lookup("BondYield")
-    val BondsOutstanding: Col       = lookup("BondsOutstanding")
-    val BankBondHoldings: Col       = lookup("BankBondHoldings")
-    val ForeignBondHoldings: Col    = lookup("ForeignBondHoldings")
-    val NbpBondHoldings: Col        = lookup("NbpBondHoldings")
-    val PpkBondHoldings: Col        = lookup("PpkBondHoldings")
-    val InsGovBondHoldings: Col     = lookup("InsGovBondHoldings")
-    val NbfiTfiGovBondHoldings: Col = lookup("NbfiTfiGovBondHoldings")
-    val QeActive: Col               = lookup("QeActive")
-    val DebtService: Col            = lookup("DebtService")
-    val NbpRemittance: Col          = lookup("NbpRemittance")
-    val FxReserves: Col             = lookup("FxReserves")
-    val FxInterventionAmt: Col      = lookup("FxInterventionAmt")
-    val FxInterventionActive: Col   = lookup("FxInterventionActive")
-    val InterbankRate: Col          = lookup("InterbankRate")
-    val MinBankCAR: Col             = lookup("MinBankCAR")
-    val MaxBankNPL: Col             = lookup("MaxBankNPL")
-    val BankFailures: Col           = lookup("BankFailures")
-    val BankFirmLoans: Col          = lookup("BankFirmLoans")
-    val TotalCreditStock: Col       = lookup("TotalCreditStock")
-    val TotalCreditToGdp: Col       = lookup("TotalCreditToGdp")
-    val ReserveInterest: Col        = lookup("ReserveInterest")
-    val StandingFacilityNet: Col    = lookup("StandingFacilityNet")
-    val DepositFacilityUsage: Col   = lookup("DepositFacilityUsage")
-    val InterbankInterestNet: Col   = lookup("InterbankInterestNet")
+    val Month: Col                     = lookup("Month")
+    val Inflation: Col                 = lookup("Inflation")
+    val Unemployment: Col              = lookup("Unemployment")
+    val UnemployedShare: Col           = lookup("UnemployedShare")
+    val RetrainingShare: Col           = lookup("RetrainingShare")
+    val TotalAdoption: Col             = lookup("TotalAdoption")
+    val ExRate: Col                    = lookup("ExRate")
+    val MarketWage: Col                = lookup("MarketWage")
+    val MeanEmployedWage: Col          = lookup("MeanEmployedWage")
+    val GovDebt: Col                   = lookup("GovDebt")
+    val NPL: Col                       = lookup("NPL")
+    val RefRate: Col                   = lookup("RefRate")
+    val PriceLevel: Col                = lookup("PriceLevel")
+    val MonthlyGdpProxy: Col           = lookup("MonthlyGdpProxy")
+    val AnnualizedGdpProxy: Col        = lookup("AnnualizedGdpProxy")
+    val AutoRatio: Col                 = lookup("AutoRatio")
+    val HybridRatio: Col               = lookup("HybridRatio")
+    val AutomationTechCapex: Col       = lookup("Automation_TechCapex")
+    val AutomationTechImports: Col     = lookup("Automation_TechImports")
+    val AutomationTechLoans: Col       = lookup("Automation_TechLoans")
+    val AutomationUpgradeFailures: Col = lookup("Automation_UpgradeFailures")
+    val AutomationAiDebtTrap: Col      = lookup("Automation_AiDebtTrap")
+    val AutomationNewFullAi: Col       = lookup("Automation_NewFullAi")
+    val AutomationNewHybrid: Col       = lookup("Automation_NewHybrid")
+    val AdoptionMicroShare: Col        = lookup("Adoption_MicroShare")
+    val AdoptionSmallShare: Col        = lookup("Adoption_SmallShare")
+    val AdoptionMediumShare: Col       = lookup("Adoption_MediumShare")
+    val AdoptionLargeShare: Col        = lookup("Adoption_LargeShare")
+    val AdoptionCashQ1: Col            = lookup("Adoption_CashQ1")
+    val AdoptionCashQ2: Col            = lookup("Adoption_CashQ2")
+    val AdoptionCashQ3: Col            = lookup("Adoption_CashQ3")
+    val AdoptionCashQ4: Col            = lookup("Adoption_CashQ4")
+    val AdoptionDebtQ1: Col            = lookup("Adoption_DebtQ1")
+    val AdoptionDebtQ2: Col            = lookup("Adoption_DebtQ2")
+    val AdoptionDebtQ3: Col            = lookup("Adoption_DebtQ3")
+    val AdoptionDebtQ4: Col            = lookup("Adoption_DebtQ4")
+    val BpoAuto: Col                   = lookup("BPO_Auto")
+    val ManufAuto: Col                 = lookup("Manuf_Auto")
+    val RetailAuto: Col                = lookup("Retail_Auto")
+    val HealthAuto: Col                = lookup("Health_Auto")
+    val PublicAuto: Col                = lookup("Public_Auto")
+    val AgriAuto: Col                  = lookup("Agri_Auto")
+    val BpoOutput: Col                 = lookup("BPO_Output")
+    val ManufOutput: Col               = lookup("Manuf_Output")
+    val RetailOutput: Col              = lookup("Retail_Output")
+    val HealthOutput: Col              = lookup("Health_Output")
+    val PublicOutput: Col              = lookup("Public_Output")
+    val AgriOutput: Col                = lookup("Agri_Output")
+    val BpoSigma: Col                  = lookup("BPO_Sigma")
+    val ManufSigma: Col                = lookup("Manuf_Sigma")
+    val RetailSigma: Col               = lookup("Retail_Sigma")
+    val HealthSigma: Col               = lookup("Health_Sigma")
+    val PublicSigma: Col               = lookup("Public_Sigma")
+    val AgriSigma: Col                 = lookup("Agri_Sigma")
+    val MeanDegree: Col                = lookup("MeanDegree")
+    val IoFlows: Col                   = lookup("IoFlows")
+    val IoGdpRatio: Col                = lookup("IoGdpRatio")
+    val NFA: Col                       = lookup("NFA")
+    val CurrentAccount: Col            = lookup("CurrentAccount")
+    val CurrentAccountToGdp: Col       = lookup("CurrentAccountToGdp")
+    val CapitalAccount: Col            = lookup("CapitalAccount")
+    val TradeBalance: Col              = lookup("TradeBalance_OE")
+    val Exports: Col                   = lookup("Exports_OE")
+    val TotalImports: Col              = lookup("TotalImports_OE")
+    val ImportedInterm: Col            = lookup("ImportedInterm")
+    val FDI: Col                       = lookup("FDI")
+    val UnempBenefitSpend: Col         = lookup("UnempBenefitSpend")
+    val OutputGap: Col                 = lookup("OutputGap")
+    val BondYield: Col                 = lookup("BondYield")
+    val BondsOutstanding: Col          = lookup("BondsOutstanding")
+    val BankBondHoldings: Col          = lookup("BankBondHoldings")
+    val ForeignBondHoldings: Col       = lookup("ForeignBondHoldings")
+    val NbpBondHoldings: Col           = lookup("NbpBondHoldings")
+    val PpkBondHoldings: Col           = lookup("PpkBondHoldings")
+    val InsGovBondHoldings: Col        = lookup("InsGovBondHoldings")
+    val NbfiTfiGovBondHoldings: Col    = lookup("NbfiTfiGovBondHoldings")
+    val QeActive: Col                  = lookup("QeActive")
+    val DebtService: Col               = lookup("DebtService")
+    val NbpRemittance: Col             = lookup("NbpRemittance")
+    val FxReserves: Col                = lookup("FxReserves")
+    val FxInterventionAmt: Col         = lookup("FxInterventionAmt")
+    val FxInterventionActive: Col      = lookup("FxInterventionActive")
+    val InterbankRate: Col             = lookup("InterbankRate")
+    val MinBankCAR: Col                = lookup("MinBankCAR")
+    val MaxBankNPL: Col                = lookup("MaxBankNPL")
+    val BankFailures: Col              = lookup("BankFailures")
+    val BankFirmLoans: Col             = lookup("BankFirmLoans")
+    val TotalCreditStock: Col          = lookup("TotalCreditStock")
+    val TotalCreditToGdp: Col          = lookup("TotalCreditToGdp")
+    val ReserveInterest: Col           = lookup("ReserveInterest")
+    val StandingFacilityNet: Col       = lookup("StandingFacilityNet")
+    val DepositFacilityUsage: Col      = lookup("DepositFacilityUsage")
+    val InterbankInterestNet: Col      = lookup("InterbankInterestNet")
 
     private val sectorAutoNames   = sectorColumns.map(_.autoColName)
     private val sectorOutputNames = sectorColumns.map(_.outputColName)

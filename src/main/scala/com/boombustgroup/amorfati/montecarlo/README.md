@@ -64,6 +64,42 @@ tests and local callers.
 many monthly snapshots the runner materializes, but it is not part of
 `SimParams` and should not leak into economic decision rules.
 
+## Timeseries Automation Diagnostics
+
+The timeseries schema includes generic monthly automation diagnostics:
+
+```text
+Automation_TechCapex
+Automation_TechImports
+Automation_TechLoans
+Automation_UpgradeFailures
+Automation_AiDebtTrap
+Automation_NewFullAi
+Automation_NewHybrid
+Adoption_MicroShare
+Adoption_SmallShare
+Adoption_MediumShare
+Adoption_LargeShare
+Adoption_CashQ1
+Adoption_CashQ2
+Adoption_CashQ3
+Adoption_CashQ4
+Adoption_DebtQ1
+Adoption_DebtQ2
+Adoption_DebtQ3
+Adoption_DebtQ4
+```
+
+`Automation_TechLoans` is the bank-credit component of technology-upgrade
+financing after equity and accepted corporate-bond substitution, plus any
+technology-attributed corporate bonds reverted to bank loans by the monthly bond
+absorption constraint. It excludes accepted corporate bonds and equity issuance.
+
+`Adoption_*Share` columns are adoption rates within living-firm cohorts, where
+adoption means `Hybrid` or `Automated`. Size cohorts use `McFirmSizeClass`.
+Cash and debt quartiles sort living firms by closing ledger cash or firm-loan
+principal respectively; `Q1` is the lowest cash/debt quartile.
+
 ## Firm Snapshots
 
 Firm microdata is disabled by default. When enabled, the runner writes one

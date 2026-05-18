@@ -62,6 +62,8 @@ object WorldAssemblyEconomics:
       startupAbsorptionRate: Share,
   )
 
+  private[economics] case class AutomationEntryTransitions(newFullAi: Int, newHybrid: Int)
+
   /** Assembled month-`t` state before the next-month decision seed is applied.
     */
   case class PostResult(
@@ -97,13 +99,20 @@ object WorldAssemblyEconomics:
       FirmEntry.LaggedEntrySignals.fromDecisionSignals(seedIn),
       randomness.firmEntry,
     )
+    val entryAutomationTransitions = automationEntryTransitions(entryStep.firms, entryStep.newFirmIds)
 
     val startupStaffing = applyStartupStaffing(in, entryStep.firms, in.s9.reassignedHouseholds, randomness.startupStaffing)
 
     // Regional migration: unemployed HH may relocate between NUTS-1 regions
     val postMigHh                 = RegionalMigration(startupStaffing.households, in.s2.regionalWages, randomness.regionalMigration).households
     val finalFirms                = syncStartupStaffing(startupStaffing.firms, postMigHh)
-    val finalFlows                = newW.flows.copy(firmBirths = entryStep.births, firmDeaths = in.s5.firmDeaths, netFirmBirths = entryStep.netBirths)
+    val finalFlows                = newW.flows.copy(
+      firmBirths = entryStep.births,
+      firmDeaths = in.s5.firmDeaths,
+      netFirmBirths = entryStep.netBirths,
+      automationNewFullAi = newW.flows.automationNewFullAi + entryAutomationTransitions.newFullAi,
+      automationNewHybrid = newW.flows.automationNewHybrid + entryAutomationTransitions.newHybrid,
+    )
     val finalCrossSectorHires     = newW.real.sectoralMobility.crossSectorHires + startupStaffing.crossSectorHires
     val finalReal                 = newW.real.copy(
       sectoralMobility = newW.real.sectoralMobility.copy(
@@ -362,6 +371,13 @@ object WorldAssemblyEconomics:
         govSpendingCutRatio = in.s4.fiscalRuleStatus.spendingCutRatio,
       )
 
+  private[economics] def automationEntryTransitions(firms: Vector[Firm.State], newFirmIds: Set[FirmId]): AutomationEntryTransitions =
+    val newFirms = firms.filter(firm => newFirmIds.contains(firm.id))
+    AutomationEntryTransitions(
+      newFullAi = newFirms.count(_.tech.isInstanceOf[TechState.Automated]),
+      newHybrid = newFirms.count(_.tech.isInstanceOf[TechState.Hybrid]),
+    )
+
   /** Construct the FlowState for this step. */
   private def buildFlowState(in: StepInput, informal: InformalResult): FlowState =
     FlowState(
@@ -377,6 +393,13 @@ object WorldAssemblyEconomics:
       aggInventoryStock = in.s7.aggInventoryStock,
       aggInventoryChange = in.s7.aggInventoryChange,
       aggEnergyCost = in.s5.sumEnergyCost,
+      automationTechCapex = in.s5.automationTechCapex,
+      automationTechImports = in.s5.automationTechImports,
+      automationTechLoans = in.s5.automationTechLoans,
+      automationUpgradeFailures = in.s5.automationUpgradeFailures,
+      automationAiDebtTrap = in.s5.automationAiDebtTrap,
+      automationNewFullAi = in.s5.automationNewFullAi,
+      automationNewHybrid = in.s5.automationNewHybrid,
       firmBirths = 0,
       firmDeaths = 0,
       taxEvasionLoss = informal.taxEvasionLoss,

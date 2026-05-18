@@ -197,7 +197,8 @@ object Firm:
       realizedPostTaxProfit: PLN,                 // realized monthly profit after tax, floored at zero for payout logic
       capexSpent: PLN,                            // Technology upgrade CAPEX (AI or hybrid)
       techImports: PLN,                           // Import content of CAPEX (forex demand)
-      newLoan: PLN,                               // New bank loan taken for upgrade
+      newLoan: PLN,                               // New bank loan requested before financing-channel split
+      techNewLoan: PLN,                           // Portion of newLoan tied to technology CAPEX
       equityIssuance: PLN,                        // GPW equity raised this month (filled by S4)
       grossInvestment: PLN,                       // Physical capital investment this month
       bondIssuance: PLN,                          // Corporate bond issuance (filled by S4)
@@ -216,6 +217,7 @@ object Firm:
       Result(
         firm,
         financialStocks,
+        PLN.Zero,
         PLN.Zero,
         PLN.Zero,
         PLN.Zero,
@@ -1414,6 +1416,7 @@ object Firm:
           capex = capex,
           techImports = tImp,
           newLoan = loan,
+          techNewLoan = loan,
         )
 
       case Decision.UpgradeFailed(pnl, reason, capex, loan, down) =>
@@ -1428,6 +1431,7 @@ object Firm:
           capex = capex,
           techImports = tImp,
           newLoan = loan,
+          techNewLoan = loan,
         )
 
       case Decision.Downsize(pnl, _, adjustedCash, newTech, drUpdate) =>
@@ -1453,6 +1457,7 @@ object Firm:
       capex: PLN = PLN.Zero,
       techImports: PLN = PLN.Zero,
       newLoan: PLN = PLN.Zero,
+      techNewLoan: PLN = PLN.Zero,
   ): Result =
     Result(
       firm = advanceStartupLifecycle(firm.copy(accumulatedLoss = pnl.newAccumulatedLoss)),
@@ -1462,6 +1467,7 @@ object Firm:
       capexSpent = capex,
       techImports = techImports,
       newLoan = newLoan,
+      techNewLoan = techNewLoan,
       equityIssuance = PLN.Zero,
       grossInvestment = PLN.Zero,
       bondIssuance = PLN.Zero,
