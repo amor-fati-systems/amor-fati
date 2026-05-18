@@ -22,14 +22,20 @@ private[montecarlo] final case class McTerminalSummaryRows(seed: Long, rowsById:
 private[montecarlo] object McTerminalSummarySchema:
 
   private case class BankRow(bank: BankState, balances: LedgerFinancialState.BankBalances)
-  private case class HouseholdRow(aggregates: Household.Aggregates, households: Vector[Household.State]):
-    private lazy val employedWages: Vector[PLN] =
+  private case class HouseholdRow(
+      aggregates: Household.Aggregates,
+      households: Vector[Household.State],
+      balances: Vector[LedgerFinancialState.HouseholdBalances],
+  ):
+    private lazy val employedWages: Vector[PLN]                 =
       households
         .flatMap: household =>
           household.status match
             case HhStatus.Employed(_, _, wage) => Some(wage)
             case _                             => None
         .sorted
+    lazy val liquidity: McHouseholdLiquidityDiagnostics.Summary =
+      McHouseholdLiquidityDiagnostics.fromBalances(balances)
 
     def meanMonthlyIncome: PLN =
       if households.nonEmpty then aggregates.totalIncome.divideBy(households.length) else PLN.Zero
@@ -87,6 +93,21 @@ private[montecarlo] object McTerminalSummarySchema:
     ("MeanMonthsToRuin", row => row.aggregates.meanMonthsToRuin.format(2)),
     ("PovertyRate_50pct", row => row.aggregates.povertyRate50.format(6)),
     ("PovertyRate_30pct", row => row.aggregates.povertyRate30.format(6)),
+    ("HouseholdLiquidity_NetDemandDeposit", row => row.liquidity.netDemandDeposit.format(2)),
+    ("HouseholdLiquidity_PositiveDemandDeposits", row => row.liquidity.positiveDemandDeposits.format(2)),
+    ("HouseholdLiquidity_ImplicitOverdraft", row => row.liquidity.implicitOverdraft.format(2)),
+    ("HouseholdLiquidity_NegativeDepositCount", row => s"${row.liquidity.negativeDepositCount}"),
+    ("HouseholdLiquidity_NegativeDepositShare", row => row.liquidity.negativeDepositShare.format(6)),
+    ("HouseholdLiquidity_MinDemandDeposit", row => row.liquidity.minDemandDeposit.format(2)),
+    ("HouseholdLiquidity_DepositP01", row => row.liquidity.depositP01.format(2)),
+    ("HouseholdLiquidity_DepositP05", row => row.liquidity.depositP05.format(2)),
+    ("HouseholdLiquidity_DepositP10", row => row.liquidity.depositP10.format(2)),
+    ("HouseholdLiquidity_DepositP25", row => row.liquidity.depositP25.format(2)),
+    ("HouseholdLiquidity_DepositP50", row => row.liquidity.depositP50.format(2)),
+    ("HouseholdLiquidity_DepositP75", row => row.liquidity.depositP75.format(2)),
+    ("HouseholdLiquidity_DepositP90", row => row.liquidity.depositP90.format(2)),
+    ("HouseholdLiquidity_DepositP95", row => row.liquidity.depositP95.format(2)),
+    ("HouseholdLiquidity_DepositP99", row => row.liquidity.depositP99.format(2)),
   )
 
   private val bankSchema: Vector[(String, BankRow => String)] = Vector(
@@ -146,7 +167,12 @@ private[montecarlo] object McTerminalSummarySchema:
     McTerminalSummaryRows(
       seed,
       Map(
-        McTerminalSummaryId.Household -> Vector(renderHouseholdRow(seed, HouseholdRow(terminalState.householdAggregates, terminalState.households))),
+        McTerminalSummaryId.Household -> Vector(
+          renderHouseholdRow(
+            seed,
+            HouseholdRow(terminalState.householdAggregates, terminalState.households, terminalState.ledgerFinancialState.households),
+          ),
+        ),
         McTerminalSummaryId.Banks     -> terminalState.banks.map(bank =>
           renderBankRow(seed, BankRow(bank, terminalState.ledgerFinancialState.banks(bank.id.toInt))),
         ),
