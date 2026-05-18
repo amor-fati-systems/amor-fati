@@ -37,6 +37,31 @@ class McRunnerOutputSpec extends AnyFlatSpec with Matchers:
       householdSummary.tail should have size rc.nSeeds
       householdSummary.tail.foreach(_.split(";").length shouldBe householdSummary.head.split(";").length)
 
+  it should "write deterministic selected firm decision traces without changing baseline CSV outputs" in
+    withTempDir: baselineDir =>
+      withTempDir: traceDir =>
+        withTempDir: repeatTraceDir =>
+          val baselineRc = McRunConfig(nSeeds = 1, outputPrefix = "trace-regression", runDurationMonths = 2, runId = "fixed")
+          val traceRc    =
+            baselineRc.copy(firmDecisionTraceSelection = McFirmDecisionTraceSelection.FirstN(1))
+          val traceName  = decisionTraceFileName(traceRc)
+
+          runToDir(baselineRc, baselineDir)
+          runToDir(traceRc, traceDir)
+          runToDir(traceRc, repeatTraceDir)
+
+          listFileNames(traceDir) should contain(traceName)
+          listFileNames(baselineDir).foreach: name =>
+            Files.readAllLines(traceDir.resolve(name), UTF_8).asScala.toVector shouldBe
+              Files.readAllLines(baselineDir.resolve(name), UTF_8).asScala.toVector
+
+          val traceLines       = Files.readAllLines(traceDir.resolve(traceName), UTF_8).asScala.toVector
+          val repeatTraceLines = Files.readAllLines(repeatTraceDir.resolve(traceName), UTF_8).asScala.toVector
+          traceLines shouldBe repeatTraceLines
+          traceLines.head shouldBe McFirmDecisionTraceSchema.header
+          traceLines.tail should have size traceRc.runDurationMonths
+          traceLines.tail.foreach(_.split(";", -1).length shouldBe traceLines.head.split(";", -1).length)
+
   private def runToDir(rc: McRunConfig, outputDir: Path): Unit =
     Unsafe.unsafe: unsafe =>
       given Unsafe = unsafe
@@ -71,6 +96,9 @@ class McRunnerOutputSpec extends AnyFlatSpec with Matchers:
 
   private def seedFileName(seed: Long, rc: McRunConfig): String =
     f"${filePrefix(rc)}_seed${seed}%03d.csv"
+
+  private def decisionTraceFileName(rc: McRunConfig): String =
+    s"${filePrefix(rc)}_firm_decision_trace.csv"
 
   private def listFileNames(outputDir: Path): Set[String] =
     Using.resource(Files.list(outputDir)) { paths =>

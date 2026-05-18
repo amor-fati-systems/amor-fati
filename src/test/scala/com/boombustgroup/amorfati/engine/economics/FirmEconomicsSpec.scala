@@ -79,6 +79,11 @@ class FirmEconomicsSpec extends AnyFlatSpec with Matchers:
   private def manufacturingById(step: FirmEconomics.StepOutput): Map[FirmId, Firm.State] =
     manufacturingOutputs(step).map(f => f.id -> f).toMap
 
+  private val CanonicalSocialNeighbors: Array[HhId] = Array.empty
+
+  private def normalizeHouseholdArrayRefs(step: FirmEconomics.StepOutput): FirmEconomics.StepOutput =
+    step.copy(households = step.households.map(hh => hh.copy(socialNeighbors = CanonicalSocialNeighbors)))
+
   "FirmEconomics.runStep" should "produce flows that close at SFC == 0L" in {
     val flows = FirmFlows.emit(
       FirmFlows.Input(
@@ -97,6 +102,52 @@ class FirmEconomicsSpec extends AnyFlatSpec with Matchers:
       ),
     )
     Interpreter.totalWealth(Interpreter.applyAll(Map.empty[Int, Long], flows)).shouldBe(0L)
+  }
+
+  it should "skip firm decision traces unless explicitly requested" in {
+    val untraced = FirmEconomics.runStep(
+      w,
+      init.firms,
+      init.households,
+      init.banks,
+      init.ledgerFinancialState,
+      s1,
+      s2,
+      s3,
+      s4,
+      RandomStream.seeded(42),
+      traceDecisions = false,
+    )
+
+    val traced = FirmEconomics.runStep(
+      w,
+      init.firms,
+      init.households,
+      init.banks,
+      init.ledgerFinancialState,
+      s1,
+      s2,
+      s3,
+      s4,
+      RandomStream.seeded(42),
+      traceDecisions = true,
+    )
+
+    untraced.decisionTraces shouldBe empty
+    traced.decisionTraces should have size init.firms.size
+    traced.households.map(_.socialNeighbors.toVector) shouldBe untraced.households.map(_.socialNeighbors.toVector)
+
+    val normalizedTraced   = normalizeHouseholdArrayRefs(traced.copy(decisionTraces = untraced.decisionTraces))
+    val normalizedUntraced = normalizeHouseholdArrayRefs(untraced)
+    val changedFields      =
+      normalizedTraced.productElementNames
+        .zip(normalizedTraced.productIterator)
+        .zip(normalizedUntraced.productIterator)
+        .collect { case ((name, left), right) if left != right => name }
+        .toVector
+    withClue(s"traceDecisions changed fields outside decisionTraces: ${changedFields.mkString(", ")}") {
+      normalizedTraced shouldBe normalizedUntraced
+    }
   }
 
   it should "match current-month immigrant inflows before closing labor matching" in {

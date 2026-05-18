@@ -349,6 +349,7 @@ object FlowSimulation:
       seedIn: MonthSemantics.SeedIn,
       randomness: MonthRandomness.Contract,
       boundaryIn: MonthBoundarySnapshot,
+      traceFirmDecisions: Boolean,
   )
 
   /** Same-month signal surface reused by operational, timing, and seed
@@ -422,6 +423,7 @@ object FlowSimulation:
       semanticFlows: Sfc.SemanticFlows,
       sfcResult: Sfc.SfcResult,
       trace: MonthTrace,
+      firmDecisionTraces: Vector[Firm.DecisionTrace],
       nextState: SimState,
   ):
     def transition: (SimState, MonthTrace) = (nextState, trace)
@@ -432,9 +434,9 @@ object FlowSimulation:
     * preferred runtime entrypoint, but `step` remains public as the narrow
     * one-month contract used by tests, replay, and diagnostics.
     */
-  def step(stateIn: SimState, randomness: MonthRandomness.Contract)(using p: SimParams): StepOutput =
+  def step(stateIn: SimState, randomness: MonthRandomness.Contract, traceFirmDecisions: Boolean = false)(using p: SimParams): StepOutput =
     given RuntimeLedgerTopology = RuntimeLedgerTopology.fromState(stateIn)
-    val input                   = stepInput(stateIn, randomness)
+    val input                   = stepInput(stateIn, randomness, traceFirmDecisions)
     val outcome                 = computeMonthOutcome(input)
     val flows                   = emitAllBatches(outcome.flowPlan.calculus)
     val execution               = executeBatches(flows).fold(
@@ -478,17 +480,19 @@ object FlowSimulation:
       semanticFlows = sfcFlows,
       sfcResult,
       trace = monthTrace,
+      firmDecisionTraces = outcome.semanticProjection.firms.decisionTraces,
       nextState = nextState,
     )
 
   /** Public API: compute calculus only (for tests that need MonthlyCalculus).
     */
   def computeCalculus(state: SimState, randomness: MonthRandomness.Contract)(using p: SimParams): MonthlyCalculus =
-    computeStageOutputs(stepInput(state, randomness)).flowPlan
+    computeStageOutputs(stepInput(state, randomness, traceFirmDecisions = false)).flowPlan
 
   private def stepInput(
       stateIn: SimState,
       randomness: MonthRandomness.Contract,
+      traceFirmDecisions: Boolean,
   ): StepInput =
     StepInput(
       stateIn = stateIn,
@@ -496,6 +500,7 @@ object FlowSimulation:
       seedIn = MonthSemantics.seedIn(stateIn.world.seedIn),
       randomness = randomness,
       boundaryIn = MonthBoundarySnapshot.capture(stateIn.world, stateIn.firms, stateIn.households, stateIn.banks, stateIn.ledgerFinancialState),
+      traceFirmDecisions = traceFirmDecisions,
     )
 
   /** Compute same-month groups by chaining all Economics. Uses old pipeline
@@ -530,7 +535,19 @@ object FlowSimulation:
       pensionIncome = payrollZus.pensionPayments,
     )
     val s4                = DemandEconomics.compute(w, s2Pre.employed, s2Pre.living, s3.domesticCons)
-    val s5                = FirmEconomics.runStep(w, firms, households, banks, ledger, s1, s2Pre, s3, s4, randomness.firmEconomics.newStream())
+    val s5                = FirmEconomics.runStep(
+      w,
+      firms,
+      households,
+      banks,
+      ledger,
+      s1,
+      s2Pre,
+      s3,
+      s4,
+      randomness.firmEconomics.newStream(),
+      traceDecisions = input.traceFirmDecisions,
+    )
     val postLivingFirms   = s5.ioFirms.filter(Firm.isAlive)
     val nBankruptFirms    = s5.firmDeaths
     val avgFirmWorkers    = if s2Pre.living.nonEmpty then s2Pre.employed / s2Pre.living.length else 0

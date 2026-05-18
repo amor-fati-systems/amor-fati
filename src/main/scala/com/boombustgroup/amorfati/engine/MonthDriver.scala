@@ -21,8 +21,8 @@ object MonthDriver:
     */
   type RandomnessSchedule = SimState => Option[MonthRandomness.Contract]
 
-  def unfoldSteps(initialState: SimState)(schedule: RandomnessSchedule)(using p: SimParams): Iterator[StepOutput] =
+  def unfoldSteps(initialState: SimState, traceFirmDecisions: Boolean = false)(schedule: RandomnessSchedule)(using p: SimParams): Iterator[StepOutput] =
     Iterator.unfold(initialState): state =>
       schedule(state).map: randomness =>
-        val output = FlowSimulation.step(state, randomness)
+        val output = FlowSimulation.step(state, randomness, traceFirmDecisions = traceFirmDecisions)
         (output, output.nextState)
