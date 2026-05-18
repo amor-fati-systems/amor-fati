@@ -7,20 +7,37 @@ import com.boombustgroup.amorfati.types.*
 private[montecarlo] object McHouseholdLiquidityDiagnostics:
 
   final case class Summary(
+      /** Signed sum of household demand-deposit balances. */
       netDemandDeposit: PLN,
+      /** Sum of positive household demand-deposit balances only. */
       positiveDemandDeposits: PLN,
+      /** Absolute value of negative demand-deposit balances, treated as
+        * implicit overdraft pressure.
+        */
       implicitOverdraft: PLN,
+      /** Number of households whose demand-deposit balance is below zero. */
       negativeDepositCount: Int,
+      /** Share of households whose demand-deposit balance is below zero. */
       negativeDepositShare: Share,
+      /** Lowest household demand-deposit balance. */
       minDemandDeposit: PLN,
+      /** First percentile of household demand-deposit balances. */
       depositP01: PLN,
+      /** Fifth percentile of household demand-deposit balances. */
       depositP05: PLN,
+      /** Tenth percentile of household demand-deposit balances. */
       depositP10: PLN,
+      /** Twenty-fifth percentile of household demand-deposit balances. */
       depositP25: PLN,
+      /** Median household demand-deposit balance. */
       depositP50: PLN,
+      /** Seventy-fifth percentile of household demand-deposit balances. */
       depositP75: PLN,
+      /** Ninetieth percentile of household demand-deposit balances. */
       depositP90: PLN,
+      /** Ninety-fifth percentile of household demand-deposit balances. */
       depositP95: PLN,
+      /** Ninety-ninth percentile of household demand-deposit balances. */
       depositP99: PLN,
   )
 
