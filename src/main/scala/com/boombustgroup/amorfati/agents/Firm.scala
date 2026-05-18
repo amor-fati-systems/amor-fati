@@ -191,23 +191,24 @@ object Firm:
     * variables.
     */
   case class Result(
-      firm: State,                      // Updated firm state after this month
-      financialStocks: FinancialStocks, // Closing ledger-contracted financial stocks
-      taxPaid: PLN,                     // CIT actually paid (after informal evasion)
-      realizedPostTaxProfit: PLN,       // realized monthly profit after tax, floored at zero for payout logic
-      capexSpent: PLN,                  // Technology upgrade CAPEX (AI or hybrid)
-      techImports: PLN,                 // Import content of CAPEX (forex demand)
-      newLoan: PLN,                     // New bank loan taken for upgrade
-      equityIssuance: PLN,              // GPW equity raised this month (filled by S4)
-      grossInvestment: PLN,             // Physical capital investment this month
-      bondIssuance: PLN,                // Corporate bond issuance (filled by S4)
-      profitShiftCost: PLN,             // FDI profit shifting outflow
-      fdiRepatriation: PLN,             // FDI dividend repatriation outflow
-      inventoryChange: PLN,             // Net inventory change (+ accumulation, - drawdown)
-      citEvasion: PLN,                  // CIT evaded via informal economy
-      energyCost: PLN,                  // Total energy + ETS cost this month
-      greenInvestment: PLN,             // Green capital investment this month
-      principalRepaid: PLN,             // Monthly firm loan principal repayment
+      firm: State,                                // Updated firm state after this month
+      financialStocks: FinancialStocks,           // Closing ledger-contracted financial stocks
+      taxPaid: PLN,                               // CIT actually paid (after informal evasion)
+      realizedPostTaxProfit: PLN,                 // realized monthly profit after tax, floored at zero for payout logic
+      capexSpent: PLN,                            // Technology upgrade CAPEX (AI or hybrid)
+      techImports: PLN,                           // Import content of CAPEX (forex demand)
+      newLoan: PLN,                               // New bank loan taken for upgrade
+      equityIssuance: PLN,                        // GPW equity raised this month (filled by S4)
+      grossInvestment: PLN,                       // Physical capital investment this month
+      bondIssuance: PLN,                          // Corporate bond issuance (filled by S4)
+      profitShiftCost: PLN,                       // FDI profit shifting outflow
+      fdiRepatriation: PLN,                       // FDI dividend repatriation outflow
+      inventoryChange: PLN,                       // Net inventory change (+ accumulation, - drawdown)
+      citEvasion: PLN,                            // CIT evaded via informal economy
+      energyCost: PLN,                            // Total energy + ETS cost this month
+      greenInvestment: PLN,                       // Green capital investment this month
+      principalRepaid: PLN,                       // Monthly firm loan principal repayment
+      decisionTrace: Option[DecisionTrace] = None, // Auditable decision surface for optional exports
   )
   object Result:
     /** Convenience factory for tests — all flow fields set to `PLN.Zero`. */
@@ -231,6 +232,67 @@ object Firm:
         PLN.Zero,
         PLN.Zero,
       )
+
+  /** Auditable per-firm decision record. It is computed from values already
+    * consumed by the decision path; constructing it must not draw from RNG.
+    */
+  case class DecisionTrace(
+      firmId: FirmId,
+      openingTech: TechState,
+      closingTech: TechState,
+      decisionType: DecisionTrace.DecisionType,
+      bankruptcyReason: Option[BankruptReason],
+      cashBefore: PLN,
+      cashAfter: PLN,
+      firmLoanBefore: PLN,
+      firmLoanAfter: PLN,
+      digitalReadinessBefore: Share,
+      digitalReadinessAfter: Share,
+      workersBefore: Int,
+      workersAfter: Int,
+      capex: PLN,
+      newLoan: PLN,
+      downPayment: Option[PLN],
+      bankId: BankId,
+      lendingRate: Rate,
+      selectedBankApproval: Option[Boolean],
+      selectedBankApprovalProbability: Option[Share],
+      selectedBankApprovalRoll: Option[Share],
+      fullAiFeasible: Option[Boolean],
+      hybridFeasible: Option[Boolean],
+      fullAiAdoptionProbability: Option[Share],
+      hybridAdoptionProbability: Option[Share],
+      adoptionRoll: Option[Share],
+      fullAiBankApproval: Option[Boolean],
+      fullAiBankApprovalProbability: Option[Share],
+      fullAiBankApprovalRoll: Option[Share],
+      hybridBankApproval: Option[Boolean],
+      hybridBankApprovalProbability: Option[Share],
+      hybridBankApprovalRoll: Option[Share],
+      implementationFailureProbability: Option[Share],
+      implementationRoll: Option[Share],
+      upgradeEfficiencyDraw: Option[Scalar],
+      upgradeEfficiencyMultiplier: Option[Multiplier],
+      investmentCreditNeed: Option[PLN],
+      investmentCreditAmount: Option[PLN],
+      investmentBankApproval: Option[Boolean],
+      investmentBankApprovalProbability: Option[Share],
+      investmentBankApprovalRoll: Option[Share],
+      digitalInvestProbability: Option[Share],
+      digitalInvestRoll: Option[Share],
+      laborAdjustmentResidualProbability: Option[Share],
+      laborAdjustmentResidualRoll: Option[Share],
+  )
+  object DecisionTrace:
+    enum DecisionType(val csvValue: String):
+      case Survive       extends DecisionType("survive")
+      case Upsize        extends DecisionType("upsize")
+      case Downsize      extends DecisionType("downsize")
+      case DigiInvest    extends DecisionType("digi-invest")
+      case FullAiUpgrade extends DecisionType("full-AI-upgrade")
+      case HybridUpgrade extends DecisionType("hybrid-upgrade")
+      case UpgradeFailed extends DecisionType("upgrade-failed")
+      case Bankrupt      extends DecisionType("bankrupt")
 
   /** Monthly profit-and-loss breakdown, computed by `computePnL`. */
   case class PnL(
@@ -258,6 +320,94 @@ object Firm:
     case class Downsize(pnl: PnL, newWorkers: Int, adjustedCash: PLN, newTech: TechState, drUpdate: Option[Share] = None)     extends Decision
     case class Upsize(pnl: PnL, newWorkers: Int, newCash: PLN, newTech: TechState, drUpdate: Option[Share] = None)            extends Decision
     case class DigiInvest(pnl: PnL, cost: PLN, newDR: Share)                                                                  extends Decision
+
+  case class CreditDecision(
+      approved: Boolean,
+      approvalProbability: Option[Share] = None,
+      approvalRoll: Option[Share] = None,
+  )
+  object CreditDecision:
+    def fromBoolean(approved: Boolean): CreditDecision =
+      CreditDecision(approved)
+
+  private case class DecisionAudit(
+      selectedBankApproval: Option[Boolean] = None,
+      selectedBankApprovalProbability: Option[Share] = None,
+      selectedBankApprovalRoll: Option[Share] = None,
+      fullAiFeasible: Option[Boolean] = None,
+      hybridFeasible: Option[Boolean] = None,
+      fullAiAdoptionProbability: Option[Share] = None,
+      hybridAdoptionProbability: Option[Share] = None,
+      adoptionRoll: Option[Share] = None,
+      fullAiBankApproval: Option[Boolean] = None,
+      fullAiBankApprovalProbability: Option[Share] = None,
+      fullAiBankApprovalRoll: Option[Share] = None,
+      hybridBankApproval: Option[Boolean] = None,
+      hybridBankApprovalProbability: Option[Share] = None,
+      hybridBankApprovalRoll: Option[Share] = None,
+      implementationFailureProbability: Option[Share] = None,
+      implementationRoll: Option[Share] = None,
+      upgradeEfficiencyDraw: Option[Scalar] = None,
+      upgradeEfficiencyMultiplier: Option[Multiplier] = None,
+      digitalInvestProbability: Option[Share] = None,
+      digitalInvestRoll: Option[Share] = None,
+      laborAdjustmentResidualProbability: Option[Share] = None,
+      laborAdjustmentResidualRoll: Option[Share] = None,
+  ):
+    def merge(next: DecisionAudit): DecisionAudit =
+      DecisionAudit(
+        selectedBankApproval = next.selectedBankApproval.orElse(selectedBankApproval),
+        selectedBankApprovalProbability = next.selectedBankApprovalProbability.orElse(selectedBankApprovalProbability),
+        selectedBankApprovalRoll = next.selectedBankApprovalRoll.orElse(selectedBankApprovalRoll),
+        fullAiFeasible = next.fullAiFeasible.orElse(fullAiFeasible),
+        hybridFeasible = next.hybridFeasible.orElse(hybridFeasible),
+        fullAiAdoptionProbability = next.fullAiAdoptionProbability.orElse(fullAiAdoptionProbability),
+        hybridAdoptionProbability = next.hybridAdoptionProbability.orElse(hybridAdoptionProbability),
+        adoptionRoll = next.adoptionRoll.orElse(adoptionRoll),
+        fullAiBankApproval = next.fullAiBankApproval.orElse(fullAiBankApproval),
+        fullAiBankApprovalProbability = next.fullAiBankApprovalProbability.orElse(fullAiBankApprovalProbability),
+        fullAiBankApprovalRoll = next.fullAiBankApprovalRoll.orElse(fullAiBankApprovalRoll),
+        hybridBankApproval = next.hybridBankApproval.orElse(hybridBankApproval),
+        hybridBankApprovalProbability = next.hybridBankApprovalProbability.orElse(hybridBankApprovalProbability),
+        hybridBankApprovalRoll = next.hybridBankApprovalRoll.orElse(hybridBankApprovalRoll),
+        implementationFailureProbability = next.implementationFailureProbability.orElse(implementationFailureProbability),
+        implementationRoll = next.implementationRoll.orElse(implementationRoll),
+        upgradeEfficiencyDraw = next.upgradeEfficiencyDraw.orElse(upgradeEfficiencyDraw),
+        upgradeEfficiencyMultiplier = next.upgradeEfficiencyMultiplier.orElse(upgradeEfficiencyMultiplier),
+        digitalInvestProbability = next.digitalInvestProbability.orElse(digitalInvestProbability),
+        digitalInvestRoll = next.digitalInvestRoll.orElse(digitalInvestRoll),
+        laborAdjustmentResidualProbability = next.laborAdjustmentResidualProbability.orElse(laborAdjustmentResidualProbability),
+        laborAdjustmentResidualRoll = next.laborAdjustmentResidualRoll.orElse(laborAdjustmentResidualRoll),
+      )
+
+  private case class DecisionWithAudit(decision: Decision, audit: DecisionAudit)
+
+  private case class AdjustmentMagnitude(
+      value: Int,
+      residualProbability: Option[Share],
+      residualRoll: Option[Share],
+  )
+
+  private def selectedBankAudit(credit: CreditDecision): DecisionAudit =
+    DecisionAudit(
+      selectedBankApproval = Some(credit.approved),
+      selectedBankApprovalProbability = credit.approvalProbability,
+      selectedBankApprovalRoll = credit.approvalRoll,
+    )
+
+  private def fullAiBankAudit(credit: CreditDecision): DecisionAudit =
+    DecisionAudit(
+      fullAiBankApproval = Some(credit.approved),
+      fullAiBankApprovalProbability = credit.approvalProbability,
+      fullAiBankApprovalRoll = credit.approvalRoll,
+    )
+
+  private def hybridBankAudit(credit: CreditDecision): DecisionAudit =
+    DecisionAudit(
+      hybridBankApproval = Some(credit.approved),
+      hybridBankApprovalProbability = credit.approvalProbability,
+      hybridBankApprovalRoll = credit.approvalRoll,
+    )
 
   // ---- Queries ----
 
@@ -386,14 +536,16 @@ object Firm:
   private def nextHiringSignalMonths(firm: State, desired: Int, workers: Int): Int =
     if desired > workers then firm.hiringSignalMonths + 1 else 0
 
-  private def stochasticAdjustmentMagnitude(absGap: Int, adjustFrac: Share, rng: RandomStream): Int =
-    if absGap <= 0 then 0
+  private def stochasticAdjustmentMagnitude(absGap: Int, adjustFrac: Share, rng: RandomStream): AdjustmentMagnitude =
+    if absGap <= 0 then AdjustmentMagnitude(0, None, None)
     else
-      val expectedRaw = BigInt(adjustFrac.toLong) * BigInt(absGap)
-      val whole       = (expectedRaw / BigInt(FixedPointBase.Scale)).toInt
-      val residualRaw = (expectedRaw % BigInt(FixedPointBase.Scale)).toLong
-      val residual    = if residualRaw > 0L && Share.fromRaw(residualRaw).sampleBelow(rng) then 1 else 0
-      Math.min(absGap, whole + residual)
+      val expectedRaw  = BigInt(adjustFrac.toLong) * BigInt(absGap)
+      val whole        = (expectedRaw / BigInt(FixedPointBase.Scale)).toInt
+      val residualRaw  = (expectedRaw % BigInt(FixedPointBase.Scale)).toLong
+      val residualP    = if residualRaw > 0L then Some(Share.fromRaw(residualRaw)) else None
+      val residualRoll = residualP.map(_ => Share.random(rng))
+      val residual     = if residualP.exists(p => residualRoll.exists(_ < p)) then 1 else 0
+      AdjustmentMagnitude(Math.min(absGap, whole + residual), residualP, residualRoll)
 
   private def hiringAdjustFrac(using p: SimParams): Share =
     p.firm.laborAdjustSpeed.toShare.clamp(Share.Zero, Share.One)
@@ -528,15 +680,45 @@ object Firm:
       rng: RandomStream,
       corpBondDebt: PLN,
   )(using p: SimParams): Result =
-    val decision = decide(firm, financialStocks, w, executionMonth, operationalSignals, lendRate, bankCanLend, allFirms, rng, corpBondDebt)
-    val r0       = updateHiringSignalState(execute(firm, financialStocks, decision), firm, w, operationalSignals)
+    processWithCreditAudit(
+      firm,
+      financialStocks,
+      w,
+      executionMonth,
+      operationalSignals,
+      lendRate,
+      amount => CreditDecision.fromBoolean(bankCanLend(amount)),
+      allFirms,
+      rng,
+      corpBondDebt,
+      traceDecision = false,
+    )
+
+  private[amorfati] def processWithCreditAudit(
+      firm: State,
+      financialStocks: FinancialStocks,
+      w: World,
+      executionMonth: ExecutionMonth,
+      operationalSignals: OperationalSignals,
+      lendRate: Rate,
+      bankCreditDecision: PLN => CreditDecision,
+      allFirms: Vector[State],
+      rng: RandomStream,
+      corpBondDebt: PLN,
+      traceDecision: Boolean,
+  )(using p: SimParams): Result =
+    val decision = decide(firm, financialStocks, w, executionMonth, operationalSignals, lendRate, bankCreditDecision, allFirms, rng, corpBondDebt)
+    val r0       = updateHiringSignalState(execute(firm, financialStocks, decision.decision), firm, w, operationalSignals)
     val r0a      = applyLoanAmortization(r0)
-    val r1       = applyGreenInvestment(r0a)
-    val r2       = applyInvestment(r1, operationalSignals.sectorDemandPressure(firm.sector.toInt), bankCanLend)
+    val tracedR0 = if traceDecision then r0a.copy(decisionTrace = Some(buildDecisionTrace(firm, financialStocks, lendRate, decision, r0a))) else r0a
+    val r1       = applyGreenInvestment(tracedR0)
+    val r2       = applyInvestment(r1, operationalSignals.sectorDemandPressure(firm.sector.toInt), bankCreditDecision)
     val r3       = applyDigitalDrift(r2)
     val r4       = applyInventory(r3, sectorDemandMult = operationalSignals.sectorDemandMult(firm.sector.toInt))
     val r5       = applyFdiFlows(r4)
-    applyInformalCitEvasion(r5, w.mechanisms.informalCyclicalAdj)
+    val finalR   = applyInformalCitEvasion(r5, w.mechanisms.informalCyclicalAdj)
+    if traceDecision then finalR.copy(decisionTrace = finalR.decisionTrace.map(refreshDecisionTraceClosing(_, finalR)))
+    else finalR
 
   // ---- Decide (all match logic + RandomStream rolls) ----
 
@@ -549,18 +731,18 @@ object Firm:
       executionMonth: ExecutionMonth,
       operationalSignals: OperationalSignals,
       lendRate: Rate,
-      bankCanLend: PLN => Boolean,
+      bankCreditDecision: PLN => CreditDecision,
       allFirms: Vector[State],
       rng: RandomStream,
       corpBondDebt: PLN,
-  )(using p: SimParams): Decision =
+  )(using p: SimParams): DecisionWithAudit =
     firm.tech match
-      case _: TechState.Bankrupt         => Decision.StayBankrupt
+      case _: TechState.Bankrupt         => DecisionWithAudit(Decision.StayBankrupt, DecisionAudit())
       case _: TechState.Automated        => decideAutomated(firm, financialStocks, w, executionMonth, operationalSignals, lendRate, corpBondDebt)
       case TechState.Hybrid(wkrs, aiEff) =>
-        decideHybrid(firm, financialStocks, w, executionMonth, operationalSignals, lendRate, bankCanLend, wkrs, aiEff, rng, corpBondDebt)
+        decideHybrid(firm, financialStocks, w, executionMonth, operationalSignals, lendRate, bankCreditDecision, wkrs, aiEff, rng, corpBondDebt)
       case TechState.Traditional(wkrs)   =>
-        decideTraditional(firm, financialStocks, w, executionMonth, operationalSignals, lendRate, bankCanLend, allFirms, wkrs, rng, corpBondDebt)
+        decideTraditional(firm, financialStocks, w, executionMonth, operationalSignals, lendRate, bankCreditDecision, allFirms, wkrs, rng, corpBondDebt)
 
   /** Smooth labor adjustment: Δworkers = λ × (target − current), with severance
     * costs. Target = break-even headcount from P&L. If adjustment insufficient
@@ -661,7 +843,7 @@ object Firm:
       operationalSignals: OperationalSignals,
       lendRate: Rate,
       corpBondDebt: PLN,
-  )(using p: SimParams): Decision =
+  )(using p: SimParams): DecisionWithAudit =
     val pnl = computePnL(
       firm,
       financialStocks,
@@ -676,8 +858,8 @@ object Firm:
       w.real.productivityIndex,
     )
     val nc  = financialStocks.cash + pnl.netAfterTax
-    if nc < PLN.Zero then Decision.GoBankrupt(pnl, nc, BankruptReason.AiDebtTrap)
-    else Decision.Survive(pnl, nc)
+    if nc < PLN.Zero then DecisionWithAudit(Decision.GoBankrupt(pnl, nc, BankruptReason.AiDebtTrap), DecisionAudit())
+    else DecisionWithAudit(Decision.Survive(pnl, nc), DecisionAudit())
 
   /** Hybrid firm: attempt full-AI upgrade, else survive/downsize/bankrupt. */
   private def decideHybrid(
@@ -687,12 +869,12 @@ object Firm:
       executionMonth: ExecutionMonth,
       operationalSignals: OperationalSignals,
       lendRate: Rate,
-      bankCanLend: PLN => Boolean,
+      bankCreditDecision: PLN => CreditDecision,
       workers: Int,
       aiEff: Multiplier,
       rng: RandomStream,
       corpBondDebt: PLN,
-  )(using p: SimParams): Decision =
+  )(using p: SimParams): DecisionWithAudit =
     val pnl    = computePnL(
       firm,
       financialStocks,
@@ -708,7 +890,11 @@ object Firm:
     )
     val ready2 = (firm.digitalReadiness + HybridMonthlyDrDrift).min(Share.One)
 
-    if isInStartup(firm) then return startupFallbackDecision(firm, financialStocks, pnl, workers, w => TechState.Hybrid(w, aiEff), w.householdMarket.marketWage)
+    if isInStartup(firm) then
+      return DecisionWithAudit(
+        startupFallbackDecision(firm, financialStocks, pnl, workers, w => TechState.Hybrid(w, aiEff), w.householdMarket.marketWage),
+        DecisionAudit(),
+      )
 
     val upCapex    = computeAiCapex(firm) * HybridToFullCapexMul
     val upLoan     = upCapex * FullAiLoanShare
@@ -727,18 +913,30 @@ object Firm:
     val profitable = pnl.costs > upCost * FullAiProfitMargin
     val canPay     = financialStocks.cash > upDown
     val ready      = firm.digitalReadiness >= p.firm.fullAiReadinessMin
-    val bankOk     = bankCanLend(upLoan)
+    val bankCredit = bankCreditDecision(upLoan)
+    val bankOk     = bankCredit.approved
 
     val prob: Share =
       if profitable && canPay && ready && bankOk then
         ((firm.riskProfile * RiskWeightHybUpgrade) + (w.real.automationRatio * AutoRatioWeight)) * firm.digitalReadiness
       else Share.Zero
+    val audit       = DecisionAudit(
+      fullAiFeasible = Some(profitable && canPay && ready && bankOk),
+      fullAiAdoptionProbability = Some(prob.min(Share.One)),
+    ).merge(fullAiBankAudit(bankCredit))
+    val roll        = Share.random(rng)
 
-    if prob.sampleBelow(rng) then
-      val eff = Multiplier.One + (Scalar.randomBetween(HybToFullEffMin, HybToFullEffMax, rng) * firm.digitalReadiness.toScalar).toMultiplier
-      Decision.Upgrade(pnl, TechState.Automated(eff), upCapex, upLoan, upDown, drUpdate = Some(ready2))
+    if roll < prob then
+      val effDraw = Scalar.randomBetween(HybToFullEffMin, HybToFullEffMax, rng)
+      val eff     = Multiplier.One + (effDraw * firm.digitalReadiness.toScalar).toMultiplier
+      DecisionWithAudit(
+        Decision.Upgrade(pnl, TechState.Automated(eff), upCapex, upLoan, upDown, drUpdate = Some(ready2)),
+        audit
+          .merge(selectedBankAudit(bankCredit))
+          .copy(adoptionRoll = Some(roll), upgradeEfficiencyDraw = Some(effDraw), upgradeEfficiencyMultiplier = Some(eff)),
+      )
     else
-      fallbackDecision(
+      val fallback = fallbackDecision(
         firm,
         financialStocks,
         pnl,
@@ -750,6 +948,7 @@ object Firm:
         drUpdate = Some(ready2),
         allowDigiInvest = false,
       )
+      DecisionWithAudit(fallback.decision, audit.copy(adoptionRoll = Some(roll)).merge(fallback.audit))
 
   /** Upgrade feasibility for one tech path (full-AI or hybrid). */
   private case class UpgradeCandidate(
@@ -759,8 +958,9 @@ object Firm:
       profitable: Boolean,
       canPay: Boolean,
       ready: Boolean,
-      bankOk: Boolean,
+      credit: CreditDecision,
   ):
+    def bankOk: Boolean   = credit.approved
     def feasible: Boolean = profitable && canPay && ready && bankOk
 
   /** Evaluate full-AI upgrade feasibility for a traditional firm. */
@@ -770,7 +970,7 @@ object Firm:
       pnl: PnL,
       w: World,
       lendRate: Rate,
-      bankCanLend: PLN => Boolean,
+      bankCreditDecision: PLN => CreditDecision,
   )(using p: SimParams): UpgradeCandidate =
     val capex = computeAiCapex(firm)
     val loan  = capex * FullAiLoanShare
@@ -794,7 +994,7 @@ object Firm:
       profitable = pnl.costs > (cost * FullAiProfitMargin) / sigmaThreshold(w.currentSigmas(firm.sector.toInt)),
       canPay = financialStocks.cash > down,
       ready = firm.digitalReadiness >= p.firm.fullAiReadinessMin,
-      bankOk = bankCanLend(loan),
+      credit = bankCreditDecision(loan),
     )
 
   /** Evaluate hybrid upgrade feasibility for a traditional firm. */
@@ -805,7 +1005,7 @@ object Firm:
       workers: Int,
       w: World,
       lendRate: Rate,
-      bankCanLend: PLN => Boolean,
+      bankCreditDecision: PLN => CreditDecision,
   )(using p: SimParams): (UpgradeCandidate, Int) =
     val capex = computeHybridCapex(firm)
     val loan  = capex * HybridLoanShare
@@ -829,7 +1029,7 @@ object Firm:
       profitable = pnl.costs > (cost * HybridProfitMargin) / sigmaThreshold(w.currentSigmas(firm.sector.toInt)),
       canPay = financialStocks.cash > down,
       ready = firm.digitalReadiness >= p.firm.hybridReadinessMin,
-      bankOk = bankCanLend(loan),
+      credit = bankCreditDecision(loan),
     )
     (cand, hWkrs)
 
@@ -878,36 +1078,63 @@ object Firm:
   /** Roll for full-AI upgrade: success (with random efficiency) or
     * implementation failure.
     */
-  private def rollFullAiUpgrade(firm: State, pnl: PnL, ai: UpgradeCandidate, rng: RandomStream): Decision =
+  private def rollFullAiUpgrade(firm: State, pnl: PnL, ai: UpgradeCandidate, rng: RandomStream): DecisionWithAudit =
     val failRate = FullAiBaseFailRate + (Share.One - firm.digitalReadiness) * FullAiFailDrSens
-    if failRate.sampleBelow(rng) then
-      Decision.UpgradeFailed(pnl, BankruptReason.AiImplFailure, ai.capex * FailCapexFrac, ai.loan * FailLoanFrac, ai.down * FailDownFrac)
+    val roll     = Share.random(rng)
+    val audit    = DecisionAudit(
+      implementationFailureProbability = Some(failRate.min(Share.One)),
+      implementationRoll = Some(roll),
+    )
+    if roll < failRate then
+      DecisionWithAudit(
+        Decision.UpgradeFailed(pnl, BankruptReason.AiImplFailure, ai.capex * FailCapexFrac, ai.loan * FailLoanFrac, ai.down * FailDownFrac),
+        audit,
+      )
     else
-      val eff = Multiplier.One + (Scalar.randomBetween(TradToFullEffMin, TradToFullEffMax, rng) * firm.digitalReadiness.toScalar).toMultiplier
-      Decision.Upgrade(pnl, TechState.Automated(eff), ai.capex, ai.loan, ai.down)
+      val effDraw = Scalar.randomBetween(TradToFullEffMin, TradToFullEffMax, rng)
+      val eff     = Multiplier.One + (effDraw * firm.digitalReadiness.toScalar).toMultiplier
+      DecisionWithAudit(
+        Decision.Upgrade(pnl, TechState.Automated(eff), ai.capex, ai.loan, ai.down),
+        audit.copy(upgradeEfficiencyDraw = Some(effDraw), upgradeEfficiencyMultiplier = Some(eff)),
+      )
 
   /** Roll for hybrid upgrade: catastrophic failure, partial failure (bad
     * efficiency), or success (good efficiency).
     */
-  private def rollHybridUpgrade(firm: State, pnl: PnL, hyb: UpgradeCandidate, hWkrs: Int, rng: RandomStream): Decision =
+  private def rollHybridUpgrade(firm: State, pnl: PnL, hyb: UpgradeCandidate, hWkrs: Int, rng: RandomStream): DecisionWithAudit =
     val failRate = HybridBaseFailRate + (Share.One - firm.digitalReadiness) * HybridFailDrSens
     val draw     = Share.random(rng)
+    val audit    = DecisionAudit(
+      implementationFailureProbability = Some(failRate.min(Share.One)),
+      implementationRoll = Some(draw),
+    )
     if draw < failRate * CatastrophicFailFrac then
-      Decision.UpgradeFailed(
-        pnl,
-        BankruptReason.HybridImplFailure,
-        hyb.capex * FailCapexFrac,
-        hyb.loan * FailLoanFrac,
-        hyb.down * FailDownFrac,
+      DecisionWithAudit(
+        Decision.UpgradeFailed(
+          pnl,
+          BankruptReason.HybridImplFailure,
+          hyb.capex * FailCapexFrac,
+          hyb.loan * FailLoanFrac,
+          hyb.down * FailDownFrac,
+        ),
+        audit,
       )
     else if draw < failRate then
-      val badEff = BadHybridEffBase + Scalar.randomBetween(Scalar.Zero, BadHybridEffRange, rng).toMultiplier
-      Decision.Upgrade(pnl, TechState.Hybrid(hWkrs, badEff), hyb.capex, hyb.loan, hyb.down)
+      val effDraw = Scalar.randomBetween(Scalar.Zero, BadHybridEffRange, rng)
+      val badEff  = BadHybridEffBase + effDraw.toMultiplier
+      DecisionWithAudit(
+        Decision.Upgrade(pnl, TechState.Hybrid(hWkrs, badEff), hyb.capex, hyb.loan, hyb.down),
+        audit.copy(upgradeEfficiencyDraw = Some(effDraw), upgradeEfficiencyMultiplier = Some(badEff)),
+      )
     else
+      val effDraw = Scalar.randomBetween(Scalar.Zero, GoodHybridEffRange, rng)
       val goodEff = Multiplier.One +
-        (GoodHybridEffBase + Scalar.randomBetween(Scalar.Zero, GoodHybridEffRange, rng)) *
+        (GoodHybridEffBase + effDraw) *
         (GoodHybridDrBlend + firm.digitalReadiness * GoodHybridDrBlend).toScalar.toMultiplier
-      Decision.Upgrade(pnl, TechState.Hybrid(hWkrs, goodEff), hyb.capex, hyb.loan, hyb.down)
+      DecisionWithAudit(
+        Decision.Upgrade(pnl, TechState.Hybrid(hWkrs, goodEff), hyb.capex, hyb.loan, hyb.down),
+        audit.copy(upgradeEfficiencyDraw = Some(effDraw), upgradeEfficiencyMultiplier = Some(goodEff)),
+      )
 
   /** Try upsize, digital readiness investment, downsize, or survive — fallback
     * when neither full-AI nor hybrid upgrade was chosen.
@@ -923,8 +1150,9 @@ object Firm:
       nextTech: Int => TechState,
       drUpdate: Option[Share] = None,
       allowDigiInvest: Boolean = true,
-  )(using p: SimParams): Decision =
+  )(using p: SimParams): DecisionWithAudit =
     val nc            = financialStocks.cash + pnl.netAfterTax
+    var audit         = DecisionAudit()
     // Firms now distinguish between a one-period desired workforce target,
     // a feasible near-term target, and the actual monthly adjustment.
     val desiredW      = desiredWorkers(firm, w, operationalSignals)
@@ -936,24 +1164,38 @@ object Firm:
     if shouldAdjust then
       val adjustFrac = if gap > 0 then hiringAdjustFrac else firingAdjustFrac(firm)
       val magnitude  = stochasticAdjustmentMagnitude(Math.abs(gap), adjustFrac, rng)
-      if magnitude > 0 then
-        val adj     = magnitude * (if gap > 0 then 1 else -1)
+      audit = audit.copy(
+        laborAdjustmentResidualProbability = magnitude.residualProbability,
+        laborAdjustmentResidualRoll = magnitude.residualRoll,
+      )
+      if magnitude.value > 0 then
+        val adj     = magnitude.value * (if gap > 0 then 1 else -1)
         val newWkrs = (workers + adj).max(p.firm.minWorkersRetained)
         if newWkrs > workers && canFundUpsize(firm, pnl, nc, newWkrs - workers, w.householdMarket.marketWage) then
-          return Decision.Upsize(pnl, newWkrs, nc, nextTech(newWkrs), drUpdate = drUpdate)
-        else if newWkrs < workers then return Decision.Downsize(pnl, newWkrs, nc, nextTech(newWkrs), drUpdate = drUpdate)
+          return DecisionWithAudit(Decision.Upsize(pnl, newWkrs, nc, nextTech(newWkrs), drUpdate = drUpdate), audit)
+        else if newWkrs < workers then return DecisionWithAudit(Decision.Downsize(pnl, newWkrs, nc, nextTech(newWkrs), drUpdate = drUpdate), audit)
     val digiCost: PLN = computeDigiInvestCost(firm)
     val canAfford     = nc > digiCost * DigiInvestCashMult
     val competitive   = w.real.automationRatio + w.real.hybridRatio * Share.decimal(5, 1)
     val diminishing   = Share.One - firm.digitalReadiness
     val digiProb      = (p.firm.digiInvestBaseProb * firm.riskProfile * diminishing * (Share.decimal(5, 1) + competitive)).min(Share.One)
-    if allowDigiInvest && canAfford && digiProb.sampleBelow(rng) then
+    val digiRoll      = if allowDigiInvest && canAfford then Some(Share.random(rng)) else None
+    audit = audit.merge(
+      DecisionAudit(
+        digitalInvestProbability = if allowDigiInvest then Some(digiProb) else None,
+        digitalInvestRoll = digiRoll,
+      ),
+    )
+    if allowDigiInvest && canAfford && digiRoll.exists(_ < digiProb) then
       val boost = p.firm.digiInvestBoost * diminishing
       val newDR = (firm.digitalReadiness + boost).min(Share.One)
-      Decision.DigiInvest(pnl, digiCost, newDR)
+      DecisionWithAudit(Decision.DigiInvest(pnl, digiCost, newDR), audit)
     else if nc < PLN.Zero then
-      attemptDownsize(firm, pnl, nc, workers, nextTech, w.householdMarket.marketWage, BankruptReason.LaborCostInsolvency, drUpdate = drUpdate)
-    else Decision.Survive(pnl, nc, drUpdate = drUpdate)
+      DecisionWithAudit(
+        attemptDownsize(firm, pnl, nc, workers, nextTech, w.householdMarket.marketWage, BankruptReason.LaborCostInsolvency, drUpdate = drUpdate),
+        audit,
+      )
+    else DecisionWithAudit(Decision.Survive(pnl, nc, drUpdate = drUpdate), audit)
 
   private def startupFallbackDecision(
       firm: State,
@@ -996,12 +1238,12 @@ object Firm:
       executionMonth: ExecutionMonth,
       operationalSignals: OperationalSignals,
       lendRate: Rate,
-      bankCanLend: PLN => Boolean,
+      bankCreditDecision: PLN => CreditDecision,
       allFirms: Vector[State],
       workers: Int,
       rng: RandomStream,
       corpBondDebt: PLN,
-  )(using p: SimParams): Decision =
+  )(using p: SimParams): DecisionWithAudit =
     val pnl           = computePnL(
       firm,
       financialStocks,
@@ -1015,15 +1257,131 @@ object Firm:
       corpBondDebt,
       w.real.productivityIndex,
     )
-    if isInStartup(firm) then return startupFallbackDecision(firm, financialStocks, pnl, workers, TechState.Traditional(_), w.householdMarket.marketWage)
-    val ai            = evaluateFullAi(firm, financialStocks, pnl, w, lendRate, bankCanLend)
-    val (hyb, hWkrs)  = evaluateHybrid(firm, financialStocks, pnl, workers, w, lendRate, bankCanLend)
+    if isInStartup(firm) then
+      return DecisionWithAudit(
+        startupFallbackDecision(firm, financialStocks, pnl, workers, TechState.Traditional(_), w.householdMarket.marketWage),
+        DecisionAudit(),
+      )
+    val ai            = evaluateFullAi(firm, financialStocks, pnl, w, lendRate, bankCreditDecision)
+    val (hyb, hWkrs)  = evaluateHybrid(firm, financialStocks, pnl, workers, w, lendRate, bankCreditDecision)
     val (pFull, pHyb) = adoptionProbabilities(firm, pnl, ai, hyb, executionMonth, w, allFirms)
     val roll          = Share.random(rng)
+    val baseAudit     = DecisionAudit(
+      fullAiFeasible = Some(ai.feasible),
+      hybridFeasible = Some(hyb.feasible),
+      fullAiAdoptionProbability = Some(pFull),
+      hybridAdoptionProbability = Some(pHyb),
+      adoptionRoll = Some(roll),
+    ).merge(fullAiBankAudit(ai.credit)).merge(hybridBankAudit(hyb.credit))
 
-    if roll < pFull then rollFullAiUpgrade(firm, pnl, ai, rng)
-    else if roll < pFull + pHyb then rollHybridUpgrade(firm, pnl, hyb, hWkrs, rng)
-    else fallbackDecision(firm, financialStocks, pnl, w, operationalSignals, workers, rng, nextTech = TechState.Traditional(_))
+    if roll < pFull then
+      val upgrade = rollFullAiUpgrade(firm, pnl, ai, rng)
+      DecisionWithAudit(upgrade.decision, baseAudit.merge(selectedBankAudit(ai.credit)).merge(upgrade.audit))
+    else if roll < pFull + pHyb then
+      val upgrade = rollHybridUpgrade(firm, pnl, hyb, hWkrs, rng)
+      DecisionWithAudit(upgrade.decision, baseAudit.merge(selectedBankAudit(hyb.credit)).merge(upgrade.audit))
+    else
+      val fallback = fallbackDecision(firm, financialStocks, pnl, w, operationalSignals, workers, rng, nextTech = TechState.Traditional(_))
+      DecisionWithAudit(fallback.decision, baseAudit.merge(fallback.audit))
+
+  private def buildDecisionTrace(
+      openingFirm: State,
+      openingStocks: FinancialStocks,
+      lendingRate: Rate,
+      decision: DecisionWithAudit,
+      result: Result,
+  )(using p: SimParams): DecisionTrace =
+    val d = decision.decision
+    DecisionTrace(
+      firmId = openingFirm.id,
+      openingTech = openingFirm.tech,
+      closingTech = result.firm.tech,
+      decisionType = decisionType(d),
+      bankruptcyReason = bankruptcyReason(d).orElse(bankruptcyReason(result.firm.tech)),
+      cashBefore = openingStocks.cash,
+      cashAfter = result.financialStocks.cash,
+      firmLoanBefore = openingStocks.firmLoan,
+      firmLoanAfter = result.financialStocks.firmLoan,
+      digitalReadinessBefore = openingFirm.digitalReadiness,
+      digitalReadinessAfter = result.firm.digitalReadiness,
+      workersBefore = workerCount(openingFirm),
+      workersAfter = workerCount(result.firm),
+      capex = result.capexSpent,
+      newLoan = result.newLoan,
+      downPayment = downPayment(d),
+      bankId = openingFirm.bankId,
+      lendingRate = lendingRate,
+      selectedBankApproval = decision.audit.selectedBankApproval,
+      selectedBankApprovalProbability = decision.audit.selectedBankApprovalProbability,
+      selectedBankApprovalRoll = decision.audit.selectedBankApprovalRoll,
+      fullAiFeasible = decision.audit.fullAiFeasible,
+      hybridFeasible = decision.audit.hybridFeasible,
+      fullAiAdoptionProbability = decision.audit.fullAiAdoptionProbability,
+      hybridAdoptionProbability = decision.audit.hybridAdoptionProbability,
+      adoptionRoll = decision.audit.adoptionRoll,
+      fullAiBankApproval = decision.audit.fullAiBankApproval,
+      fullAiBankApprovalProbability = decision.audit.fullAiBankApprovalProbability,
+      fullAiBankApprovalRoll = decision.audit.fullAiBankApprovalRoll,
+      hybridBankApproval = decision.audit.hybridBankApproval,
+      hybridBankApprovalProbability = decision.audit.hybridBankApprovalProbability,
+      hybridBankApprovalRoll = decision.audit.hybridBankApprovalRoll,
+      implementationFailureProbability = decision.audit.implementationFailureProbability,
+      implementationRoll = decision.audit.implementationRoll,
+      upgradeEfficiencyDraw = decision.audit.upgradeEfficiencyDraw,
+      upgradeEfficiencyMultiplier = decision.audit.upgradeEfficiencyMultiplier,
+      investmentCreditNeed = None,
+      investmentCreditAmount = None,
+      investmentBankApproval = None,
+      investmentBankApprovalProbability = None,
+      investmentBankApprovalRoll = None,
+      digitalInvestProbability = decision.audit.digitalInvestProbability,
+      digitalInvestRoll = decision.audit.digitalInvestRoll,
+      laborAdjustmentResidualProbability = decision.audit.laborAdjustmentResidualProbability,
+      laborAdjustmentResidualRoll = decision.audit.laborAdjustmentResidualRoll,
+    )
+
+  private def refreshDecisionTraceClosing(trace: DecisionTrace, result: Result)(using p: SimParams): DecisionTrace =
+    trace.copy(
+      closingTech = result.firm.tech,
+      cashAfter = result.financialStocks.cash,
+      firmLoanAfter = result.financialStocks.firmLoan,
+      digitalReadinessAfter = result.firm.digitalReadiness,
+      workersAfter = workerCount(result.firm),
+      capex = result.capexSpent,
+      newLoan = result.newLoan,
+    )
+
+  private def decisionType(decision: Decision): DecisionTrace.DecisionType =
+    decision match
+      case Decision.StayBankrupt                    => DecisionTrace.DecisionType.Bankrupt
+      case Decision.Survive(_, _, _)                => DecisionTrace.DecisionType.Survive
+      case Decision.GoBankrupt(_, _, _)             => DecisionTrace.DecisionType.Bankrupt
+      case Decision.Upgrade(_, newTech, _, _, _, _) =>
+        newTech match
+          case _: TechState.Automated => DecisionTrace.DecisionType.FullAiUpgrade
+          case _: TechState.Hybrid    => DecisionTrace.DecisionType.HybridUpgrade
+          case _                      => DecisionTrace.DecisionType.Survive
+      case Decision.UpgradeFailed(_, _, _, _, _)    => DecisionTrace.DecisionType.UpgradeFailed
+      case Decision.Downsize(_, _, _, _, _)         => DecisionTrace.DecisionType.Downsize
+      case Decision.Upsize(_, _, _, _, _)           => DecisionTrace.DecisionType.Upsize
+      case Decision.DigiInvest(_, _, _)             => DecisionTrace.DecisionType.DigiInvest
+
+  private def bankruptcyReason(decision: Decision): Option[BankruptReason] =
+    decision match
+      case Decision.GoBankrupt(_, _, reason)          => Some(reason)
+      case Decision.UpgradeFailed(_, reason, _, _, _) => Some(reason)
+      case _                                          => None
+
+  private def bankruptcyReason(tech: TechState): Option[BankruptReason] =
+    tech match
+      case TechState.Bankrupt(reason) => Some(reason)
+      case _                          => None
+
+  private def downPayment(decision: Decision): Option[PLN] =
+    decision match
+      case Decision.Upgrade(_, _, _, _, downPayment, _) => Some(downPayment)
+      case Decision.UpgradeFailed(_, _, _, _, down)     => Some(down)
+      case _                                            => None
 
   // ---- Execute (pure dispatch, zero RandomStream calls) ----
 
@@ -1156,7 +1514,7 @@ object Firm:
   /** Apply physical capital investment after firm decision. Depreciation,
     * replacement + expansion investment, cash-constrained.
     */
-  private def applyInvestment(r: Result, sectorDemandPressure: Multiplier, bankCanLend: PLN => Boolean)(using p: SimParams): Result =
+  private def applyInvestment(r: Result, sectorDemandPressure: Multiplier, bankCreditDecision: PLN => CreditDecision)(using p: SimParams): Result =
     val f                 = r.firm
     if !isAlive(f) then return r.copy(firm = f.copy(capitalStock = PLN.Zero))
     val stocks            = r.financialStocks
@@ -1174,9 +1532,18 @@ object Firm:
     val desiredInv        = depn + (gap * p.capital.adjustSpeed * invMult)
     val cashInv           = desiredInv.min(stocks.cash.max(PLN.Zero))
     val creditNeed        = (desiredInv - cashInv).max(PLN.Zero) * p.capital.investmentCreditShare
-    val creditInv         = if creditNeed > PLN.Zero && bankCanLend(creditNeed) then creditNeed else PLN.Zero
+    val creditDecision    = if creditNeed > PLN.Zero then Some(bankCreditDecision(creditNeed)) else None
+    val creditInv         = if creditDecision.exists(_.approved) then creditNeed else PLN.Zero
     val actualInv         = (cashInv + creditInv).min(desiredInv)
     val newK              = postDepK + actualInv
+    val investmentTrace   = r.decisionTrace.map: trace =>
+      trace.copy(
+        investmentCreditNeed = if creditNeed > PLN.Zero then Some(creditNeed) else None,
+        investmentCreditAmount = if creditNeed > PLN.Zero then Some(creditInv) else None,
+        investmentBankApproval = creditDecision.map(_.approved),
+        investmentBankApprovalProbability = creditDecision.flatMap(_.approvalProbability),
+        investmentBankApprovalRoll = creditDecision.flatMap(_.approvalRoll),
+      )
     r.copy(
       firm = f.copy(capitalStock = newK),
       financialStocks = stocks.copy(
@@ -1185,6 +1552,7 @@ object Firm:
       ),
       newLoan = r.newLoan + creditInv,
       grossInvestment = actualInv,
+      decisionTrace = investmentTrace,
     )
 
   // ---- PnL computation ----

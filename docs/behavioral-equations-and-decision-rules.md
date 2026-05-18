@@ -978,7 +978,9 @@ research hypotheses or calibration targets:
 - Output columns expose many macro and meso diagnostics, but not every
   household or firm micro trajectory is written to the Monte Carlo time-series
   output by default. The Monte Carlo runner can optionally emit selected-month
-  firm micro snapshots for cross-sectional analysis.
+  firm micro snapshots for cross-sectional analysis and selected-firm decision
+  traces for adoption, financing, implementation, and labor/digital-investment
+  gate audits.
 - The SFC ledger and matrix artifacts document accounting structure. They do
   not by themselves validate behavioral realism.
 

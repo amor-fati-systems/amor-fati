@@ -1,0 +1,102 @@
+package com.boombustgroup.amorfati.montecarlo
+
+import com.boombustgroup.amorfati.agents.{BankruptReason, Firm, TechState}
+
+private[montecarlo] object McFirmDecisionTraceSchema:
+
+  final case class Row(
+      runId: String,
+      seed: Long,
+      month: Int,
+      trace: Firm.DecisionTrace,
+  )
+
+  private val columns: Vector[(String, Row => String)] = Vector(
+    "RunId"                              -> (row => text(row.runId)),
+    "Seed"                               -> (row => row.seed.toString),
+    "Month"                              -> (row => row.month.toString),
+    "FirmId"                             -> (row => row.trace.firmId.toInt.toString),
+    "OpeningTechState"                   -> (row => techState(row.trace.openingTech)),
+    "ClosingTechState"                   -> (row => techState(row.trace.closingTech)),
+    "DecisionType"                       -> (row => row.trace.decisionType.csvValue),
+    "BankruptcyReason"                   -> (row => row.trace.bankruptcyReason.fold("")(reason => text(bankruptcyReasonName(reason)))),
+    "CashBefore"                         -> (row => row.trace.cashBefore.format(2)),
+    "CashAfter"                          -> (row => row.trace.cashAfter.format(2)),
+    "FirmLoanBefore"                     -> (row => row.trace.firmLoanBefore.format(2)),
+    "FirmLoanAfter"                      -> (row => row.trace.firmLoanAfter.format(2)),
+    "DigitalReadinessBefore"             -> (row => row.trace.digitalReadinessBefore.format(6)),
+    "DigitalReadinessAfter"              -> (row => row.trace.digitalReadinessAfter.format(6)),
+    "WorkersBefore"                      -> (row => row.trace.workersBefore.toString),
+    "WorkersAfter"                       -> (row => row.trace.workersAfter.toString),
+    "Capex"                              -> (row => row.trace.capex.format(2)),
+    "NewLoan"                            -> (row => row.trace.newLoan.format(2)),
+    "DownPayment"                        -> (row => row.trace.downPayment.fold("")(_.format(2))),
+    "BankId"                             -> (row => row.trace.bankId.toInt.toString),
+    "LendingRate"                        -> (row => row.trace.lendingRate.format(6)),
+    "SelectedBankApproval"               -> (row => row.trace.selectedBankApproval.fold("")(_.toString)),
+    "SelectedBankApprovalProbability"    -> (row => row.trace.selectedBankApprovalProbability.fold("")(_.format(6))),
+    "SelectedBankApprovalRoll"           -> (row => row.trace.selectedBankApprovalRoll.fold("")(_.format(6))),
+    "FullAiFeasible"                     -> (row => row.trace.fullAiFeasible.fold("")(_.toString)),
+    "HybridFeasible"                     -> (row => row.trace.hybridFeasible.fold("")(_.toString)),
+    "FullAiAdoptionProbability"          -> (row => row.trace.fullAiAdoptionProbability.fold("")(_.format(6))),
+    "HybridAdoptionProbability"          -> (row => row.trace.hybridAdoptionProbability.fold("")(_.format(6))),
+    "AdoptionRoll"                       -> (row => row.trace.adoptionRoll.fold("")(_.format(6))),
+    "FullAiBankApproval"                 -> (row => row.trace.fullAiBankApproval.fold("")(_.toString)),
+    "FullAiBankApprovalProbability"      -> (row => row.trace.fullAiBankApprovalProbability.fold("")(_.format(6))),
+    "FullAiBankApprovalRoll"             -> (row => row.trace.fullAiBankApprovalRoll.fold("")(_.format(6))),
+    "HybridBankApproval"                 -> (row => row.trace.hybridBankApproval.fold("")(_.toString)),
+    "HybridBankApprovalProbability"      -> (row => row.trace.hybridBankApprovalProbability.fold("")(_.format(6))),
+    "HybridBankApprovalRoll"             -> (row => row.trace.hybridBankApprovalRoll.fold("")(_.format(6))),
+    "ImplementationFailureProbability"   -> (row => row.trace.implementationFailureProbability.fold("")(_.format(6))),
+    "ImplementationRoll"                 -> (row => row.trace.implementationRoll.fold("")(_.format(6))),
+    "UpgradeEfficiencyDraw"              -> (row => row.trace.upgradeEfficiencyDraw.fold("")(_.format(6))),
+    "UpgradeEfficiencyMultiplier"        -> (row => row.trace.upgradeEfficiencyMultiplier.fold("")(_.format(6))),
+    "InvestmentCreditNeed"               -> (row => row.trace.investmentCreditNeed.fold("")(_.format(2))),
+    "InvestmentCreditAmount"             -> (row => row.trace.investmentCreditAmount.fold("")(_.format(2))),
+    "InvestmentBankApproval"             -> (row => row.trace.investmentBankApproval.fold("")(_.toString)),
+    "InvestmentBankApprovalProbability"  -> (row => row.trace.investmentBankApprovalProbability.fold("")(_.format(6))),
+    "InvestmentBankApprovalRoll"         -> (row => row.trace.investmentBankApprovalRoll.fold("")(_.format(6))),
+    "DigitalInvestProbability"           -> (row => row.trace.digitalInvestProbability.fold("")(_.format(6))),
+    "DigitalInvestRoll"                  -> (row => row.trace.digitalInvestRoll.fold("")(_.format(6))),
+    "LaborAdjustmentResidualProbability" -> (row => row.trace.laborAdjustmentResidualProbability.fold("")(_.format(6))),
+    "LaborAdjustmentResidualRoll"        -> (row => row.trace.laborAdjustmentResidualRoll.fold("")(_.format(6))),
+  )
+
+  val header: String =
+    columns.map(_._1).mkString(";")
+
+  val csvSchema: McCsvSchema[Row] =
+    McCsvSchema(
+      header = header,
+      render = row => columns.map(_._2(row)).mkString(";"),
+    )
+
+  def rows(
+      runId: String,
+      seed: Long,
+      month: Int,
+      traces: Vector[Firm.DecisionTrace],
+      selection: McFirmDecisionTraceSelection,
+  ): Vector[Row] =
+    traces
+      .filter(trace => selection.includes(trace.firmId.toInt))
+      .map(trace => Row(runId, seed, month, trace))
+
+  private def techState(tech: TechState): String =
+    tech match
+      case TechState.Traditional(_) => "Traditional"
+      case TechState.Hybrid(_, _)   => "Hybrid"
+      case TechState.Automated(_)   => "Automated"
+      case TechState.Bankrupt(_)    => "Bankrupt"
+
+  private def bankruptcyReasonName(reason: BankruptReason): String =
+    reason match
+      case BankruptReason.AiDebtTrap          => "AiDebtTrap"
+      case BankruptReason.HybridInsolvency    => "HybridInsolvency"
+      case BankruptReason.AiImplFailure       => "AiImplFailure"
+      case BankruptReason.HybridImplFailure   => "HybridImplFailure"
+      case BankruptReason.LaborCostInsolvency => "LaborCostInsolvency"
+      case BankruptReason.Other(msg)          => s"Other(${text(msg)})"
+
+  private def text(value: String): String =
+    value.replace(';', ',').replace('\n', ' ').replace('\r', ' ')

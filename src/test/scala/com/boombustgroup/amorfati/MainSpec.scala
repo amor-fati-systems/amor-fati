@@ -1,6 +1,6 @@
 package com.boombustgroup.amorfati
 
-import com.boombustgroup.amorfati.montecarlo.{McFirmSnapshotSchedule, McRunConfig}
+import com.boombustgroup.amorfati.montecarlo.{McFirmDecisionTraceSelection, McFirmSnapshotSchedule, McRunConfig}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import zio.{Chunk, Runtime, Unsafe}
@@ -8,15 +8,29 @@ import zio.{Chunk, Runtime, Unsafe}
 class MainSpec extends AnyFlatSpec with Matchers:
 
   "Main.parseArgs" should "parse optional runtime flags strictly" in {
-    val parsed = parse("3", "smoke", "--duration", "24", "--run-id", "manual", "--firm-snapshots", "months:1,12")
+    val parsed = parse(
+      "3",
+      "smoke",
+      "--duration",
+      "24",
+      "--run-id",
+      "manual",
+      "--firm-snapshots",
+      "months:1,12",
+      "--firm-decision-trace",
+      "ids:0,5",
+    )
       .map: rc =>
-        (rc.nSeeds, rc.outputPrefix, rc.runDurationMonths, rc.runId, rc.firmSnapshotSchedule)
+        (rc.nSeeds, rc.outputPrefix, rc.runDurationMonths, rc.runId, rc.firmSnapshotSchedule, rc.firmDecisionTraceSelection)
 
-    parsed shouldBe Right((3, "smoke", 24, "manual", McFirmSnapshotSchedule.ExplicitMonths(Set(1, 12))))
+    parsed shouldBe Right(
+      (3, "smoke", 24, "manual", McFirmSnapshotSchedule.ExplicitMonths(Set(1, 12)), McFirmDecisionTraceSelection.ExplicitFirmIds(Set(0, 5))),
+    )
   }
 
   it should "report missing values for known flags" in {
     expectError(parse("3", "smoke", "--firm-snapshots"), "Missing value for --firm-snapshots")
+    expectError(parse("3", "smoke", "--firm-decision-trace"), "Missing value for --firm-decision-trace")
     expectError(parse("3", "smoke", "--duration", "--run-id", "manual"), "Missing value for --duration")
     expectError(parse("3", "smoke", "--run-id"), "Missing value for --run-id")
   }

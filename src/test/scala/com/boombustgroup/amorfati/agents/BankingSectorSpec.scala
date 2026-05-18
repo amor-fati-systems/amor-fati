@@ -121,6 +121,19 @@ class BankingSectorSpec extends AnyFlatSpec with Matchers:
     (0 until 100).forall(_ => !Banking.canLend(weak.bank, weak.stocks, PLN(10000), rng, Multiplier.Zero, PLN.Zero)) shouldBe true
   }
 
+  it should "expose audited approval probability and roll only when the stochastic gate is sampled" in {
+    val weak      = mkBankRow(loans = PLN(100000), capital = PLN(8000))
+    val weakAudit = Banking.creditApproval(weak.bank, weak.stocks, PLN(10000), RandomStream.seeded(42), Multiplier.Zero, PLN.Zero)
+    weakAudit.approved shouldBe false
+    weakAudit.approvalProbability should not be empty
+    weakAudit.approvalRoll shouldBe None
+
+    val healthy      = mkBankRow()
+    val healthyAudit = Banking.creditApproval(healthy.bank, healthy.stocks, PLN(1000), RandomStream.seeded(42), Multiplier.Zero, PLN.Zero)
+    healthyAudit.approvalProbability should not be empty
+    healthyAudit.approvalRoll should not be empty
+  }
+
   "Banking.interbankRate" should "use explicit financial stocks" in {
     val healthy  = Vector(mkBankRow(id = 0), mkBankRow(id = 1))
     val stressed = Vector(

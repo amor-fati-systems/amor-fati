@@ -12,12 +12,14 @@ case class McRunConfig(
     runDurationMonths: Int = McRunConfig.DefaultRunDuration,
     runId: String = McRunConfig.autoRunId(),
     firmSnapshotSchedule: McFirmSnapshotSchedule = McFirmSnapshotSchedule.Disabled,
+    firmDecisionTraceSelection: McFirmDecisionTraceSelection = McFirmDecisionTraceSelection.Disabled,
 ):
   McRunConfig.requirePositiveSeeds(nSeeds)
   McRunConfig.requireNonBlankOutputPrefix(outputPrefix)
   McRunConfig.requirePositiveDuration(runDurationMonths)
   McRunConfig.requireNonBlankRunId(runId)
   McRunConfig.requireFirmSnapshotSchedule(firmSnapshotSchedule)
+  McRunConfig.requireFirmDecisionTraceSelection(firmDecisionTraceSelection)
 
 object McRunConfig:
   val DefaultRunDuration: Int        = 120
@@ -41,3 +43,6 @@ object McRunConfig:
 
   def requireFirmSnapshotSchedule(schedule: McFirmSnapshotSchedule): Unit =
     require(schedule != null, "firmSnapshotSchedule must be non-null")
+
+  def requireFirmDecisionTraceSelection(selection: McFirmDecisionTraceSelection): Unit =
+    require(selection != null, "firmDecisionTraceSelection must be non-null")

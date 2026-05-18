@@ -99,6 +99,26 @@ class FirmEconomicsSpec extends AnyFlatSpec with Matchers:
     Interpreter.totalWealth(Interpreter.applyAll(Map.empty[Int, Long], flows)).shouldBe(0L)
   }
 
+  it should "skip firm decision traces unless explicitly requested" in {
+    result.decisionTraces shouldBe empty
+
+    val traced = FirmEconomics.runStep(
+      w,
+      init.firms,
+      init.households,
+      init.banks,
+      init.ledgerFinancialState,
+      s1,
+      s2,
+      s3,
+      s4,
+      RandomStream.seeded(42),
+      traceDecisions = true,
+    )
+
+    traced.decisionTraces should have size init.firms.size
+  }
+
   it should "match current-month immigrant inflows before closing labor matching" in {
     val immigrantInflow    = 12
     val existingUnemployed = init.households.count(_.status.isInstanceOf[HhStatus.Unemployed])

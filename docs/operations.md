@@ -196,7 +196,7 @@ branch or opening a PR is optional and outside the assumed operating path.
 The main runtime entrypoint is:
 
 ```bash
-sbt "runMain com.boombustgroup.amorfati.Main <nSeeds> <prefix> [--duration <months>] [--run-id <id>] [--firm-snapshots <terminal|every:N|months:M1,M2,...>]"
+sbt "runMain com.boombustgroup.amorfati.Main <nSeeds> <prefix> [--duration <months>] [--run-id <id>] [--firm-snapshots <terminal|every:N|months:M1,M2,...>] [--firm-decision-trace <ids:I1,I2,...|first:N|all|none>]"
 ```
 
 Example smoke run:
@@ -226,6 +226,24 @@ Firm-level micro snapshots are optional and off by default. Enable them with
 ```text
 mc/<prefix>_<run-id>_<months>m_firm_snapshots.csv
 ```
+
+Firm decision traces are optional and off by default. Enable them with an
+explicit firm-id selector such as `--firm-decision-trace ids:0,42,99`, with the
+documented deterministic low-id sample `--firm-decision-trace first:25`, or with
+`--firm-decision-trace all` for tiny/debug runs. The selector is evaluated by
+firm id and does not use the model RNG. When enabled, the runner also writes:
+
+```text
+mc/<prefix>_<run-id>_<months>m_firm_decision_trace.csv
+```
+
+The trace records one selected-firm row per month with opening/closing tech
+state, decision type, bankruptcy reason, cash/debt/readiness/workers before and
+after, capex, new bank loan, down payment where applicable, relationship bank,
+lending rate, available approval/feasibility/probability flags, and separate
+adoption, implementation, upgrade-candidate bank approval, investment-credit
+bank approval, digital-invest, upgrade-efficiency, and labor-adjustment residual
+rolls where those gates were evaluated.
 
 `mc/` is ignored by git. Keep committed research-facing artifacts under `docs/`
 only when the command explicitly targets a committed documentation path.

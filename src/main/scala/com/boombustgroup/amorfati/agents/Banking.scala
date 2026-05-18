@@ -206,6 +206,16 @@ object Banking:
       bankCorpBondHoldings: Vector[PLN] = Vector.empty,
   )
 
+  /** Auditable result of a firm-credit approval check. `approvalRoll` is
+    * defined only when balance-sheet constraints pass and the stochastic
+    * approval gate is actually sampled.
+    */
+  case class CreditApproval(
+      approved: Boolean,
+      approvalProbability: Option[Share],
+      approvalRoll: Option[Share],
+  )
+
   // ---------------------------------------------------------------------------
   // Config
   // ---------------------------------------------------------------------------
@@ -470,7 +480,12 @@ object Banking:
   def canLend(bank: BankState, stocks: BankFinancialStocks, amount: PLN, rng: RandomStream, ccyb: Multiplier, corpBondHoldings: PLN)(using
       p: SimParams,
   ): Boolean =
-    if bank.failed then false
+    creditApproval(bank, stocks, amount, rng, ccyb, corpBondHoldings).approved
+
+  def creditApproval(bank: BankState, stocks: BankFinancialStocks, amount: PLN, rng: RandomStream, ccyb: Multiplier, corpBondHoldings: PLN)(using
+      p: SimParams,
+  ): CreditApproval =
+    if bank.failed then CreditApproval(approved = false, approvalProbability = None, approvalRoll = None)
     else
       val projectedRwa = stocks.firmLoan + stocks.consumerLoan + corpBondHoldings * CorpBondRiskWeight + amount
       val projectedCar = if projectedRwa > MinBalanceThreshold then bank.capital.ratioTo(projectedRwa).toMultiplier else SafeRatioFloor
@@ -482,7 +497,10 @@ object Banking:
       val freeReserves = stocks.totalDeposits * (Share.One - p.banking.reserveReq) - stocks.firmLoan - govBondHoldings(stocks)
       val resPenalty   = if freeReserves > PLN.Zero then Share.Zero else ReserveDeficitPenalty
       val approvalP    = (Share.One - nplPenalty.toShare - resPenalty).max(MinApprovalProb)
-      carOk && lcrOk && nsfrOk && approvalP.sampleBelow(rng)
+      if carOk && lcrOk && nsfrOk then
+        val roll = Share.random(rng)
+        CreditApproval(approved = roll < approvalP, approvalProbability = Some(approvalP), approvalRoll = Some(roll))
+      else CreditApproval(approved = false, approvalProbability = Some(approvalP), approvalRoll = None)
 
   // ---------------------------------------------------------------------------
   // Interbank market

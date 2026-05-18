@@ -82,12 +82,12 @@ object FirmEconomics:
 
   /** Per-bank lending rates and credit approval, shared across phases. */
   private case class LendingConditions(
-      firmWorld: World,                       // world with current-month wages for firm decision-making
-      executionMonth: ExecutionMonth,         // realized month currently being executed
-      operationalSignals: OperationalSignals, // same-month demand / labor surface for incumbent firms
-      rates: Vector[Rate],                    // per-bank lending rates
-      bankCanLend: (Int, PLN) => Boolean,     // credit approval: (bankId, amount) => approved?
-      nBanks: Int,                            // number of banks in multi-bank system
+      firmWorld: World,                                      // world with current-month wages for firm decision-making
+      executionMonth: ExecutionMonth,                        // realized month currently being executed
+      operationalSignals: OperationalSignals,                // same-month demand / labor surface for incumbent firms
+      rates: Vector[Rate],                                   // per-bank lending rates
+      bankCreditDecision: (Int, PLN) => Firm.CreditDecision, // credit approval audit: (bankId, amount) => result
+      nBanks: Int,                                           // number of banks in multi-bank system
   )
 
   /** Per-firm processing outcome — immutable, one per firm. */
@@ -100,13 +100,15 @@ object FirmEconomics:
       finalLoan: PLN,             // bank loan after equity/bond splits
       bondAmt: PLN,               // corporate bond issuance (pre-absorption)
       principalRepaid: PLN,       // scheduled loan principal repaid this month
+      decisionTrace: Option[Firm.DecisionTrace],
   )
 
   /** Result of per-firm processing (phase 2). */
   private case class FirmProcessingResult(
-      outcomes: Vector[FirmOutcome],    // per-firm immutable outcomes
-      flows: FirmFlows,                 // aggregate flows (monoid sum)
+      outcomes: Vector[FirmOutcome],     // per-firm immutable outcomes
+      flows: FirmFlows,                  // aggregate flows (monoid sum)
       firmBondAmounts: Map[FirmId, PLN], // per-firm bond issuance for reversion
+      traceDecisions: Boolean,           // whether per-firm decision traces were requested for this step
   )
 
   /** Result of bond absorption (phase 3). */
@@ -156,43 +158,44 @@ object FirmEconomics:
 
   /** Full step output — all fields previously in FirmProcessingStep.Output. */
   case class StepOutput(
-      ioFirms: Vector[Firm.State],               // firms after I-O intermediate market
-      households: Vector[Household.State],       // households after labor matching + immigration
-      sumTax: PLN,                               // aggregate CIT paid
-      sumCapex: PLN,                             // aggregate technology CAPEX
-      sumTechImp: PLN,                           // aggregate technology imports
-      sumNewLoans: PLN,                          // aggregate new bank loans (incl. bond reversion)
-      sumEquityIssuance: PLN,                    // aggregate GPW equity raised
-      sumGrossInvestment: PLN,                   // aggregate physical capital investment
-      sumBondIssuance: PLN,                      // aggregate bond issuance (pre-absorption)
-      sumProfitShifting: PLN,                    // aggregate FDI profit shifting
-      sumFdiRepatriation: PLN,                   // aggregate FDI repatriation
-      sumInventoryChange: PLN,                   // aggregate net inventory change
-      sumCitEvasion: PLN,                        // aggregate CIT evasion
-      sumEnergyCost: PLN,                        // aggregate energy + ETS cost
-      sumGreenInvestment: PLN,                   // aggregate green capital investment
-      totalIoPaid: PLN,                          // total intermediate goods payments
-      nplNew: PLN,                               // new non-performing loan volume
-      nplLoss: PLN,                              // NPL loss net of recovery
-      totalBondDefault: PLN,                     // bond default from bankrupt firms
-      firmDeaths: Int,                           // number of firms that went bankrupt
-      intIncome: PLN,                            // aggregate bank interest income
-      corpBondAbsorption: Share,                 // Catalyst absorption ratio (0-1)
-      actualBondIssuance: PLN,                   // bond issuance after absorption constraint
-      netMigration: Int,                         // net immigration (inflow - outflow)
-      perBankNewLoans: Vector[PLN],              // new loans by bank index
-      sumFirmPrincipal: PLN,                     // aggregate firm loan principal repaid
-      perBankFirmPrincipal: Vector[PLN],         // firm principal repaid by bank index
-      perBankNplDebt: Vector[PLN],               // NPL debt by bank index
-      perBankIntIncome: Vector[PLN],             // interest income by bank index
-      perBankWorkers: Vector[Int],               // worker count by bank index
-      lendingRates: Vector[Rate],                // per-bank lending rates
-      postFirmCrossSectorHires: Int,             // cross-sector hires in labor matching
-      postFirmHires: Int,                        // total hires consumed by firm-stage matching
-      postFirmHireCapacity: Int,                 // monthly hire capacity available at firm-stage matching
-      markupInflation: Rate,                     // Calvo: annualized revenue-weighted avg markup change
-      sumRealizedPostTaxProfit: PLN,             // aggregate realized post-tax profits from Firm.process
-      sumStateOwnedPostTaxProfit: PLN,           // aggregate realized post-tax profits of SOEs
+      ioFirms: Vector[Firm.State],                // firms after I-O intermediate market
+      households: Vector[Household.State],        // households after labor matching + immigration
+      sumTax: PLN,                                // aggregate CIT paid
+      sumCapex: PLN,                              // aggregate technology CAPEX
+      sumTechImp: PLN,                            // aggregate technology imports
+      sumNewLoans: PLN,                           // aggregate new bank loans (incl. bond reversion)
+      sumEquityIssuance: PLN,                     // aggregate GPW equity raised
+      sumGrossInvestment: PLN,                    // aggregate physical capital investment
+      sumBondIssuance: PLN,                       // aggregate bond issuance (pre-absorption)
+      sumProfitShifting: PLN,                     // aggregate FDI profit shifting
+      sumFdiRepatriation: PLN,                    // aggregate FDI repatriation
+      sumInventoryChange: PLN,                    // aggregate net inventory change
+      sumCitEvasion: PLN,                         // aggregate CIT evasion
+      sumEnergyCost: PLN,                         // aggregate energy + ETS cost
+      sumGreenInvestment: PLN,                    // aggregate green capital investment
+      totalIoPaid: PLN,                           // total intermediate goods payments
+      nplNew: PLN,                                // new non-performing loan volume
+      nplLoss: PLN,                               // NPL loss net of recovery
+      totalBondDefault: PLN,                      // bond default from bankrupt firms
+      firmDeaths: Int,                            // number of firms that went bankrupt
+      intIncome: PLN,                             // aggregate bank interest income
+      corpBondAbsorption: Share,                  // Catalyst absorption ratio (0-1)
+      actualBondIssuance: PLN,                    // bond issuance after absorption constraint
+      netMigration: Int,                          // net immigration (inflow - outflow)
+      perBankNewLoans: Vector[PLN],               // new loans by bank index
+      sumFirmPrincipal: PLN,                      // aggregate firm loan principal repaid
+      perBankFirmPrincipal: Vector[PLN],          // firm principal repaid by bank index
+      perBankNplDebt: Vector[PLN],                // NPL debt by bank index
+      perBankIntIncome: Vector[PLN],              // interest income by bank index
+      perBankWorkers: Vector[Int],                // worker count by bank index
+      lendingRates: Vector[Rate],                 // per-bank lending rates
+      postFirmCrossSectorHires: Int,              // cross-sector hires in labor matching
+      postFirmHires: Int,                         // total hires consumed by firm-stage matching
+      postFirmHireCapacity: Int,                  // monthly hire capacity available at firm-stage matching
+      markupInflation: Rate,                      // Calvo: annualized revenue-weighted avg markup change
+      sumRealizedPostTaxProfit: PLN,              // aggregate realized post-tax profits from Firm.process
+      sumStateOwnedPostTaxProfit: PLN,            // aggregate realized post-tax profits of SOEs
+      decisionTraces: Vector[Firm.DecisionTrace], // per-firm decision trace rows for optional exports
       ledgerFinancialState: LedgerFinancialState, // ledger with firm corporate-bond issuer balances after firm stage
   )
 
@@ -208,15 +211,16 @@ object FirmEconomics:
       s3: HouseholdIncomeEconomics.Output,
       s4: DemandEconomics.Output,
       rng: RandomStream,
+      traceDecisions: Boolean = false,
   )(using p: SimParams): StepOutput =
-    val stepIn = StepInput(w, firms, households, banks, ledgerFinancialState, s1, s2, s3, s4)
+    val stepIn = StepInput(w, firms, households, banks, ledgerFinancialState, s1, s2, s3, s4, traceDecisions)
     runInternal(stepIn, rng)
 
   // ---- Core pipeline ----
 
   private def runInternal(stepIn: StepInput, rng: RandomStream)(using p: SimParams): StepOutput =
     val lending             = prepareLending(stepIn, rng)
-    val fp                  = processFirms(stepIn.firms, stepIn.ledgerFinancialState, lending, rng)
+    val fp                  = processFirms(stepIn.firms, stepIn.ledgerFinancialState, lending, rng, stepIn.traceDecisions)
     val bonded              = applyBondAbsorption(fp, stepIn.w, stepIn.banks, stepIn.ledgerFinancialState, lending.executionMonth)
     val intermediate        = applyIntermediateMarket(bonded.firms, bonded.financialStocks, stepIn)
     // Calvo staggered pricing: per-firm markup update
@@ -277,6 +281,7 @@ object FirmEconomics:
       s2: LaborEconomics.Output,
       s3: HouseholdIncomeEconomics.Output,
       s4: DemandEconomics.Output,
+      traceDecisions: Boolean,
   )
 
   private case class LaborMarketResult(
@@ -301,7 +306,13 @@ object FirmEconomics:
     val rates              = in.banks.zip(bankStocks).zip(bsec.configs).map { case ((b, stocks), cfg) =>
       Banking.lendingRate(b, stocks, cfg, in.s1.lendingBaseRate, in.w.gov.bondYield, bankCorpBonds(b.id))
     }
-    val canLend            = (bankId: Int, amt: PLN) => Banking.canLend(in.banks(bankId), bankStocks(bankId), amt, rng, ccyb, bankCorpBonds(BankId(bankId)))
+    val creditDecision     = (bankId: Int, amt: PLN) =>
+      val approval = Banking.creditApproval(in.banks(bankId), bankStocks(bankId), amt, rng, ccyb, bankCorpBonds(BankId(bankId)))
+      Firm.CreditDecision(
+        approved = approval.approved,
+        approvalProbability = approval.approvalProbability,
+        approvalRoll = approval.approvalRoll,
+      )
     val operationalSignals = OperationalSignals(
       sectorDemandMult = in.s4.sectorMults,
       sectorDemandPressure = in.s4.sectorDemandPressure,
@@ -314,7 +325,7 @@ object FirmEconomics:
         reservationWage = in.s1.resWage,
       ),
     )
-    LendingConditions(world, in.s1.m, operationalSignals, rates, canLend, nBanks)
+    LendingConditions(world, in.s1.m, operationalSignals, rates, creditDecision, nBanks)
 
   // ---- Phase 2: Per-firm processing ----
 
@@ -326,6 +337,7 @@ object FirmEconomics:
       ledgerFinancialState: LedgerFinancialState,
       lending: LendingConditions,
       rng: RandomStream,
+      traceDecisions: Boolean,
   )(using p: SimParams): FirmProcessingResult =
     require(
       firms.length == ledgerFinancialState.firms.length,
@@ -335,21 +347,34 @@ object FirmEconomics:
     val outcomes      = firms
       .zip(openingStocks)
       .map: (f, stocks) =>
-        val rate    = lending.rates(f.bankId.toInt)
-        val canLend = (amt: PLN) => lending.bankCanLend(f.bankId.toInt, amt)
-        val r       = Firm.process(
+        val rate           = lending.rates(f.bankId.toInt)
+        val creditDecision = (amt: PLN) => lending.bankCreditDecision(f.bankId.toInt, amt)
+        val r              = Firm.processWithCreditAudit(
           f,
           stocks,
           lending.firmWorld,
           lending.executionMonth,
           lending.operationalSignals,
           rate,
-          canLend,
+          creditDecision,
           firms,
           rng,
           CorporateBondOwnership.issuerBalanceFor(ledgerFinancialState, f.id),
+          traceDecision = traceDecisions,
         )
-        val fin     = splitFinancing(r)
+        val fin            = splitFinancing(r)
+        val trace          =
+          if traceDecisions then
+            Some(
+              r.decisionTrace
+                .getOrElse:
+                  throw IllegalStateException(s"Firm.process did not return a decision trace for firm ${f.id.toInt}")
+                .copy(
+                  firmLoanAfter = fin.financialStocks.firmLoan,
+                  newLoan = fin.bankLoan,
+                ),
+            )
+          else None
 
         FirmOutcome(
           firm = fin.firm,
@@ -375,12 +400,13 @@ object FirmEconomics:
           finalLoan = fin.bankLoan,
           bondAmt = fin.bonds,
           principalRepaid = r.principalRepaid,
+          decisionTrace = trace,
         )
 
     val aggFlows = outcomes.foldLeft(FirmFlows.zero)((acc, o) => acc + o.flows)
     val bondMap  = outcomes.collect { case o if o.bondAmt > PLN.Zero => o.firm.id -> o.bondAmt }.toMap
 
-    FirmProcessingResult(outcomes, aggFlows, bondMap)
+    FirmProcessingResult(outcomes, aggFlows, bondMap, traceDecisions)
 
   /** Split a firm's new loan into three channels: GPW equity → Catalyst bonds →
     * bank loan remainder.
@@ -711,7 +737,7 @@ object FirmEconomics:
       in: StepInput,
       lending: LendingConditions,
       markupInflation: Rate,
-  ): StepOutput =
+  )(using p: SimParams): StepOutput =
     val flows                 = fp.flows
     val ledgerAfterFirmStocks = in.s3.ledgerFinancialState.copy(
       households = LedgerFinancialState.refreshHouseholdBalances(
@@ -740,6 +766,9 @@ object FirmEconomics:
 
     val perBankFirmPrincipal = fp.outcomes.foldLeft(emptyPln): (acc, o) =>
       acc.updated(o.bankId.toInt, acc(o.bankId.toInt) + o.principalRepaid)
+    val decisionTraces       =
+      if fp.traceDecisions then finalizedDecisionTraces(fp, bonded, ioFirms, firmFinancialStocks)
+      else Vector.empty
 
     StepOutput(
       ioFirms = ioFirms,
@@ -779,5 +808,29 @@ object FirmEconomics:
       markupInflation = markupInflation,
       sumRealizedPostTaxProfit = fp.outcomes.foldLeft(PLN.Zero)(_ + _.realizedPostTaxProfit),
       sumStateOwnedPostTaxProfit = fp.outcomes.filter(_.firm.stateOwned).foldLeft(PLN.Zero)((acc, o) => acc + o.realizedPostTaxProfit),
+      decisionTraces = decisionTraces,
       ledgerFinancialState = ledgerAfterFirmStocks,
     )
+
+  private def finalizedDecisionTraces(
+      fp: FirmProcessingResult,
+      bonded: BondAbsorptionResult,
+      closingFirms: Vector[Firm.State],
+      closingFinancialStocks: Vector[Firm.FinancialStocks],
+  )(using p: SimParams): Vector[Firm.DecisionTrace] =
+    fp.outcomes
+      .zip(closingFirms)
+      .zip(closingFinancialStocks)
+      .map { case ((outcome, closingFirm), closingStocks) =>
+        val revertedLoan = bonded.bondReversionByFirm.getOrElse(outcome.firm.id, PLN.Zero)
+        val trace        = outcome.decisionTrace.getOrElse:
+          throw IllegalStateException(s"FirmEconomics.finalizedDecisionTraces missing decision trace for firm ${outcome.firm.id.toInt}")
+        trace.copy(
+          closingTech = closingFirm.tech,
+          cashAfter = closingStocks.cash,
+          firmLoanAfter = closingStocks.firmLoan,
+          digitalReadinessAfter = closingFirm.digitalReadiness,
+          workersAfter = Firm.workerCount(closingFirm),
+          newLoan = outcome.finalLoan + revertedLoan,
+        )
+      }

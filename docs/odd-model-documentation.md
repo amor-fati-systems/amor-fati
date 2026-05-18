@@ -333,6 +333,8 @@ Observation surfaces include:
 - Monte Carlo per-seed CSV time series;
 - household, bank, and firm terminal summary CSVs;
 - optional selected-month firm micro snapshot CSVs;
+- optional selected-firm decision trace CSVs for adoption, financing,
+  implementation, and labor/digital-investment gate audits;
 - SFC validation results;
 - ledger-derived symbolic BSM, TFM, and stock-flow reconciliation artifacts;
 - symbolic-row to runtime-ledger mapping.

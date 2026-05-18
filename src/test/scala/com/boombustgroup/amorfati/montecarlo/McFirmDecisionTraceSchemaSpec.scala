@@ -1,0 +1,11 @@
+package com.boombustgroup.amorfati.montecarlo
+
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
+
+class McFirmDecisionTraceSchemaSpec extends AnyFlatSpec with Matchers:
+
+  "McFirmDecisionTraceSchema" should "keep the firm decision trace header stable" in {
+    McFirmDecisionTraceSchema.header shouldBe
+      "RunId;Seed;Month;FirmId;OpeningTechState;ClosingTechState;DecisionType;BankruptcyReason;CashBefore;CashAfter;FirmLoanBefore;FirmLoanAfter;DigitalReadinessBefore;DigitalReadinessAfter;WorkersBefore;WorkersAfter;Capex;NewLoan;DownPayment;BankId;LendingRate;SelectedBankApproval;SelectedBankApprovalProbability;SelectedBankApprovalRoll;FullAiFeasible;HybridFeasible;FullAiAdoptionProbability;HybridAdoptionProbability;AdoptionRoll;FullAiBankApproval;FullAiBankApprovalProbability;FullAiBankApprovalRoll;HybridBankApproval;HybridBankApprovalProbability;HybridBankApprovalRoll;ImplementationFailureProbability;ImplementationRoll;UpgradeEfficiencyDraw;UpgradeEfficiencyMultiplier;InvestmentCreditNeed;InvestmentCreditAmount;InvestmentBankApproval;InvestmentBankApprovalProbability;InvestmentBankApprovalRoll;DigitalInvestProbability;DigitalInvestRoll;LaborAdjustmentResidualProbability;LaborAdjustmentResidualRoll"
+  }
