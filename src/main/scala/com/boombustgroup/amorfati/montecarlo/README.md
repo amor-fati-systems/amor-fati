@@ -102,6 +102,7 @@ The CLI flag is:
 --firm-decision-trace ids:0,42,99
 --firm-decision-trace first:25
 --firm-decision-trace all
+--firm-decision-trace none
 ```
 
 Trace selection is by firm id and does not use model RNG. Rows are one selected

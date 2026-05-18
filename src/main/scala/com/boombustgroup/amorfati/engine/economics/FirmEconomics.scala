@@ -818,19 +818,33 @@ object FirmEconomics:
       closingFirms: Vector[Firm.State],
       closingFinancialStocks: Vector[Firm.FinancialStocks],
   )(using p: SimParams): Vector[Firm.DecisionTrace] =
-    fp.outcomes
-      .zip(closingFirms)
-      .zip(closingFinancialStocks)
-      .map { case ((outcome, closingFirm), closingStocks) =>
-        val revertedLoan = bonded.bondReversionByFirm.getOrElse(outcome.firm.id, PLN.Zero)
-        val trace        = outcome.decisionTrace.getOrElse:
-          throw IllegalStateException(s"FirmEconomics.finalizedDecisionTraces missing decision trace for firm ${outcome.firm.id.toInt}")
-        trace.copy(
-          closingTech = closingFirm.tech,
-          cashAfter = closingStocks.cash,
-          firmLoanAfter = closingStocks.firmLoan,
-          digitalReadinessAfter = closingFirm.digitalReadiness,
-          workersAfter = Firm.workerCount(closingFirm),
-          newLoan = outcome.finalLoan + revertedLoan,
-        )
-      }
+    if closingFirms.length != closingFinancialStocks.length then
+      throw IllegalStateException(
+        s"FirmEconomics.finalizedDecisionTraces requires aligned closing firms and stocks, got ${closingFirms.length} firms and ${closingFinancialStocks.length} stock rows",
+      )
+
+    val closingFirmById       = closingFirms.map(firm => firm.id -> firm).toMap
+    val closingStocksByFirmId = closingFirms.zip(closingFinancialStocks).map((firm, stocks) => firm.id -> stocks).toMap
+
+    fp.outcomes.map { outcome =>
+      val firmId        = outcome.firm.id
+      val closingFirm   = closingFirmById.getOrElse(
+        firmId,
+        throw IllegalStateException(s"FirmEconomics.finalizedDecisionTraces missing closing firm for firm ${firmId.toInt}"),
+      )
+      val closingStocks = closingStocksByFirmId.getOrElse(
+        firmId,
+        throw IllegalStateException(s"FirmEconomics.finalizedDecisionTraces missing closing stocks for firm ${firmId.toInt}"),
+      )
+      val revertedLoan  = bonded.bondReversionByFirm.getOrElse(firmId, PLN.Zero)
+      val trace         = outcome.decisionTrace.getOrElse:
+        throw IllegalStateException(s"FirmEconomics.finalizedDecisionTraces missing decision trace for firm ${firmId.toInt}")
+      trace.copy(
+        closingTech = closingFirm.tech,
+        cashAfter = closingStocks.cash,
+        firmLoanAfter = closingStocks.firmLoan,
+        digitalReadinessAfter = closingFirm.digitalReadiness,
+        workersAfter = Firm.workerCount(closingFirm),
+        newLoan = outcome.finalLoan + revertedLoan,
+      )
+    }
