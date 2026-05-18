@@ -1,5 +1,6 @@
 package com.boombustgroup.amorfati.engine.economics
 
+import com.boombustgroup.amorfati.FixedPointSpecSupport.*
 import com.boombustgroup.amorfati.agents.*
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.SimulationMonth.ExecutionMonth
@@ -102,6 +103,27 @@ class FirmEconomicsSpec extends AnyFlatSpec with Matchers:
       ),
     )
     Interpreter.totalWealth(Interpreter.applyAll(Map.empty[Int, Long], flows)).shouldBe(0L)
+  }
+
+  it should "attribute automation technology loans across financing channels and bond reversion" in {
+    val channels = FirmEconomics.financingChannelAmounts(
+      newLoan = PLN(1000),
+      techNewLoan = PLN(600),
+      workers = 100,
+    )
+
+    channels.equity shouldBe PLN(100)
+    channels.bonds shouldBe PLN(135)
+    channels.bankLoan shouldBe PLN(765)
+    channels.techBonds shouldBe PLN(81)
+    channels.techBankLoan shouldBe PLN(459)
+
+    FirmEconomics.automationTechLoanAmount(
+      techBankLoan = channels.techBankLoan,
+      techBondAmt = channels.techBonds,
+      bondAmt = channels.bonds,
+      revertedBond = PLN(27),
+    ) shouldBe plnBD(BigDecimal("475.2"))
   }
 
   it should "skip firm decision traces unless explicitly requested" in {

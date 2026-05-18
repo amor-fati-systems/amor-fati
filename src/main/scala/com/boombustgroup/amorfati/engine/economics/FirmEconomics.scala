@@ -99,6 +99,12 @@ object FirmEconomics:
       bankId: BankId,             // relationship bank (for per-bank aggregation)
       finalLoan: PLN,             // bank loan after equity/bond splits
       bondAmt: PLN,               // corporate bond issuance (pre-absorption)
+      techBankLoan: PLN,          // technology-loan component left as bank credit after financing split
+      techBondAmt: PLN,           // technology-loan component shifted into corporate bonds
+      automationUpgradeFailure: Boolean,
+      automationAiDebtTrap: Boolean,
+      automationNewFullAi: Boolean,
+      automationNewHybrid: Boolean,
       principalRepaid: PLN,       // scheduled loan principal repaid this month
       decisionTrace: Option[Firm.DecisionTrace],
   )
@@ -124,11 +130,21 @@ object FirmEconomics:
 
   /** Financing split: how a firm's CAPEX loan is divided across three channels.
     */
+  private[amorfati] case class FinancingChannelAmounts(
+      bankLoan: PLN,
+      equity: PLN,
+      bonds: PLN,
+      techBankLoan: PLN,
+      techBonds: PLN,
+  )
+
   private case class FinancingSplit(
-      bankLoan: PLN,    // remainder after equity and bond channels
-      equity: PLN,      // GPW equity issuance (large firms only)
-      bonds: PLN,       // Catalyst corporate bonds (medium+ firms only)
-      firm: Firm.State, // firm with updated bank debt/equity; corporate bonds stay in LedgerFinancialState
+      bankLoan: PLN,     // remainder after equity and bond channels
+      equity: PLN,       // GPW equity issuance (large firms only)
+      bonds: PLN,        // Catalyst corporate bonds (medium+ firms only)
+      techBankLoan: PLN, // technology-loan component left in bank credit
+      techBonds: PLN,    // technology-loan component shifted into corporate bonds
+      firm: Firm.State,  // firm with updated bank debt/equity; corporate bonds stay in LedgerFinancialState
       financialStocks: Firm.FinancialStocks,
   )
 
@@ -164,6 +180,13 @@ object FirmEconomics:
       sumCapex: PLN,                              // aggregate technology CAPEX
       sumTechImp: PLN,                            // aggregate technology imports
       sumNewLoans: PLN,                           // aggregate new bank loans (incl. bond reversion)
+      automationTechCapex: PLN,                   // technology CAPEX exposed as generic automation diagnostic
+      automationTechImports: PLN,                 // import content of technology CAPEX
+      automationTechLoans: PLN,                   // technology bank-credit creation after financing split and bond reversion
+      automationUpgradeFailures: Int,             // newly bankrupt firms from AI/hybrid implementation failures
+      automationAiDebtTrap: Int,                  // newly bankrupt firms from AI debt trap
+      automationNewFullAi: Int,                   // firms newly entering full automation
+      automationNewHybrid: Int,                   // firms newly entering hybrid automation
       sumEquityIssuance: PLN,                     // aggregate GPW equity raised
       sumGrossInvestment: PLN,                    // aggregate physical capital investment
       sumBondIssuance: PLN,                       // aggregate bond issuance (pre-absorption)
@@ -399,6 +422,12 @@ object FirmEconomics:
           bankId = f.bankId,
           finalLoan = fin.bankLoan,
           bondAmt = fin.bonds,
+          techBankLoan = fin.techBankLoan,
+          techBondAmt = fin.techBonds,
+          automationUpgradeFailure = becameBankruptWith(f, fin.firm, isImplementationFailure),
+          automationAiDebtTrap = becameBankruptWith(f, fin.firm, _ == BankruptReason.AiDebtTrap),
+          automationNewFullAi = !isAutomated(f) && isAutomated(fin.firm),
+          automationNewHybrid = !isHybrid(f) && isHybrid(fin.firm),
           principalRepaid = r.principalRepaid,
           decisionTrace = trace,
         )
@@ -412,30 +441,63 @@ object FirmEconomics:
     * bank loan remainder.
     */
   private def splitFinancing(r: Firm.Result)(using p: SimParams): FinancingSplit =
+    val channels = financingChannelAmounts(r.newLoan, r.techNewLoan, Firm.workerCount(r.firm))
+    val stocks   = r.financialStocks.copy(
+      firmLoan = r.financialStocks.firmLoan - channels.equity - channels.bonds,
+      equity = r.financialStocks.equity + channels.equity,
+    )
+
+    FinancingSplit(channels.bankLoan, channels.equity, channels.bonds, channels.techBankLoan, channels.techBonds, r.firm, stocks)
+
+  private[amorfati] def financingChannelAmounts(newLoan: PLN, techNewLoan: PLN, workers: Int)(using p: SimParams): FinancingChannelAmounts =
+    val requestedTechLoan = techNewLoan.min(newLoan).max(PLN.Zero)
+
     // Channel 1: GPW equity issuance (large firms only)
-    val (afterEquityLoan, equityAmt, afterEquityFirm, afterEquityStocks) =
-      if r.newLoan > PLN.Zero &&
-        Firm.workerCount(r.firm) >= p.equity.issuanceMinSize
+    val (afterEquityLoan, equityAmt, afterEquityTechLoan) =
+      if newLoan > PLN.Zero && workers >= p.equity.issuanceMinSize
       then
-        val eq     = r.newLoan * p.equity.issuanceFrac
-        val adj    = r.newLoan - eq
-        val stocks = r.financialStocks.copy(
-          firmLoan = r.financialStocks.firmLoan - eq,
-          equity = r.financialStocks.equity + eq,
-        )
-        (adj, eq, r.firm, stocks)
-      else (r.newLoan, PLN.Zero, r.firm, r.financialStocks)
+        val eq       = newLoan * p.equity.issuanceFrac
+        val adj      = newLoan - eq
+        val techEq   = proratedPln(eq, requestedTechLoan, newLoan)
+        val techLeft = (requestedTechLoan - techEq).max(PLN.Zero).min(adj)
+        (adj, eq, techLeft)
+      else (newLoan, PLN.Zero, requestedTechLoan)
 
     // Channel 2: Catalyst corporate bonds (medium+ firms only)
-    val (finalLoan, bondAmt, finalFirm, finalStocks) =
-      if afterEquityLoan > PLN.Zero && Firm.workerCount(afterEquityFirm) >= p.corpBond.minSize then
-        val ba     = afterEquityLoan * p.corpBond.issuanceFrac
-        val adj    = afterEquityLoan - ba
-        val stocks = afterEquityStocks.copy(firmLoan = afterEquityStocks.firmLoan - ba)
-        (adj, ba, afterEquityFirm, stocks)
-      else (afterEquityLoan, PLN.Zero, afterEquityFirm, afterEquityStocks)
+    val (finalLoan, bondAmt, techBankLoan, techBondAmt) =
+      if afterEquityLoan > PLN.Zero && workers >= p.corpBond.minSize then
+        val ba       = afterEquityLoan * p.corpBond.issuanceFrac
+        val adj      = afterEquityLoan - ba
+        val techBond = proratedPln(ba, afterEquityTechLoan, afterEquityLoan)
+        val techBank = (afterEquityTechLoan - techBond).max(PLN.Zero).min(adj)
+        (adj, ba, techBank, techBond)
+      else (afterEquityLoan, PLN.Zero, afterEquityTechLoan, PLN.Zero)
 
-    FinancingSplit(finalLoan, equityAmt, bondAmt, finalFirm, finalStocks)
+    FinancingChannelAmounts(finalLoan, equityAmt, bondAmt, techBankLoan, techBondAmt)
+
+  private def proratedPln(amount: PLN, part: PLN, total: PLN): PLN =
+    if amount <= PLN.Zero || part <= PLN.Zero || total <= PLN.Zero then PLN.Zero
+    else if part >= total then amount
+    else
+      val raw = ((BigInt(amount.distributeRaw) * BigInt(part.distributeRaw)) / BigInt(total.distributeRaw)).toLong
+      PLN.fromRaw(raw).min(amount)
+
+  private def bankruptcyReason(firm: Firm.State): Option[BankruptReason] =
+    firm.tech match
+      case TechState.Bankrupt(reason) => Some(reason)
+      case _                          => None
+
+  private def becameBankruptWith(opening: Firm.State, closing: Firm.State, matches: BankruptReason => Boolean): Boolean =
+    Firm.isAlive(opening) && bankruptcyReason(closing).exists(matches)
+
+  private def isImplementationFailure(reason: BankruptReason): Boolean =
+    reason == BankruptReason.AiImplFailure || reason == BankruptReason.HybridImplFailure
+
+  private def isAutomated(firm: Firm.State): Boolean =
+    firm.tech.isInstanceOf[TechState.Automated]
+
+  private def isHybrid(firm: Firm.State): Boolean =
+    firm.tech.isInstanceOf[TechState.Hybrid]
 
   // ---- Phase 3: Bond absorption ----
 
@@ -769,6 +831,7 @@ object FirmEconomics:
     val decisionTraces       =
       if fp.traceDecisions then finalizedDecisionTraces(fp, bonded, ioFirms, firmFinancialStocks)
       else Vector.empty
+    val automationTechLoans  = automationTechLoanTotal(fp, bonded)
 
     StepOutput(
       ioFirms = ioFirms,
@@ -777,6 +840,13 @@ object FirmEconomics:
       sumCapex = flows.capex,
       sumTechImp = flows.techImp,
       sumNewLoans = bonded.sumNewLoans,
+      automationTechCapex = flows.capex,
+      automationTechImports = flows.techImp,
+      automationTechLoans = automationTechLoans,
+      automationUpgradeFailures = fp.outcomes.count(_.automationUpgradeFailure),
+      automationAiDebtTrap = fp.outcomes.count(_.automationAiDebtTrap),
+      automationNewFullAi = fp.outcomes.count(_.automationNewFullAi),
+      automationNewHybrid = fp.outcomes.count(_.automationNewHybrid),
       sumEquityIssuance = flows.equityIssuance,
       sumGrossInvestment = flows.grossInvestment,
       sumBondIssuance = flows.bondIssuance,
@@ -811,6 +881,20 @@ object FirmEconomics:
       decisionTraces = decisionTraces,
       ledgerFinancialState = ledgerAfterFirmStocks,
     )
+
+  private def automationTechLoanTotal(fp: FirmProcessingResult, bonded: BondAbsorptionResult): PLN =
+    fp.outcomes.iterator
+      .map: outcome =>
+        automationTechLoanAmount(
+          techBankLoan = outcome.techBankLoan,
+          techBondAmt = outcome.techBondAmt,
+          bondAmt = outcome.bondAmt,
+          revertedBond = bonded.bondReversionByFirm.getOrElse(outcome.firm.id, PLN.Zero),
+        )
+      .sumPln
+
+  private[amorfati] def automationTechLoanAmount(techBankLoan: PLN, techBondAmt: PLN, bondAmt: PLN, revertedBond: PLN): PLN =
+    techBankLoan + proratedPln(revertedBond, techBondAmt, bondAmt)
 
   private def finalizedDecisionTraces(
       fp: FirmProcessingResult,

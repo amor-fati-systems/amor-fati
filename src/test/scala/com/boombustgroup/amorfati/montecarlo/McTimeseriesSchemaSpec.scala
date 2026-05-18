@@ -1,6 +1,7 @@
 package com.boombustgroup.amorfati.montecarlo
 
 import com.boombustgroup.amorfati.FixedPointSpecSupport.*
+import com.boombustgroup.amorfati.agents.{Firm, TechState}
 import com.boombustgroup.amorfati.config.{HousingConfig, SimParams}
 import com.boombustgroup.amorfati.engine.SimulationMonth.ExecutionMonth
 import com.boombustgroup.amorfati.engine.World
@@ -39,6 +40,25 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     "AnnualizedGdpProxy",
     "AutoRatio",
     "HybridRatio",
+    "Automation_TechCapex",
+    "Automation_TechImports",
+    "Automation_TechLoans",
+    "Automation_UpgradeFailures",
+    "Automation_AiDebtTrap",
+    "Automation_NewFullAi",
+    "Automation_NewHybrid",
+    "Adoption_MicroShare",
+    "Adoption_SmallShare",
+    "Adoption_MediumShare",
+    "Adoption_LargeShare",
+    "Adoption_CashQ1",
+    "Adoption_CashQ2",
+    "Adoption_CashQ3",
+    "Adoption_CashQ4",
+    "Adoption_DebtQ1",
+    "Adoption_DebtQ2",
+    "Adoption_DebtQ3",
+    "Adoption_DebtQ4",
     "BPO_Auto",
     "Manuf_Auto",
     "Retail_Auto",
@@ -293,6 +313,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
   private def computeRow(
       world: World,
       ledgerFinancialState: LedgerFinancialState = initState.ledgerFinancialState,
+      firms: Vector[Firm.State] = init.firms,
       preserveSectorOutputs: Boolean = false,
   ): Array[MetricValue] =
     val effectiveWorld =
@@ -301,7 +322,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     McTimeseriesSchema.compute(
       executionMonth = ExecutionMonth.First,
       world = effectiveWorld,
-      firms = init.firms,
+      firms = firms,
       households = init.households,
       banks = init.banks,
       householdAggregates = init.householdAggregates,
@@ -316,8 +337,11 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
   private def polandScale(value: PLN): MetricValue =
     MetricValue.fromRaw((value / summon[SimParams].gdpRatio.toMultiplier).toLong)
 
+  private def shareMetric(numerator: Int, denominator: Int): MetricValue =
+    MetricValue.fromRaw(Share.fraction(numerator, denominator).toLong)
+
   "McTimeseriesSchema" should "expose the stable schema contract" in {
-    McTimeseriesSchema.nCols shouldBe 269
+    McTimeseriesSchema.nCols shouldBe 288
     McTimeseriesSchema.colNames.toVector shouldBe expectedColNames
   }
 
@@ -355,6 +379,76 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     valueAt(row, "Health_Output") shouldBe polandScale(PLN(40))
     valueAt(row, "Public_Output") shouldBe polandScale(PLN(50))
     valueAt(row, "Agri_Output") shouldBe polandScale(PLN(60))
+  }
+
+  it should "emit generic automation financing and transition diagnostics" in {
+    val world = init.world.copy(
+      flows = init.world.flows.copy(
+        sectorOutputs = Vector.fill(summon[SimParams].sectorDefs.length)(PLN.Zero),
+        automationTechCapex = PLN(10),
+        automationTechImports = PLN(3),
+        automationTechLoans = PLN(7),
+        automationUpgradeFailures = 2,
+        automationAiDebtTrap = 1,
+        automationNewFullAi = 4,
+        automationNewHybrid = 5,
+      ),
+    )
+    val row   = computeRow(world)
+
+    valueAt(row, "Automation_TechCapex") shouldBe polandScale(PLN(10))
+    valueAt(row, "Automation_TechImports") shouldBe polandScale(PLN(3))
+    valueAt(row, "Automation_TechLoans") shouldBe polandScale(PLN(7))
+    valueAt(row, "Automation_UpgradeFailures") shouldBe MetricValue.fromInt(2)
+    valueAt(row, "Automation_AiDebtTrap") shouldBe MetricValue.fromInt(1)
+    valueAt(row, "Automation_NewFullAi") shouldBe MetricValue.fromInt(4)
+    valueAt(row, "Automation_NewHybrid") shouldBe MetricValue.fromInt(5)
+  }
+
+  it should "emit adoption heterogeneity by firm size and cash/debt quartile" in {
+    val baseFirm                                                 = init.firms.head
+    def firm(id: Int, tech: TechState, workers: Int): Firm.State =
+      baseFirm.copy(id = FirmId(id), tech = tech, initialSize = workers)
+
+    val firms  = Vector(
+      firm(0, TechState.Traditional(5), 5),
+      firm(1, TechState.Hybrid(5, Multiplier.One), 5),
+      firm(2, TechState.Traditional(20), 20),
+      firm(3, TechState.Hybrid(20, Multiplier.One), 20),
+      firm(4, TechState.Hybrid(100, Multiplier.One), 100),
+      firm(5, TechState.Hybrid(100, Multiplier.One), 100),
+      firm(6, TechState.Traditional(300), 300),
+      firm(7, TechState.Hybrid(300, Multiplier.One), 300),
+    )
+    val ledger = initState.ledgerFinancialState.copy(
+      firms = Vector(
+        LedgerFinancialState.FirmBalances(cash = PLN(10), firmLoan = PLN(80), corpBond = PLN.Zero, equity = PLN.Zero),
+        LedgerFinancialState.FirmBalances(cash = PLN(20), firmLoan = PLN(70), corpBond = PLN.Zero, equity = PLN.Zero),
+        LedgerFinancialState.FirmBalances(cash = PLN(30), firmLoan = PLN(60), corpBond = PLN.Zero, equity = PLN.Zero),
+        LedgerFinancialState.FirmBalances(cash = PLN(40), firmLoan = PLN(50), corpBond = PLN.Zero, equity = PLN.Zero),
+        LedgerFinancialState.FirmBalances(cash = PLN(50), firmLoan = PLN(40), corpBond = PLN.Zero, equity = PLN.Zero),
+        LedgerFinancialState.FirmBalances(cash = PLN(60), firmLoan = PLN(30), corpBond = PLN.Zero, equity = PLN.Zero),
+        LedgerFinancialState.FirmBalances(cash = PLN(70), firmLoan = PLN(20), corpBond = PLN.Zero, equity = PLN.Zero),
+        LedgerFinancialState.FirmBalances(cash = PLN(80), firmLoan = PLN(10), corpBond = PLN.Zero, equity = PLN.Zero),
+      ),
+    )
+    val world  = init.world.copy(
+      flows = init.world.flows.copy(sectorOutputs = Vector.fill(summon[SimParams].sectorDefs.length)(PLN.Zero)),
+    )
+    val row    = computeRow(world, ledgerFinancialState = ledger, firms = firms)
+
+    valueAt(row, "Adoption_MicroShare") shouldBe shareMetric(1, 2)
+    valueAt(row, "Adoption_SmallShare") shouldBe shareMetric(1, 2)
+    valueAt(row, "Adoption_MediumShare") shouldBe shareMetric(2, 2)
+    valueAt(row, "Adoption_LargeShare") shouldBe shareMetric(1, 2)
+    valueAt(row, "Adoption_CashQ1") shouldBe shareMetric(1, 2)
+    valueAt(row, "Adoption_CashQ2") shouldBe shareMetric(1, 2)
+    valueAt(row, "Adoption_CashQ3") shouldBe shareMetric(2, 2)
+    valueAt(row, "Adoption_CashQ4") shouldBe shareMetric(1, 2)
+    valueAt(row, "Adoption_DebtQ1") shouldBe shareMetric(1, 2)
+    valueAt(row, "Adoption_DebtQ2") shouldBe shareMetric(2, 2)
+    valueAt(row, "Adoption_DebtQ3") shouldBe shareMetric(1, 2)
+    valueAt(row, "Adoption_DebtQ4") shouldBe shareMetric(1, 2)
   }
 
   it should "emit validation-ready wage and current-account diagnostics" in {
