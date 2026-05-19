@@ -480,7 +480,7 @@ object HouseholdCreditStressCalibrationExport:
 
   private[diagnostics] def renderReport(config: Config, summary: Vector[SummaryMetric]): String =
     val command     =
-      s"""sbt "householdCreditStressCalibration --seeds ${config.seeds} --months ${config.months} --out ${config.out} --run-id ${config.runId}""""
+      s"""sbt "householdCreditStressCalibration --seed-start ${config.seedStart} --seeds ${config.seeds} --months ${config.months} --out ${config.out} --run-id ${config.runId}""""
     val targetRows  = Targets.map: target =>
       markdownRow(
         Vector(

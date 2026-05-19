@@ -57,12 +57,14 @@ class HouseholdCreditStressCalibrationExportSpec extends AnyFlatSpec with Matche
     val summary = summarize(Config(runId = "stress-spec", seeds = 2, months = 60), rows)
     val seedCsv = renderSeedMetricsCsv(rows)
     val sumCsv  = renderSummaryCsv(summary)
+    val report  = renderReport(Config(seedStart = 2L, runId = "stress-spec", seeds = 2, months = 60), summary)
 
     seedCsv.linesIterator.next() shouldBe "RunId;Seed;Months;Metric;Label;Value;Unit;GuardrailClass;Vintage;Lower;Upper;Status;SourceNote;Interpretation"
     seedCsv should include("ShortfallToIncome")
     seedCsv should include("2026-04-30 model-start baseline")
     sumCsv.linesIterator.next() shouldBe "RunId;Months;Seeds;Metric;Label;Mean;Min;Max;Unit;GuardrailClass;Vintage;Lower;Upper;Status;SourceNote;Interpretation"
     sumCsv should include("SOFT_CALIBRATION_WARNING")
+    report should include("--seed-start 2")
   }
 
 end HouseholdCreditStressCalibrationExportSpec
