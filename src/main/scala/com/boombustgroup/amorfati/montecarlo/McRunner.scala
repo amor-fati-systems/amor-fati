@@ -50,6 +50,7 @@ object McRunner:
       _         <- McTerminalSummaryCsv.writeAll(rc, outputDir, summaries)
       _         <- McFirmSnapshotCsv.combineSeedFiles(rc, outputDir)
       _         <- McHouseholdSnapshotCsv.combineSeedFiles(rc, outputDir)
+      _         <- McHouseholdShortfallCohortCsv.combineSeedFiles(rc, outputDir)
       _         <- McFirmDecisionTraceCsv.combineSeedFiles(rc, outputDir)
       _         <- McRunnerConsole.emit(Event.BlankLine)
       _         <- McRunnerConsole.emitAll(McOutputFiles.savedFiles(outputDir, rc).map(file => Event.SavedFile(file.getPath)))
@@ -176,9 +177,20 @@ object McRunner:
           state = _.householdSnapshotState,
           monthlyFlows = _.householdMonthlyFlows,
         )
+      hhCohorts   =
+        McHouseholdShortfallCohortCsv.tapSeedCohorts(
+          seed = seed,
+          rc = rc,
+          outputDir = outputDir,
+          rows = hhSnapshots,
+        )(
+          executionMonth = _.executionMonth,
+          state = _.householdSnapshotState,
+          monthlyFlows = _.householdMonthlyFlows,
+        )
       terminal   <- McTimeseriesCsv.writeStreaming(
         McOutputFiles.seedFile(outputDir, seed, rc),
-        hhSnapshots
+        hhCohorts
           .map(snapshot => SeedTerminalSnapshot(snapshot.executionMonth, snapshot.monthData, snapshot.state)),
         McTimeseriesSchema.csvSchema.contramap(snapshot => (snapshot.executionMonth, snapshot.lastMonthData)),
         SimError.RuntimeFailure(

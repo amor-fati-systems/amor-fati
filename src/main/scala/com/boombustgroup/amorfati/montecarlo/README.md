@@ -18,6 +18,8 @@ pipeline has no dependency on this package.
 | `McHouseholdSnapshotSelection.scala` | `McHouseholdSnapshotSelection` | Household snapshot row selector: all, negative deposits, liquidity shortfall, or either condition |
 | `McHouseholdSnapshotSchema.scala` | `McHouseholdSnapshotSchema` | Generic per-household liquidity snapshot CSV header and row rendering |
 | `McHouseholdSnapshotCsv.scala` | `McHouseholdSnapshotCsv` | Optional per-seed household snapshot chunk writer and combined CSV finalizer |
+| `McHouseholdShortfallCohortSchema.scala` | `McHouseholdShortfallCohortSchema` | Household shortfall cohort aggregation schema for status/region/contract/burden diagnostics |
+| `McHouseholdShortfallCohortCsv.scala` | `McHouseholdShortfallCohortCsv` | Optional per-seed household shortfall cohort writer and combined CSV finalizer |
 | `McFirmDecisionTraceSelection.scala` | `McFirmDecisionTraceSelection` | Disabled/all/explicit-id/first-N firm decision trace selector |
 | `McFirmDecisionTraceSchema.scala` | `McFirmDecisionTraceSchema` | Generic per-firm decision trace CSV header and row rendering |
 | `McFirmDecisionTraceCsv.scala` | `McFirmDecisionTraceCsv` | Optional per-seed firm decision trace chunk writer and combined CSV finalizer |
@@ -57,6 +59,7 @@ Main ──→ McRunner.runZIO(rc)
            ├── McTerminalSummaryCsv.writeAll(hh.csv, banks.csv, firms.csv)
            ├── optional McFirmSnapshotCsv.combineSeedFiles(firm_snapshots.csv)
            ├── optional McHouseholdSnapshotCsv.combineSeedFiles(household_snapshots.csv)
+           ├── optional McHouseholdShortfallCohortCsv.combineSeedFiles(household_shortfall_cohorts.csv)
            ├── optional McFirmDecisionTraceCsv.combineSeedFiles(firm_decision_trace.csv)
            └── McRunnerConsole.emit(...)
 ```
@@ -142,10 +145,11 @@ the household budget has closed. It is separate from
 consumer-loan stock origination used by SFC identities.
 
 Household micro snapshots are disabled by default. When enabled, the runner
-writes one combined file:
+writes two combined files:
 
 ```text
 mc/<prefix>_<run-id>_<months>m_household_snapshots.csv
+mc/<prefix>_<run-id>_<months>m_household_shortfall_cohorts.csv
 ```
 
 The schedule flag mirrors firm snapshots:
@@ -185,8 +189,18 @@ Rows include run id, seed, month, household id, status, region, contract type,
 bank id, wage, rent, MPC, skill, health penalty, financial distress months,
 ledger-owned financial stocks, positive-deposit and implicit overdraft
 decompositions, net liquid and financial positions, opening demand deposit,
-opening/closing consumer-loan stock, and monthly consumer-credit flow
-components.
+opening/closing consumer-loan stock, monthly income, consumption, rent, mortgage
+debt service, and monthly consumer-credit flow components.
+
+The companion `household_shortfall_cohorts.csv` is always computed from the full
+household snapshot boundary, regardless of the micro row selector. This keeps
+cohort shares meaningful even when `--household-snapshot-selector shortfall`
+writes only shortfalling micro rows. Cohort dimensions include `All`, `Status`,
+`Region`, `ContractType`, `IncomeDecile`, `RentBurden`,
+`MortgageDebtServiceBurden`, `ConsumerDebtServiceBurden`, and
+`ClosingConsumerLoanBurden`. The file reports counts, shortfall counts,
+shortfall shares, monthly flow sums, and burden ratios needed to diagnose which
+household cohorts drive `HouseholdLiquidity_ShortfallFinancing`.
 
 ## Firm Snapshots
 
