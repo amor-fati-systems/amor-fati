@@ -99,6 +99,19 @@ class BankingEconomicsSpec extends AnyFlatSpec with Matchers:
     LedgerFinancialState.bankMortgageStock(result.ledgerFinancialState) shouldBe LedgerFinancialState.householdMortgageStock(result.ledgerFinancialState)
   }
 
+  it should "repair stale household routing away from already failed banks before deposit mobility" in {
+    val prepared    = preparedBankingStep()
+    val failedBanks = prepared.banks.updated(
+      0,
+      prepared.banks.head.copy(status = Banking.BankStatus.Failed(ExecutionMonth.First), capital = PLN.Zero),
+    )
+
+    val result = prepared.run(banksOverride = failedBanks)
+
+    result.banks.head.failed shouldBe true
+    result.reassignedHouseholds.exists(_.bankId == BankId(0)) shouldBe false
+  }
+
   it should "realign consumer-loan book distribution to household bank routing without changing the aggregate stock" in {
     val households        = Vector(
       TestHouseholdState(id = HhId(0), skill = Share.decimal(7, 1), mpc = Share.decimal(8, 1), status = HhStatus.Unemployed(0), bankId = BankId(0)),
