@@ -1,4 +1,4 @@
-<!-- schema=sfc-matrix-v1 seed=1 month=12 commit=89528f07 sfc=pass matrix=pass output=symbolic-mapping -->
+<!-- schema=sfc-matrix-v1 seed=1 month=12 commit=cd1eb5e2 sfc=pass matrix=pass output=symbolic-mapping -->
 
 # Symbolic Matrix Mapping
 
@@ -12,8 +12,8 @@
 | symbolic-bsm | Government bonds | +B_b, -B_g, +B_{nbp}, +B_{ins}, +B_{fnd}, +B_{row}, 0 | Government bonds (GovBondHTM)<br>Government bonds AFS (GovBondAFS) |  |  |
 | symbolic-bsm | Quasi-fiscal bonds | +Q_b, +Q_{nbp}, -Q, 0 | Quasi-fiscal bonds (QuasiFiscalBond) |  |  |
 | symbolic-bsm | Corporate bonds | -B_c, +B_{cb}, +B_{ci}, +B_{cf}, 0 | Corporate bonds (CorpBond) |  |  |
-| symbolic-bsm | Equity | +E_h, -E, +E_i, +E_f, +E_{row}, 0 | Equity (Equity) |  | Foreign equity ownership is represented as a holder-resolved persisted stock; holder-aware runtime equity revaluation evidence records supported holder stock deltas. |
-| symbolic-bsm | Insurance reserves | +IR_h, -IR, 0 | Life insurance reserves (LifeReserve)<br>Non-life insurance reserves (NonLifeReserve) |  |  |
+| symbolic-bsm | Equity | +E_h, -E, +E_i, +E_f, +E_{row}, 0 | Equity (Equity) |  | Foreign equity ownership is represented as a holder-resolved persisted stock; remaining residuals are equity valuation and coverage evidence. |
+| symbolic-bsm | Insurance reserves | +IR_h, -IR, 0 | Life insurance reserves (LifeReserve)<br>Non-life insurance reserves (NonLifeReserve) |  | Household insurance-reserve assets and matching insurance technical-reserve liabilities are persisted. |
 | symbolic-bsm | Fund units | +U_h, -U, 0 | TFI units (TfiUnit) |  |  |
 | symbolic-bsm | Foreign assets | +FA, -FA, 0 | Foreign assets (ForeignAsset) |  |  |
 | symbolic-bsm | Net worth | -NW_h, -NW_f, -NW_b, -NW_g, -NW_{nbp}, -NW_{ins}, -NW_{fnd}, -NW_{row}, 0 |  |  | Column-balancing row used for the paper-level presentation; it is not emitted as a runtime asset. |
