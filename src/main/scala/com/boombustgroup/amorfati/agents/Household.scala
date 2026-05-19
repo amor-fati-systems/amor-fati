@@ -225,6 +225,10 @@ object Household:
       householdId: HhId,                // household identifier for joining with post-month state
       openingDemandDeposit: PLN,        // opening liquid deposit before the household month step
       openingConsumerLoan: PLN,         // opening unsecured consumer-loan principal
+      monthlyIncome: PLN,               // net monthly household income after PIT and transfers
+      consumption: PLN,                 // monthly household goods consumption
+      rent: PLN,                        // monthly rent paid by the household
+      mortgageDebtService: PLN,         // monthly secured mortgage debt service
       consumerApprovedOrigination: PLN, // underwritten consumer credit originated by the DTI rule
       liquidityShortfallFinancing: PLN, // residual settlement that prevents negative closing deposits
       consumerDebtService: PLN,         // monthly unsecured consumer-credit debt service
@@ -239,6 +243,10 @@ object Household:
         householdId = householdId,
         openingDemandDeposit = stocks.demandDeposit,
         openingConsumerLoan = stocks.consumerLoan,
+        monthlyIncome = PLN.Zero,
+        consumption = PLN.Zero,
+        rent = PLN.Zero,
+        mortgageDebtService = PLN.Zero,
         consumerApprovedOrigination = PLN.Zero,
         liquidityShortfallFinancing = PLN.Zero,
         consumerDebtService = PLN.Zero,
@@ -951,6 +959,10 @@ object Household:
             householdId = hh.id,
             openingDemandDeposit = stocks.demandDeposit,
             openingConsumerLoan = stocks.consumerLoan,
+            monthlyIncome = result.income,
+            consumption = result.consumption,
+            rent = result.rent,
+            mortgageDebtService = result.debtService,
             consumerApprovedOrigination = result.credit.newLoan,
             liquidityShortfallFinancing = result.credit.liquidityShortfallFinancing,
             consumerDebtService = result.credit.debtService,

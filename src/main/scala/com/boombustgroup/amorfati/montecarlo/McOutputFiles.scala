@@ -33,6 +33,9 @@ private[montecarlo] object McOutputFiles:
   def householdSnapshotFile(outputDir: File, rc: McRunConfig): File =
     new File(outputDir, s"${filePrefix(rc)}_household_snapshots.csv")
 
+  def householdShortfallCohortFile(outputDir: File, rc: McRunConfig): File =
+    new File(outputDir, s"${filePrefix(rc)}_household_shortfall_cohorts.csv")
+
   def firmDecisionTraceFile(outputDir: File, rc: McRunConfig): File =
     new File(outputDir, s"${filePrefix(rc)}_firm_decision_trace.csv")
 
@@ -44,7 +47,7 @@ private[montecarlo] object McOutputFiles:
       if rc.firmSnapshotSchedule.enabled then baselineFiles :+ firmSnapshotFile(outputDir, rc)
       else baselineFiles
     val withHouseholdSnapshots =
-      if rc.householdSnapshotSchedule.enabled then withSnapshots :+ householdSnapshotFile(outputDir, rc)
+      if rc.householdSnapshotSchedule.enabled then withSnapshots :+ householdSnapshotFile(outputDir, rc) :+ householdShortfallCohortFile(outputDir, rc)
       else withSnapshots
     if rc.firmDecisionTraceSelection.enabled then withHouseholdSnapshots :+ firmDecisionTraceFile(outputDir, rc)
     else withHouseholdSnapshots

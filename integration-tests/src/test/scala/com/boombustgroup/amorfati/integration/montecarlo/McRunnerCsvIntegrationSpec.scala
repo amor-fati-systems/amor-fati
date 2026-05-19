@@ -36,7 +36,9 @@ class McRunnerCsvIntegrationSpec extends AnyFlatSpec with Matchers:
   private val ExpectedFirmSnapshotHeader =
     "RunId;Seed;Month;FirmId;Sector;Region;SizeClass;Workers;TechState;BankruptcyReason;DigitalReadiness;Cash;FirmLoan;Equity;BankId;RiskProfile;InitialSize;CapitalStock;Inventory;GreenCapital;ForeignOwned;StateOwned"
   private val ExpectedHouseholdSnapshotHeader =
-    "RunId;Seed;Month;HouseholdId;Status;Region;ContractType;BankId;Wage;Rent;MPC;Skill;HealthPenalty;FinancialDistressMonths;DemandDeposit;MortgageLoan;ConsumerLoan;Equity;PositiveDeposit;ImplicitOverdraft;NetLiquidPosition;NetFinancialPosition;OpeningDemandDeposit;OpeningConsumerLoan;ConsumerApprovedOrigination;LiquidityShortfallFinancing;ConsumerDebtService;ConsumerDefault;ConsumerPrincipal;ClosingConsumerLoan"
+    "RunId;Seed;Month;HouseholdId;Status;Region;ContractType;BankId;Wage;Rent;MPC;Skill;HealthPenalty;FinancialDistressMonths;DemandDeposit;MortgageLoan;ConsumerLoan;Equity;PositiveDeposit;ImplicitOverdraft;NetLiquidPosition;NetFinancialPosition;OpeningDemandDeposit;OpeningConsumerLoan;MonthlyIncome;Consumption;RentPaid;MortgageDebtService;ConsumerApprovedOrigination;LiquidityShortfallFinancing;ConsumerDebtService;ConsumerDefault;ConsumerPrincipal;ClosingConsumerLoan"
+  private val ExpectedHouseholdShortfallCohortHeader =
+    "RunId;Seed;Month;Dimension;Cohort;HouseholdCount;ShortfallHouseholdCount;ShortfallHouseholdShare;LiquidityShortfallFinancing;ShortfallShareOfMonth;ConsumerApprovedOrigination;ConsumerDebtService;ConsumerDefault;ConsumerPrincipal;OpeningDemandDeposit;ClosingDemandDeposit;OpeningConsumerLoan;ClosingConsumerLoan;MonthlyIncome;Consumption;Rent;MortgageDebtService;RentToIncome;MortgageDebtServiceToIncome;ConsumerDebtServiceToIncome;ClosingConsumerLoanToIncome"
 
   private def rc =
     McRunConfig(
@@ -285,6 +287,26 @@ class McRunnerCsvIntegrationSpec extends AnyFlatSpec with Matchers:
         fields.length.shouldBe(ExpectedHouseholdSnapshotHeader.split(';').length)
         fields(hhIdIdx).toInt should be >= 0
         BigDecimal(fields(depositIdx)) should be >= BigDecimal(0)
+
+      val cohortLines = readLines(outputDir.resolve(s"${filePrefix(snapshotRc)}_household_shortfall_cohorts.csv"))
+      val cohortHeader = cohortLines.head.split(';').toVector
+      cohortLines.head.shouldBe(ExpectedHouseholdShortfallCohortHeader)
+      cohortLines.tail should not be empty
+
+      val dimensionIdx = cohortHeader.indexOf("Dimension")
+      val cohortIdx = cohortHeader.indexOf("Cohort")
+      val countIdx = cohortHeader.indexOf("HouseholdCount")
+      val shareIdx = cohortHeader.indexOf("ShortfallShareOfMonth")
+      dimensionIdx should be >= 0
+      cohortIdx should be >= 0
+      countIdx should be >= 0
+      shareIdx should be >= 0
+
+      val allRows = cohortLines.tail.map(_.split(';').toVector).filter(row => row(dimensionIdx) == "All")
+      allRows.map(row => row(cohortIdx)).toSet.shouldBe(Set("All"))
+      allRows.foreach: row =>
+        row(countIdx).toInt should be > 0
+        BigDecimal(row(shareIdx)) should be >= BigDecimal(0)
     }
   }
 
