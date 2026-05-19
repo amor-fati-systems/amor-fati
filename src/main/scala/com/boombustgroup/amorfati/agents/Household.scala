@@ -33,10 +33,10 @@ case class PerBankFlow(
     debtService: PLN,                 // total mortgage/secured debt service
     depositInterest: PLN,             // total deposit interest paid
     consumerDebtService: PLN,         // consumer (unsecured) debt service
-    consumerOrigination: PLN,         // total consumer-loan stock origination
+    consumerOrigination: PLN,         // gross underwritten loan plus same-month bridge origination
     consumerApprovedOrigination: PLN, // underwritten consumer credit originated by the DTI rule
-    liquidityShortfallFinancing: PLN, // residual settlement that prevents negative demand deposits
-    consumerDefault: PLN,             // consumer loan defaults (bankruptcy write-offs)
+    liquidityShortfallFinancing: PLN, // same-month bridge/write-off preventing negative deposits
+    consumerDefault: PLN,             // consumer defaults plus same-month bridge charge-offs
     consumerPrincipal: PLN,           // consumer loan principal repaid
 )
 
@@ -134,14 +134,15 @@ object Household:
   )
 
   /** Diagnostic attribution of residual household liquidity settlement.
-    * Components sum to `HouseholdLiquidity_ShortfallFinancing`.
+    * Components sum to `HouseholdLiquidity_ShortfallFinancing`, which is
+    * charged off in the same month instead of becoming ordinary consumer debt.
     */
   case class LiquidityShortfallComponents(
-      consumptionShortfall: PLN, // residual settlement attributable to modeled consumption outflow
-      rentArrears: PLN,          // residual settlement attributable to rent/housing payment
-      mortgageArrears: PLN,      // residual settlement attributable to secured mortgage debt service
-      consumerDebtArrears: PLN,  // residual settlement attributable to unsecured consumer debt service
-      temporaryOverdraft: PLN,   // residual settlement for other current-month liquidity gaps
+      consumptionShortfall: PLN, // same-month bridge/write-off attributable to modeled consumption outflow
+      rentArrears: PLN,          // same-month bridge/write-off attributable to rent/housing payment
+      mortgageArrears: PLN,      // same-month bridge/write-off attributable to secured mortgage debt service
+      consumerDebtArrears: PLN,  // same-month bridge/write-off attributable to unsecured consumer debt service
+      temporaryOverdraft: PLN,   // same-month bridge/write-off for other current-month liquidity gaps
   ):
     def total: PLN =
       consumptionShortfall + rentArrears + mortgageArrears + consumerDebtArrears + temporaryOverdraft
@@ -197,10 +198,10 @@ object Household:
       totalPit: PLN,                             // aggregate PIT paid
       totalSocialTransfers: PLN,                 // aggregate 800+ social transfers
       totalConsumerDebtService: PLN,             // aggregate consumer debt service
-      totalConsumerOrigination: PLN,             // aggregate consumer-loan stock origination
+      totalConsumerOrigination: PLN,             // aggregate gross consumer-loan and bridge origination
       totalConsumerApprovedOrigination: PLN,     // aggregate underwritten consumer-credit origination
-      totalLiquidityShortfallFinancing: PLN,     // aggregate residual liquidity shortfall financing
-      totalConsumerDefault: PLN,                 // aggregate consumer loan defaults
+      totalLiquidityShortfallFinancing: PLN,     // aggregate same-month bridge/write-off for liquidity gaps
+      totalConsumerDefault: PLN,                 // aggregate consumer defaults plus bridge charge-offs
       totalConsumerPrincipal: PLN,               // aggregate consumer loan principal repaid
       totalConsumptionShortfall: PLN = PLN.Zero, // shortfall component attributed to consumption
       totalRentArrears: PLN = PLN.Zero,          // shortfall component attributed to rent
@@ -269,9 +270,9 @@ object Household:
       rent: PLN,                            // monthly rent paid by the household
       mortgageDebtService: PLN,             // monthly secured mortgage debt service
       consumerApprovedOrigination: PLN,     // underwritten consumer credit originated by the DTI rule
-      liquidityShortfallFinancing: PLN,     // residual settlement that prevents negative closing deposits
+      liquidityShortfallFinancing: PLN,     // same-month bridge/write-off preventing negative closing deposits
       consumerDebtService: PLN,             // monthly unsecured consumer-credit debt service
-      consumerDefault: PLN,                 // gross consumer-loan default this month
+      consumerDefault: PLN,                 // gross consumer default plus bridge charge-off this month
       consumerPrincipal: PLN,               // principal component of consumer debt service
       closingConsumerLoan: PLN,             // closing unsecured consumer-loan principal
       consumptionShortfall: PLN = PLN.Zero, // shortfall attributed to modeled consumption outflow
@@ -589,12 +590,13 @@ object Household:
   private case class CreditResult(
       debtService: PLN,                                 // total consumer debt service (amortization + interest)
       principal: PLN,                                   // principal component of debt service
-      newLoan: PLN,                                     // underwritten new consumer loan, excluding residual settlement
-      liquidityShortfall: LiquidityShortfallComponents, // residual settlement split by diagnostic source
-      defaultAmt: PLN,                                  // amount defaulted on bankruptcy (0 if not bankrupt)
+      newLoan: PLN,                                     // underwritten new consumer loan, excluding same-month liquidity bridge
+      liquidityShortfall: LiquidityShortfallComponents, // same-month bridge/write-off split by diagnostic source
+      defaultAmt: PLN,                                  // same-month bridge charge-off plus bankruptcy default amount
       updatedDebt: PLN,                                 // outstanding consumer debt after this month's flows
   ):
     def liquidityShortfallFinancing: PLN = liquidityShortfall.total
+    // Gross flow preserves the SFC bridge leg; defaultAmt offsets bridge stock in the same month.
     def totalOrigination: PLN            = newLoan + liquidityShortfallFinancing
 
   /** Per-HH monthly result — updated state + all flow variables for
@@ -879,7 +881,7 @@ object Household:
 
   /** Diagnostic-only attribution: outflows consume available cash in a stable
     * audit priority, and any unfunded tail becomes the component split of the
-    * residual settlement.
+    * same-month liquidity bridge/default diagnostic.
     */
   private def attributeLiquidityShortfall(f: MonthlyFlows, rawDemandDeposit: PLN, temporaryOutflow: PLN): LiquidityShortfallComponents =
     if rawDemandDeposit >= PLN.Zero then LiquidityShortfallComponents.Zero
@@ -922,9 +924,10 @@ object Household:
       )
       (
         PLN.Zero,
+        // Residual gaps are explicit same-month bridge defaults, not new ordinary consumer-loan stock.
         credit.copy(
           liquidityShortfall = credit.liquidityShortfall + components,
-          updatedDebt = credit.updatedDebt + shortfall,
+          defaultAmt = credit.defaultAmt + shortfall,
         ),
       )
 
@@ -939,7 +942,7 @@ object Household:
     val _                                   = distressMonths
     val liquidityShortfall                  = attributeLiquidityShortfall(f, f.newSavings, temporaryOutflow = PLN.Zero)
     val (finalDemandDeposit, settledCredit) = settleLiquidityShortfall(f.newSavings, f.credit, liquidityShortfall)
-    val ccDefaultAmt                        = settledCredit.updatedDebt
+    val ccDefaultAmt                        = settledCredit.defaultAmt + settledCredit.updatedDebt
     val creditWithDef                       = settledCredit.copy(defaultAmt = ccDefaultAmt, updatedDebt = PLN.Zero)
     val financial                           = FinancialStocks(
       demandDeposit = finalDemandDeposit,

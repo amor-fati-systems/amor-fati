@@ -1,7 +1,7 @@
 package com.boombustgroup.amorfati.montecarlo
 
 import com.boombustgroup.amorfati.FixedPointSpecSupport.*
-import com.boombustgroup.amorfati.agents.{Firm, TechState}
+import com.boombustgroup.amorfati.agents.{Firm, Household, TechState}
 import com.boombustgroup.amorfati.config.{HousingConfig, SimParams}
 import com.boombustgroup.amorfati.engine.SimulationMonth.ExecutionMonth
 import com.boombustgroup.amorfati.engine.World
@@ -169,6 +169,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     "ConsumerOrigination",
     "ConsumerApprovedOrigination",
     "ConsumerDebtService",
+    "ConsumerDefault",
     "TotalCreditStock",
     "BankFirmLoansToGdp",
     "ConsumerLoansToGdp",
@@ -336,6 +337,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
       world: World,
       ledgerFinancialState: LedgerFinancialState = initState.ledgerFinancialState,
       firms: Vector[Firm.State] = init.firms,
+      householdAggregates: Household.Aggregates = init.householdAggregates,
       preserveSectorOutputs: Boolean = false,
   ): Array[MetricValue] =
     val effectiveWorld =
@@ -347,7 +349,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
       firms = firms,
       households = init.households,
       banks = init.banks,
-      householdAggregates = init.householdAggregates,
+      householdAggregates = householdAggregates,
       ledgerFinancialState = ledgerFinancialState,
     )
 
@@ -363,7 +365,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     MetricValue.fromRaw(Share.fraction(numerator, denominator).toLong)
 
   "McTimeseriesSchema" should "expose the stable schema contract" in {
-    McTimeseriesSchema.nCols shouldBe 310
+    McTimeseriesSchema.nCols shouldBe 311
     McTimeseriesSchema.colNames.toVector shouldBe expectedColNames
   }
 
@@ -549,10 +551,12 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
         sectorOutputs = Vector.fill(summon[SimParams].sectorDefs.length)(PLN.Zero),
       ),
     )
-    val row           = computeRow(world, ledger)
+    val hhAgg         = init.householdAggregates.copy(totalConsumerDefault = PLN(7))
+    val row           = computeRow(world, ledger, householdAggregates = hhAgg)
 
     valueAt(row, "BankFirmLoans") shouldBe polandScale(bankFirmLoans)
     valueAt(row, "ConsumerLoans") shouldBe polandScale(consumerLoans)
+    valueAt(row, "ConsumerDefault") shouldBe polandScale(PLN(7))
     valueAt(row, "NbfiLoanStock") shouldBe polandScale(nbfiLoans)
     valueAt(row, "TotalCreditStock") shouldBe polandScale(totalCredit)
     valueAt(row, "BankFirmLoansToGdp") shouldBe MetricValue.fromRaw((bankFirmLoans / annualGdp).toLong)

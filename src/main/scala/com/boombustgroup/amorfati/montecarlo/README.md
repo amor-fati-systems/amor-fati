@@ -132,8 +132,18 @@ HouseholdLiquidity_DepositP95
 HouseholdLiquidity_DepositP99
 ```
 
-The monthly timeseries additionally includes residual shortfall settlement and
-its component attribution:
+The monthly timeseries consumer-credit block relevant to this reconciliation is:
+
+```text
+ConsumerOrigination
+ConsumerApprovedOrigination
+ConsumerDebtService
+ConsumerDefault
+```
+
+The timeseries also includes residual shortfall settlement and its component
+attribution. `ConsumerDefault` is the matching same-month default/write-off
+diagnostic for the bridge component:
 
 ```text
 HouseholdLiquidity_ShortfallFinancing
@@ -150,17 +160,23 @@ HouseholdLiquidity_TemporaryOverdraft
 therefore indicates legacy or fixture input rows, while the columns remain useful
 as an invariant guard without writing household-level microdata by default.
 
-`HouseholdLiquidity_ShortfallFinancing` is the residual liquidity settlement
-routed into consumer-loan stock after the household budget has closed. It is
-separate from `ConsumerApprovedOrigination`, while `ConsumerOrigination` remains
-the total consumer-loan stock origination used by SFC identities.
+`HouseholdLiquidity_ShortfallFinancing` is the residual liquidity bridge needed
+to keep runtime household demand deposits non-negative after the household
+budget has closed. It is separate from `ConsumerApprovedOrigination` and is
+charged off through `ConsumerDefault` in the same month, so it does not survive
+as ordinary household consumer-loan stock and does not bypass DTI underwriting.
+`ConsumerOrigination` remains the gross SFC bridge plus approved-origination
+flow, while `ConsumerApprovedOrigination` is the underwritten credit channel.
+For the bridge component, the stock effect is zero because
+`HouseholdLiquidity_ShortfallFinancing` is offset by `ConsumerDefault`.
 
 The `HouseholdLiquidity_ConsumptionShortfall`, `RentArrears`,
 `MortgageArrears`, `ConsumerDebtArrears`, and `TemporaryOverdraft` columns split
-that residual settlement by a diagnostic payment-priority attribution. They do
-not yet create persistent arrears/default state; follow-up household distress
-mechanics can replace the residual settlement path while preserving these audit
-columns.
+that bridge amount by a diagnostic payment-priority attribution. They do not yet
+create persistent arrears stock. `TemporaryOverdraft` is not carried as a
+separate household liability; any positive value is part of the same-month
+bridge/default path visible in `HouseholdLiquidity_ShortfallFinancing` and
+`ConsumerDefault`.
 
 Household micro snapshots are disabled by default. When enabled, the runner
 writes two combined files:
@@ -192,8 +208,8 @@ The row selector is separate from the schedule:
 primarily a legacy/invariant guard after non-negative household deposits became
 the runtime contract. `shortfall` selects rows with positive
 `LiquidityShortfallFinancing`, which is the useful mode for diagnosing the
-post-#515 conversion of residual household liquidity gaps into explicit
-consumer-loan stock.
+residual household liquidity gaps that are now bridged and charged off instead
+of being capitalized into ordinary consumer-loan stock.
 
 Snapshot rows are taken at the household-income/liquidity settlement boundary
 for the selected execution month, before later firm-entry, migration, and
