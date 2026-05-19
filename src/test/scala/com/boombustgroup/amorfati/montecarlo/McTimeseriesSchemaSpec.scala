@@ -167,6 +167,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     "ConsumerLoans",
     "ConsumerNplRatio",
     "ConsumerOrigination",
+    "ConsumerApprovedOrigination",
     "ConsumerDebtService",
     "TotalCreditStock",
     "BankFirmLoansToGdp",
@@ -323,6 +324,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     "HouseholdLiquidity_DepositP90",
     "HouseholdLiquidity_DepositP95",
     "HouseholdLiquidity_DepositP99",
+    "HouseholdLiquidity_ShortfallFinancing",
   )
 
   private def computeRow(
@@ -356,7 +358,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     MetricValue.fromRaw(Share.fraction(numerator, denominator).toLong)
 
   "McTimeseriesSchema" should "expose the stable schema contract" in {
-    McTimeseriesSchema.nCols shouldBe 303
+    McTimeseriesSchema.nCols shouldBe 305
     McTimeseriesSchema.colNames.toVector shouldBe expectedColNames
   }
 
@@ -500,6 +502,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     valueAt(row, "HouseholdLiquidity_DepositP90") shouldBe polandScale(PLN(200))
     valueAt(row, "HouseholdLiquidity_DepositP95") shouldBe polandScale(PLN(200))
     valueAt(row, "HouseholdLiquidity_DepositP99") shouldBe polandScale(PLN(200))
+    valueAt(row, "HouseholdLiquidity_ShortfallFinancing") shouldBe MetricValue.Zero
   }
 
   it should "emit validation-ready wage and current-account diagnostics" in {

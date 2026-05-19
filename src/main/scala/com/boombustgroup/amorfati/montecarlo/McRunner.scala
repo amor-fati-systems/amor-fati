@@ -2,7 +2,7 @@ package com.boombustgroup.amorfati.montecarlo
 
 import com.boombustgroup.amorfati.*
 import com.boombustgroup.amorfati.accounting.{InitCheck, Sfc}
-import com.boombustgroup.amorfati.agents.Firm
+import com.boombustgroup.amorfati.agents.{Firm, Household}
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.*
 import com.boombustgroup.amorfati.engine.SimulationMonth.ExecutionMonth
@@ -25,6 +25,8 @@ object McRunner:
       state: FlowSimulation.SimState,
       monthData: Array[MetricValue],
       firmDecisionTraces: Vector[Firm.DecisionTrace],
+      householdSnapshotState: FlowSimulation.HouseholdSnapshotState,
+      householdMonthlyFlows: Vector[Household.MonthlyFlow],
   )
   private case class SeedTerminalSnapshot(executionMonth: ExecutionMonth, lastMonthData: Array[MetricValue], terminalState: FlowSimulation.SimState)
 
@@ -47,6 +49,7 @@ object McRunner:
         .runCollect
       _         <- McTerminalSummaryCsv.writeAll(rc, outputDir, summaries)
       _         <- McFirmSnapshotCsv.combineSeedFiles(rc, outputDir)
+      _         <- McHouseholdSnapshotCsv.combineSeedFiles(rc, outputDir)
       _         <- McFirmDecisionTraceCsv.combineSeedFiles(rc, outputDir)
       _         <- McRunnerConsole.emit(Event.BlankLine)
       _         <- McRunnerConsole.emitAll(McOutputFiles.savedFiles(outputDir, rc).map(file => Event.SavedFile(file.getPath)))
@@ -104,7 +107,16 @@ object McRunner:
           result.nextState.householdAggregates,
           result.nextState.ledgerFinancialState,
         )
-        Right(MonthSnapshot(result.executionMonth, result.nextState, monthData, result.firmDecisionTraces))
+        Right(
+          MonthSnapshot(
+            result.executionMonth,
+            result.nextState,
+            monthData,
+            result.firmDecisionTraces,
+            result.householdSnapshotState,
+            result.householdMonthlyFlows,
+          ),
+        )
 
   private def materializeRun(
       initState: FlowSimulation.SimState,
@@ -129,11 +141,11 @@ object McRunner:
     */
   private def runSeed(seed: Long, rc: McRunConfig, outputDir: File)(using p: SimParams): ZIO[Any, SimError, McTerminalSummaryRows] =
     for
-      st        <- Clock.currentTime(TimeUnit.MILLISECONDS)
-      baseRows   =
+      st         <- Clock.currentTime(TimeUnit.MILLISECONDS)
+      baseRows    =
         seedStream(seed, rc.runDurationMonths, traceFirmDecisions = rc.firmDecisionTraceSelection.enabled)
           .tap(snapshot => McRunnerConsole.emit(monthProgressEvent(seed, rc.nSeeds, snapshot.executionMonth, rc.runDurationMonths)))
-      tracedRows =
+      tracedRows  =
         McFirmDecisionTraceCsv.tapSeedTraces(
           seed = seed,
           rc = rc,
@@ -143,7 +155,7 @@ object McRunner:
           executionMonth = _.executionMonth,
           decisionTraces = _.firmDecisionTraces,
         )
-      snapshots  =
+      snapshots   =
         McFirmSnapshotCsv.tapSeedSnapshots(
           seed = seed,
           rc = rc,
@@ -153,9 +165,20 @@ object McRunner:
           executionMonth = _.executionMonth,
           state = _.state,
         )
-      terminal  <- McTimeseriesCsv.writeStreaming(
+      hhSnapshots =
+        McHouseholdSnapshotCsv.tapSeedSnapshots(
+          seed = seed,
+          rc = rc,
+          outputDir = outputDir,
+          rows = snapshots,
+        )(
+          executionMonth = _.executionMonth,
+          state = _.householdSnapshotState,
+          monthlyFlows = _.householdMonthlyFlows,
+        )
+      terminal   <- McTimeseriesCsv.writeStreaming(
         McOutputFiles.seedFile(outputDir, seed, rc),
-        snapshots
+        hhSnapshots
           .map(snapshot => SeedTerminalSnapshot(snapshot.executionMonth, snapshot.monthData, snapshot.state)),
         McTimeseriesSchema.csvSchema.contramap(snapshot => (snapshot.executionMonth, snapshot.lastMonthData)),
         SimError.RuntimeFailure(
@@ -163,8 +186,8 @@ object McRunner:
           s"seed $seed produced no monthly snapshots for duration ${rc.runDurationMonths}",
         ),
       )
-      et        <- Clock.currentTime(TimeUnit.MILLISECONDS)
-      _         <- McRunnerConsole.emit(seedDoneEvent(seed, rc.nSeeds, terminal.lastMonthData, et - st))
+      et         <- Clock.currentTime(TimeUnit.MILLISECONDS)
+      _          <- McRunnerConsole.emit(seedDoneEvent(seed, rc.nSeeds, terminal.lastMonthData, et - st))
     yield McTerminalSummarySchema.fromTerminalState(seed, terminal.terminalState)
 
   private def monthProgressEvent(seed: Long, totalSeeds: Int, month: ExecutionMonth, durationMonths: Int): Event =

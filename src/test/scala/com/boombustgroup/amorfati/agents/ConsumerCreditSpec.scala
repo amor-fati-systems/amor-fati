@@ -78,7 +78,7 @@ class ConsumerCreditSpec extends AnyFlatSpec with Matchers:
   }
 
   "Bankruptcy" should "trigger consumer debt default" in {
-    val financial = TestHouseholdState.financial(savings = PLN(-5000), debt = PLN(1000), consumerDebt = PLN(5000))
+    val financial = TestHouseholdState.financial(savings = PLN.Zero, debt = PLN(1000), consumerDebt = PLN(5000))
     // Bankrupt HH should have consumer debt -> NPL
     financial.consumerLoan shouldBe PLN(5000)
     // NPL loss = consumerDebt * (1 - recovery)
@@ -157,11 +157,15 @@ class ConsumerCreditSpec extends AnyFlatSpec with Matchers:
       totalSocialTransfers = PLN.Zero,
       totalConsumerDebtService = PLN.Zero,
       totalConsumerOrigination = PLN.Zero,
+      totalConsumerApprovedOrigination = PLN.Zero,
+      totalLiquidityShortfallFinancing = PLN.Zero,
       totalConsumerDefault = PLN.Zero,
       totalConsumerPrincipal = PLN.Zero,
     )
     agg.totalConsumerDebtService shouldBe PLN.Zero
     agg.totalConsumerOrigination shouldBe PLN.Zero
+    agg.totalConsumerApprovedOrigination shouldBe PLN.Zero
+    agg.totalLiquidityShortfallFinancing shouldBe PLN.Zero
     agg.totalConsumerDefault shouldBe PLN.Zero
   }
 
@@ -260,6 +264,7 @@ class ConsumerCreditSpec extends AnyFlatSpec with Matchers:
     consumerDebtService = PLN.Zero,
     consumerNplLoss = PLN.Zero,
     consumerOrigination = PLN.Zero,
+    consumerLiquidityShortfallFinancing = PLN.Zero,
     consumerPrincipalRepaid = PLN.Zero,
     consumerDefaultAmount = PLN.Zero,
     corpBondCouponIncome = PLN.Zero,

@@ -51,6 +51,7 @@ object FlowMechanism:
   val HhCcOrigination: MechanismId                = MechanismId(38)
   val HhCcDebtService: MechanismId                = MechanismId(39)
   val HhCcDefault: MechanismId                    = MechanismId(40)
+  val HhLiquidityShortfallFinancing: MechanismId  = MechanismId(115)
   // Firm / household income carrier
   val HhTotalIncome: MechanismId                  = MechanismId(41)
   val FirmCit: MechanismId                        = MechanismId(42)
@@ -174,6 +175,7 @@ object FlowMechanism:
     HhCcOrigination,
     HhCcDebtService,
     HhCcDefault,
+    HhLiquidityShortfallFinancing,
     HhTotalIncome,
     FirmCit,
     FirmLoanRepayment,

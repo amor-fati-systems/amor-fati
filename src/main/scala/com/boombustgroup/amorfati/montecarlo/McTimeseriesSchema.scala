@@ -440,6 +440,7 @@ object McTimeseriesSchema:
         else Scalar.Zero,
     ),
     ColumnDef.macroPln("ConsumerOrigination", ctx => ctx.hhAgg.totalConsumerOrigination),
+    ColumnDef.macroPln("ConsumerApprovedOrigination", ctx => ctx.hhAgg.totalConsumerApprovedOrigination),
     ColumnDef.macroPln("ConsumerDebtService", ctx => ctx.hhAgg.totalConsumerDebtService),
     ColumnDef.macroPln("TotalCreditStock", ctx => ctx.totalCreditStock),
     ColumnDef("BankFirmLoansToGdp", ctx => ctx.annualizedGdpRatio(ctx.bankFirmLoans)),
@@ -706,6 +707,7 @@ object McTimeseriesSchema:
     ColumnDef.macroPln("HouseholdLiquidity_DepositP90", ctx => ctx.householdLiquidity.depositP90),
     ColumnDef.macroPln("HouseholdLiquidity_DepositP95", ctx => ctx.householdLiquidity.depositP95),
     ColumnDef.macroPln("HouseholdLiquidity_DepositP99", ctx => ctx.householdLiquidity.depositP99),
+    ColumnDef.macroPln("HouseholdLiquidity_ShortfallFinancing", ctx => ctx.hhAgg.totalLiquidityShortfallFinancing),
   )
 
   // -------------------------------------------------------------------------
@@ -792,6 +794,7 @@ object McTimeseriesSchema:
     val HouseholdLiquidityDepositP90: Col             = lookup("HouseholdLiquidity_DepositP90")
     val HouseholdLiquidityDepositP95: Col             = lookup("HouseholdLiquidity_DepositP95")
     val HouseholdLiquidityDepositP99: Col             = lookup("HouseholdLiquidity_DepositP99")
+    val HouseholdLiquidityShortfallFinancing: Col     = lookup("HouseholdLiquidity_ShortfallFinancing")
     val BpoAuto: Col                                  = lookup("BPO_Auto")
     val ManufAuto: Col                                = lookup("Manuf_Auto")
     val RetailAuto: Col                               = lookup("Retail_Auto")

@@ -38,6 +38,10 @@ final case class LedgerFinancialState(
 object LedgerFinancialState:
 
   def householdBalances(stocks: Household.FinancialStocks): HouseholdBalances =
+    require(
+      stocks.demandDeposit >= PLN.Zero,
+      s"LedgerFinancialState.householdBalances requires non-negative household demandDeposit, got ${stocks.demandDeposit}",
+    )
     HouseholdBalances(
       demandDeposit = stocks.demandDeposit,
       mortgageLoan = stocks.mortgageLoan,
@@ -48,6 +52,10 @@ object LedgerFinancialState:
   /** Project ledger-owned household balances into the household execution DTO.
     */
   def projectHouseholdFinancialStocks(balances: HouseholdBalances): Household.FinancialStocks =
+    require(
+      balances.demandDeposit >= PLN.Zero,
+      s"LedgerFinancialState.projectHouseholdFinancialStocks requires non-negative household demandDeposit, got ${balances.demandDeposit}",
+    )
     Household.FinancialStocks(
       demandDeposit = balances.demandDeposit,
       mortgageLoan = balances.mortgageLoan,
@@ -405,7 +413,7 @@ object LedgerFinancialState:
 
   /** Ledger-backed financial balances owned by a single household. */
   case class HouseholdBalances(
-      /** Bank demand deposits owned by the household. */
+      /** Non-negative bank demand deposits owned by the household. */
       demandDeposit: PLN,
       /** Outstanding mortgage principal owed by the household. */
       mortgageLoan: PLN,

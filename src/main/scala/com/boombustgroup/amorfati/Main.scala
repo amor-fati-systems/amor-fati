@@ -1,7 +1,14 @@
 package com.boombustgroup.amorfati
 
 import com.boombustgroup.amorfati.config.SimParams
-import com.boombustgroup.amorfati.montecarlo.{McFirmDecisionTraceSelection, McFirmSnapshotSchedule, McRunConfig, McRunner}
+import com.boombustgroup.amorfati.montecarlo.{
+  McFirmDecisionTraceSelection,
+  McFirmSnapshotSchedule,
+  McHouseholdSnapshotSchedule,
+  McHouseholdSnapshotSelection,
+  McRunConfig,
+  McRunner,
+}
 import com.boombustgroup.amorfati.util.BuildInfo
 import zio.*
 
@@ -36,17 +43,20 @@ object Main extends ZIOAppDefault:
 
   private[amorfati] def parseArgs(args: Chunk[String]): ZIO[Any, IllegalArgumentException, McRunConfig] =
     val usage =
-      "Usage: amor-fati <nSeeds> <prefix> [--duration <months>] [--run-id <id>] [--firm-snapshots <terminal|every:N|months:M1,M2,...>] [--firm-decision-trace <ids:I1,I2,...|first:N|all|none>]"
+      "Usage: amor-fati <nSeeds> <prefix> [--duration <months>] [--run-id <id>] [--firm-snapshots <terminal|every:N|months:M1,M2,...|none>] [--household-snapshots <terminal|every:N|months:M1,M2,...|none>] [--household-snapshot-selector <all|negative|shortfall|negative-or-shortfall>] [--firm-decision-trace <ids:I1,I2,...|first:N|all|none>]"
 
     final case class ParsedFlags(
         runDuration: Int = McRunConfig.DefaultRunDuration,
         runId: Option[String] = None,
         firmSnapshots: McFirmSnapshotSchedule = McFirmSnapshotSchedule.Disabled,
+        householdSnapshots: McHouseholdSnapshotSchedule = McHouseholdSnapshotSchedule.Disabled,
+        householdSnapshotSelection: McHouseholdSnapshotSelection = McHouseholdSnapshotSelection.All,
         firmDecisionTrace: McFirmDecisionTraceSelection = McFirmDecisionTraceSelection.Disabled,
     )
 
     def knownFlag(flag: String): Boolean =
-      flag == "--duration" || flag == "--run-id" || flag == "--firm-snapshots" || flag == "--firm-decision-trace"
+      flag == "--duration" || flag == "--run-id" || flag == "--firm-snapshots" || flag == "--household-snapshots" ||
+        flag == "--household-snapshot-selector" || flag == "--firm-decision-trace"
 
     def missingValue(flag: String): Left[String, ParsedFlags] =
       Left(s"Missing value for $flag")
@@ -72,6 +82,34 @@ object Main extends ZIOAppDefault:
           scala.util.Try(McFirmSnapshotSchedule.ExplicitMonths(months)).toEither.left.map(_.getMessage)
       else Left("--firm-snapshots must be terminal, every:N, months:M1,M2,..., or none")
 
+    def parseHouseholdSnapshotSchedule(value: String): Either[String, McHouseholdSnapshotSchedule] =
+      val normalized = value.trim.toLowerCase(java.util.Locale.ROOT)
+      if normalized == "none" || normalized == "disabled" then Right(McHouseholdSnapshotSchedule.Disabled)
+      else if normalized == "terminal" || normalized == "terminal-only" then Right(McHouseholdSnapshotSchedule.TerminalOnly)
+      else if normalized.startsWith("every:") then
+        parseInt(normalized.stripPrefix("every:"), "--household-snapshots every:N").flatMap: months =>
+          scala.util.Try(McHouseholdSnapshotSchedule.EveryNMonths(months)).toEither.left.map(_.getMessage)
+      else if normalized.startsWith("months:") then
+        val rawMonths = normalized.stripPrefix("months:").split(',').toVector.filter(_.nonEmpty)
+        val parsed    = rawMonths.foldLeft[Either[String, Set[Int]]](Right(Set.empty)): (acc, raw) =>
+          for
+            months <- acc
+            month  <- parseInt(raw, "--household-snapshots months:M1,M2,...")
+          yield months + month
+        parsed.flatMap: months =>
+          scala.util.Try(McHouseholdSnapshotSchedule.ExplicitMonths(months)).toEither.left.map(_.getMessage)
+      else Left("--household-snapshots must be terminal, every:N, months:M1,M2,..., or none")
+
+    def parseHouseholdSnapshotSelection(value: String): Either[String, McHouseholdSnapshotSelection] =
+      value.trim.toLowerCase(java.util.Locale.ROOT) match
+        case "all"                                                       => Right(McHouseholdSnapshotSelection.All)
+        case "negative" | "negative-balances"                            => Right(McHouseholdSnapshotSelection.NegativeBalances)
+        case "shortfall" | "liquidity-shortfall"                         => Right(McHouseholdSnapshotSelection.LiquidityShortfall)
+        case "negative-or-shortfall" | "negative-or-liquidity-shortfall" =>
+          Right(McHouseholdSnapshotSelection.NegativeOrLiquidityShortfall)
+        case _                                                           =>
+          Left("--household-snapshot-selector must be all, negative, shortfall, or negative-or-shortfall")
+
     def parseFirmDecisionTraceSelection(value: String): Either[String, McFirmDecisionTraceSelection] =
       val normalized = value.trim.toLowerCase(java.util.Locale.ROOT)
       if normalized == "none" || normalized == "disabled" then Right(McFirmDecisionTraceSelection.Disabled)
@@ -95,17 +133,21 @@ object Main extends ZIOAppDefault:
         case Seq()                                  => Right(flags)
         case Seq(flag, tail*) if knownFlag(flag)    =>
           tail match
-            case Seq()                                                => missingValue(flag)
-            case Seq(value, _*) if value.startsWith("--")             => missingValue(flag)
-            case Seq(value, next*) if flag == "--duration"            =>
+            case Seq()                                                        => missingValue(flag)
+            case Seq(value, _*) if value.startsWith("--")                     => missingValue(flag)
+            case Seq(value, next*) if flag == "--duration"                    =>
               parseInt(value, flag).flatMap(duration => parseFlags(next, flags.copy(runDuration = duration)))
-            case Seq(value, next*) if flag == "--run-id"              =>
+            case Seq(value, next*) if flag == "--run-id"                      =>
               parseFlags(next, flags.copy(runId = Some(value)))
-            case Seq(value, next*) if flag == "--firm-snapshots"      =>
+            case Seq(value, next*) if flag == "--firm-snapshots"              =>
               parseFirmSnapshotSchedule(value).flatMap(schedule => parseFlags(next, flags.copy(firmSnapshots = schedule)))
-            case Seq(value, next*) if flag == "--firm-decision-trace" =>
+            case Seq(value, next*) if flag == "--household-snapshots"         =>
+              parseHouseholdSnapshotSchedule(value).flatMap(schedule => parseFlags(next, flags.copy(householdSnapshots = schedule)))
+            case Seq(value, next*) if flag == "--household-snapshot-selector" =>
+              parseHouseholdSnapshotSelection(value).flatMap(selection => parseFlags(next, flags.copy(householdSnapshotSelection = selection)))
+            case Seq(value, next*) if flag == "--firm-decision-trace"         =>
               parseFirmDecisionTraceSelection(value).flatMap(selection => parseFlags(next, flags.copy(firmDecisionTrace = selection)))
-            case Seq(_, _*)                                           => Left(s"Unknown argument: $flag")
+            case Seq(_, _*)                                                   => Left(s"Unknown argument: $flag")
         case Seq(flag, _*) if flag.startsWith("--") => Left(s"Unknown argument: $flag")
         case Seq(value, _*)                         => Left(s"Unexpected positional argument: $value")
 
@@ -119,14 +161,26 @@ object Main extends ZIOAppDefault:
         mcRunConfig <- scala.util
           .Try:
             flags.runId match
-              case Some(id) => McRunConfig(nSeeds, prefix, flags.runDuration, id, flags.firmSnapshots, flags.firmDecisionTrace)
-              case None     =>
+              case Some(id) =>
                 McRunConfig(
-                  nSeeds,
-                  prefix,
-                  flags.runDuration,
+                  nSeeds = nSeeds,
+                  outputPrefix = prefix,
+                  runDurationMonths = flags.runDuration,
+                  runId = id,
                   firmSnapshotSchedule = flags.firmSnapshots,
                   firmDecisionTraceSelection = flags.firmDecisionTrace,
+                  householdSnapshotSchedule = flags.householdSnapshots,
+                  householdSnapshotSelection = flags.householdSnapshotSelection,
+                )
+              case None     =>
+                McRunConfig(
+                  nSeeds = nSeeds,
+                  outputPrefix = prefix,
+                  runDurationMonths = flags.runDuration,
+                  firmSnapshotSchedule = flags.firmSnapshots,
+                  firmDecisionTraceSelection = flags.firmDecisionTrace,
+                  householdSnapshotSchedule = flags.householdSnapshots,
+                  householdSnapshotSelection = flags.householdSnapshotSelection,
                 )
           .toEither
           .left

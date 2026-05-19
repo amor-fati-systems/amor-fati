@@ -90,6 +90,7 @@ class FofSpec extends AnyFlatSpec with Matchers:
     consumerDebtService = PLN.Zero,
     consumerNplLoss = PLN.Zero,
     consumerOrigination = PLN.Zero,
+    consumerLiquidityShortfallFinancing = PLN.Zero,
     consumerPrincipalRepaid = PLN.Zero,
     consumerDefaultAmount = PLN.Zero,
     corpBondCouponIncome = PLN.Zero,

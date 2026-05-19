@@ -34,7 +34,8 @@ object HouseholdFlows:
       debtService: PLN,
       depositInterest: PLN,
       remittances: PLN,
-      ccOrigination: PLN,
+      approvedCcOrigination: PLN,
+      liquidityShortfallFinancing: PLN,
       ccDebtService: PLN,
       ccDefault: PLN,
   )
@@ -100,9 +101,18 @@ object HouseholdFlows:
         topology.banks.aggregate,
         EntitySector.Households,
         topology.households.aggregate,
-        input.ccOrigination,
+        input.approvedCcOrigination,
         AssetType.ConsumerLoan,
         FlowMechanism.HhCcOrigination,
+      ),
+      AggregateBatchedEmission.transfer(
+        EntitySector.Banks,
+        topology.banks.aggregate,
+        EntitySector.Households,
+        topology.households.aggregate,
+        input.liquidityShortfallFinancing,
+        AssetType.ConsumerLoan,
+        FlowMechanism.HhLiquidityShortfallFinancing,
       ),
       AggregateBatchedEmission.transfer(
         EntitySector.Households,
@@ -133,7 +143,10 @@ object HouseholdFlows:
     if input.debtService > PLN.Zero then flows += Flow(HH_ACCOUNT, BANK_ACCOUNT, input.debtService.toLong, FlowMechanism.HhDebtService.toInt)
     if input.depositInterest > PLN.Zero then flows += Flow(BANK_ACCOUNT, HH_ACCOUNT, input.depositInterest.toLong, FlowMechanism.HhDepositInterest.toInt)
     if input.remittances > PLN.Zero then flows += Flow(HH_ACCOUNT, FOREIGN_ACCOUNT, input.remittances.toLong, FlowMechanism.HhRemittance.toInt)
-    if input.ccOrigination > PLN.Zero then flows += Flow(BANK_ACCOUNT, HH_ACCOUNT, input.ccOrigination.toLong, FlowMechanism.HhCcOrigination.toInt)
+    if input.approvedCcOrigination > PLN.Zero then
+      flows += Flow(BANK_ACCOUNT, HH_ACCOUNT, input.approvedCcOrigination.toLong, FlowMechanism.HhCcOrigination.toInt)
+    if input.liquidityShortfallFinancing > PLN.Zero then
+      flows += Flow(BANK_ACCOUNT, HH_ACCOUNT, input.liquidityShortfallFinancing.toLong, FlowMechanism.HhLiquidityShortfallFinancing.toInt)
     if input.ccDebtService > PLN.Zero then flows += Flow(HH_ACCOUNT, BANK_ACCOUNT, input.ccDebtService.toLong, FlowMechanism.HhCcDebtService.toInt)
     if input.ccDefault > PLN.Zero then flows += Flow(HH_ACCOUNT, BANK_ACCOUNT, input.ccDefault.toLong, FlowMechanism.HhCcDefault.toInt)
 

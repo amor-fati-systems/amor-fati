@@ -1,4 +1,4 @@
-<!-- schema=sfc-matrix-v1 seed=1 month=12 commit=89528f07 sfc=pass matrix=pass output=symbolic-mapping -->
+<!-- schema=sfc-matrix-v1 seed=1 month=12 commit=cd1eb5e2 sfc=pass matrix=pass output=symbolic-mapping -->
 
 # Symbolic Matrix Mapping
 
@@ -12,8 +12,8 @@
 | symbolic-bsm | Government bonds | +B_b, -B_g, +B_{nbp}, +B_{ins}, +B_{fnd}, +B_{row}, 0 | Government bonds (GovBondHTM)<br>Government bonds AFS (GovBondAFS) |  |  |
 | symbolic-bsm | Quasi-fiscal bonds | +Q_b, +Q_{nbp}, -Q, 0 | Quasi-fiscal bonds (QuasiFiscalBond) |  |  |
 | symbolic-bsm | Corporate bonds | -B_c, +B_{cb}, +B_{ci}, +B_{cf}, 0 | Corporate bonds (CorpBond) |  |  |
-| symbolic-bsm | Equity | +E_h, -E, +E_i, +E_f, +E_{row}, 0 | Equity (Equity) |  | Foreign equity ownership is represented as a holder-resolved persisted stock; holder-aware runtime equity revaluation evidence records supported holder stock deltas. |
-| symbolic-bsm | Insurance reserves | +IR_h, -IR, 0 | Life insurance reserves (LifeReserve)<br>Non-life insurance reserves (NonLifeReserve) |  |  |
+| symbolic-bsm | Equity | +E_h, -E, +E_i, +E_f, +E_{row}, 0 | Equity (Equity) |  | Foreign equity ownership is represented as a holder-resolved persisted stock; remaining residuals are equity valuation and coverage evidence. |
+| symbolic-bsm | Insurance reserves | +IR_h, -IR, 0 | Life insurance reserves (LifeReserve)<br>Non-life insurance reserves (NonLifeReserve) |  | Household insurance-reserve assets and matching insurance technical-reserve liabilities are persisted. |
 | symbolic-bsm | Fund units | +U_h, -U, 0 | TFI units (TfiUnit) |  |  |
 | symbolic-bsm | Foreign assets | +FA, -FA, 0 | Foreign assets (ForeignAsset) |  |  |
 | symbolic-bsm | Net worth | -NW_h, -NW_f, -NW_b, -NW_g, -NW_{nbp}, -NW_{ins}, -NW_{fnd}, -NW_{row}, 0 |  |  | Column-balancing row used for the paper-level presentation; it is not emitted as a runtime asset. |
@@ -30,7 +30,7 @@
 | symbolic-tfm | Dividends | +Div_h, -Div, +Div_g, +Div_i, +Div_f, +Div_{row}, 0 |  | Domestic equity dividend [id: 54]<br>Foreign equity dividend [id: 55]<br>Government equity dividend [id: 89] |  |
 | symbolic-tfm | Equity revaluation | +dE_h^v, -dE^v, +dE_i^v, +dE_f^v, +dE_{row}^v, 0 | Equity (Equity) | Equity revaluation [id: 57] | Holder-aware runtime equity stock revaluation evidence; remaining entrant or issuer coverage stays visible in other-change diagnostics. |
 | symbolic-tfm | External trade and income | +REM, +X-M, +EU, -NX-REM-EU, 0 |  | Trade exports [id: 66]<br>Trade imports [id: 67]<br>Tourism export [id: 68]<br>Tourism import [id: 69]<br>Primary income [id: 72]<br>EU funds [id: 73]<br>Diaspora inflow [id: 74]<br>Household remittance outflow [id: 37] |  |
-| symbolic-tfm | Loan origination | +dL_h, +dL_f, -dL, 0 | Firm loans (FirmLoan)<br>Consumer loans (ConsumerLoan)<br>Mortgage loans (MortgageLoan)<br>NBFI loans (NbfiLoan) | Consumer credit origination [id: 38]<br>Firm new loan [id: 44]<br>Mortgage origination [id: 62]<br>NBFI loan origination [id: 104]<br>Quasi-fiscal lending [id: 110] |  |
+| symbolic-tfm | Loan origination | +dL_h, +dL_f, -dL, 0 | Firm loans (FirmLoan)<br>Consumer loans (ConsumerLoan)<br>Mortgage loans (MortgageLoan)<br>NBFI loans (NbfiLoan) | Underwritten consumer credit origination [id: 38]<br>Household liquidity shortfall financing [id: 115]<br>Firm new loan [id: 44]<br>Mortgage origination [id: 62]<br>NBFI loan origination [id: 104]<br>Quasi-fiscal lending [id: 110] |  |
 | symbolic-tfm | Loan repayment and defaults | -repL_h, -repL_f, +repL, 0 | Firm loans (FirmLoan)<br>Consumer loans (ConsumerLoan)<br>Mortgage loans (MortgageLoan)<br>NBFI loans (NbfiLoan) | Consumer credit debt service [id: 39]<br>Consumer credit default [id: 40]<br>Firm loan repayment [id: 43]<br>Firm NPL default [id: 50]<br>Mortgage repayment [id: 63]<br>Mortgage default [id: 65]<br>NBFI repayment [id: 105]<br>NBFI default [id: 106]<br>Quasi-fiscal repayment [id: 111] |  |
 | symbolic-tfm | Bond issuance and purchases | +dB_c, -dB_b, +dB_g, -dB_{nbp}, -dB_i, -dB_f, -dB_{row}, 0 | Government bonds (GovBondHTM)<br>Government bonds AFS (GovBondAFS)<br>Quasi-fiscal bonds (QuasiFiscalBond)<br>Corporate bonds (CorpBond) | Government bond primary market [id: 97]<br>Foreign government bond purchase [id: 98]<br>NBP QE government bond purchase [id: 99]<br>Insurance government bond purchase [id: 100]<br>TFI government bond purchase [id: 101]<br>Quasi-fiscal bond issuance [id: 107]<br>Quasi-fiscal bond amortization [id: 108]<br>Quasi-fiscal NBP absorption [id: 109]<br>Quasi-fiscal NBP bond amortization [id: 114]<br>Corporate bond issuance [id: 60]<br>Corporate bond amortization [id: 61] |  |
 | symbolic-tfm | Deposit change | -dD_h, -dD_f, +dD, -dD_{fnd}, 0 | Demand deposits (DemandDeposit)<br>Term deposits (TermDeposit) | Investment deposit settlement [id: 102]<br>TFI deposit drain [id: 103]<br>Quasi-fiscal lending deposit [id: 112]<br>Quasi-fiscal repayment deposit [id: 113] |  |

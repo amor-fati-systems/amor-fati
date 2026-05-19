@@ -70,6 +70,7 @@ class SfcPropertySpec extends AnyFlatSpec with Matchers with ScalaCheckPropertyC
         consumerDebtService = PLN.Zero,
         consumerNplLoss = PLN.Zero,
         consumerOrigination = PLN.Zero,
+        consumerLiquidityShortfallFinancing = PLN.Zero,
         consumerPrincipalRepaid = PLN.Zero,
         consumerDefaultAmount = PLN.Zero,
         corpBondCouponIncome = PLN.Zero,

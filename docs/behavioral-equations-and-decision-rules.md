@@ -62,7 +62,7 @@ runtime ledger flows and validates SFC identities.
 
 | Rule group | Main implementation anchors | Representative output columns |
 | --- | --- | --- |
-| Household income, consumption, savings, credit | `agents/Household.scala`, `engine/economics/HouseholdIncomeEconomics.scala`, `engine/economics/HouseholdFinancialEconomics.scala` | `MarketWage`, `Unemployment`, `EffectivePitRate`, `ConsumerLoans`, `ConsumerOrigination`, `ConsumerDebtService`, `HouseholdLiquidity_NetDemandDeposit`, `HouseholdLiquidity_PositiveDemandDeposits`, `HouseholdLiquidity_ImplicitOverdraft`, `HouseholdLiquidity_NegativeDepositShare`, `HouseholdLiquidity_DepositP01`-`P99`, `SectorMobilityRate`, `VoluntaryQuits`, `DiasporaRemittanceInflow`, `RemittanceOutflow`, `TourismExport`, `TourismImport` |
+| Household income, consumption, savings, credit | `agents/Household.scala`, `engine/economics/HouseholdIncomeEconomics.scala`, `engine/economics/HouseholdFinancialEconomics.scala` | `MarketWage`, `Unemployment`, `EffectivePitRate`, `ConsumerLoans`, `ConsumerOrigination`, `ConsumerApprovedOrigination`, `ConsumerDebtService`, `HouseholdLiquidity_ShortfallFinancing`, `HouseholdLiquidity_NetDemandDeposit`, `HouseholdLiquidity_PositiveDemandDeposits`, `HouseholdLiquidity_ImplicitOverdraft`, `HouseholdLiquidity_NegativeDepositShare`, `HouseholdLiquidity_DepositP01`-`P99`, `SectorMobilityRate`, `VoluntaryQuits`, `DiasporaRemittanceInflow`, `RemittanceOutflow`, `TourismExport`, `TourismImport` |
 | Labor, wages, demographics, social funds | `engine/economics/LaborEconomics.scala`, `agents/SocialSecurity.scala`, `agents/EarmarkedFunds.scala` | `MarketWage`, `Unemployment`, `WorkingAgePop`, `NRetirees`, `MonthlyRetirements`, `ZusContributions`, `ZusPensionPayments`, `NfzContributions`, `NfzSpending`, `PpkContributions`, `FpContributions`, `FgspSpending` |
 | Demand allocation and fiscal constraint | `engine/economics/DemandEconomics.scala`, `engine/markets/FiscalRules.scala`, `engine/markets/FiscalBudget.scala` | `GovCurrentSpend`, `GovCapitalSpendDomestic`, `FiscalRuleBinding`, `GovSpendingCutRatio`, `DebtToGdp`, `DeficitToGdp`, `PublicCapitalStock` |
 | Firm production, investment, technology, financing, default, entry | `agents/Firm.scala`, `engine/economics/FirmEconomics.scala`, `engine/mechanisms/FirmEntry.scala` | `TotalAdoption`, `AutoRatio`, `HybridRatio`, `Automation_TechCapex`, `Automation_TechImports`, `Automation_TechLoans`, `Automation_UpgradeFailures`, `Automation_AiDebtTrap`, `Automation_NewFullAi`, `Automation_NewHybrid`, `Adoption_MicroShare`, `Adoption_SmallShare`, `Adoption_MediumShare`, `Adoption_LargeShare`, `Adoption_CashQ1`-`Q4`, `Adoption_DebtQ1`-`Q4`, sector `*_Auto`, sector `*_Sigma`, `GrossInvestment`, `AggCapitalStock`, `AggInventoryStock`, `InventoryChange`, `AggEnergyCost`, `GreenInvestment`, `FirmBirths`, `FirmDeaths`, `NetEntry`, `LivingFirmCount`, `CorpBondIssuance`, `EquityIssuanceTotal` |
@@ -88,8 +88,8 @@ Each household carries:
   (MPC), social-neighbor ids, education, task routineness, wage scar,
   dependent children, contract type, region, immigrant status;
 - bank routing id;
-- projected ledger financial stocks: demand deposit, mortgage loan, consumer
-  loan, and listed equity.
+- projected ledger financial stocks: non-negative demand deposit, mortgage
+  loan, consumer loan, and listed equity.
 
 ### Income, Tax, Transfers
 
@@ -146,11 +146,11 @@ and consumer-credit service:
 ```text
 obligations_h = rent_h + mortgageDebtService_h + remittance_h
 disposablePreCredit_h = max(income_h - obligations_h, 0)
-consumerCredit_h = consumerCreditRule(...)
+approvedConsumerLoan_h = consumerCreditRule(...)
 fullObligations_h = obligations_h + consumerCreditDebtService_h
 disposable_h = max(income_h - fullObligations_h, 0)
 savingsDrawdown_h = savingsBufferDrawdown(...)
-consumptionBudget_h = disposable_h + newConsumerLoan_h + savingsDrawdown_h
+consumptionBudget_h = disposable_h + approvedConsumerLoan_h + savingsDrawdown_h
 baseConsumption_h = mpc_h * consumptionBudget_h
 ```
 
@@ -158,13 +158,33 @@ If more than the neighbor-distress threshold of social neighbors are bankrupt
 or unemployed, the household applies a precautionary consumption multiplier.
 Positive equity revaluation and housing wealth effects then add to consumption.
 
-Closing demand deposits are:
+Household liquidity is first computed as a raw closing liquid-balance signal:
 
 ```text
-demandDeposit'_h =
-  demandDeposit_h + income_h - fullObligations_h + newConsumerLoan_h
+rawLiquidBalance'_h =
+  demandDeposit_h + income_h - fullObligations_h + approvedConsumerLoan_h
   - consumption_h - retrainingCost_h
 ```
+
+The persisted demand-deposit asset is then floored at zero. Any negative raw
+balance is not treated as a negative deposit. It is routed through a distinct
+liquidity-shortfall financing mechanism so underwritten credit and residual
+settlement remain separately auditable:
+
+```text
+liquidityShortfallFinancing_h = max(-rawLiquidBalance'_h, 0)
+demandDeposit'_h = max(rawLiquidBalance'_h, 0)
+consumerLoan'_h =
+  consumerLoanAfterScheduledCredit_h + liquidityShortfallFinancing_h
+totalConsumerOrigination_h =
+  approvedConsumerLoan_h + liquidityShortfallFinancing_h
+```
+
+If the household crosses the persistent distress threshold in the same month,
+the shortfall-financing leg is included in the consumer-credit default amount.
+`HhCcOrigination` carries only the underwritten loan; `HhLiquidityShortfallFinancing`
+carries the residual settlement leg. SFC consumer-credit stock identities use
+the sum of both mechanisms.
 
 ### MPC Adaptation
 
@@ -184,7 +204,7 @@ but still keeps a protected buffer floor.
 
 ### Consumer Credit
 
-Consumer credit is available only to employed households. A household is
+Underwritten consumer credit is available only to employed households. A household is
 eligible when disposable income is stressed relative to wage, a stochastic
 eligibility draw succeeds, and the resulting debt-service-to-income ratio has
 room below `ccMaxDti`:
@@ -192,8 +212,14 @@ room below `ccMaxDti`:
 ```text
 stressed_h = disposablePreCredit_h < wage_h * DisposableWageThreshold
 headroom_h = income_h * max(ccMaxDti - existingDti_h, 0)
-newConsumerLoan_h = min(headroom_h, ccMaxLoan) if eligible else 0
+approvedConsumerLoan_h = min(headroom_h, ccMaxLoan) if eligible else 0
 ```
+
+Liquidity-shortfall financing is not a discretionary credit decision and does
+not expand the consumption budget. It is a settlement leg booked after monthly
+income, obligations, approved credit, consumption, and retraining cost have
+already determined the raw closing liquid balance. This keeps
+`demandDeposit >= 0` while preserving the liability-side stock-flow identity.
 
 Consumer-loan service is:
 

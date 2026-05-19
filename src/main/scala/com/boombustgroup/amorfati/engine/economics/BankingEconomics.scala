@@ -128,7 +128,7 @@ object BankingEconomics:
       hhDebtService: PLN, // mortgage debt service payments to this bank
       depInterest: PLN,   // deposit interest paid by this bank to households
       ccDebtService: PLN, // consumer credit debt service to this bank
-      ccOrigination: PLN, // new consumer credit originated at this bank
+      ccOrigination: PLN, // total consumer-loan stock origination at this bank
       ccDefault: PLN,     // consumer credit defaults at this bank
   )
 

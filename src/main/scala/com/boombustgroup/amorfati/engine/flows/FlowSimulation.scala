@@ -52,6 +52,13 @@ object FlowSimulation:
         ledgerFinancialState = init.ledgerFinancialState,
       )
 
+  /** Household micro snapshot boundary aligned with household-income flows.
+    */
+  case class HouseholdSnapshotState(
+      households: Vector[Household.State],
+      ledgerFinancialState: LedgerFinancialState,
+  )
+
   /** Executed aggregate batch deltas on top of an empty runtime ledger shell.
     *
     * This is not a closing stock snapshot. `deltaLedger` stores the net monthly
@@ -100,6 +107,8 @@ object FlowSimulation:
       totalUnempBenefits: PLN,
       totalSocialTransfers: PLN,
       totalCcOrigination: PLN,
+      approvedCcOrigination: PLN,
+      liquidityShortfallFinancing: PLN,
       totalCcDebtService: PLN,
       totalCcDefault: PLN,
       // Stage 9: Gov budget
@@ -219,7 +228,8 @@ object FlowSimulation:
           c.totalDebtService,
           c.totalDepositInterest,
           c.totalRemittances,
-          c.totalCcOrigination,
+          c.approvedCcOrigination,
+          c.liquidityShortfallFinancing,
           c.totalCcDebtService,
           c.totalCcDefault,
         ),
@@ -424,6 +434,8 @@ object FlowSimulation:
       sfcResult: Sfc.SfcResult,
       trace: MonthTrace,
       firmDecisionTraces: Vector[Firm.DecisionTrace],
+      householdSnapshotState: HouseholdSnapshotState,
+      householdMonthlyFlows: Vector[Household.MonthlyFlow],
       nextState: SimState,
   ):
     def transition: (SimState, MonthTrace) = (nextState, trace)
@@ -481,6 +493,11 @@ object FlowSimulation:
       sfcResult,
       trace = monthTrace,
       firmDecisionTraces = outcome.semanticProjection.firms.decisionTraces,
+      householdSnapshotState = HouseholdSnapshotState(
+        households = outcome.semanticProjection.hhIncome.updatedHouseholds,
+        ledgerFinancialState = outcome.semanticProjection.hhIncome.ledgerFinancialState,
+      ),
+      householdMonthlyFlows = outcome.semanticProjection.hhIncome.householdMonthlyFlows,
       nextState = nextState,
     )
 
@@ -652,6 +669,8 @@ object FlowSimulation:
       totalUnempBenefits = agg.totalUnempBenefits,
       totalSocialTransfers = agg.totalSocialTransfers,
       totalCcOrigination = agg.totalConsumerOrigination,
+      approvedCcOrigination = agg.totalConsumerApprovedOrigination,
+      liquidityShortfallFinancing = agg.totalLiquidityShortfallFinancing,
       totalCcDebtService = agg.totalConsumerDebtService,
       totalCcDefault = agg.totalConsumerDefault,
       govCurrentSpend = s9.newGovWithYield.govCurrentSpend,
@@ -1048,7 +1067,8 @@ object FlowSimulation:
       fofResidual = fofResidual,
       consumerDebtService = evidence.amount(FlowMechanism.HhCcDebtService),
       consumerNplLoss = evidence.amount(FlowMechanism.BankCcNplLoss),
-      consumerOrigination = evidence.amount(FlowMechanism.HhCcOrigination),
+      consumerOrigination = evidence.amount(FlowMechanism.HhCcOrigination) + evidence.amount(FlowMechanism.HhLiquidityShortfallFinancing),
+      consumerLiquidityShortfallFinancing = evidence.amount(FlowMechanism.HhLiquidityShortfallFinancing),
       consumerPrincipalRepaid = hhFinancial.consumerPrincipal,
       consumerDefaultAmount = evidence.amount(FlowMechanism.HhCcDefault),
       corpBondCouponIncome = evidence.amount(FlowMechanism.BankCorpBondCoupon),
