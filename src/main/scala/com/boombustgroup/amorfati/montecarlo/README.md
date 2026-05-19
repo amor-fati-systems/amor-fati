@@ -10,10 +10,14 @@ pipeline has no dependency on this package.
 | File | Object | Role |
 |------|--------|------|
 | `McRunner.scala` | `McRunner` | Orchestrates the Monte Carlo run: initializes seeds, streams monthly snapshots, writes per-seed CSVs, collects terminal summaries and optional firm micro exports |
-| `McRunConfig.scala` | `McRunConfig` | Runtime config from CLI args: `nSeeds`, `outputPrefix`, `runDurationMonths`, `runId`, `firmSnapshotSchedule`, `firmDecisionTraceSelection` |
+| `McRunConfig.scala` | `McRunConfig` | Runtime config from CLI args: `nSeeds`, `outputPrefix`, `runDurationMonths`, `runId`, `firmSnapshotSchedule`, `householdSnapshotSchedule`, `householdSnapshotSelection`, `firmDecisionTraceSelection` |
 | `McFirmSnapshotSchedule.scala` | `McFirmSnapshotSchedule` | Disabled/terminal/cadence/explicit-month firm microdata export schedule |
 | `McFirmSnapshotSchema.scala` | `McFirmSnapshotSchema` | Generic per-firm snapshot CSV header and row rendering |
 | `McFirmSnapshotCsv.scala` | `McFirmSnapshotCsv` | Optional per-seed firm snapshot chunk writer and combined CSV finalizer |
+| `McHouseholdSnapshotSchedule.scala` | `McHouseholdSnapshotSchedule` | Disabled/terminal/cadence/explicit-month household microdata export schedule |
+| `McHouseholdSnapshotSelection.scala` | `McHouseholdSnapshotSelection` | Household snapshot row selector: all, negative deposits, liquidity shortfall, or either condition |
+| `McHouseholdSnapshotSchema.scala` | `McHouseholdSnapshotSchema` | Generic per-household liquidity snapshot CSV header and row rendering |
+| `McHouseholdSnapshotCsv.scala` | `McHouseholdSnapshotCsv` | Optional per-seed household snapshot chunk writer and combined CSV finalizer |
 | `McFirmDecisionTraceSelection.scala` | `McFirmDecisionTraceSelection` | Disabled/all/explicit-id/first-N firm decision trace selector |
 | `McFirmDecisionTraceSchema.scala` | `McFirmDecisionTraceSchema` | Generic per-firm decision trace CSV header and row rendering |
 | `McFirmDecisionTraceCsv.scala` | `McFirmDecisionTraceCsv` | Optional per-seed firm decision trace chunk writer and combined CSV finalizer |
@@ -52,6 +56,7 @@ Main ──→ McRunner.runZIO(rc)
            │
            ├── McTerminalSummaryCsv.writeAll(hh.csv, banks.csv, firms.csv)
            ├── optional McFirmSnapshotCsv.combineSeedFiles(firm_snapshots.csv)
+           ├── optional McHouseholdSnapshotCsv.combineSeedFiles(household_snapshots.csv)
            ├── optional McFirmDecisionTraceCsv.combineSeedFiles(firm_decision_trace.csv)
            └── McRunnerConsole.emit(...)
 ```
@@ -135,6 +140,53 @@ This is the residual liquidity settlement routed into consumer-loan stock after
 the household budget has closed. It is separate from
 `ConsumerApprovedOrigination`, while `ConsumerOrigination` remains the total
 consumer-loan stock origination used by SFC identities.
+
+Household micro snapshots are disabled by default. When enabled, the runner
+writes one combined file:
+
+```text
+mc/<prefix>_<run-id>_<months>m_household_snapshots.csv
+```
+
+The schedule flag mirrors firm snapshots:
+
+```bash
+--household-snapshots terminal
+--household-snapshots every:12
+--household-snapshots months:1,6,12
+--household-snapshots none
+```
+
+The row selector is separate from the schedule:
+
+```bash
+--household-snapshot-selector all
+--household-snapshot-selector negative
+--household-snapshot-selector shortfall
+--household-snapshot-selector negative-or-shortfall
+```
+
+`negative` selects rows whose closing `DemandDeposit` is below zero and is
+primarily a legacy/invariant guard after non-negative household deposits became
+the runtime contract. `shortfall` selects rows with positive
+`LiquidityShortfallFinancing`, which is the useful mode for diagnosing the
+post-#515 conversion of residual household liquidity gaps into explicit
+consumer-loan stock.
+
+Snapshot rows are taken at the household-income/liquidity settlement boundary
+for the selected execution month, before later firm-entry, migration, and
+post-month assembly reshuffling. This keeps per-household
+`LiquidityShortfallFinancing` aligned with the monthly aggregate
+`HouseholdLiquidity_ShortfallFinancing` before the standard Monte Carlo
+Poland-scale multiplier is applied to macro timeseries PLN columns. Raw
+household snapshot values are sample-level micro amounts, so reconcile them to
+the seed timeseries by applying the same scaling used by `McTimeseriesSchema`.
+Rows include run id, seed, month, household id, status, region, contract type,
+bank id, wage, rent, MPC, skill, health penalty, financial distress months,
+ledger-owned financial stocks, positive-deposit and implicit overdraft
+decompositions, net liquid and financial positions, opening demand deposit,
+opening/closing consumer-loan stock, and monthly consumer-credit flow
+components.
 
 ## Firm Snapshots
 

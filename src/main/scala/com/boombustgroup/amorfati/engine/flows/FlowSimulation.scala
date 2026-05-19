@@ -52,6 +52,13 @@ object FlowSimulation:
         ledgerFinancialState = init.ledgerFinancialState,
       )
 
+  /** Household micro snapshot boundary aligned with household-income flows.
+    */
+  case class HouseholdSnapshotState(
+      households: Vector[Household.State],
+      ledgerFinancialState: LedgerFinancialState,
+  )
+
   /** Executed aggregate batch deltas on top of an empty runtime ledger shell.
     *
     * This is not a closing stock snapshot. `deltaLedger` stores the net monthly
@@ -427,6 +434,8 @@ object FlowSimulation:
       sfcResult: Sfc.SfcResult,
       trace: MonthTrace,
       firmDecisionTraces: Vector[Firm.DecisionTrace],
+      householdSnapshotState: HouseholdSnapshotState,
+      householdMonthlyFlows: Vector[Household.MonthlyFlow],
       nextState: SimState,
   ):
     def transition: (SimState, MonthTrace) = (nextState, trace)
@@ -484,6 +493,11 @@ object FlowSimulation:
       sfcResult,
       trace = monthTrace,
       firmDecisionTraces = outcome.semanticProjection.firms.decisionTraces,
+      householdSnapshotState = HouseholdSnapshotState(
+        households = outcome.semanticProjection.hhIncome.updatedHouseholds,
+        ledgerFinancialState = outcome.semanticProjection.hhIncome.ledgerFinancialState,
+      ),
+      householdMonthlyFlows = outcome.semanticProjection.hhIncome.householdMonthlyFlows,
       nextState = nextState,
     )
 

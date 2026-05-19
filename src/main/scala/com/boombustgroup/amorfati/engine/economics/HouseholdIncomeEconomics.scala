@@ -26,17 +26,18 @@ object HouseholdIncomeEconomics:
   private val ImportErElasticity = Coefficient.decimal(5, 1) // exchange rate elasticity of import propensity
 
   case class Output(
-      totalIncome: PLN,                               // aggregate household income (wages + benefits + transfers)
-      consumption: PLN,                               // aggregate household consumption spending
-      importCons: PLN,                                // import component of household consumption (forex demand)
-      domesticCons: PLN,                              // domestic component of household consumption
-      updatedHouseholds: Vector[Household.State],     // post-income household population
-      hhAgg: Household.Aggregates,                    // household-level aggregates (employment, savings, etc.)
-      perBankHhFlowsOpt: Option[Vector[PerBankFlow]], // per-bank household flow breakdown (multi-bank mode)
-      pitRevenue: PLN,                                // personal income tax collected from households
-      importAdj: Share,                               // ER-adjusted import propensity (base * ER elasticity)
-      aggUnempBenefit: PLN,                           // aggregate unemployment benefit payments
-      ledgerFinancialState: LedgerFinancialState,     // ledger after household financial stock updates
+      totalIncome: PLN,                                     // aggregate household income (wages + benefits + transfers)
+      consumption: PLN,                                     // aggregate household consumption spending
+      importCons: PLN,                                      // import component of household consumption (forex demand)
+      domesticCons: PLN,                                    // domestic component of household consumption
+      updatedHouseholds: Vector[Household.State],           // post-income household population
+      hhAgg: Household.Aggregates,                          // household-level aggregates (employment, savings, etc.)
+      perBankHhFlowsOpt: Option[Vector[PerBankFlow]],       // per-bank household flow breakdown (multi-bank mode)
+      householdMonthlyFlows: Vector[Household.MonthlyFlow], // per-HH monthly consumer-liquidity diagnostics
+      pitRevenue: PLN,                                      // personal income tax collected from households
+      importAdj: Share,                                     // ER-adjusted import propensity (base * ER elasticity)
+      aggUnempBenefit: PLN,                                 // aggregate unemployment benefit payments
+      ledgerFinancialState: LedgerFinancialState,           // ledger after household financial stock updates
   )
 
   def compute(
@@ -113,6 +114,7 @@ object HouseholdIncomeEconomics:
       householdStep.households,
       aggWithPensions,
       householdStep.perBankFlows,
+      householdStep.monthlyFlows,
       aggWithPensions.totalPit,
       importAdj,
       aggUnempBenefit = PLN.Zero,

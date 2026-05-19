@@ -6,7 +6,7 @@ import com.boombustgroup.amorfati.agents.HhStatus
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.SimulationMonth.ExecutionMonth
 import com.boombustgroup.amorfati.engine.ledger.LedgerFinancialState
-import com.boombustgroup.amorfati.montecarlo.{McFirmSnapshotSchedule, McRunConfig, McRunner, McTimeseriesSchema, RunResult, SimError}
+import com.boombustgroup.amorfati.montecarlo.{McFirmSnapshotSchedule, McHouseholdSnapshotSchedule, McRunConfig, McRunner, McTimeseriesSchema, RunResult, SimError}
 import com.boombustgroup.amorfati.types.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -35,6 +35,8 @@ class McRunnerCsvIntegrationSpec extends AnyFlatSpec with Matchers:
     "Seed;Firm_Living;FirmSize_Micro;FirmSize_Small;FirmSize_Medium;FirmSize_Large;FirmSize_MicroShare;FirmSize_SmallShare;FirmSize_MediumShare;FirmSize_LargeShare"
   private val ExpectedFirmSnapshotHeader =
     "RunId;Seed;Month;FirmId;Sector;Region;SizeClass;Workers;TechState;BankruptcyReason;DigitalReadiness;Cash;FirmLoan;Equity;BankId;RiskProfile;InitialSize;CapitalStock;Inventory;GreenCapital;ForeignOwned;StateOwned"
+  private val ExpectedHouseholdSnapshotHeader =
+    "RunId;Seed;Month;HouseholdId;Status;Region;ContractType;BankId;Wage;Rent;MPC;Skill;HealthPenalty;FinancialDistressMonths;DemandDeposit;MortgageLoan;ConsumerLoan;Equity;PositiveDeposit;ImplicitOverdraft;NetLiquidPosition;NetFinancialPosition;OpeningDemandDeposit;OpeningConsumerLoan;ConsumerApprovedOrigination;LiquidityShortfallFinancing;ConsumerDebtService;ConsumerDefault;ConsumerPrincipal;ClosingConsumerLoan"
 
   private def rc =
     McRunConfig(
@@ -249,6 +251,40 @@ class McRunnerCsvIntegrationSpec extends AnyFlatSpec with Matchers:
       snapshotCounts.getOrElse("Medium", 0).shouldBe(summaryFields("FirmSize_Medium").toInt)
       snapshotCounts.getOrElse("Large", 0).shouldBe(summaryFields("FirmSize_Large").toInt)
       snapshotCounts.values.sum.shouldBe(summaryFields("Firm_Living").toInt)
+    }
+  }
+
+  it.should("write terminal household snapshots with inspectable demand deposits when enabled").in {
+    withTempDir { outputDir =>
+      val snapshotRc = McRunConfig(
+        nSeeds = 1,
+        outputPrefix = "mc-it-hh-snap",
+        runDurationMonths = DurationMonths,
+        runId = "hhsnap",
+        householdSnapshotSchedule = McHouseholdSnapshotSchedule.TerminalOnly,
+      )
+
+      unsafeRun(McRunner.runZIO(snapshotRc, outputDir.toFile))
+
+      val snapshotLines = readLines(outputDir.resolve(s"${filePrefix(snapshotRc)}_household_snapshots.csv"))
+      val header        = snapshotLines.head.split(';').toVector
+      snapshotLines.head.shouldBe(ExpectedHouseholdSnapshotHeader)
+      snapshotLines.tail should not be empty
+
+      val monthIdx   = header.indexOf("Month")
+      val hhIdIdx    = header.indexOf("HouseholdId")
+      val depositIdx = header.indexOf("DemandDeposit")
+      monthIdx should be >= 0
+      hhIdIdx should be >= 0
+      depositIdx should be >= 0
+
+      snapshotLines.tail.map(_.split(';')(monthIdx)).toSet.shouldBe(Set(DurationMonths.toString))
+
+      snapshotLines.tail.foreach: line =>
+        val fields = line.split(';').toVector
+        fields.length.shouldBe(ExpectedHouseholdSnapshotHeader.split(';').length)
+        fields(hhIdIdx).toInt should be >= 0
+        BigDecimal(fields(depositIdx)) should be >= BigDecimal(0)
     }
   }
 

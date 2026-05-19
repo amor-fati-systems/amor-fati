@@ -13,6 +13,8 @@ case class McRunConfig(
     runId: String = McRunConfig.autoRunId(),
     firmSnapshotSchedule: McFirmSnapshotSchedule = McFirmSnapshotSchedule.Disabled,
     firmDecisionTraceSelection: McFirmDecisionTraceSelection = McFirmDecisionTraceSelection.Disabled,
+    householdSnapshotSchedule: McHouseholdSnapshotSchedule = McHouseholdSnapshotSchedule.Disabled,
+    householdSnapshotSelection: McHouseholdSnapshotSelection = McHouseholdSnapshotSelection.All,
 ):
   McRunConfig.requirePositiveSeeds(nSeeds)
   McRunConfig.requireNonBlankOutputPrefix(outputPrefix)
@@ -20,6 +22,8 @@ case class McRunConfig(
   McRunConfig.requireNonBlankRunId(runId)
   McRunConfig.requireFirmSnapshotSchedule(firmSnapshotSchedule)
   McRunConfig.requireFirmDecisionTraceSelection(firmDecisionTraceSelection)
+  McRunConfig.requireHouseholdSnapshotSchedule(householdSnapshotSchedule)
+  McRunConfig.requireHouseholdSnapshotSelection(householdSnapshotSelection)
 
 object McRunConfig:
   val DefaultRunDuration: Int        = 120
@@ -46,3 +50,9 @@ object McRunConfig:
 
   def requireFirmDecisionTraceSelection(selection: McFirmDecisionTraceSelection): Unit =
     require(selection != null, "firmDecisionTraceSelection must be non-null")
+
+  def requireHouseholdSnapshotSchedule(schedule: McHouseholdSnapshotSchedule): Unit =
+    require(schedule != null, "householdSnapshotSchedule must be non-null")
+
+  def requireHouseholdSnapshotSelection(selection: McHouseholdSnapshotSelection): Unit =
+    require(selection != null, "householdSnapshotSelection must be non-null")

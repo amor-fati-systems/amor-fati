@@ -214,7 +214,38 @@ object Household:
       aggregates: Aggregates,
       perBankFlows: Option[Vector[PerBankFlow]],
       financialStocks: Vector[FinancialStocks],
+      monthlyFlows: Vector[MonthlyFlow],
   )
+
+  /** Per-household monthly consumer-liquidity flow diagnostics, aligned by
+    * household id where possible and used only by optional micro snapshot
+    * exports.
+    */
+  case class MonthlyFlow(
+      householdId: HhId,                // household identifier for joining with post-month state
+      openingDemandDeposit: PLN,        // opening liquid deposit before the household month step
+      openingConsumerLoan: PLN,         // opening unsecured consumer-loan principal
+      consumerApprovedOrigination: PLN, // underwritten consumer credit originated by the DTI rule
+      liquidityShortfallFinancing: PLN, // residual settlement that prevents negative closing deposits
+      consumerDebtService: PLN,         // monthly unsecured consumer-credit debt service
+      consumerDefault: PLN,             // gross consumer-loan default this month
+      consumerPrincipal: PLN,           // principal component of consumer debt service
+      closingConsumerLoan: PLN,         // closing unsecured consumer-loan principal
+  )
+
+  object MonthlyFlow:
+    def inactive(householdId: HhId, stocks: FinancialStocks): MonthlyFlow =
+      MonthlyFlow(
+        householdId = householdId,
+        openingDemandDeposit = stocks.demandDeposit,
+        openingConsumerLoan = stocks.consumerLoan,
+        consumerApprovedOrigination = PLN.Zero,
+        liquidityShortfallFinancing = PLN.Zero,
+        consumerDebtService = PLN.Zero,
+        consumerDefault = PLN.Zero,
+        consumerPrincipal = PLN.Zero,
+        closingConsumerLoan = stocks.consumerLoan,
+      )
 
   /** Household population plus the ledger-owned financial stocks aligned by
     * household vector position.
@@ -913,18 +944,34 @@ object Household:
     val mapped = households
       .zip(financialStocks)
       .map: (hh, stocks) =>
-        if hh.status == HhStatus.Bankrupt then (hh, None, stocks) // absorbing barrier
+        if hh.status == HhStatus.Bankrupt then (hh, None, stocks, MonthlyFlow.inactive(hh.id, stocks)) // absorbing barrier
         else
           val result = processHousehold(hh, stocks, world, rng, bankRates, equityIndexReturn, sectorWages, sectorVacancies, distressedIds)
-          (result.newState, Some((hh.bankId, result)), result.financialStocks)
+          val flow   = MonthlyFlow(
+            householdId = hh.id,
+            openingDemandDeposit = stocks.demandDeposit,
+            openingConsumerLoan = stocks.consumerLoan,
+            consumerApprovedOrigination = result.credit.newLoan,
+            liquidityShortfallFinancing = result.credit.liquidityShortfallFinancing,
+            consumerDebtService = result.credit.debtService,
+            consumerDefault = result.credit.defaultAmt,
+            consumerPrincipal = result.credit.principal,
+            closingConsumerLoan = result.financialStocks.consumerLoan,
+          )
+          (result.newState, Some((hh.bankId, result)), result.financialStocks, flow)
 
     val updated = mapped.map(_._1)
     val stocks  = mapped.map(_._3)
     val flows   = mapped.flatMap(_._2)
+    val monthly = mapped.map(_._4)
     val totals  = { val t = StepTotals(); flows.foreach((_, r) => t.add(r)); t }
     val agg     = computeAggregates(updated, stocks, marketWage, reservationWage, importAdj, totals)
     val pbf     = if bankRates.isDefined then Some(buildPerBankFlows(flows, nBanks)) else None
-    StepResult(updated, agg, pbf, stocks)
+    require(
+      monthly.map(_.liquidityShortfallFinancing).sumPln == agg.totalLiquidityShortfallFinancing,
+      "Household.step monthly flow diagnostics must reconcile to aggregate liquidity shortfall financing",
+    )
+    StepResult(updated, agg, pbf, stocks, monthly)
 
   /** Pre-compute distressed HH set for O(1) neighbor lookups. */
   private def buildDistressedSet(households: Vector[State]): java.util.BitSet =
