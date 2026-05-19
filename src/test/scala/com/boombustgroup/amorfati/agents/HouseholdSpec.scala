@@ -386,20 +386,39 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
     )
   }
 
-  it should "convert closing liquidity shortfalls into consumer credit instead of negative deposits" in {
+  it should "charge off closing liquidity shortfalls instead of rolling them into consumer-loan stock" in {
     val rng    = RandomStream.seeded(42)
     val hh     = mkHousehold(0, HhStatus.Unemployed(10), savings = PLN.Zero, rent = PLN(10000), mpc = BigDecimal("0.50"))
     val result = step(Vector(hh), mkWorld(), PLN(8000), PLN(4666), Share.decimal(4, 1), rng)
     val stocks = result.financialStocks.head
 
     stocks.demandDeposit shouldBe PLN.Zero
-    stocks.consumerLoan should be > PLN.Zero
-    result.aggregates.totalConsumerOrigination shouldBe stocks.consumerLoan
+    stocks.consumerLoan shouldBe PLN.Zero
+    result.aggregates.totalConsumerOrigination shouldBe result.aggregates.totalLiquidityShortfallFinancing
     result.aggregates.totalConsumerApprovedOrigination shouldBe PLN.Zero
-    result.aggregates.totalLiquidityShortfallFinancing shouldBe stocks.consumerLoan
+    result.aggregates.totalConsumerDefault shouldBe result.aggregates.totalLiquidityShortfallFinancing
     result.aggregates.totalLiquidityShortfallComponents shouldBe result.aggregates.totalLiquidityShortfallFinancing
     result.monthlyFlows.head.rentArrears + result.monthlyFlows.head.temporaryOverdraft should be > PLN.Zero
     result.aggregates.meanSavings shouldBe PLN.Zero
+  }
+
+  it should "route residual consumer-debt-service financing through same-month default" in {
+    val rng         = RandomStream.seeded(42)
+    val openingLoan = PLN(12000)
+    val hh          = mkHousehold(0, HhStatus.Unemployed(10), savings = PLN.Zero, rent = PLN.Zero, mpc = BigDecimal("0.50"))
+    financialById.update(
+      hh.id.toInt,
+      TestHouseholdState.financial(savings = PLN.Zero, debt = PLN.Zero, consumerDebt = openingLoan, equityWealth = PLN.Zero),
+    )
+
+    val result = step(Vector(hh), mkWorld(), PLN(8000), PLN(4666), Share.decimal(4, 1), rng)
+    val flow   = result.monthlyFlows.head
+
+    flow.consumerDebtArrears shouldBe flow.consumerDebtService
+    flow.consumerDefault shouldBe flow.consumerDebtArrears
+    flow.closingConsumerLoan shouldBe (openingLoan - flow.consumerDebtService).max(PLN.Zero)
+    result.financialStocks.head.consumerLoan shouldBe flow.closingConsumerLoan
+    result.aggregates.totalConsumerApprovedOrigination shouldBe PLN.Zero
   }
 
   it should "reconcile shortfall components when wealth effects make consumption negative" in {

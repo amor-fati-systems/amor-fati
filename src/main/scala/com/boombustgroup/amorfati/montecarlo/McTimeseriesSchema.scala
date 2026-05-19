@@ -442,6 +442,7 @@ object McTimeseriesSchema:
     ColumnDef.macroPln("ConsumerOrigination", ctx => ctx.hhAgg.totalConsumerOrigination),
     ColumnDef.macroPln("ConsumerApprovedOrigination", ctx => ctx.hhAgg.totalConsumerApprovedOrigination),
     ColumnDef.macroPln("ConsumerDebtService", ctx => ctx.hhAgg.totalConsumerDebtService),
+    ColumnDef.macroPln("ConsumerDefault", ctx => ctx.hhAgg.totalConsumerDefault),
     ColumnDef.macroPln("TotalCreditStock", ctx => ctx.totalCreditStock),
     ColumnDef("BankFirmLoansToGdp", ctx => ctx.annualizedGdpRatio(ctx.bankFirmLoans)),
     ColumnDef("ConsumerLoansToGdp", ctx => ctx.annualizedGdpRatio(ctx.consumerLoanStock)),
