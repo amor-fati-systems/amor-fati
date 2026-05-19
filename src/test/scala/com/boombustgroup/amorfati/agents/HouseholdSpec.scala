@@ -402,6 +402,21 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
     result.aggregates.meanSavings shouldBe PLN.Zero
   }
 
+  it should "reconcile shortfall components when wealth effects make consumption negative" in {
+    val rng   = RandomStream.seeded(42)
+    val hh    = mkHousehold(0, HhStatus.Unemployed(10), savings = PLN.Zero, rent = PLN(1000000), mpc = BigDecimal("0.50"))
+    val base  = mkWorld()
+    val world =
+      base.copy(real = base.real.copy(housing = base.real.housing.copy(lastWealthEffect = PLN(-20000000000L))))
+
+    val result = step(Vector(hh), world, PLN(8000), PLN(4666), Share.decimal(4, 1), rng)
+    val flow   = result.monthlyFlows.head
+
+    flow.consumption should be < PLN.Zero
+    result.aggregates.totalLiquidityShortfallComponents shouldBe result.aggregates.totalLiquidityShortfallFinancing
+    result.aggregates.totalRentArrears + result.aggregates.totalTemporaryOverdraft should be > PLN.Zero
+  }
+
   // --- Variable-rate debt service + deposit interest ---
 
   "Household.step with bankRates" should "use variable lending rate for debt service" in {

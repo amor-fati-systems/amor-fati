@@ -297,6 +297,7 @@ class McRunnerCsvIntegrationSpec extends AnyFlatSpec with Matchers:
       val cohortIdx = cohortHeader.indexOf("Cohort")
       val countIdx = cohortHeader.indexOf("HouseholdCount")
       val shareIdx = cohortHeader.indexOf("ShortfallShareOfMonth")
+      val householdShortfallIdx = cohortHeader.indexOf("LiquidityShortfallFinancing")
       val consumptionShortfallIdx = cohortHeader.indexOf("ConsumptionShortfall")
       val rentArrearsIdx = cohortHeader.indexOf("RentArrears")
       val mortgageArrearsIdx = cohortHeader.indexOf("MortgageArrears")
@@ -306,6 +307,7 @@ class McRunnerCsvIntegrationSpec extends AnyFlatSpec with Matchers:
       cohortIdx should be >= 0
       countIdx should be >= 0
       shareIdx should be >= 0
+      householdShortfallIdx should be >= 0
       consumptionShortfallIdx should be >= 0
       rentArrearsIdx should be >= 0
       mortgageArrearsIdx should be >= 0
@@ -323,6 +325,13 @@ class McRunnerCsvIntegrationSpec extends AnyFlatSpec with Matchers:
         BigDecimal(row(mortgageArrearsIdx)) should be >= BigDecimal(0)
         BigDecimal(row(consumerDebtArrearsIdx)) should be >= BigDecimal(0)
         BigDecimal(row(temporaryOverdraftIdx)) should be >= BigDecimal(0)
+        val componentSum =
+          BigDecimal(row(consumptionShortfallIdx)) +
+            BigDecimal(row(rentArrearsIdx)) +
+            BigDecimal(row(mortgageArrearsIdx)) +
+            BigDecimal(row(consumerDebtArrearsIdx)) +
+            BigDecimal(row(temporaryOverdraftIdx))
+        BigDecimal(row(householdShortfallIdx)) shouldBe componentSum +- BigDecimal("0.05")
     }
   }
 

@@ -887,7 +887,9 @@ object Household:
       var available = f.financialStocks.demandDeposit + f.income + f.credit.newLoan
 
       def gap(outflow: PLN): PLN =
-        if outflow <= PLN.Zero then PLN.Zero
+        if outflow <= PLN.Zero then
+          available = available - outflow
+          PLN.Zero
         else if available >= outflow then
           available = available - outflow
           PLN.Zero
