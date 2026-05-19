@@ -324,6 +324,17 @@ Labor demand probe:
 sbt "runMain com.boombustgroup.amorfati.diagnostics.runLaborDemandProbe 1 2"
 ```
 
+Household liquidity and credit-stress calibration:
+
+```bash
+sbt "householdCreditStressCalibration --seeds 5 --months 60 --out target/household-credit-stress --run-id household-credit-stress"
+```
+
+This writes terminal household credit-stress ratios, target bands, and a
+summary report under `target/household-credit-stress/`. The semantics and
+Poland-relevant guardrail bands are documented in
+[household-credit-stress-calibration.md](household-credit-stress-calibration.md).
+
 For scratch and committed-snapshot SFC matrix exports, see
 [sfc-matrix-evidence.md](sfc-matrix-evidence.md).
 
@@ -387,6 +398,7 @@ Generated local outputs normally belong in ignored paths:
 | `target/sfc-matrices/` | Scratch SFC matrix exports | No |
 | `target/scenarios/` | Scenario registry runs | No |
 | `target/robustness*` | Robustness reports | No |
+| `target/household-credit-stress/` | Household credit-stress calibration | No |
 | `docs/sfc-matrix-artifacts/` | Intentional committed matrix snapshots | Yes, only when refreshed intentionally |
 | `docs/empirical-validation/` | Empirical-validation snapshot bundle | Yes, only when refreshed intentionally |
 

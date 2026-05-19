@@ -7,6 +7,7 @@ lazy val robustnessReport = inputKey[Unit]("Generate lightweight sensitivity and
 lazy val scenarioRun = inputKey[Unit]("Run named scenario-registry experiments")
 lazy val empiricalValidation = inputKey[Unit]("Generate empirical validation baseline snapshot artifacts")
 lazy val calibrationRegister = inputKey[Unit]("Generate calibration register docs from typed provenance registry")
+lazy val householdCreditStressCalibration = inputKey[Unit]("Generate household liquidity and credit-stress calibration artifacts")
 
 lazy val baseScalacOptions = Seq(
   "-Werror",
@@ -88,6 +89,13 @@ lazy val root = project
         val parsedArgs = spaceDelimited("<calibration register args>").parsed
         (Compile / runMain)
           .toTask(" com.boombustgroup.amorfati.diagnostics.CalibrationRegisterExport " + parsedArgs.mkString(" "))
+      }
+      .evaluated,
+    householdCreditStressCalibration := Def
+      .inputTaskDyn {
+        val parsedArgs = spaceDelimited("<household credit stress args>").parsed
+        (Compile / runMain)
+          .toTask(" com.boombustgroup.amorfati.diagnostics.HouseholdCreditStressCalibrationExport " + parsedArgs.mkString(" "))
       }
       .evaluated,
     Test / testOptions ++= {

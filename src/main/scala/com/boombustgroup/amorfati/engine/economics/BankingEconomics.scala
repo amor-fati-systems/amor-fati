@@ -883,10 +883,6 @@ object BankingEconomics:
     val afterResolveStocks           = resolveResult.financialStocks
     val afterResolveCorpBonds        = resolveResult.bankCorpBondHoldings
     val afterResolveCorpBondHoldings = Banking.bankCorpBondHoldingsFromVector(afterResolveCorpBonds)
-    val rawAbsorberId                = resolveResult.absorberId
-    val absorberId                   =
-      if rawAbsorberId.toInt >= 0 then rawAbsorberId
-      else Banking.healthiestBankId(afterResolve, afterResolveStocks, afterResolveCorpBondHoldings)
     val multiCapDest: PLN            =
       if anyFailed then
         tfiSale.banks
@@ -910,18 +906,15 @@ object BankingEconomics:
       configs = bankConfigs,
       interbankCurve = curve,
     )
+    // Repair stale failed-bank routing every month; mobility validates survivor bankIds.
     val reassignedFirms              =
-      if anyFailed then
-        in.s5.ioFirms.map: f =>
-          if f.bankId.toInt < afterResolve.length && afterResolve(f.bankId.toInt).failed then f.copy(bankId = absorberId)
-          else f
-      else in.s5.ioFirms
+      in.s5.ioFirms.map: f =>
+        val nextBankId = Banking.reassignBankId(f.bankId, afterResolve, afterResolveStocks, afterResolveCorpBondHoldings)
+        if nextBankId == f.bankId then f else f.copy(bankId = nextBankId)
     val postFailureHh                =
-      if anyFailed then
-        in.s5.households.map: h =>
-          if h.bankId.toInt < afterResolve.length && afterResolve(h.bankId.toInt).failed then h.copy(bankId = absorberId)
-          else h
-      else in.s5.households
+      in.s5.households.map: h =>
+        val nextBankId = Banking.reassignBankId(h.bankId, afterResolve, afterResolveStocks, afterResolveCorpBondHoldings)
+        if nextBankId == h.bankId then h else h.copy(bankId = nextBankId)
 
     // Deposit mobility: HH may switch banks based on health signals and panic
     val mobilityResult       = DepositMobility(postFailureHh, afterResolve, afterResolveStocks, anyFailed, in.depositRng, afterResolveCorpBondHoldings)
