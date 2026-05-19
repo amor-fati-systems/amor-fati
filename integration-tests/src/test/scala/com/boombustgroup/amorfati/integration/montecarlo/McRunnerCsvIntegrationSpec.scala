@@ -307,6 +307,7 @@ class McRunnerCsvIntegrationSpec extends AnyFlatSpec with Matchers:
       allRows.foreach: row =>
         row(countIdx).toInt should be > 0
         BigDecimal(row(shareIdx)) should be >= BigDecimal(0)
+        BigDecimal(row(shareIdx)) should be <= BigDecimal(1)
     }
   }
 
