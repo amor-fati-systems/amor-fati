@@ -337,7 +337,8 @@ object Household:
       val unemployed       = initializeUnemployed(employedSlots, nUnemployed, firms, hhNetwork, randomness.attributes, randomness.initialUnemployment)
       val households       = banked ++ unemployed.map(_.state)
       val financialStocks  = initialized.financialStocks ++ unemployed.map(_.financialStocks)
-      val calibratedStocks = calibrateConsumerLoans(financialStocks)
+      val mortgageStocks   = calibrateMortgageLoans(financialStocks)
+      val calibratedStocks = calibrateConsumerLoans(mortgageStocks)
       Population(households, calibratedStocks)
 
     private def initialUnemployedCount(employedSlots: Int)(using p: SimParams): Int =
@@ -407,6 +408,21 @@ object Household:
           val allocated = com.boombustgroup.ledger.Distribute.distribute(target.toLong, weights)
           stocks.zip(allocated).map { case (stock, rawConsumerLoan) =>
             stock.copy(consumerLoan = PLN.fromRaw(rawConsumerLoan))
+          }
+
+    private def calibrateMortgageLoans(stocks: Vector[FinancialStocks])(using p: SimParams): Vector[FinancialStocks] =
+      if stocks.isEmpty then stocks
+      else
+        val target = p.housing.initMortgage
+        if target <= PLN.Zero then stocks.map(_.copy(mortgageLoan = PLN.Zero))
+        else
+          val current   = stocks.iterator.map(_.mortgageLoan).sumPln
+          val weights   =
+            if current > PLN.Zero then stocks.map(_.mortgageLoan.distributeRaw).toArray
+            else Array.fill(stocks.length)(1L)
+          val allocated = com.boombustgroup.ledger.Distribute.distribute(target.toLong, weights)
+          stocks.zip(allocated).map { case (stock, rawMortgageLoan) =>
+            stock.copy(mortgageLoan = PLN.fromRaw(rawMortgageLoan))
           }
 
     private case class SampledHousehold(

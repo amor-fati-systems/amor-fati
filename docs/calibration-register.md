@@ -419,7 +419,7 @@ a concrete diagnostic artifact path.
 | `housing.priceIncomeElast`, `priceRateElast`, `priceReversion` | `1.2, -0.8, 0.05` | coefficients | UNKNOWN_SOURCE | HPI response to income, rates, and fundamentals | Direct | `HousingConfig` | `TUNED_NEEDS_VALIDATION` |
 | `housing.mortgageSpread` | `0.025` | annual rate | NBP MIR housing-loan spread bridge, 2026-04-30 | Mortgage spread over policy rate | Direct | `HousingConfig` | `EMPIRICAL_TRANSFORMED` |
 | `housing.mortgageMaturity`, `ltvMax` | `300, 0.80` | months/share | Code note bridge: KNF Recommendation S | Mortgage maturity and LTV cap | Direct | `HousingConfig` | `EMPIRICAL` |
-| `housing.originationRate`, `defaultBase`, `defaultUnempSens` | `0.003, 0.001, 0.05` | share/coefficient | UNKNOWN_SOURCE | Mortgage origination and default dynamics | Direct | `HousingConfig` | `TUNED_NEEDS_VALIDATION` |
+| `housing.originationRate`, `defaultBase`, `defaultUnempSens` | `0.0035, 0.001, 0.05` | share/coefficient | UNKNOWN_SOURCE | Mortgage origination and default dynamics | Direct | `HousingConfig` | `TUNED_NEEDS_VALIDATION` |
 | `housing.mortgageRecovery` | `0.70` | share | Structural mortgage workout recovery prior | Defaulted mortgage recovery | Direct | `HousingConfig` | `ASSUMED` |
 | `housing.wealthMpc`, `rentalYield` | `0.05, 0.045` | share/annual rate | Code note bridge: Case, Quigley and Shiller 2005; Otodom/NBP | Housing wealth consumption effect and rental yield | Direct | `HousingConfig` | `CODE_NOTE_EMPIRICAL` |
 | `housing.regionalMarkets` | `7 regional rows` | vector | Code note bridge: NBP/GUS bridge prior | Regional HPI, value share, mortgage share, income multipliers | Direct | `HousingConfig` | `CODE_NOTE_EMPIRICAL` |

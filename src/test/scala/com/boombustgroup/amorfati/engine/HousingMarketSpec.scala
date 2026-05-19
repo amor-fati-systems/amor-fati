@@ -329,3 +329,22 @@ class HousingMarketSpec extends AnyFlatSpec with Matchers:
     shuffled.lastOrigination shouldBe baseline.lastOrigination
     shuffled.mortgageStock shouldBe baseline.mortgageStock
   }
+
+  it should "use the mortgage book rather than total housing value as the origination base" in {
+    val mortgage  = pln(100_000_000)
+    val lowValue  = initState.copy(totalValue = pln(1_000_000_000), mortgageStock = mortgage, regions = None)
+    val highValue = initState.copy(totalValue = pln(2_000_000_000), mortgageStock = mortgage, regions = None)
+
+    val low  = HousingMarket.processOrigination(lowValue, pln(50_000_000), rateBps(800), bankCapacity = true)
+    val high = HousingMarket.processOrigination(highValue, pln(100_000_000), rateBps(800), bankCapacity = true)
+
+    low.lastOrigination shouldBe high.lastOrigination
+  }
+
+  it should "not originate mortgages from an empty mortgage book" in {
+    val state  = initState.copy(totalValue = pln(1_000_000_000), mortgageStock = PLN.Zero, regions = None)
+    val result = HousingMarket.processOrigination(state, pln(100_000_000), rateBps(800), bankCapacity = true)
+
+    result.lastOrigination shouldBe PLN.Zero
+    result.mortgageStock shouldBe PLN.Zero
+  }

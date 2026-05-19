@@ -37,7 +37,7 @@ import com.boombustgroup.amorfati.types.*
   * @param ltvMax
   *   maximum loan-to-value ratio (KNF Recommendation S: 80%)
   * @param originationRate
-  *   monthly mortgage origination as fraction of housing stock
+  *   monthly mortgage origination as fraction of the outstanding mortgage book
   * @param defaultBase
   *   base monthly mortgage default rate
   * @param defaultUnempSens
@@ -63,7 +63,7 @@ case class HousingConfig(
     mortgageSpread: Rate = Rate.decimal(25, 3),
     mortgageMaturity: Int = 300,
     ltvMax: Share = Share.decimal(80, 2),
-    originationRate: Share = Share.decimal(3, 3),
+    originationRate: Share = Share.decimal(35, 4),
     defaultBase: Share = Share.decimal(1, 3),
     defaultUnempSens: Coefficient = Coefficient.decimal(5, 2),
     mortgageRecovery: Share = Share.decimal(70, 2),

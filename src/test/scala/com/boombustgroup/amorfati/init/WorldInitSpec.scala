@@ -2,6 +2,7 @@ package com.boombustgroup.amorfati.init
 
 import com.boombustgroup.amorfati.FixedPointSpecSupport.*
 import com.boombustgroup.amorfati.config.SimParams
+import com.boombustgroup.amorfati.engine.ledger.LedgerFinancialState
 import com.boombustgroup.amorfati.fp.FixedPointBase
 import com.boombustgroup.amorfati.types.*
 import org.scalatest.flatspec.AnyFlatSpec
@@ -51,4 +52,14 @@ class WorldInitSpec extends AnyFlatSpec with Matchers:
 
     householdLoans shouldBe p.banking.initConsumerLoans
     bankConsumerBook shouldBe p.banking.initConsumerLoans
+  }
+
+  it should "honor the housing mortgage opening stock" in {
+    val init              = WorldInit.initialize(InitRandomness.Contract.fromSeed(42L))
+    val householdMortgage = LedgerFinancialState.householdMortgageStock(init.ledgerFinancialState)
+    val bankMortgageBook  = LedgerFinancialState.bankMortgageStock(init.ledgerFinancialState)
+
+    householdMortgage shouldBe p.housing.initMortgage
+    bankMortgageBook shouldBe p.housing.initMortgage
+    init.world.real.housing.mortgageStock shouldBe p.housing.initMortgage
   }
