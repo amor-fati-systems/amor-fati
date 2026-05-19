@@ -132,17 +132,35 @@ HouseholdLiquidity_DepositP95
 HouseholdLiquidity_DepositP99
 ```
 
+The monthly timeseries additionally includes residual shortfall settlement and
+its component attribution:
+
+```text
+HouseholdLiquidity_ShortfallFinancing
+HouseholdLiquidity_ConsumptionShortfall
+HouseholdLiquidity_RentArrears
+HouseholdLiquidity_MortgageArrears
+HouseholdLiquidity_ConsumerDebtArrears
+HouseholdLiquidity_TemporaryOverdraft
+```
+
 `PositiveDemandDeposits` sums `max(demandDeposit, 0)`;
 `ImplicitOverdraft` sums `max(-demandDeposit, 0)`. Runtime household
 `demandDeposit` is a non-negative deposit asset. A non-zero `ImplicitOverdraft`
 therefore indicates legacy or fixture input rows, while the columns remain useful
 as an invariant guard without writing household-level microdata by default.
 
-The monthly timeseries also includes `HouseholdLiquidity_ShortfallFinancing`.
-This is the residual liquidity settlement routed into consumer-loan stock after
-the household budget has closed. It is separate from
-`ConsumerApprovedOrigination`, while `ConsumerOrigination` remains the total
-consumer-loan stock origination used by SFC identities.
+`HouseholdLiquidity_ShortfallFinancing` is the residual liquidity settlement
+routed into consumer-loan stock after the household budget has closed. It is
+separate from `ConsumerApprovedOrigination`, while `ConsumerOrigination` remains
+the total consumer-loan stock origination used by SFC identities.
+
+The `HouseholdLiquidity_ConsumptionShortfall`, `RentArrears`,
+`MortgageArrears`, `ConsumerDebtArrears`, and `TemporaryOverdraft` columns split
+that residual settlement by a diagnostic payment-priority attribution. They do
+not yet create persistent arrears/default state; follow-up household distress
+mechanics can replace the residual settlement path while preserving these audit
+columns.
 
 Household micro snapshots are disabled by default. When enabled, the runner
 writes two combined files:
@@ -190,7 +208,8 @@ bank id, wage, rent, MPC, skill, health penalty, financial distress months,
 ledger-owned financial stocks, positive-deposit and implicit overdraft
 decompositions, net liquid and financial positions, opening demand deposit,
 opening/closing consumer-loan stock, monthly income, consumption, rent, mortgage
-debt service, and monthly consumer-credit flow components.
+debt service, monthly consumer-credit flow components, and the split
+shortfall-settlement components.
 
 The companion `household_shortfall_cohorts.csv` is always computed from the full
 household snapshot boundary, regardless of the micro row selector. This keeps
@@ -199,8 +218,9 @@ writes only shortfalling micro rows. Cohort dimensions include `All`, `Status`,
 `Region`, `ContractType`, `IncomeDecile`, `RentBurden`,
 `MortgageDebtServiceBurden`, `ConsumerDebtServiceBurden`, and
 `ClosingConsumerLoanBurden`. The file reports counts, shortfall counts,
-shortfall shares, monthly flow sums, and burden ratios needed to diagnose which
-household cohorts drive `HouseholdLiquidity_ShortfallFinancing`.
+shortfall shares, monthly flow sums, split shortfall-settlement components, and
+burden ratios needed to diagnose which household cohorts drive
+`HouseholdLiquidity_ShortfallFinancing`.
 
 ## Firm Snapshots
 
