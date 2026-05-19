@@ -199,8 +199,8 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
 
   it should "not bankrupt household after a single month of deep distress" in {
     val rng     = RandomStream.seeded(42)
-    val hh      = mkHousehold(0, HhStatus.Unemployed(1), savings = PLN(-10000), rent = PLN(1800))
-    val updated = step(Vector(hh), mkWorld(), PLN(8000), PLN(4666), Share.decimal(4, 1), rng).households
+    val hh      = mkHousehold(0, HhStatus.Unemployed(1), savings = PLN.Zero, rent = PLN(10000))
+    val updated = step(Vector(hh), mkLiquidityShockWorld(), PLN(8000), PLN(4666), Share.decimal(4, 1), rng).households
     updated(0).status should not be HhStatus.Bankrupt
     updated(0).financialDistressMonths shouldBe 1
   }
@@ -210,10 +210,10 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
     val hh      = mkHousehold(
       0,
       HhStatus.Unemployed(1),
-      savings = PLN(-10000),
-      rent = PLN(1800),
+      savings = PLN.Zero,
+      rent = PLN(10000),
     ).copy(financialDistressMonths = p.household.bankruptcyDistressMonths - 1)
-    val updated = step(Vector(hh), mkWorld(), PLN(8000), PLN(4666), Share.decimal(4, 1), rng).households
+    val updated = step(Vector(hh), mkLiquidityShockWorld(), PLN(8000), PLN(4666), Share.decimal(4, 1), rng).households
     updated(0).status shouldBe HhStatus.Unemployed(2)
     updated(0).financialDistressMonths shouldBe 0
   }
@@ -223,11 +223,11 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
     val hh  = mkHousehold(
       0,
       HhStatus.Employed(FirmId(0), SectorIdx(0), PLN(8000)),
-      savings = PLN(-50000),
-      rent = PLN(1800),
+      savings = PLN.Zero,
+      rent = PLN(50000),
     ).copy(financialDistressMonths = p.household.bankruptcyDistressMonths - 1)
 
-    val updated = step(Vector(hh), mkWorld(), PLN(8000), PLN(4666), Share.decimal(4, 1), rng).households
+    val updated = step(Vector(hh), mkLiquidityShockWorld(), PLN(8000), PLN(4666), Share.decimal(4, 1), rng).households
 
     updated(0).status shouldBe a[HhStatus.Employed]
     updated(0).financialDistressMonths shouldBe 0
@@ -235,13 +235,13 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
 
   it should "default the remaining consumer credit balance after same-month debt service on bankruptcy" in {
     val rng                 = RandomStream.seeded(42)
-    val world               = mkWorld()
+    val world               = mkLiquidityShockWorld()
     val openingLoan         = PLN(12000)
     val hh                  = mkHousehold(
       0,
       HhStatus.Unemployed(1),
-      savings = PLN(-10000),
-      rent = PLN(1800),
+      savings = PLN.Zero,
+      rent = PLN(10000),
     ).copy(financialDistressMonths = p.household.bankruptcyDistressMonths - 1)
     val totalRate           = p.household.ccAmortRate + (world.nbp.referenceRate + p.household.ccSpread).monthly
     val expectedDebtService = openingLoan * totalRate
@@ -250,7 +250,7 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
     financialById.update(
       hh.id.toInt,
       TestHouseholdState.financial(
-        savings = PLN(-10000),
+        savings = PLN.Zero,
         debt = PLN.Zero,
         consumerDebt = openingLoan,
         equityWealth = PLN.Zero,
@@ -261,10 +261,14 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
 
     result.households.head.status shouldBe HhStatus.Unemployed(2)
     result.households.head.financialDistressMonths shouldBe 0
+    result.financialStocks.head.demandDeposit shouldBe PLN.Zero
     result.financialStocks.head.consumerLoan shouldBe PLN.Zero
     result.aggregates.totalConsumerDebtService shouldBe expectedDebtService
-    result.aggregates.totalConsumerDefault shouldBe expectedDefault
-    result.aggregates.totalConsumerDebtService + result.aggregates.totalConsumerDefault shouldBe openingLoan
+    result.aggregates.totalConsumerOrigination should be > PLN.Zero
+    result.aggregates.totalConsumerApprovedOrigination shouldBe PLN.Zero
+    result.aggregates.totalLiquidityShortfallFinancing shouldBe result.aggregates.totalConsumerOrigination
+    result.aggregates.totalConsumerDefault shouldBe expectedDefault + result.aggregates.totalConsumerOrigination
+    result.aggregates.totalConsumerDebtService + result.aggregates.totalConsumerDefault shouldBe openingLoan + result.aggregates.totalConsumerOrigination
   }
 
   it should "reset financial distress months after recovery" in {
@@ -379,6 +383,20 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
       consumerLoan = updated.consumerDebt,
       equity = updated.equityWealth,
     )
+  }
+
+  it should "convert closing liquidity shortfalls into consumer credit instead of negative deposits" in {
+    val rng    = RandomStream.seeded(42)
+    val hh     = mkHousehold(0, HhStatus.Unemployed(10), savings = PLN.Zero, rent = PLN(10000), mpc = BigDecimal("0.50"))
+    val result = step(Vector(hh), mkWorld(), PLN(8000), PLN(4666), Share.decimal(4, 1), rng)
+    val stocks = result.financialStocks.head
+
+    stocks.demandDeposit shouldBe PLN.Zero
+    stocks.consumerLoan should be > PLN.Zero
+    result.aggregates.totalConsumerOrigination shouldBe stocks.consumerLoan
+    result.aggregates.totalConsumerApprovedOrigination shouldBe PLN.Zero
+    result.aggregates.totalLiquidityShortfallFinancing shouldBe stocks.consumerLoan
+    result.aggregates.meanSavings shouldBe PLN.Zero
   }
 
   // --- Variable-rate debt service + deposit interest ---
@@ -524,23 +542,18 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
     decimal(pbf(1).depositInterest) shouldBe (decimal(plnBD(expDepInt1)) +- decimal(PLN(10)))
   }
 
-  it should "not pay deposit interest on negative savings" in {
-    val rng      = RandomStream.seeded(42)
-    val hhs      = Vector(
+  it should "reject negative opening demand deposits before deposit interest accrues" in {
+    val rng = RandomStream.seeded(42)
+    val hhs = Vector(
       mkHousehold(0, HhStatus.Employed(FirmId(0), SectorIdx(0), PLN(8000)), savings = PLN(-5000), bankId = 0),
     )
-    val br       = BankRates(
+    val br  = BankRates(
       lendingRates = Vector(Rate.decimal(7, 2)),
       depositRates = Vector(Rate.decimal(4, 2)),
     )
-    val result   =
+
+    an[IllegalArgumentException] should be thrownBy
       step(hhs, mkWorld(), PLN(8000), PLN(4666), Share.decimal(4, 1), rng, nBanks = 1, bankRates = Some(br))
-    val agg      = result.aggregates
-    val maybePbf = result.perBankFlows
-    val pbf      = maybePbf.get
-    // Deposit interest on negative savings is floored at 0
-    pbf(0).depositInterest shouldBe PLN.Zero
-    agg.totalDepositInterest shouldBe PLN.Zero
   }
 
   // --- Immigration: remittance deduction ---
@@ -664,3 +677,7 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
       marketWage = p.household.baseWage,
       reservationWage = p.household.baseReservationWage,
     )
+
+  private def mkLiquidityShockWorld(): World =
+    val world = mkWorld()
+    world.copy(real = world.real.copy(housing = world.real.housing.copy(lastWealthEffect = PLN(20000000000L))))

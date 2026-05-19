@@ -125,9 +125,16 @@ HouseholdLiquidity_DepositP99
 ```
 
 `PositiveDemandDeposits` sums `max(demandDeposit, 0)`;
-`ImplicitOverdraft` sums `max(-demandDeposit, 0)`. These fields keep legacy
-`MeanSavings` and `MedianSavings` intact while making the signed liquidity tail
-observable without writing household-level microdata by default.
+`ImplicitOverdraft` sums `max(-demandDeposit, 0)`. Runtime household
+`demandDeposit` is a non-negative deposit asset. A non-zero `ImplicitOverdraft`
+therefore indicates legacy or fixture input rows, while the columns remain useful
+as an invariant guard without writing household-level microdata by default.
+
+The monthly timeseries also includes `HouseholdLiquidity_ShortfallFinancing`.
+This is the residual liquidity settlement routed into consumer-loan stock after
+the household budget has closed. It is separate from
+`ConsumerApprovedOrigination`, while `ConsumerOrigination` remains the total
+consumer-loan stock origination used by SFC identities.
 
 ## Firm Snapshots
 

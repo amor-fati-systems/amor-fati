@@ -97,6 +97,8 @@ object Generators:
       totalSocialTransfers = PLN.Zero,
       totalConsumerDebtService = PLN.Zero,
       totalConsumerOrigination = PLN.Zero,
+      totalConsumerApprovedOrigination = PLN.Zero,
+      totalLiquidityShortfallFinancing = PLN.Zero,
       totalConsumerDefault = PLN.Zero,
       totalConsumerPrincipal = PLN.Zero,
     )
@@ -561,6 +563,7 @@ object Generators:
     consumerDebtService = PLN.Zero,
     consumerNplLoss = PLN.Zero,
     consumerOrigination = PLN.Zero,
+    consumerLiquidityShortfallFinancing = PLN.Zero,
     consumerPrincipalRepaid = PLN.Zero,
     consumerDefaultAmount = PLN.Zero,
     corpBondCouponIncome = PLN.Zero,

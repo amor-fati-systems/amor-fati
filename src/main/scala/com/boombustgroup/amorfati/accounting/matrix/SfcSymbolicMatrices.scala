@@ -248,6 +248,7 @@ object SfcSymbolicMatrices:
           assets = Vector(AssetType.FirmLoan, AssetType.ConsumerLoan, AssetType.MortgageLoan, AssetType.NbfiLoan),
           mechanisms = Vector(
             FlowMechanism.HhCcOrigination,
+            FlowMechanism.HhLiquidityShortfallFinancing,
             FlowMechanism.FirmNewLoan,
             FlowMechanism.MortgageOrigination,
             FlowMechanism.NbfiOrigination,

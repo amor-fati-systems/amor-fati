@@ -34,6 +34,12 @@ class LedgerFinancialStateSpec extends AnyFlatSpec with Matchers:
     refreshed.last shouldBe LedgerFinancialState.householdBalances(newStocks)
   }
 
+  it should "reject negative household demand deposits at the ledger projection boundary" in {
+    val stocks = Household.FinancialStocks(demandDeposit = PLN(-1), mortgageLoan = PLN.Zero, consumerLoan = PLN.Zero, equity = PLN.Zero)
+
+    an[IllegalArgumentException] should be thrownBy LedgerFinancialState.householdBalances(stocks)
+  }
+
   "LedgerFinancialState.settleHouseholdMortgageStock" should "write an aggregate closing mortgage stock into household rows" in {
     val households = Vector(
       LedgerFinancialState.HouseholdBalances(

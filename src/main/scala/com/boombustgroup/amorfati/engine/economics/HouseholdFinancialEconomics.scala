@@ -41,17 +41,19 @@ object HouseholdFinancialEconomics:
       case _  => Coefficient.decimal(8660254038L, 10)
 
   case class Output(
-      hhDebtService: PLN,       // total household mortgage debt service
-      depositInterestPaid: PLN, // total deposit interest paid to households
-      remittanceOutflow: PLN,   // total household remittance outflow
-      diasporaInflow: PLN,      // diaspora remittance inflow (NBP BoP)
-      tourismExport: PLN,       // inbound tourism receipts
-      tourismImport: PLN,       // outbound tourism expenditure
-      consumerDebtService: PLN, // total consumer credit debt service
-      consumerOrigination: PLN, // new consumer loans originated
-      consumerDefaultAmt: PLN,  // consumer loan default amount
-      consumerNplLoss: PLN,     // consumer NPL loss net of recovery
-      consumerPrincipal: PLN,   // consumer loan principal repayment
+      hhDebtService: PLN,               // total household mortgage debt service
+      depositInterestPaid: PLN,         // total deposit interest paid to households
+      remittanceOutflow: PLN,           // total household remittance outflow
+      diasporaInflow: PLN,              // diaspora remittance inflow (NBP BoP)
+      tourismExport: PLN,               // inbound tourism receipts
+      tourismImport: PLN,               // outbound tourism expenditure
+      consumerDebtService: PLN,         // total consumer credit debt service
+      consumerOrigination: PLN,         // total consumer-loan stock origination
+      consumerApprovedOrigination: PLN, // underwritten consumer credit originated by the DTI rule
+      liquidityShortfallFinancing: PLN, // residual settlement that prevents negative demand deposits
+      consumerDefaultAmt: PLN,          // consumer loan default amount
+      consumerNplLoss: PLN,             // consumer NPL loss net of recovery
+      consumerPrincipal: PLN,           // consumer loan principal repayment
   )
 
   def compute(
@@ -96,11 +98,13 @@ object HouseholdFinancialEconomics:
       (inbound.max(PLN.Zero), outbound.max(PLN.Zero))
 
     // Consumer credit flows
-    val consumerDebtService = hhAgg.totalConsumerDebtService
-    val consumerOrigination = hhAgg.totalConsumerOrigination
-    val consumerDefaultAmt  = hhAgg.totalConsumerDefault
-    val consumerNplLoss     = consumerDefaultAmt * (Share.One - p.household.ccNplRecovery)
-    val consumerPrincipal   = hhAgg.totalConsumerPrincipal
+    val consumerDebtService         = hhAgg.totalConsumerDebtService
+    val consumerOrigination         = hhAgg.totalConsumerOrigination
+    val consumerApprovedOrigination = hhAgg.totalConsumerApprovedOrigination
+    val liquidityShortfallFinancing = hhAgg.totalLiquidityShortfallFinancing
+    val consumerDefaultAmt          = hhAgg.totalConsumerDefault
+    val consumerNplLoss             = consumerDefaultAmt * (Share.One - p.household.ccNplRecovery)
+    val consumerPrincipal           = hhAgg.totalConsumerPrincipal
 
     Output(
       hhDebtService,
@@ -111,6 +115,8 @@ object HouseholdFinancialEconomics:
       tourismImport,
       consumerDebtService,
       consumerOrigination,
+      consumerApprovedOrigination,
+      liquidityShortfallFinancing,
       consumerDefaultAmt,
       consumerNplLoss,
       consumerPrincipal,

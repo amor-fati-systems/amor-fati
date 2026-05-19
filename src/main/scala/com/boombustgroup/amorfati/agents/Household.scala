@@ -28,18 +28,20 @@ case class BankRates(
 
 /** Per-bank HH flow accumulator for multi-bank mode (one per BankId). */
 case class PerBankFlow(
-    income: PLN,              // total income (incl. deposit interest)
-    consumption: PLN,         // total consumption (goods + rent)
-    debtService: PLN,         // total mortgage/secured debt service
-    depositInterest: PLN,     // total deposit interest paid
-    consumerDebtService: PLN, // consumer (unsecured) debt service
-    consumerOrigination: PLN, // new consumer loans originated
-    consumerDefault: PLN,     // consumer loan defaults (bankruptcy write-offs)
-    consumerPrincipal: PLN,   // consumer loan principal repaid
+    income: PLN,                      // total income (incl. deposit interest)
+    consumption: PLN,                 // total consumption (goods + rent)
+    debtService: PLN,                 // total mortgage/secured debt service
+    depositInterest: PLN,             // total deposit interest paid
+    consumerDebtService: PLN,         // consumer (unsecured) debt service
+    consumerOrigination: PLN,         // total consumer-loan stock origination
+    consumerApprovedOrigination: PLN, // underwritten consumer credit originated by the DTI rule
+    liquidityShortfallFinancing: PLN, // residual settlement that prevents negative demand deposits
+    consumerDefault: PLN,             // consumer loan defaults (bankruptcy write-offs)
+    consumerPrincipal: PLN,           // consumer loan principal repaid
 )
 
 object PerBankFlow:
-  val zero: PerBankFlow = PerBankFlow(PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero)
+  val zero: PerBankFlow = PerBankFlow(PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero)
 
 object Household:
   def isEmployed(hh: State): Boolean =
@@ -125,7 +127,7 @@ object Household:
     * execution.
     */
   case class FinancialStocks(
-      demandDeposit: PLN, // bank demand deposits owned by the household
+      demandDeposit: PLN, // non-negative bank demand deposits owned by the household
       mortgageLoan: PLN,  // outstanding secured mortgage principal
       consumerLoan: PLN,  // outstanding unsecured consumer-loan principal
       equity: PLN,        // listed equity owned by the household
@@ -133,45 +135,47 @@ object Household:
 
   /** Aggregate statistics computed from individual households (Paper-06). */
   case class Aggregates(
-      employed: Int,                 // count of employed HH
-      unemployed: Int,               // count of unemployed HH
-      retraining: Int,               // count of HH in retraining
-      bankrupt: Int,                 // count of bankrupt HH
-      totalIncome: PLN,              // aggregate income (wages + benefits + interest + transfers)
-      consumption: PLN,              // aggregate consumption (goods + rent)
-      domesticConsumption: PLN,      // domestic component of consumption
-      importConsumption: PLN,        // import component of consumption
-      marketWage: PLN,               // current market-clearing wage
-      reservationWage: PLN,          // minimum acceptable wage for job search
-      giniIndividual: Share,         // Gini of income distribution
-      giniWealth: Share,             // Gini of wealth (savings) distribution
-      meanSavings: PLN,              // mean savings across all HH
-      medianSavings: PLN,            // median savings across all HH
-      povertyRate50: Share,          // share with income < 50% median (EU AROP)
-      bankruptcyRate: Share,         // share of bankrupt HH
-      meanSkill: Share,              // mean skill of alive (non-bankrupt) HH
-      meanHealthPenalty: Share,      // mean health scarring of alive HH
-      retrainingAttempts: Int,       // retraining attempts this month
-      retrainingSuccesses: Int,      // successful retraining completions this month
-      consumptionP10: PLN,           // 10th percentile of consumption
-      consumptionP50: PLN,           // median consumption
-      consumptionP90: PLN,           // 90th percentile of consumption
-      meanMonthsToRuin: Scalar,      // mean months until bankruptcy (placeholder)
-      povertyRate30: Share,          // share with income < 30% median (deep poverty)
-      totalRent: PLN,                // aggregate rent payments
-      totalDebtService: PLN,         // aggregate secured debt service
-      totalUnempBenefits: PLN,       // aggregate unemployment benefits paid
-      totalDepositInterest: PLN,     // aggregate deposit interest received
-      crossSectorHires: Int,         // cross-sector hires this month
-      voluntaryQuits: Int,           // voluntary quits (cross-sector search)
-      sectorMobilityRate: Share,     // fraction employed in different sector than last
-      totalRemittances: PLN,         // aggregate remittances sent abroad
-      totalPit: PLN,                 // aggregate PIT paid
-      totalSocialTransfers: PLN,     // aggregate 800+ social transfers
-      totalConsumerDebtService: PLN, // aggregate consumer debt service
-      totalConsumerOrigination: PLN, // aggregate new consumer loans
-      totalConsumerDefault: PLN,     // aggregate consumer loan defaults
-      totalConsumerPrincipal: PLN,   // aggregate consumer loan principal repaid
+      employed: Int,                         // count of employed HH
+      unemployed: Int,                       // count of unemployed HH
+      retraining: Int,                       // count of HH in retraining
+      bankrupt: Int,                         // count of bankrupt HH
+      totalIncome: PLN,                      // aggregate income (wages + benefits + interest + transfers)
+      consumption: PLN,                      // aggregate consumption (goods + rent)
+      domesticConsumption: PLN,              // domestic component of consumption
+      importConsumption: PLN,                // import component of consumption
+      marketWage: PLN,                       // current market-clearing wage
+      reservationWage: PLN,                  // minimum acceptable wage for job search
+      giniIndividual: Share,                 // Gini of income distribution
+      giniWealth: Share,                     // Gini of liquid demand-deposit wealth
+      meanSavings: PLN,                      // mean liquid demand deposits across all HH
+      medianSavings: PLN,                    // median liquid demand deposits across all HH
+      povertyRate50: Share,                  // share with income < 50% median (EU AROP)
+      bankruptcyRate: Share,                 // share of bankrupt HH
+      meanSkill: Share,                      // mean skill of alive (non-bankrupt) HH
+      meanHealthPenalty: Share,              // mean health scarring of alive HH
+      retrainingAttempts: Int,               // retraining attempts this month
+      retrainingSuccesses: Int,              // successful retraining completions this month
+      consumptionP10: PLN,                   // 10th percentile of consumption
+      consumptionP50: PLN,                   // median consumption
+      consumptionP90: PLN,                   // 90th percentile of consumption
+      meanMonthsToRuin: Scalar,              // mean months until bankruptcy (placeholder)
+      povertyRate30: Share,                  // share with income < 30% median (deep poverty)
+      totalRent: PLN,                        // aggregate rent payments
+      totalDebtService: PLN,                 // aggregate secured debt service
+      totalUnempBenefits: PLN,               // aggregate unemployment benefits paid
+      totalDepositInterest: PLN,             // aggregate deposit interest received
+      crossSectorHires: Int,                 // cross-sector hires this month
+      voluntaryQuits: Int,                   // voluntary quits (cross-sector search)
+      sectorMobilityRate: Share,             // fraction employed in different sector than last
+      totalRemittances: PLN,                 // aggregate remittances sent abroad
+      totalPit: PLN,                         // aggregate PIT paid
+      totalSocialTransfers: PLN,             // aggregate 800+ social transfers
+      totalConsumerDebtService: PLN,         // aggregate consumer debt service
+      totalConsumerOrigination: PLN,         // aggregate consumer-loan stock origination
+      totalConsumerApprovedOrigination: PLN, // aggregate underwritten consumer-credit origination
+      totalLiquidityShortfallFinancing: PLN, // aggregate residual liquidity shortfall financing
+      totalConsumerDefault: PLN,             // aggregate consumer loan defaults
+      totalConsumerPrincipal: PLN,           // aggregate consumer loan principal repaid
   ):
     def withFlowTotalsFrom(flowTotals: Aggregates): Aggregates =
       copy(
@@ -192,6 +196,8 @@ object Household:
         totalSocialTransfers = flowTotals.totalSocialTransfers,
         totalConsumerDebtService = flowTotals.totalConsumerDebtService,
         totalConsumerOrigination = flowTotals.totalConsumerOrigination,
+        totalConsumerApprovedOrigination = flowTotals.totalConsumerApprovedOrigination,
+        totalLiquidityShortfallFinancing = flowTotals.totalLiquidityShortfallFinancing,
         totalConsumerDefault = flowTotals.totalConsumerDefault,
         totalConsumerPrincipal = flowTotals.totalConsumerPrincipal,
       )
@@ -397,22 +403,24 @@ object Household:
     * Kahan compensation needed.
     */
   private class StepTotals:
-    private var incomeAcc: PLN      = PLN.Zero
-    private var benefitAcc: PLN     = PLN.Zero
-    private var debtSvcAcc: PLN     = PLN.Zero
-    private var depIntAcc: PLN      = PLN.Zero
-    private var goodsConsAcc: PLN   = PLN.Zero
-    private var rentAcc: PLN        = PLN.Zero
-    private var remitAcc: PLN       = PLN.Zero
-    private var pitAcc: PLN         = PLN.Zero
-    private var socialAcc: PLN      = PLN.Zero
-    private var ccDebtSvcAcc: PLN   = PLN.Zero
-    private var ccOrigAcc: PLN      = PLN.Zero
-    private var ccDefaultAcc: PLN   = PLN.Zero
-    private var ccPrincipalAcc: PLN = PLN.Zero
-    var retrainingAttempts: Int     = 0
-    var retrainingSuccesses: Int    = 0
-    var voluntaryQuits: Int         = 0
+    private var incomeAcc: PLN             = PLN.Zero
+    private var benefitAcc: PLN            = PLN.Zero
+    private var debtSvcAcc: PLN            = PLN.Zero
+    private var depIntAcc: PLN             = PLN.Zero
+    private var goodsConsAcc: PLN          = PLN.Zero
+    private var rentAcc: PLN               = PLN.Zero
+    private var remitAcc: PLN              = PLN.Zero
+    private var pitAcc: PLN                = PLN.Zero
+    private var socialAcc: PLN             = PLN.Zero
+    private var ccDebtSvcAcc: PLN          = PLN.Zero
+    private var ccOrigAcc: PLN             = PLN.Zero
+    private var ccApprovedOrigAcc: PLN     = PLN.Zero
+    private var liquidityShortfallAcc: PLN = PLN.Zero
+    private var ccDefaultAcc: PLN          = PLN.Zero
+    private var ccPrincipalAcc: PLN        = PLN.Zero
+    var retrainingAttempts: Int            = 0
+    var retrainingSuccesses: Int           = 0
+    var voluntaryQuits: Int                = 0
 
     def add(r: HhMonthlyResult): Unit =
       incomeAcc = incomeAcc + r.income
@@ -425,26 +433,30 @@ object Household:
       pitAcc = pitAcc + r.pitTax
       socialAcc = socialAcc + r.socialTransfer
       ccDebtSvcAcc = ccDebtSvcAcc + r.credit.debtService
-      ccOrigAcc = ccOrigAcc + r.credit.newLoan
+      ccOrigAcc = ccOrigAcc + r.credit.totalOrigination
+      ccApprovedOrigAcc = ccApprovedOrigAcc + r.credit.newLoan
+      liquidityShortfallAcc = liquidityShortfallAcc + r.credit.liquidityShortfallFinancing
       ccDefaultAcc = ccDefaultAcc + r.credit.defaultAmt
       ccPrincipalAcc = ccPrincipalAcc + r.credit.principal
       retrainingAttempts += r.retrainingAttempt
       retrainingSuccesses += r.retrainingSuccess
       voluntaryQuits += r.voluntaryQuit
 
-    def income: PLN              = incomeAcc
-    def unempBenefits: PLN       = benefitAcc
-    def debtService: PLN         = debtSvcAcc
-    def depositInterest: PLN     = depIntAcc
-    def goodsConsumption: PLN    = goodsConsAcc
-    def rent: PLN                = rentAcc
-    def remittances: PLN         = remitAcc
-    def pit: PLN                 = pitAcc
-    def socialTransfers: PLN     = socialAcc
-    def consumerDebtService: PLN = ccDebtSvcAcc
-    def consumerOrigination: PLN = ccOrigAcc
-    def consumerDefault: PLN     = ccDefaultAcc
-    def consumerPrincipal: PLN   = ccPrincipalAcc
+    def income: PLN                      = incomeAcc
+    def unempBenefits: PLN               = benefitAcc
+    def debtService: PLN                 = debtSvcAcc
+    def depositInterest: PLN             = depIntAcc
+    def goodsConsumption: PLN            = goodsConsAcc
+    def rent: PLN                        = rentAcc
+    def remittances: PLN                 = remitAcc
+    def pit: PLN                         = pitAcc
+    def socialTransfers: PLN             = socialAcc
+    def consumerDebtService: PLN         = ccDebtSvcAcc
+    def consumerOrigination: PLN         = ccOrigAcc
+    def consumerApprovedOrigination: PLN = ccApprovedOrigAcc
+    def liquidityShortfallFinancing: PLN = liquidityShortfallAcc
+    def consumerDefault: PLN             = ccDefaultAcc
+    def consumerPrincipal: PLN           = ccPrincipalAcc
 
   /** Build per-bank flow vector from (BankId, HhMonthlyResult) pairs. PLN is
     * Long — addition is exact, no Kahan needed.
@@ -460,7 +472,9 @@ object Household:
         debtService = cur.debtService + r.debtService,
         depositInterest = cur.depositInterest + r.depositInterest,
         consumerDebtService = cur.consumerDebtService + r.credit.debtService,
-        consumerOrigination = cur.consumerOrigination + r.credit.newLoan,
+        consumerOrigination = cur.consumerOrigination + r.credit.totalOrigination,
+        consumerApprovedOrigination = cur.consumerApprovedOrigination + r.credit.newLoan,
+        liquidityShortfallFinancing = cur.liquidityShortfallFinancing + r.credit.liquidityShortfallFinancing,
         consumerDefault = cur.consumerDefault + r.credit.defaultAmt,
         consumerPrincipal = cur.consumerPrincipal + r.credit.principal,
       )
@@ -470,12 +484,14 @@ object Household:
 
   /** Consumer credit result for a single household in one month. */
   private case class CreditResult(
-      debtService: PLN, // total consumer debt service (amortization + interest)
-      principal: PLN,   // principal component of debt service
-      newLoan: PLN,     // newly originated consumer loan amount
-      defaultAmt: PLN,  // amount defaulted on bankruptcy (0 if not bankrupt)
-      updatedDebt: PLN, // outstanding consumer debt after this month's flows
-  )
+      debtService: PLN,                 // total consumer debt service (amortization + interest)
+      principal: PLN,                   // principal component of debt service
+      newLoan: PLN,                     // underwritten new consumer loan, excluding liquidity-shortfall settlement
+      liquidityShortfallFinancing: PLN, // residual financing that settles a negative closing liquid balance
+      defaultAmt: PLN,                  // amount defaulted on bankruptcy (0 if not bankrupt)
+      updatedDebt: PLN,                 // outstanding consumer debt after this month's flows
+  ):
+    def totalOrigination: PLN = newLoan + liquidityShortfallFinancing
 
   /** Per-HH monthly result — updated state + all flow variables for
     * aggregation.
@@ -634,6 +650,7 @@ object Household:
       debtService = consumerDebtSvc,
       principal = consumerPrin,
       newLoan = newConsumerLoan,
+      liquidityShortfallFinancing = PLN.Zero,
       defaultAmt = PLN.Zero,
       updatedDebt = updatedDebt,
     )
@@ -654,7 +671,7 @@ object Household:
       credit: CreditResult,
       consumption: PLN,
       newEquityWealth: PLN,
-      newSavings: PLN,
+      newSavings: PLN, // raw closing liquid balance before non-negative deposit settlement
       newDebt: PLN,
       neighborDistress: Share,
   )
@@ -756,6 +773,18 @@ object Household:
     if distressMonths >= p.household.bankruptcyDistressMonths then resolveBankruptcy(f, distressMonths)
     else resolveSurvival(f, sectorWages, sectorVacancies, rng, distressMonths)
 
+  private def settleLiquidityShortfall(rawDemandDeposit: PLN, credit: CreditResult): (PLN, CreditResult) =
+    if rawDemandDeposit >= PLN.Zero then (rawDemandDeposit, credit)
+    else
+      val shortfall = PLN.Zero - rawDemandDeposit
+      (
+        PLN.Zero,
+        credit.copy(
+          liquidityShortfallFinancing = credit.liquidityShortfallFinancing + shortfall,
+          updatedDebt = credit.updatedDebt + shortfall,
+        ),
+      )
+
   /** Personal-insolvency branch: write off consumer debt and equity without
     * removing the household from the labor force.
     */
@@ -764,11 +793,12 @@ object Household:
     // amount carried in credit.updatedDebt. Default the remaining balance, not
     // a principal-only reconstruction, so bankruptcy stays aligned with the
     // stock identity used by BankingEconomics/SFC.
-    val _             = distressMonths
-    val ccDefaultAmt  = f.credit.updatedDebt
-    val creditWithDef = f.credit.copy(defaultAmt = ccDefaultAmt, updatedDebt = PLN.Zero)
-    val financial     = FinancialStocks(
-      demandDeposit = f.newSavings,
+    val _                                   = distressMonths
+    val (finalDemandDeposit, settledCredit) = settleLiquidityShortfall(f.newSavings, f.credit)
+    val ccDefaultAmt                        = settledCredit.updatedDebt
+    val creditWithDef                       = settledCredit.copy(defaultAmt = ccDefaultAmt, updatedDebt = PLN.Zero)
+    val financial                           = FinancialStocks(
+      demandDeposit = finalDemandDeposit,
       mortgageLoan = f.newDebt,
       consumerLoan = PLN.Zero,
       equity = PLN.Zero,
@@ -816,14 +846,16 @@ object Household:
     val (finalStatus, rAttempt, rSuccess) =
       tryRetraining(f.hh, f.financialStocks, afterVoluntary, f.neighborDistress, sectorWages, sectorVacancies, rng)
 
-    val retrainingCostThisMonth = finalStatus match
+    val retrainingCostThisMonth             = finalStatus match
       case HhStatus.Retraining(ml, _, cost) if ml == p.household.retrainingDuration - 1 => cost
       case _                                                                            => PLN.Zero
-    val finalSavings            = f.newSavings - retrainingCostThisMonth
-    val financial               = FinancialStocks(
-      demandDeposit = finalSavings,
+    val rawFinalDemandDeposit               = f.newSavings - retrainingCostThisMonth
+    val (finalDemandDeposit, settledCredit) =
+      settleLiquidityShortfall(rawFinalDemandDeposit, f.credit)
+    val financial                           = FinancialStocks(
+      demandDeposit = finalDemandDeposit,
       mortgageLoan = f.newDebt,
-      consumerLoan = f.credit.updatedDebt,
+      consumerLoan = settledCredit.updatedDebt,
       equity = f.newEquityWealth,
     )
 
@@ -844,7 +876,7 @@ object Household:
       remittance = f.remittance,
       pitTax = f.pitTax,
       socialTransfer = f.socialTransfer,
-      credit = f.credit,
+      credit = settledCredit,
       voluntaryQuit = vQuit,
       retrainingAttempt = rAttempt,
       retrainingSuccess = rSuccess,
@@ -871,6 +903,10 @@ object Household:
     require(
       households.length == financialStocks.length,
       s"Household.step requires aligned households and financialStocks, got ${households.length} households and ${financialStocks.length} stock rows",
+    )
+    require(
+      financialStocks.forall(_.demandDeposit >= PLN.Zero),
+      "Household.step requires non-negative opening demandDeposit balances; liquidity shortfalls must enter as consumer-loan stocks",
     )
     val distressedIds = buildDistressedSet(households)
 
@@ -1144,6 +1180,8 @@ object Household:
       totalSocialTransfers = t.socialTransfers,
       totalConsumerDebtService = t.consumerDebtService,
       totalConsumerOrigination = t.consumerOrigination,
+      totalConsumerApprovedOrigination = t.consumerApprovedOrigination,
+      totalLiquidityShortfallFinancing = t.liquidityShortfallFinancing,
       totalConsumerDefault = t.consumerDefault,
       totalConsumerPrincipal = t.consumerPrincipal,
     )
