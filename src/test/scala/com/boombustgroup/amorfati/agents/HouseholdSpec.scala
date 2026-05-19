@@ -267,6 +267,7 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
     result.aggregates.totalConsumerOrigination should be > PLN.Zero
     result.aggregates.totalConsumerApprovedOrigination shouldBe PLN.Zero
     result.aggregates.totalLiquidityShortfallFinancing shouldBe result.aggregates.totalConsumerOrigination
+    result.aggregates.totalLiquidityShortfallComponents shouldBe result.aggregates.totalLiquidityShortfallFinancing
     result.aggregates.totalConsumerDefault shouldBe expectedDefault + result.aggregates.totalConsumerOrigination
     result.aggregates.totalConsumerDebtService + result.aggregates.totalConsumerDefault shouldBe openingLoan + result.aggregates.totalConsumerOrigination
   }
@@ -396,6 +397,8 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
     result.aggregates.totalConsumerOrigination shouldBe stocks.consumerLoan
     result.aggregates.totalConsumerApprovedOrigination shouldBe PLN.Zero
     result.aggregates.totalLiquidityShortfallFinancing shouldBe stocks.consumerLoan
+    result.aggregates.totalLiquidityShortfallComponents shouldBe result.aggregates.totalLiquidityShortfallFinancing
+    result.monthlyFlows.head.rentArrears + result.monthlyFlows.head.temporaryOverdraft should be > PLN.Zero
     result.aggregates.meanSavings shouldBe PLN.Zero
   }
 
