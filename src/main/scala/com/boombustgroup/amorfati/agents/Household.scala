@@ -208,6 +208,8 @@ object Household:
       totalMortgageArrears: PLN = PLN.Zero,      // shortfall component attributed to mortgage service
       totalConsumerDebtArrears: PLN = PLN.Zero,  // shortfall component attributed to consumer debt service
       totalTemporaryOverdraft: PLN = PLN.Zero,   // shortfall component attributed to other liquidity gaps
+      totalMortgagePrincipal: PLN = PLN.Zero,    // aggregate secured mortgage principal repaid
+      totalMortgageInterest: PLN = PLN.Zero,     // aggregate secured mortgage interest paid
   ):
     def totalLiquidityShortfallComponents: PLN =
       totalConsumptionShortfall + totalRentArrears + totalMortgageArrears + totalConsumerDebtArrears + totalTemporaryOverdraft
@@ -240,6 +242,8 @@ object Household:
         totalMortgageArrears = flowTotals.totalMortgageArrears,
         totalConsumerDebtArrears = flowTotals.totalConsumerDebtArrears,
         totalTemporaryOverdraft = flowTotals.totalTemporaryOverdraft,
+        totalMortgagePrincipal = flowTotals.totalMortgagePrincipal,
+        totalMortgageInterest = flowTotals.totalMortgageInterest,
       )
 
     def unemploymentRate(totalPopulation: Int): Share =
@@ -511,6 +515,8 @@ object Household:
     private var incomeAcc: PLN               = PLN.Zero
     private var benefitAcc: PLN              = PLN.Zero
     private var debtSvcAcc: PLN              = PLN.Zero
+    private var mortgagePrincipalAcc: PLN    = PLN.Zero
+    private var mortgageInterestAcc: PLN     = PLN.Zero
     private var depIntAcc: PLN               = PLN.Zero
     private var goodsConsAcc: PLN            = PLN.Zero
     private var rentAcc: PLN                 = PLN.Zero
@@ -536,6 +542,8 @@ object Household:
       incomeAcc = incomeAcc + r.income
       benefitAcc = benefitAcc + r.benefit
       debtSvcAcc = debtSvcAcc + r.debtService
+      mortgagePrincipalAcc = mortgagePrincipalAcc + r.mortgagePrincipal
+      mortgageInterestAcc = mortgageInterestAcc + r.mortgageInterest
       depIntAcc = depIntAcc + r.depositInterest
       goodsConsAcc = goodsConsAcc + r.consumption
       rentAcc = rentAcc + r.rent
@@ -560,6 +568,8 @@ object Household:
     def income: PLN                      = incomeAcc
     def unempBenefits: PLN               = benefitAcc
     def debtService: PLN                 = debtSvcAcc
+    def mortgagePrincipal: PLN           = mortgagePrincipalAcc
+    def mortgageInterest: PLN            = mortgageInterestAcc
     def depositInterest: PLN             = depIntAcc
     def goodsConsumption: PLN            = goodsConsAcc
     def rent: PLN                        = rentAcc
@@ -624,6 +634,8 @@ object Household:
       benefit: PLN,           // unemployment benefit component
       consumption: PLN,       // total consumption (goods + wealth effect, before rent)
       debtService: PLN,       // secured (mortgage) debt service
+      mortgagePrincipal: PLN, // mortgage principal component of secured debt service
+      mortgageInterest: PLN,  // mortgage interest component of secured debt service
       depositInterest: PLN,   // deposit interest received
       remittance: PLN,        // remittance sent abroad (immigrants only)
       pitTax: PLN,            // PIT paid
@@ -786,6 +798,8 @@ object Household:
       benefit: PLN,
       newStatus: HhStatus,
       debtService: PLN,
+      mortgagePrincipal: PLN,
+      mortgageInterest: PLN,
       depositInterest: PLN,
       remittance: PLN,
       pitTax: PLN,
@@ -814,21 +828,23 @@ object Household:
   )(using p: SimParams): MonthlyFlows =
     val (baseIncome, benefit, newStatus) = computeIncome(hh)
 
-    // Variable-rate debt service (monetary transmission channel 1)
-    val debtSvcRate: Rate = bankRates match
-      case Some(br) => p.household.baseAmortRate.toRate + br.lendingRates(hh.bankId.toInt).monthly
-      case None     => p.household.debtServiceRate.toRate
+    // Mortgage service uses housing maturity for principal and bank rates for interest.
+    val mortgageRate: Rate = bankRates match
+      case Some(br) => br.lendingRates(hh.bankId.toInt)
+      case None     => p.monetary.initialRate + p.housing.mortgageSpread
 
     // Deposit interest (monetary transmission channel 2)
     val depInterest: PLN = bankRates match
       case Some(br) => financialStocks.demandDeposit * br.depositRates(hh.bankId.toInt).monthly
       case None     => PLN.Zero
 
-    val grossIncome     = baseIncome + depInterest.max(PLN.Zero)
-    val pitTax          = computeMonthlyPit(grossIncome)
-    val socialTransfer  = computeSocialTransfer(hh.numDependentChildren)
-    val income          = grossIncome - pitTax + socialTransfer
-    val thisDebtService = financialStocks.mortgageLoan * debtSvcRate
+    val grossIncome       = baseIncome + depInterest.max(PLN.Zero)
+    val pitTax            = computeMonthlyPit(grossIncome)
+    val socialTransfer    = computeSocialTransfer(hh.numDependentChildren)
+    val income            = grossIncome - pitTax + socialTransfer
+    val mortgagePrincipal = financialStocks.mortgageLoan / p.housing.mortgageMaturity
+    val mortgageInterest  = financialStocks.mortgageLoan * mortgageRate.max(Rate.Zero).monthly
+    val thisDebtService   = mortgagePrincipal + mortgageInterest
 
     val remittance =
       if hh.isImmigrant then income * p.immigration.remitRate
@@ -864,6 +880,8 @@ object Household:
       benefit = benefit,
       newStatus = newStatus,
       debtService = thisDebtService,
+      mortgagePrincipal = mortgagePrincipal,
+      mortgageInterest = mortgageInterest,
       depositInterest = depInterest.max(PLN.Zero),
       remittance = remittance,
       pitTax = pitTax,
@@ -872,7 +890,7 @@ object Household:
       consumption = consumptionWithWealth,
       newEquityWealth = newEquityWealth,
       newSavings = financialStocks.demandDeposit + income - fullObligations + credit.newLoan - consumptionWithWealth,
-      newDebt = (financialStocks.mortgageLoan - thisDebtService).max(PLN.Zero),
+      newDebt = (financialStocks.mortgageLoan - mortgagePrincipal).max(PLN.Zero),
       neighborDistress = neighborDistress,
     )
 
@@ -975,6 +993,8 @@ object Household:
       benefit = f.benefit,
       consumption = f.consumption,
       debtService = f.debtService,
+      mortgagePrincipal = f.mortgagePrincipal,
+      mortgageInterest = f.mortgageInterest,
       depositInterest = f.depositInterest,
       remittance = f.remittance,
       pitTax = f.pitTax,
@@ -1036,6 +1056,8 @@ object Household:
       benefit = f.benefit,
       consumption = f.consumption,
       debtService = f.debtService,
+      mortgagePrincipal = f.mortgagePrincipal,
+      mortgageInterest = f.mortgageInterest,
       depositInterest = f.depositInterest,
       remittance = f.remittance,
       pitTax = f.pitTax,
@@ -1309,7 +1331,8 @@ object Household:
           incomes(i) = 0L
 
       val rentRaw       = hh.monthlyRent.toLong
-      val debtSvcRaw    = (stocks.mortgageLoan * p.household.debtServiceRate).toLong
+      val mortgageRate  = p.monetary.initialRate + p.housing.mortgageSpread
+      val debtSvcRaw    = ((stocks.mortgageLoan / p.housing.mortgageMaturity) + (stocks.mortgageLoan * mortgageRate.monthly)).toLong
       val disposableRaw = math.max(0L, incomes(i) - rentRaw - debtSvcRaw)
       consumptions(i) = FixedPointBase.multiplyRaw(disposableRaw, hh.mpc.toLong)
       savingsArr(i) = stocks.demandDeposit.toLong
@@ -1382,6 +1405,8 @@ object Household:
       totalMortgageArrears = t.mortgageArrears,
       totalConsumerDebtArrears = t.consumerDebtArrears,
       totalTemporaryOverdraft = t.temporaryOverdraft,
+      totalMortgagePrincipal = t.mortgagePrincipal,
+      totalMortgageInterest = t.mortgageInterest,
     )
 
   /** Gini coefficient for a pre-sorted array (handles negatives by shifting).

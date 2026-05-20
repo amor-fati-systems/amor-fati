@@ -126,12 +126,16 @@ income_h = grossIncome_h - pit_h + socialTransfer_h
 
 ### Consumption, Saving, And Wealth Effects
 
-Mortgage debt service is variable-rate when bank-specific lending rates are
-available:
+Mortgage debt service separates scheduled principal repayment from variable-rate
+interest. When bank-specific rates are unavailable, the fallback rate is the
+policy rate plus the housing mortgage spread:
 
 ```text
+mortgagePrincipal_h = mortgageLoan_h / housing.mortgageMaturity
+mortgageInterest_h = mortgageLoan_h * mortgageRate_h.monthly
 mortgageDebtService_h =
-  mortgageLoan_h * (baseAmortRate + lendingRate_b.monthly)
+  mortgagePrincipal_h + mortgageInterest_h
+mortgageLoan'_h = max(mortgageLoan_h - mortgagePrincipal_h, 0)
 ```
 
 Aggregate mortgage origination is calibrated from the outstanding mortgage

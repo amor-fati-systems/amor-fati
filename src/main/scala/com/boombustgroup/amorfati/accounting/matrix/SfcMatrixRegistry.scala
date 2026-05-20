@@ -314,7 +314,6 @@ object SfcMatrixRegistry:
       mech(FlowMechanism.HhConsumption, "Household consumption", "HH cons.", "HH_c"),
       mech(FlowMechanism.HhRent, "Household rent", "HH rent", "HH_r"),
       mech(FlowMechanism.HhPit, "Household PIT", "HH PIT", "HH_{pit}"),
-      mech(FlowMechanism.HhDebtService, "Household debt service", "HH debt svc.", "HH_d"),
       mech(FlowMechanism.HhDepositInterest, "Household deposit interest", "HH dep. int.", "HH_i"),
       mech(FlowMechanism.HhRemittance, "Household remittance outflow", "HH remittance", "HH_{rem}"),
       mech(FlowMechanism.HhCcOrigination, "Underwritten consumer credit origination", "CC approved", "CC_a"),

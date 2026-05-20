@@ -11,7 +11,6 @@ class HouseholdFlowsSpec extends AnyFlatSpec with Matchers:
     consumption = PLN(40000000),
     rent = PLN(8000000),
     pit = PLN(5000000),
-    debtService = PLN(3000000),
     depositInterest = PLN(1000000),
     remittances = PLN(500000),
     approvedCcOrigination = PLN(2000000),
@@ -31,24 +30,24 @@ class HouseholdFlowsSpec extends AnyFlatSpec with Matchers:
     val balances = Interpreter.applyAll(Map.empty[Int, Long], flows)
 
     val outflows = baseInput.consumption + baseInput.rent + baseInput.pit +
-      baseInput.debtService + baseInput.remittances + baseInput.ccDebtService + baseInput.ccDefault
+      baseInput.remittances + baseInput.ccDebtService + baseInput.ccDefault
     val inflows  = baseInput.depositInterest + baseInput.approvedCcOrigination + baseInput.liquidityShortfallFinancing
 
     balances(HouseholdFlows.HH_ACCOUNT) shouldBe (inflows - outflows).toLong
   }
 
-  it should "have bank balance = debtService + ccDebtService + ccDefault - depositInterest - credit origination" in {
+  it should "have bank balance = ccDebtService + ccDefault - depositInterest - credit origination" in {
     val flows    = HouseholdFlows.emit(baseInput)
     val balances = Interpreter.applyAll(Map.empty[Int, Long], flows)
 
-    val bankNet = baseInput.debtService + baseInput.ccDebtService + baseInput.ccDefault -
+    val bankNet = baseInput.ccDebtService + baseInput.ccDefault -
       baseInput.depositInterest - baseInput.approvedCcOrigination - baseInput.liquidityShortfallFinancing
 
     balances(HouseholdFlows.BANK_ACCOUNT) shouldBe bankNet.toLong
   }
 
   it should "skip zero-amount flows" in {
-    val minimal = HouseholdFlows.Input(PLN(1000000), PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero)
+    val minimal = HouseholdFlows.Input(PLN(1000000), PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero)
     val flows   = HouseholdFlows.emit(minimal)
     flows.length shouldBe 1
     flows.head.mechanism shouldBe FlowMechanism.HhConsumption.toInt

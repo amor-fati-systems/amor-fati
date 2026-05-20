@@ -233,7 +233,6 @@ class ConsumerCreditSpec extends AnyFlatSpec with Matchers:
     govRevenue = PLN.Zero,
     nplLoss = PLN.Zero,
     interestIncome = PLN.Zero,
-    hhDebtService = PLN.Zero,
     totalIncome = PLN.Zero,
     totalConsumption = PLN.Zero,
     newLoans = PLN.Zero,

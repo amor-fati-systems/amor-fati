@@ -39,7 +39,6 @@ class BatchedEmissionContractSpec extends AnyFlatSpec with Matchers:
       PLN(40000000),
       PLN(8000000),
       PLN(5000000),
-      PLN(3000000),
       PLN(1000000),
       PLN(500000),
       PLN(2000000),

@@ -45,7 +45,6 @@ object FlowMechanism:
   val HhConsumption: MechanismId                  = MechanismId(32)
   val HhRent: MechanismId                         = MechanismId(33)
   val HhPit: MechanismId                          = MechanismId(34)
-  val HhDebtService: MechanismId                  = MechanismId(35)
   val HhDepositInterest: MechanismId              = MechanismId(36)
   val HhRemittance: MechanismId                   = MechanismId(37)
   val HhCcOrigination: MechanismId                = MechanismId(38)
@@ -169,7 +168,6 @@ object FlowMechanism:
     HhConsumption,
     HhRent,
     HhPit,
-    HhDebtService,
     HhDepositInterest,
     HhRemittance,
     HhCcOrigination,

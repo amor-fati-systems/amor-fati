@@ -125,7 +125,6 @@ object BankingEconomics:
   private case class PerBankHhFlows(
       incomeShare: PLN,   // household income allocated to this bank
       consShare: PLN,     // household consumption allocated to this bank
-      hhDebtService: PLN, // mortgage debt service payments to this bank
       depInterest: PLN,   // deposit interest paid by this bank to households
       ccDebtService: PLN, // consumer credit debt service to this bank
       ccOrigination: PLN, // total consumer-loan stock origination at this bank
@@ -520,7 +519,6 @@ object BankingEconomics:
         PerBankHhFlows(
           incomeShare = f.income,
           consShare = f.consumption,
-          hhDebtService = f.debtService,
           depInterest = f.depositInterest,
           ccDebtService = f.consumerDebtService,
           ccOrigination = f.consumerOrigination,
@@ -531,7 +529,6 @@ object BankingEconomics:
         PerBankHhFlows(
           incomeShare = in.s3.totalIncome * ws,
           consShare = in.s3.consumption * ws,
-          hhDebtService = in.s6.hhDebtService * ws,
           depInterest = PLN.Zero,
           ccDebtService = in.s6.consumerDebtService * ws,
           ccOrigination = in.s6.consumerOrigination * ws,
@@ -639,7 +636,6 @@ object BankingEconomics:
         bfgLevy = bankBfgLevy,
         unrealizedBondLoss = bankUnrealizedLoss,
         intIncome = bankIntIncome,
-        hhDebtService = hhFlows.hhDebtService,
         bondIncome = bankBondInc,
         depositInterest = hhFlows.depInterest,
         reserveInterest = bankResInt,
@@ -1047,7 +1043,7 @@ object BankingEconomics:
       in.s8.corpBonds.corpBondBankDefaultLoss +
       Banking.computeBfgLevy(in.banks, in.ledgerFinancialState.banks.map(LedgerFinancialState.projectBankFinancialStocks)).total +
       unrealizedBondLoss + htmRealizedLoss + eclProvisionChange + multiCapDestruction
-    val capitalGrossIncome = in.s5.intIncome + in.s6.hhDebtService +
+    val capitalGrossIncome = in.s5.intIncome +
       prevBankAgg.govBondHoldings * in.s8.monetary.newBondYield.monthly -
       in.s6.depositInterestPaid + in.s8.banking.totalReserveInterest +
       in.s8.banking.totalStandingFacilityIncome + in.s8.banking.totalInterbankInterest +

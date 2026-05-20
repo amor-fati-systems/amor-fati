@@ -215,7 +215,6 @@ class SfcSpec extends AnyFlatSpec with Matchers:
     govRevenue = PLN.Zero,
     nplLoss = PLN.Zero,
     interestIncome = PLN.Zero,
-    hhDebtService = PLN.Zero,
     totalIncome = PLN.Zero,
     totalConsumption = PLN.Zero,
     newLoans = PLN.Zero,
@@ -401,10 +400,10 @@ class SfcSpec extends AnyFlatSpec with Matchers:
   "Sfc.validateStockExactness (bank capital)" should "pass when change matches formula exactly" in {
     val prev   =
       zeroSnap.copy(firmCash = PLN(500000), bankCapital = PLN(200000), bankDeposits = PLN(1000000))
-    // nplLoss=7000, intIncome=10000, hhDebtService=2000
-    // expected change = -7000 + 10000*0.3 + 2000*0.3 = -7000 + 3000 + 600 = -3400
-    val curr   = prev.copy(bankCapital = prev.bankCapital - PLN(3400))
-    val flows  = zeroFlows.copy(nplLoss = PLN(7000), interestIncome = PLN(10000), hhDebtService = PLN(2000))
+    // nplLoss=7000, intIncome=10000
+    // expected change = -7000 + 10000*0.3 = -4000
+    val curr   = prev.copy(bankCapital = prev.bankCapital - PLN(4000))
+    val flows  = zeroFlows.copy(nplLoss = PLN(7000), interestIncome = PLN(10000))
     val result = Sfc.validateStockExactness(prev, curr, flows)
     result shouldBe Right(())
   }
@@ -430,23 +429,6 @@ class SfcSpec extends AnyFlatSpec with Matchers:
     // actual change = +5000, expected = +3000, error = 2000
     result shouldBe a[Left[?, ?]]
     errorDelta(result, Sfc.SfcIdentity.BankCapital) shouldBe (BigDecimal("2000.0") +- BigDecimal("0.01"))
-  }
-
-  it should "detect error when debt service is not routed to bank" in {
-    val prev   =
-      zeroSnap.copy(
-        hhSavings = PLN(100000),
-        hhDebt = PLN(5000),
-        firmCash = PLN(500000),
-        bankCapital = PLN(200000),
-        bankDeposits = PLN(1000000),
-      )
-    // Bug: hhDebtService=20000 should add 6000 to bank capital, but bank unchanged
-    val curr   = prev.copy(bankCapital = prev.bankCapital)
-    val flows  = zeroFlows.copy(hhDebtService = PLN(20000))
-    val result = Sfc.validateStockExactness(prev, curr, flows)
-    result shouldBe a[Left[?, ?]]
-    errorDelta(result, Sfc.SfcIdentity.BankCapital) shouldBe (BigDecimal("-6000.0") +- BigDecimal("0.01")) // actual=0, expected=+6000
   }
 
   // ---- Identity 2: Bank deposits ----
@@ -552,7 +534,7 @@ class SfcSpec extends AnyFlatSpec with Matchers:
       bankLoans = PLN(10000),
       govDebt = PLN(50000),
     )
-    // Bank capital: -2000 nplLoss + 6000*0.3 intIncome + 1000*0.3 hhDebtSvc = -2000 + 1800 + 300 = 100
+    // Bank capital: -2000 nplLoss + 6000*0.3 intIncome + 1000*0.3 mortgage interest = -2000 + 1800 + 300 = 100
     // Deposits: totalIncome(50000) - consumption(41000) = 9000
     val curr         = prev.copy(
       bankCapital = prev.bankCapital + PLN(100),
@@ -564,7 +546,7 @@ class SfcSpec extends AnyFlatSpec with Matchers:
       govRevenue = PLN(25000),
       nplLoss = PLN(2000),
       interestIncome = PLN(6000),
-      hhDebtService = PLN(1000),
+      mortgageInterestIncome = PLN(1000),
       totalIncome = PLN(50000),
       totalConsumption = PLN(41000),
     )
@@ -731,12 +713,12 @@ class SfcSpec extends AnyFlatSpec with Matchers:
   it should "pass with combined interest income and deposit interest" in {
     val prev   =
       zeroSnap.copy(firmCash = PLN(500000), bankCapital = PLN(200000), bankDeposits = PLN(1000000))
-    // intIncome=10000, hhDebtService=2000, bankBondIncome=1000, depositInterestPaid=3000
+    // intIncome=10000, mortgageInterest=2000, bankBondIncome=1000, depositInterestPaid=3000
     // expected = -0 + (10000 + 2000 + 1000 - 3000) * 0.3 = 10000 * 0.3 = 3000
     val curr   = prev.copy(bankCapital = prev.bankCapital + PLN(3000))
     val flows  = zeroFlows.copy(
       interestIncome = PLN(10000),
-      hhDebtService = PLN(2000),
+      mortgageInterestIncome = PLN(2000),
       bankBondIncome = PLN(1000),
       depositInterestPaid = PLN(3000),
     )

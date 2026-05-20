@@ -462,16 +462,36 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
       lendingRates = Vector(Rate.decimal(6, 2), Rate.decimal(10, 2)),
       depositRates = Vector(Rate.decimal(4, 2), Rate.decimal(4, 2)),
     )
-    val maybePbf    =
-      step(hhs, mkWorld(), PLN(8000), PLN(4666), Share.decimal(4, 1), rng, nBanks = 2, bankRates = Some(br)).perBankFlows
-    val pbf         = maybePbf.get
-    // Expected debt service: debt * (HhBaseAmortRate + lendingRate/12)
-    val expectedDs0 = decimal(debt) * (decimal(p.household.baseAmortRate) + BigDecimal("0.06") / BigDecimal("12.0"))
-    val expectedDs1 = decimal(debt) * (decimal(p.household.baseAmortRate) + BigDecimal("0.10") / BigDecimal("12.0"))
+    val result      = step(hhs, mkWorld(), PLN(8000), PLN(4666), Share.decimal(4, 1), rng, nBanks = 2, bankRates = Some(br))
+    val pbf         = result.perBankFlows.get
+    val principal   = decimal(debt) / BigDecimal(p.housing.mortgageMaturity)
+    val expectedDs0 = principal + decimal(debt) * BigDecimal("0.06") / BigDecimal("12.0")
+    val expectedDs1 = principal + decimal(debt) * BigDecimal("0.10") / BigDecimal("12.0")
     decimal(pbf(0).debtService) shouldBe (decimal(plnBD(expectedDs0)) +- decimal(PLN(10)))
     decimal(pbf(1).debtService) shouldBe (decimal(plnBD(expectedDs1)) +- decimal(PLN(10)))
+    decimal(result.aggregates.totalMortgagePrincipal) shouldBe (decimal(plnBD(principal * 2)) +- decimal(PLN(10)))
+    decimal(result.aggregates.totalMortgageInterest) shouldBe (decimal(plnBD(expectedDs0 + expectedDs1 - principal * 2)) +- decimal(PLN(10)))
     // Bank 1's higher rate should mean higher debt service
     pbf(1).debtService should be > pbf(0).debtService
+  }
+
+  it should "reduce mortgage stock by scheduled principal only" in {
+    val rng  = RandomStream.seeded(42)
+    val debt = PLN(120000)
+    val hh   = mkHousehold(20, HhStatus.Employed(FirmId(0), SectorIdx(0), PLN(9000)), savings = PLN(100000), debt = debt, bankId = 0)
+    val br   = BankRates(
+      lendingRates = Vector(Rate.decimal(6, 2)),
+      depositRates = Vector(Rate.decimal(4, 2)),
+    )
+
+    val result    = step(Vector(hh), mkWorld(), PLN(8000), PLN(4666), Share.decimal(4, 1), rng, bankRates = Some(br))
+    val principal = debt / p.housing.mortgageMaturity
+    val interest  = debt * Rate.decimal(6, 2).monthly
+
+    result.financialStocks.head.mortgageLoan shouldBe debt - principal
+    result.aggregates.totalMortgagePrincipal shouldBe principal
+    result.aggregates.totalMortgageInterest shouldBe interest
+    result.aggregates.totalDebtService shouldBe principal + interest
   }
 
   it should "pay deposit interest to HH with positive savings" in {

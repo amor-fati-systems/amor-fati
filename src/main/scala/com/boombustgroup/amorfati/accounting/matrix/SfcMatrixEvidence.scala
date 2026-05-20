@@ -464,7 +464,6 @@ object SfcMatrixEvidence:
             Vector(AssetType.Capital),
             Vector(
               FlowMechanism.BankFirmInterest,
-              FlowMechanism.HhDebtService,
               FlowMechanism.BankGovBondIncome,
               FlowMechanism.MortgageInterest,
               FlowMechanism.HhCcDebtService,

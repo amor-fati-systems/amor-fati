@@ -939,7 +939,6 @@ object Banking:
       bfgLevy: PLN,                // BFG resolution fund levy
       unrealizedBondLoss: PLN,     // mark-to-market loss on gov bond portfolio (interest rate risk channel)
       intIncome: PLN,              // interest income on corporate loans
-      hhDebtService: PLN,          // household mortgage debt service
       bondIncome: PLN,             // government bond coupon income
       depositInterest: PLN,        // interest paid on deposits (cost)
       reserveInterest: PLN,        // reserve remuneration from NBP
@@ -963,7 +962,7 @@ object Banking:
   def computeCapitalDelta(in: CapitalPnlInput)(using p: SimParams): CapitalPnlOutput =
     val losses         = in.nplLoss + in.mortgageNplLoss + in.consumerNplLoss +
       in.corpBondDefaultLoss + in.bfgLevy + in.unrealizedBondLoss
-    val grossIncome    = in.intIncome + in.hhDebtService + in.bondIncome - in.depositInterest +
+    val grossIncome    = in.intIncome + in.bondIncome - in.depositInterest +
       in.reserveInterest + in.standingFacilityIncome + in.interbankInterest +
       in.mortgageInterestIncome + in.consumerDebtService + in.corpBondCoupon
     val retainedIncome = grossIncome * p.banking.profitRetention

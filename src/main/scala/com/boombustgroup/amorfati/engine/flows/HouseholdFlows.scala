@@ -7,16 +7,16 @@ import com.boombustgroup.ledger.*
 
 /** Household sector emitting flows from aggregate data.
   *
-  * Aggregate level (Phase 1): total consumption, rent, PIT, debt service, etc.
-  * Per-agent BatchedFlow.Scatter will replace this when the new pipeline is
-  * built.
+  * Aggregate level (Phase 1): total consumption, rent, PIT, deposit interest,
+  * remittances, and consumer-credit flows. Mortgage principal and interest are
+  * emitted by MortgageFlows so secured debt service is not double-counted here.
   *
   * Wages (Firm→HH) are NOT here — emitted by Firm mechanism (#122).
   * Unemployment benefits and social transfers are NOT here — emitted by
   * GovBudgetFlows (#124).
   *
   * Account IDs: 0=HH, 1=Firms (consumption), 2=Landlord (rent), 3=Gov (PIT),
-  * 4=Bank (debt service/deposits), 5=Foreign (remittances)
+  * 4=Bank (deposits/consumer credit), 5=Foreign (remittances)
   */
 object HouseholdFlows:
 
@@ -31,7 +31,6 @@ object HouseholdFlows:
       consumption: PLN,
       rent: PLN,
       pit: PLN,
-      debtService: PLN,
       depositInterest: PLN,
       remittances: PLN,
       approvedCcOrigination: PLN,
@@ -68,15 +67,6 @@ object HouseholdFlows:
         input.pit,
         AssetType.Cash,
         FlowMechanism.HhPit,
-      ),
-      AggregateBatchedEmission.transfer(
-        EntitySector.Households,
-        topology.households.aggregate,
-        EntitySector.Banks,
-        topology.banks.aggregate,
-        input.debtService,
-        AssetType.Cash,
-        FlowMechanism.HhDebtService,
       ),
       AggregateBatchedEmission.transfer(
         EntitySector.Banks,
@@ -140,7 +130,6 @@ object HouseholdFlows:
     if input.consumption > PLN.Zero then flows += Flow(HH_ACCOUNT, FIRM_ACCOUNT, input.consumption.toLong, FlowMechanism.HhConsumption.toInt)
     if input.rent > PLN.Zero then flows += Flow(HH_ACCOUNT, LANDLORD_ACCOUNT, input.rent.toLong, FlowMechanism.HhRent.toInt)
     if input.pit > PLN.Zero then flows += Flow(HH_ACCOUNT, GOV_ACCOUNT, input.pit.toLong, FlowMechanism.HhPit.toInt)
-    if input.debtService > PLN.Zero then flows += Flow(HH_ACCOUNT, BANK_ACCOUNT, input.debtService.toLong, FlowMechanism.HhDebtService.toInt)
     if input.depositInterest > PLN.Zero then flows += Flow(BANK_ACCOUNT, HH_ACCOUNT, input.depositInterest.toLong, FlowMechanism.HhDepositInterest.toInt)
     if input.remittances > PLN.Zero then flows += Flow(HH_ACCOUNT, FOREIGN_ACCOUNT, input.remittances.toLong, FlowMechanism.HhRemittance.toInt)
     if input.approvedCcOrigination > PLN.Zero then

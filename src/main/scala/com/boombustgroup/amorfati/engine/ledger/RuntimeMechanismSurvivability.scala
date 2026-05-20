@@ -115,7 +115,6 @@ object RuntimeMechanismSurvivability:
       FlowMechanism.HhConsumption,
       FlowMechanism.HhRent,
       FlowMechanism.HhPit,
-      FlowMechanism.HhDebtService,
       FlowMechanism.HhDepositInterest,
       FlowMechanism.HhRemittance,
       FlowMechanism.HhCcOrigination,

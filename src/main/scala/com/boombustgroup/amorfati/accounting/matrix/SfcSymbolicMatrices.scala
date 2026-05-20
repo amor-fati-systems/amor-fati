@@ -190,7 +190,6 @@ object SfcSymbolicMatrices:
         ),
         row("loan-interest", "Loan interest", HH -> "-rL_h", Firms -> "-rL_f", Banks -> "+rL")(
           mechanisms = Vector(
-            FlowMechanism.HhDebtService,
             FlowMechanism.FirmInterestPaid,
             FlowMechanism.MortgageInterest,
             FlowMechanism.BankFirmInterest,

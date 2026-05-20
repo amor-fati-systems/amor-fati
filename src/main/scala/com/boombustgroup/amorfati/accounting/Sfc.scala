@@ -134,7 +134,6 @@ object Sfc:
       govRevenue: PLN,                          // total treasury inflow from explicit runtime channels (firm CIT + household PIT + dividend tax + SOE dividends + VAT + excise + customs + NBP remittance)
       nplLoss: PLN,                             // bank NPL write-off loss (firm loans, after recovery)
       interestIncome: PLN,                      // bank interest income from firm loans
-      hhDebtService: PLN,                       // household debt service payments → bank capital
       totalIncome: PLN,                         // aggregate household income (wages + benefits + transfers)
       totalConsumption: PLN,                    // aggregate household consumption expenditure
       newLoans: PLN,                            // new firm loans originated this month
@@ -329,10 +328,10 @@ object Sfc:
     *
     *   1. Bank capital: Δ = -nplLoss - mortgageNplLoss - consumerNplLoss -
     *      corpBondDefaultLoss - bfgLevy - bankCapitalDestruction +
-    *      (interestIncome + hhDebtService + bankBondIncome +
-    *      mortgageInterestIncome + consumerDebtService + corpBondCouponIncome -
-    *      depositInterestPaid + reserveInterest + standingFacilityIncome +
-    *      interbankInterest) × BankProfitRetention
+    *      (interestIncome + bankBondIncome + mortgageInterestIncome +
+    *      consumerDebtService + corpBondCouponIncome - depositInterestPaid +
+    *      reserveInterest + standingFacilityIncome + interbankInterest) ×
+    *      BankProfitRetention
     *   2. Bank deposits: Δ = totalIncome - totalConsumption +
     *      investNetDepositFlow + jstDepositChange + dividendIncome -
     *      foreignDividendOutflow - remittanceOutflow + diasporaInflow +
@@ -421,7 +420,7 @@ object Sfc:
           val losses      = flows.nplLoss + flows.mortgageNplLoss + flows.consumerNplLoss +
             flows.corpBondDefaultLoss + flows.bfgLevy + flows.unrealizedBondLoss +
             flows.htmRealizedLoss + flows.eclProvisionChange + flows.bankCapitalDestruction
-          val grossIncome = flows.interestIncome + flows.hhDebtService + flows.bankBondIncome +
+          val grossIncome = flows.interestIncome + flows.bankBondIncome +
             flows.mortgageInterestIncome + flows.consumerDebtService + flows.corpBondCouponIncome -
             flows.depositInterestPaid + flows.reserveInterest + flows.standingFacilityIncome +
             flows.interbankInterest
