@@ -16,12 +16,12 @@ class McHouseholdSnapshotSchemaSpec extends AnyFlatSpec with Matchers:
 
   "McHouseholdSnapshotSchema" should "keep the household snapshot header stable" in {
     McHouseholdSnapshotSchema.header shouldBe
-      "RunId;Seed;Month;HouseholdId;Status;Region;ContractType;BankId;Wage;Rent;MPC;Skill;HealthPenalty;FinancialDistressMonths;DemandDeposit;MortgageLoan;ConsumerLoan;Equity;PositiveDeposit;ImplicitOverdraft;NetLiquidPosition;NetFinancialPosition;OpeningDemandDeposit;OpeningConsumerLoan;MonthlyIncome;Consumption;RentPaid;MortgageDebtService;ConsumerApprovedOrigination;LiquidityShortfallFinancing;ConsumptionShortfall;RentArrears;MortgageArrears;ConsumerDebtArrears;TemporaryOverdraft;ConsumerDebtService;ConsumerDefault;ConsumerPrincipal;ClosingConsumerLoan"
+      "RunId;Seed;Month;HouseholdId;Status;Region;ContractType;BankId;Wage;Rent;MPC;Skill;HealthPenalty;FinancialDistressMonths;DemandDeposit;MortgageLoan;ConsumerLoan;Equity;PositiveDeposit;ImplicitOverdraft;NetLiquidPosition;NetFinancialPosition;OpeningDemandDeposit;OpeningConsumerLoan;MonthlyIncome;Consumption;RentPaid;MortgageDebtService;ConsumerApprovedOrigination;LiquidityShortfallFinancing;ConsumptionShortfall;RentArrears;MortgageArrears;ConsumerDebtArrears;TemporaryOverdraft;ConsumerDebtService;ConsumerDefault;ConsumerLoanDefault;LiquidityBridgeChargeOff;ConsumerPrincipal;ClosingConsumerLoan"
   }
 
   "McHouseholdShortfallCohortSchema" should "keep the household shortfall cohort header stable" in {
     McHouseholdShortfallCohortSchema.header shouldBe
-      "RunId;Seed;Month;Dimension;Cohort;HouseholdCount;ShortfallHouseholdCount;ShortfallHouseholdShare;LiquidityShortfallFinancing;ShortfallShareOfMonth;ConsumptionShortfall;RentArrears;MortgageArrears;ConsumerDebtArrears;TemporaryOverdraft;ConsumerApprovedOrigination;ConsumerDebtService;ConsumerDefault;ConsumerPrincipal;OpeningDemandDeposit;ClosingDemandDeposit;OpeningConsumerLoan;ClosingConsumerLoan;MonthlyIncome;Consumption;Rent;MortgageDebtService;RentToIncome;MortgageDebtServiceToIncome;ConsumerDebtServiceToIncome;ClosingConsumerLoanToIncome"
+      "RunId;Seed;Month;Dimension;Cohort;HouseholdCount;ShortfallHouseholdCount;ShortfallHouseholdShare;LiquidityShortfallFinancing;ShortfallShareOfMonth;ConsumptionShortfall;RentArrears;MortgageArrears;ConsumerDebtArrears;TemporaryOverdraft;ConsumerApprovedOrigination;ConsumerDebtService;ConsumerDefault;ConsumerLoanDefault;LiquidityBridgeChargeOff;ConsumerPrincipal;OpeningDemandDeposit;ClosingDemandDeposit;OpeningConsumerLoan;ClosingConsumerLoan;MonthlyIncome;Consumption;Rent;MortgageDebtService;RentToIncome;MortgageDebtServiceToIncome;ConsumerDebtServiceToIncome;ClosingConsumerLoanToIncome"
   }
 
   it should "apply the liquidity-shortfall selector to rendered rows" in {
@@ -67,6 +67,9 @@ class McHouseholdSnapshotSchemaSpec extends AnyFlatSpec with Matchers:
               rent = PLN(500),
               mortgageDebtService = PLN(100),
               liquidityShortfallFinancing = PLN(123),
+              consumerDefault = PLN(123),
+              consumerLoanDefault = PLN.Zero,
+              liquidityBridgeChargeOff = PLN(123),
               rentArrears = PLN(123),
             )
           else flow
@@ -83,6 +86,9 @@ class McHouseholdSnapshotSchemaSpec extends AnyFlatSpec with Matchers:
     all.householdCount shouldBe state.households.length
     all.shortfallHouseholdCount shouldBe 1
     all.liquidityShortfallFinancing shouldBe PLN(123)
+    all.consumerDefault shouldBe PLN(123)
+    all.consumerLoanDefault shouldBe PLN.Zero
+    all.liquidityBridgeChargeOff shouldBe PLN(123)
     all.rentArrears shouldBe PLN(123)
     all.shortfallShareOfMonth shouldBe Share.One
 

@@ -23,6 +23,8 @@ class HouseholdCreditStressCalibrationExportSpec extends AnyFlatSpec with Matche
       "MortgagePrincipalToIncome",
       "MortgageInterestToIncome",
       "ConsumerDefaultToConsumerLoans",
+      "LiquidityBridgeChargeOffToConsumerLoans",
+      "LiquidityBridgeChargeOffShareOfConsumerDefault",
       "MortgageDefaultToMortgageLoans",
       "PositiveDepositsToMonthlyIncome",
       "MedianDepositToMeanMonthlyIncome",

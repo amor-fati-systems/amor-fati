@@ -139,11 +139,14 @@ ConsumerOrigination
 ConsumerApprovedOrigination
 ConsumerDebtService
 ConsumerDefault
+ConsumerLoanDefault
+LiquidityBridgeChargeOff
 ```
 
 The timeseries also includes residual shortfall settlement and its component
 attribution. `ConsumerDefault` is the matching same-month default/write-off
-diagnostic for the bridge component:
+diagnostic for the combined consumer-credit stock identity; `ConsumerLoanDefault`
+and `LiquidityBridgeChargeOff` split that flow for interpretation:
 
 ```text
 HouseholdLiquidity_ShortfallFinancing
@@ -167,6 +170,8 @@ charged off through `ConsumerDefault` in the same month, so it does not survive
 as ordinary household consumer-loan stock and does not bypass DTI underwriting.
 `ConsumerOrigination` remains the gross SFC bridge plus approved-origination
 flow, while `ConsumerApprovedOrigination` is the underwritten credit channel.
+`ConsumerLoanDefault` reports only default of ordinary outstanding consumer-loan
+principal; `LiquidityBridgeChargeOff` reports the same-month bridge write-off.
 For the bridge component, the stock effect is zero because
 `HouseholdLiquidity_ShortfallFinancing` is offset by `ConsumerDefault`.
 

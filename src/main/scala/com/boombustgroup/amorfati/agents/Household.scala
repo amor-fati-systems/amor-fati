@@ -163,54 +163,56 @@ object Household:
 
   /** Aggregate statistics computed from individual households (Paper-06). */
   case class Aggregates(
-      employed: Int,                             // count of employed HH
-      unemployed: Int,                           // count of unemployed HH
-      retraining: Int,                           // count of HH in retraining
-      bankrupt: Int,                             // count of bankrupt HH
-      totalIncome: PLN,                          // aggregate income (wages + benefits + interest + transfers)
-      consumption: PLN,                          // aggregate consumption (goods + rent)
-      domesticConsumption: PLN,                  // domestic component of consumption
-      importConsumption: PLN,                    // import component of consumption
-      marketWage: PLN,                           // current market-clearing wage
-      reservationWage: PLN,                      // minimum acceptable wage for job search
-      giniIndividual: Share,                     // Gini of income distribution
-      giniWealth: Share,                         // Gini of liquid demand-deposit wealth
-      meanSavings: PLN,                          // mean liquid demand deposits across all HH
-      medianSavings: PLN,                        // median liquid demand deposits across all HH
-      povertyRate50: Share,                      // share with income < 50% median (EU AROP)
-      bankruptcyRate: Share,                     // share of bankrupt HH
-      meanSkill: Share,                          // mean skill of alive (non-bankrupt) HH
-      meanHealthPenalty: Share,                  // mean health scarring of alive HH
-      retrainingAttempts: Int,                   // retraining attempts this month
-      retrainingSuccesses: Int,                  // successful retraining completions this month
-      consumptionP10: PLN,                       // 10th percentile of consumption
-      consumptionP50: PLN,                       // median consumption
-      consumptionP90: PLN,                       // 90th percentile of consumption
-      meanMonthsToRuin: Scalar,                  // mean months until bankruptcy (placeholder)
-      povertyRate30: Share,                      // share with income < 30% median (deep poverty)
-      totalRent: PLN,                            // aggregate rent payments
-      totalDebtService: PLN,                     // aggregate secured debt service
-      totalUnempBenefits: PLN,                   // aggregate unemployment benefits paid
-      totalDepositInterest: PLN,                 // aggregate deposit interest received
-      crossSectorHires: Int,                     // cross-sector hires this month
-      voluntaryQuits: Int,                       // voluntary quits (cross-sector search)
-      sectorMobilityRate: Share,                 // fraction employed in different sector than last
-      totalRemittances: PLN,                     // aggregate remittances sent abroad
-      totalPit: PLN,                             // aggregate PIT paid
-      totalSocialTransfers: PLN,                 // aggregate 800+ social transfers
-      totalConsumerDebtService: PLN,             // aggregate consumer debt service
-      totalConsumerOrigination: PLN,             // aggregate gross consumer-loan and bridge origination
-      totalConsumerApprovedOrigination: PLN,     // aggregate underwritten consumer-credit origination
-      totalLiquidityShortfallFinancing: PLN,     // aggregate same-month bridge/write-off for liquidity gaps
-      totalConsumerDefault: PLN,                 // aggregate consumer defaults plus bridge charge-offs
-      totalConsumerPrincipal: PLN,               // aggregate consumer loan principal repaid
-      totalConsumptionShortfall: PLN = PLN.Zero, // shortfall component attributed to consumption
-      totalRentArrears: PLN = PLN.Zero,          // shortfall component attributed to rent
-      totalMortgageArrears: PLN = PLN.Zero,      // shortfall component attributed to mortgage service
-      totalConsumerDebtArrears: PLN = PLN.Zero,  // shortfall component attributed to consumer debt service
-      totalTemporaryOverdraft: PLN = PLN.Zero,   // shortfall component attributed to other liquidity gaps
-      totalMortgagePrincipal: PLN = PLN.Zero,    // aggregate secured mortgage principal repaid
-      totalMortgageInterest: PLN = PLN.Zero,     // aggregate secured mortgage interest paid
+      employed: Int,                                 // count of employed HH
+      unemployed: Int,                               // count of unemployed HH
+      retraining: Int,                               // count of HH in retraining
+      bankrupt: Int,                                 // count of bankrupt HH
+      totalIncome: PLN,                              // aggregate income (wages + benefits + interest + transfers)
+      consumption: PLN,                              // aggregate consumption (goods + rent)
+      domesticConsumption: PLN,                      // domestic component of consumption
+      importConsumption: PLN,                        // import component of consumption
+      marketWage: PLN,                               // current market-clearing wage
+      reservationWage: PLN,                          // minimum acceptable wage for job search
+      giniIndividual: Share,                         // Gini of income distribution
+      giniWealth: Share,                             // Gini of liquid demand-deposit wealth
+      meanSavings: PLN,                              // mean liquid demand deposits across all HH
+      medianSavings: PLN,                            // median liquid demand deposits across all HH
+      povertyRate50: Share,                          // share with income < 50% median (EU AROP)
+      bankruptcyRate: Share,                         // share of bankrupt HH
+      meanSkill: Share,                              // mean skill of alive (non-bankrupt) HH
+      meanHealthPenalty: Share,                      // mean health scarring of alive HH
+      retrainingAttempts: Int,                       // retraining attempts this month
+      retrainingSuccesses: Int,                      // successful retraining completions this month
+      consumptionP10: PLN,                           // 10th percentile of consumption
+      consumptionP50: PLN,                           // median consumption
+      consumptionP90: PLN,                           // 90th percentile of consumption
+      meanMonthsToRuin: Scalar,                      // mean months until bankruptcy (placeholder)
+      povertyRate30: Share,                          // share with income < 30% median (deep poverty)
+      totalRent: PLN,                                // aggregate rent payments
+      totalDebtService: PLN,                         // aggregate secured debt service
+      totalUnempBenefits: PLN,                       // aggregate unemployment benefits paid
+      totalDepositInterest: PLN,                     // aggregate deposit interest received
+      crossSectorHires: Int,                         // cross-sector hires this month
+      voluntaryQuits: Int,                           // voluntary quits (cross-sector search)
+      sectorMobilityRate: Share,                     // fraction employed in different sector than last
+      totalRemittances: PLN,                         // aggregate remittances sent abroad
+      totalPit: PLN,                                 // aggregate PIT paid
+      totalSocialTransfers: PLN,                     // aggregate 800+ social transfers
+      totalConsumerDebtService: PLN,                 // aggregate consumer debt service
+      totalConsumerOrigination: PLN,                 // aggregate gross consumer-loan and bridge origination
+      totalConsumerApprovedOrigination: PLN,         // aggregate underwritten consumer-credit origination
+      totalLiquidityShortfallFinancing: PLN,         // aggregate same-month bridge/write-off for liquidity gaps
+      totalConsumerDefault: PLN,                     // aggregate consumer defaults plus bridge charge-offs
+      totalConsumerPrincipal: PLN,                   // aggregate consumer loan principal repaid
+      totalConsumerLoanDefault: PLN = PLN.Zero,      // default of ordinary outstanding consumer-loan principal
+      totalLiquidityBridgeChargeOff: PLN = PLN.Zero, // same-month bridge charge-off, not ordinary consumer-loan default
+      totalConsumptionShortfall: PLN = PLN.Zero,     // shortfall component attributed to consumption
+      totalRentArrears: PLN = PLN.Zero,              // shortfall component attributed to rent
+      totalMortgageArrears: PLN = PLN.Zero,          // shortfall component attributed to mortgage service
+      totalConsumerDebtArrears: PLN = PLN.Zero,      // shortfall component attributed to consumer debt service
+      totalTemporaryOverdraft: PLN = PLN.Zero,       // shortfall component attributed to other liquidity gaps
+      totalMortgagePrincipal: PLN = PLN.Zero,        // aggregate secured mortgage principal repaid
+      totalMortgageInterest: PLN = PLN.Zero,         // aggregate secured mortgage interest paid
   ):
     def totalLiquidityShortfallComponents: PLN =
       totalConsumptionShortfall + totalRentArrears + totalMortgageArrears + totalConsumerDebtArrears + totalTemporaryOverdraft
@@ -238,6 +240,8 @@ object Household:
         totalLiquidityShortfallFinancing = flowTotals.totalLiquidityShortfallFinancing,
         totalConsumerDefault = flowTotals.totalConsumerDefault,
         totalConsumerPrincipal = flowTotals.totalConsumerPrincipal,
+        totalConsumerLoanDefault = flowTotals.totalConsumerLoanDefault,
+        totalLiquidityBridgeChargeOff = flowTotals.totalLiquidityBridgeChargeOff,
         totalConsumptionShortfall = flowTotals.totalConsumptionShortfall,
         totalRentArrears = flowTotals.totalRentArrears,
         totalMortgageArrears = flowTotals.totalMortgageArrears,
@@ -267,24 +271,26 @@ object Household:
     * exports.
     */
   case class MonthlyFlow(
-      householdId: HhId,                    // household identifier for joining with post-month state
-      openingDemandDeposit: PLN,            // opening liquid deposit before the household month step
-      openingConsumerLoan: PLN,             // opening unsecured consumer-loan principal
-      monthlyIncome: PLN,                   // net monthly household income after PIT and transfers
-      consumption: PLN,                     // monthly household goods consumption
-      rent: PLN,                            // monthly rent paid by the household
-      mortgageDebtService: PLN,             // monthly secured mortgage debt service
-      consumerApprovedOrigination: PLN,     // underwritten consumer credit originated by the DTI rule
-      liquidityShortfallFinancing: PLN,     // same-month bridge/write-off preventing negative closing deposits
-      consumerDebtService: PLN,             // monthly unsecured consumer-credit debt service
-      consumerDefault: PLN,                 // gross consumer default plus bridge charge-off this month
-      consumerPrincipal: PLN,               // principal component of consumer debt service
-      closingConsumerLoan: PLN,             // closing unsecured consumer-loan principal
-      consumptionShortfall: PLN = PLN.Zero, // shortfall attributed to modeled consumption outflow
-      rentArrears: PLN = PLN.Zero,          // shortfall attributed to rent payment
-      mortgageArrears: PLN = PLN.Zero,      // shortfall attributed to mortgage debt service
-      consumerDebtArrears: PLN = PLN.Zero,  // shortfall attributed to consumer debt service
-      temporaryOverdraft: PLN = PLN.Zero,   // shortfall attributed to other current liquidity gaps
+      householdId: HhId,                        // household identifier for joining with post-month state
+      openingDemandDeposit: PLN,                // opening liquid deposit before the household month step
+      openingConsumerLoan: PLN,                 // opening unsecured consumer-loan principal
+      monthlyIncome: PLN,                       // net monthly household income after PIT and transfers
+      consumption: PLN,                         // monthly household goods consumption
+      rent: PLN,                                // monthly rent paid by the household
+      mortgageDebtService: PLN,                 // monthly secured mortgage debt service
+      consumerApprovedOrigination: PLN,         // underwritten consumer credit originated by the DTI rule
+      liquidityShortfallFinancing: PLN,         // same-month bridge/write-off preventing negative closing deposits
+      consumerDebtService: PLN,                 // monthly unsecured consumer-credit debt service
+      consumerDefault: PLN,                     // gross consumer default plus bridge charge-off this month
+      consumerPrincipal: PLN,                   // principal component of consumer debt service
+      closingConsumerLoan: PLN,                 // closing unsecured consumer-loan principal
+      consumerLoanDefault: PLN = PLN.Zero,      // default of ordinary outstanding consumer-loan principal
+      liquidityBridgeChargeOff: PLN = PLN.Zero, // same-month bridge charge-off, not ordinary consumer-loan default
+      consumptionShortfall: PLN = PLN.Zero,     // shortfall attributed to modeled consumption outflow
+      rentArrears: PLN = PLN.Zero,              // shortfall attributed to rent payment
+      mortgageArrears: PLN = PLN.Zero,          // shortfall attributed to mortgage debt service
+      consumerDebtArrears: PLN = PLN.Zero,      // shortfall attributed to consumer debt service
+      temporaryOverdraft: PLN = PLN.Zero,       // shortfall attributed to other current liquidity gaps
   )
 
   object MonthlyFlow:
@@ -303,6 +309,8 @@ object Household:
         consumerDefault = PLN.Zero,
         consumerPrincipal = PLN.Zero,
         closingConsumerLoan = stocks.consumerLoan,
+        consumerLoanDefault = PLN.Zero,
+        liquidityBridgeChargeOff = PLN.Zero,
         consumptionShortfall = PLN.Zero,
         rentArrears = PLN.Zero,
         mortgageArrears = PLN.Zero,
@@ -535,6 +543,8 @@ object Household:
     private var temporaryOverdraftAcc: PLN   = PLN.Zero
     private var ccDefaultAcc: PLN            = PLN.Zero
     private var ccPrincipalAcc: PLN          = PLN.Zero
+    private var ccLoanDefaultAcc: PLN        = PLN.Zero
+    private var bridgeChargeOffAcc: PLN      = PLN.Zero
     var retrainingAttempts: Int              = 0
     var retrainingSuccesses: Int             = 0
     var voluntaryQuits: Int                  = 0
@@ -562,6 +572,8 @@ object Household:
       temporaryOverdraftAcc = temporaryOverdraftAcc + r.credit.liquidityShortfall.temporaryOverdraft
       ccDefaultAcc = ccDefaultAcc + r.credit.defaultAmt
       ccPrincipalAcc = ccPrincipalAcc + r.credit.principal
+      ccLoanDefaultAcc = ccLoanDefaultAcc + r.credit.consumerLoanDefault
+      bridgeChargeOffAcc = bridgeChargeOffAcc + r.credit.liquidityBridgeChargeOff
       retrainingAttempts += r.retrainingAttempt
       retrainingSuccesses += r.retrainingSuccess
       voluntaryQuits += r.voluntaryQuit
@@ -588,6 +600,8 @@ object Household:
     def temporaryOverdraft: PLN          = temporaryOverdraftAcc
     def consumerDefault: PLN             = ccDefaultAcc
     def consumerPrincipal: PLN           = ccPrincipalAcc
+    def consumerLoanDefault: PLN         = ccLoanDefaultAcc
+    def liquidityBridgeChargeOff: PLN    = bridgeChargeOffAcc
 
   /** Build per-bank flow vector from (BankId, HhMonthlyResult) pairs. PLN is
     * Long — addition is exact, no Kahan needed.
@@ -625,6 +639,8 @@ object Household:
       updatedDebt: PLN,                                 // outstanding consumer debt after this month's flows
   ):
     def liquidityShortfallFinancing: PLN = liquidityShortfall.total
+    def liquidityBridgeChargeOff: PLN    = liquidityShortfallFinancing
+    def consumerLoanDefault: PLN         = (defaultAmt - liquidityBridgeChargeOff).max(PLN.Zero)
     // Gross flow preserves the SFC bridge leg; defaultAmt offsets bridge stock in the same month.
     def totalOrigination: PLN            = newLoan + liquidityShortfallFinancing
 
@@ -1120,6 +1136,8 @@ object Household:
             consumerDefault = result.credit.defaultAmt,
             consumerPrincipal = result.credit.principal,
             closingConsumerLoan = result.financialStocks.consumerLoan,
+            consumerLoanDefault = result.credit.consumerLoanDefault,
+            liquidityBridgeChargeOff = result.credit.liquidityBridgeChargeOff,
             consumptionShortfall = result.credit.liquidityShortfall.consumptionShortfall,
             rentArrears = result.credit.liquidityShortfall.rentArrears,
             mortgageArrears = result.credit.liquidityShortfall.mortgageArrears,
@@ -1142,6 +1160,10 @@ object Household:
     require(
       agg.totalLiquidityShortfallComponents == agg.totalLiquidityShortfallFinancing,
       "Household.step shortfall components must reconcile to aggregate liquidity shortfall financing",
+    )
+    require(
+      agg.totalConsumerLoanDefault + agg.totalLiquidityBridgeChargeOff == agg.totalConsumerDefault,
+      "Household.step consumer default components must reconcile to aggregate consumer default",
     )
     StepResult(updated, agg, pbf, stocks, monthly)
 
@@ -1404,6 +1426,8 @@ object Household:
       totalLiquidityShortfallFinancing = t.liquidityShortfallFinancing,
       totalConsumerDefault = t.consumerDefault,
       totalConsumerPrincipal = t.consumerPrincipal,
+      totalConsumerLoanDefault = t.consumerLoanDefault,
+      totalLiquidityBridgeChargeOff = t.liquidityBridgeChargeOff,
       totalConsumptionShortfall = t.consumptionShortfall,
       totalRentArrears = t.rentArrears,
       totalMortgageArrears = t.mortgageArrears,
