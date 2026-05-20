@@ -26,8 +26,12 @@ class McRunnerCsvIntegrationSpec extends AnyFlatSpec with Matchers:
   private val RunId              = "csvspec"
   private val HhLiquidityHeader  =
     "HouseholdLiquidity_NetDemandDeposit;HouseholdLiquidity_PositiveDemandDeposits;HouseholdLiquidity_ImplicitOverdraft;HouseholdLiquidity_NegativeDepositCount;HouseholdLiquidity_NegativeDepositShare;HouseholdLiquidity_MinDemandDeposit;HouseholdLiquidity_DepositP01;HouseholdLiquidity_DepositP05;HouseholdLiquidity_DepositP10;HouseholdLiquidity_DepositP25;HouseholdLiquidity_DepositP50;HouseholdLiquidity_DepositP75;HouseholdLiquidity_DepositP90;HouseholdLiquidity_DepositP95;HouseholdLiquidity_DepositP99"
+  private val HhDistressHeader   =
+    "HH_Distress_Current;HH_Distress_LiquidityStress;HH_Distress_Arrears;HH_Distress_Restructuring;HH_Distress_Defaulted;HH_Distress_Bankruptcy;HH_Distress_ActiveShare"
   private val ExpectedHhHeader   =
-    "Seed;HH_Employed;HH_Unemployed;HH_Retraining;HH_Bankrupt;MeanMonthlyIncome;MeanEmployedWage;WageP10;WageP50;WageP90;MeanSavings;MedianSavings;Gini_Individual;Gini_Wealth;MeanSkill;MeanHealthPenalty;RetrainingAttempts;RetrainingSuccesses;ConsumptionP10;ConsumptionP50;ConsumptionP90;BankruptcyRate;MeanMonthsToRuin;PovertyRate_50pct;PovertyRate_30pct;" +
+    "Seed;HH_Employed;HH_Unemployed;HH_Retraining;HH_Bankrupt;" +
+      HhDistressHeader +
+      ";MeanMonthlyIncome;MeanEmployedWage;WageP10;WageP50;WageP90;MeanSavings;MedianSavings;Gini_Individual;Gini_Wealth;MeanSkill;MeanHealthPenalty;RetrainingAttempts;RetrainingSuccesses;ConsumptionP10;ConsumptionP50;ConsumptionP90;BankruptcyRate;MeanMonthsToRuin;PovertyRate_50pct;PovertyRate_30pct;" +
       HhLiquidityHeader
   private val ExpectedBankHeader =
     "Seed;BankId;Deposits;Loans;Capital;NPL;CAR;GovBonds;InterbankNet;Failed"
@@ -36,7 +40,7 @@ class McRunnerCsvIntegrationSpec extends AnyFlatSpec with Matchers:
   private val ExpectedFirmSnapshotHeader =
     "RunId;Seed;Month;FirmId;Sector;Region;SizeClass;Workers;TechState;BankruptcyReason;DigitalReadiness;Cash;FirmLoan;Equity;BankId;RiskProfile;InitialSize;CapitalStock;Inventory;GreenCapital;ForeignOwned;StateOwned"
   private val ExpectedHouseholdSnapshotHeader =
-    "RunId;Seed;Month;HouseholdId;Status;Region;ContractType;BankId;Wage;Rent;MPC;Skill;HealthPenalty;FinancialDistressMonths;DemandDeposit;MortgageLoan;ConsumerLoan;Equity;PositiveDeposit;ImplicitOverdraft;NetLiquidPosition;NetFinancialPosition;OpeningDemandDeposit;OpeningConsumerLoan;MonthlyIncome;Consumption;UnmetBasicConsumption;DiscretionaryConsumptionCompression;RentPaid;MortgageDebtService;ConsumerApprovedOrigination;ConsumerCreditDemand;ConsumerRejectedOrigination;LiquidityShortfallFinancing;ConsumptionShortfall;RentArrears;MortgageArrears;ConsumerDebtArrears;TemporaryOverdraft;ConsumerDebtService;ConsumerDefault;ConsumerLoanDefault;LiquidityBridgeChargeOff;ConsumerPrincipal;ClosingConsumerLoan"
+    "RunId;Seed;Month;HouseholdId;Status;Region;ContractType;BankId;Wage;Rent;MPC;Skill;HealthPenalty;FinancialDistressMonths;FinancialDistressState;DemandDeposit;MortgageLoan;ConsumerLoan;Equity;PositiveDeposit;ImplicitOverdraft;NetLiquidPosition;NetFinancialPosition;OpeningDemandDeposit;OpeningConsumerLoan;MonthlyIncome;Consumption;UnmetBasicConsumption;DiscretionaryConsumptionCompression;RentPaid;MortgageDebtService;ConsumerApprovedOrigination;ConsumerCreditDemand;ConsumerRejectedOrigination;LiquidityShortfallFinancing;ConsumptionShortfall;RentArrears;MortgageArrears;ConsumerDebtArrears;TemporaryOverdraft;ConsumerDebtService;ConsumerDefault;ConsumerLoanDefault;LiquidityBridgeChargeOff;ConsumerPrincipal;ClosingConsumerLoan"
   private val ExpectedHouseholdShortfallCohortHeader =
     "RunId;Seed;Month;Dimension;Cohort;HouseholdCount;ShortfallHouseholdCount;ShortfallHouseholdShare;LiquidityShortfallFinancing;ShortfallShareOfMonth;ConsumptionShortfall;RentArrears;MortgageArrears;ConsumerDebtArrears;TemporaryOverdraft;ConsumerApprovedOrigination;ConsumerCreditDemand;ConsumerRejectedOrigination;ConsumerDebtService;ConsumerDefault;ConsumerLoanDefault;LiquidityBridgeChargeOff;ConsumerPrincipal;OpeningDemandDeposit;ClosingDemandDeposit;OpeningConsumerLoan;ClosingConsumerLoan;MonthlyIncome;Consumption;UnmetBasicConsumption;DiscretionaryConsumptionCompression;Rent;MortgageDebtService;RentToIncome;MortgageDebtServiceToIncome;ConsumerDebtServiceToIncome;ClosingConsumerLoanToIncome"
 
@@ -97,6 +101,8 @@ class McRunnerCsvIntegrationSpec extends AnyFlatSpec with Matchers:
     val meanMonthlyIncome = if households.nonEmpty then a.totalIncome.divideBy(households.length) else PLN.Zero
     val meanEmployedWage  = if employedWages.nonEmpty then employedWages.sumPln.divideBy(employedWages.length) else PLN.Zero
     s"$seed;${a.employed};${a.unemployed};${a.retraining};${a.bankrupt};" +
+      s"${a.distressCurrent};${a.distressLiquidityStress};${a.distressArrears};${a.distressRestructuring};${a.distressDefaulted};${a.distressBankruptcy};" +
+      s"${a.distressActiveShare(households.length).format(6)};" +
       s"${meanMonthlyIncome.format(2)};${meanEmployedWage.format(2)};" +
       s"${percentile(employedWages, Share.decimal(10, 2)).format(2)};" +
       s"${percentile(employedWages, Share.decimal(50, 2)).format(2)};" +

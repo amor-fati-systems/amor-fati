@@ -1,6 +1,6 @@
 package com.boombustgroup.amorfati.montecarlo
 
-import com.boombustgroup.amorfati.agents.{HhStatus, Household}
+import com.boombustgroup.amorfati.agents.{HhFinancialDistressState, HhStatus, Household}
 import com.boombustgroup.amorfati.engine.SimulationMonth.ExecutionMonth
 import com.boombustgroup.amorfati.engine.flows.FlowSimulation
 import com.boombustgroup.amorfati.engine.ledger.LedgerFinancialState
@@ -32,6 +32,7 @@ private[montecarlo] object McHouseholdSnapshotSchema:
     "Skill"                               -> (row => row.household.skill.format(6)),
     "HealthPenalty"                       -> (row => row.household.healthPenalty.format(6)),
     "FinancialDistressMonths"             -> (row => row.household.financialDistressMonths.toString),
+    "FinancialDistressState"              -> (row => financialDistressState(row.household.financialDistressState)),
     "DemandDeposit"                       -> (row => row.balances.demandDeposit.format(2)),
     "MortgageLoan"                        -> (row => row.balances.mortgageLoan.format(2)),
     "ConsumerLoan"                        -> (row => row.balances.consumerLoan.format(2)),
@@ -120,6 +121,9 @@ private[montecarlo] object McHouseholdSnapshotSchema:
     status match
       case HhStatus.Employed(_, _, wage) => wage
       case _                             => PLN.Zero
+
+  private def financialDistressState(state: HhFinancialDistressState): String =
+    state.toString
 
   private def text(value: String): String =
     value.replace(';', ',').replace('\n', ' ').replace('\r', ' ')

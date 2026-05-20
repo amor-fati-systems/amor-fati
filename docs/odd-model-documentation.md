@@ -62,9 +62,9 @@ The current model is expected to generate and expose:
 - meso patterns: sectoral output, hiring pressure, production capacity,
   firm-size and technology composition, regional labor variation, and external
   trade/GVC stress;
-- micro patterns: household employment status, consumption, savings, debt
-  distress, retraining, bankruptcy, education, region, and social-neighbor
-  effects;
+- micro patterns: household employment status, consumption, savings,
+  financial-distress state, retraining, bankruptcy, education, region, and
+  social-neighbor effects;
 - financial-stability patterns: CAR, NPLs, LCR/NSFR inputs, interbank stress,
   bank failure and resolution, BFG levy and bail-in, government-bond portfolio
   effects, and credit rationing;
@@ -332,6 +332,7 @@ Observation surfaces include:
 - `MonthTrace` for boundary, randomness, validation, and timing diagnostics;
 - Monte Carlo per-seed CSV time series;
 - household, bank, and firm terminal summary CSVs;
+- optional selected-month household micro snapshot and shortfall-cohort CSVs;
 - optional selected-month firm micro snapshot CSVs;
 - optional selected-firm decision trace CSVs for adoption, financing,
   implementation, and labor/digital-investment gate audits;
@@ -347,7 +348,7 @@ surfaces. Detailed mathematical rules are documented in
 
 | Decision unit | Decisions | Information used | Constraints | Heterogeneity and adaptation |
 | --- | --- | --- | --- | --- |
-| Households | consume, save/draw buffers, pay rent/debt, use consumer credit, retrain, change sector, become bankrupt | wage, employment status, bank rates, debt service, deposits, social-neighbor distress, region, education, sector signals | income, deposits, debt, credit terms, unemployment duration, retraining cost and success probability | skill, health, MPC, education, region, contract type, immigrant status, social network |
+| Households | consume, save/draw buffers, pay rent/debt, use consumer credit, enter or recover from financial distress, retrain, change sector, enter personal-insolvency write-off | wage, employment status, bank rates, debt service, deposits, financial-distress state, social-neighbor distress, region, education, sector signals | income, deposits, debt, credit terms, distress persistence, unemployment duration, retraining cost and success probability | skill, health, MPC, education, region, contract type, immigrant status, social network |
 | Firms | produce, hire/fire, price/markup, invest, adopt hybrid/AI technology, borrow, issue equity/bonds, enter or exit | demand pressure, capacity, wages, costs, credit rates, cash, debt, sector, network effects, digital readiness | cash, working capital, labor availability, bank lending, profitability thresholds, technology failure risk | sector, size, technology regime, readiness, productivity, bank relation, network position |
 | Banks | price loans/deposits, approve credit, manage liquidity, absorb losses, provision, resolve failures, participate in interbank and bond markets | deposits, loans, reserves, capital, NPLs, bond yields, regulatory buffers, failed-bank state | CAR, LCR/NSFR inputs, reserve requirement, BFG/bail-in rules, failed-bank exclusion | seven bank rows: six named archetypes plus aggregate `Others`, with row-specific buffers, spreads, capital, and balance sheets |
 | Government | tax, spend, transfer, invest, issue debt, service debt, respond to fiscal rules | fiscal balance, debt, unemployment, tax bases, bond demand, social fund balances | fiscal-rule severity, debt brake, spending cuts, financing needs | aggregate institution with policy parameters |

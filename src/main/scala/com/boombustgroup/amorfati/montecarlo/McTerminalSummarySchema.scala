@@ -72,7 +72,16 @@ private[montecarlo] object McTerminalSummarySchema:
     ("HH_Employed", row => s"${row.aggregates.employed}"),
     ("HH_Unemployed", row => s"${row.aggregates.unemployed}"),
     ("HH_Retraining", row => s"${row.aggregates.retraining}"),
+    // Legacy activity-status bankruptcy; personal insolvency is in HH_Distress_Bankruptcy.
     ("HH_Bankrupt", row => s"${row.aggregates.bankrupt}"),
+    // Terminal cross-section of the household financial-distress state machine.
+    ("HH_Distress_Current", row => s"${row.aggregates.distressCurrent}"),
+    ("HH_Distress_LiquidityStress", row => s"${row.aggregates.distressLiquidityStress}"),
+    ("HH_Distress_Arrears", row => s"${row.aggregates.distressArrears}"),
+    ("HH_Distress_Restructuring", row => s"${row.aggregates.distressRestructuring}"),
+    ("HH_Distress_Defaulted", row => s"${row.aggregates.distressDefaulted}"),
+    ("HH_Distress_Bankruptcy", row => s"${row.aggregates.distressBankruptcy}"),
+    ("HH_Distress_ActiveShare", row => row.aggregates.distressActiveShare(row.households.length).format(6)),
     ("MeanMonthlyIncome", row => row.meanMonthlyIncome.format(2)),
     ("MeanEmployedWage", row => row.meanEmployedWage.format(2)),
     ("WageP10", row => row.wageP10.format(2)),

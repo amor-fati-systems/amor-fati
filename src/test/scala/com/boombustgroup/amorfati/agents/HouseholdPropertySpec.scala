@@ -146,6 +146,17 @@ class HouseholdPropertySpec extends AnyFlatSpec with Matchers with ScalaCheckPro
       }
     }
 
+  it should "partition households across financial distress states" in
+    forAll(Gen.choose(5, 50)) { (n: Int) =>
+      forAll(Gen.listOfN(n, genHousehold)) { (hhList: List[Household.State]) =>
+        val hhs = hhList.toVector
+        val agg = computeAggregates(hhs)
+        agg.distressCurrent + agg.distressLiquidityStress + agg.distressArrears + agg.distressRestructuring + agg.distressDefaulted + agg.distressBankruptcy shouldBe n
+        agg.distressActiveShare(n) should be >= Share.Zero
+        agg.distressActiveShare(n) should be <= Share.One
+      }
+    }
+
   it should "have positive meanSavings when all savings are positive" in
     forAll(Gen.choose(5, 30)) { (n: Int) =>
       forAll(Gen.listOfN(n, genHousehold)) { (hhList: List[Household.State]) =>

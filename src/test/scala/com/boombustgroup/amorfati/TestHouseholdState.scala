@@ -1,6 +1,6 @@
 package com.boombustgroup.amorfati
 
-import com.boombustgroup.amorfati.agents.{ContractType, HhStatus, Household, Region}
+import com.boombustgroup.amorfati.agents.{ContractType, HhFinancialDistressState, HhStatus, Household, Region}
 import com.boombustgroup.amorfati.types.*
 
 object TestHouseholdState:
@@ -45,6 +45,7 @@ object TestHouseholdState:
       financialDistressMonths: Int = 0,
       contractType: ContractType = ContractType.Permanent,
       region: Region = Region.Central,
+      financialDistressState: HhFinancialDistressState = HhFinancialDistressState.Current,
   ): Fixture =
     Fixture(
       state = apply(
@@ -65,6 +66,7 @@ object TestHouseholdState:
         financialDistressMonths = financialDistressMonths,
         contractType = contractType,
         region = region,
+        financialDistressState = financialDistressState,
       ),
       financialStocks = financial(savings = savings, debt = debt, consumerDebt = consumerDebt, equityWealth = equityWealth),
     )
@@ -91,6 +93,7 @@ object TestHouseholdState:
       financialDistressMonths: Int = 0,
       contractType: ContractType = ContractType.Permanent,
       region: Region = Region.Central,
+      financialDistressState: HhFinancialDistressState = HhFinancialDistressState.Current,
   ): Household.State =
     val _ = (savings, debt, equityWealth, consumerDebt)
     Household.State(
@@ -111,4 +114,5 @@ object TestHouseholdState:
       financialDistressMonths = financialDistressMonths,
       contractType = contractType,
       region = region,
+      financialDistressState = financialDistressState,
     )

@@ -20,6 +20,15 @@ enum HhStatus:
   case Retraining(monthsLeft: Int, targetSector: SectorIdx, cost: PLN) // transitioning to target sector
   case Bankrupt // absorbing barrier
 
+/** Financial-distress lifecycle, separate from labor-market status. */
+enum HhFinancialDistressState:
+  case Current         // no active financial distress
+  case LiquidityStress // first active liquidity stress month
+  case Arrears         // repeated unpaid obligations or residual shortfall
+  case Restructuring   // post-arrears workout / constrained recovery
+  case Defaulted       // persistent distress before personal-insolvency write-off
+  case Bankruptcy // personal insolvency / write-off state
+
 /** Per-bank lending and deposit rates for individual HH mode. */
 case class BankRates(
     lendingRates: Vector[Rate], // annual lending rate per bank (index = BankId)
@@ -88,6 +97,12 @@ object Household:
   private val MinConsumerLoanSize     = PLN(100)            // minimum loan size (PLN)
   private val ConsumerDebtInitFrac    = Share.decimal(3, 1) // init consumer debt as fraction of mortgage draw
 
+  // Financial-distress lifecycle behavior
+  private val LiquidityStressConsumptionMultiplier = Share.decimal(95, 2) // precautionary consumption cut after stress
+  private val ArrearsConsumptionMultiplier         = Share.decimal(90, 2) // stronger cut when obligations are in arrears
+  private val RestructuringConsumptionMultiplier   = Share.decimal(85, 2) // workout-state spending constraint
+  private val DefaultedConsumptionMultiplier       = Share.decimal(80, 2) // post-default/bankruptcy cash discipline
+
   // Init sampling
   private val GpwEquityInitFrac     = Share.decimal(5, 2)  // fraction of savings allocated to GPW equity at init
   private val SectorSkillBonusCoeff = Scalar.decimal(2, 2) // coefficient for sector-specific skill bonus (log sigma)
@@ -105,23 +120,24 @@ object Household:
   /** Full state of a single household agent, carried across simulation months.
     */
   case class State(
-      id: HhId,                                            // unique household identifier
-      monthlyRent: PLN,                                    // monthly rent payment (to landlord / housing market)
-      skill: Share,                                        // labor productivity multiplier [0,1], decays during unemployment
-      healthPenalty: Share,                                // cumulative health penalty from long-term unemployment (scarring)
-      mpc: Share,                                          // marginal propensity to consume (Beta-sampled at init)
-      status: HhStatus,                                    // current employment/activity status
-      socialNeighbors: Array[HhId],                        // Watts-Strogatz social network neighbor IDs
-      bankId: BankId,                                      // index into the explicit bank vector (multi-bank)
-      lastSectorIdx: SectorIdx,                            // last sector employed in (-1 = never)
-      isImmigrant: Boolean,                                // immigrant status for wage discount + remittances
-      numDependentChildren: Int,                           // children ≤ 18 for 800+ social transfers
-      education: Int,                                      // education level: 0=Primary, 1=Vocational, 2=Secondary, 3=Tertiary
-      taskRoutineness: Share,                              // how routine is this worker's task bundle [0,1] (Acemoglu & Restrepo 2020)
-      wageScar: Share,                                     // persistent wage penalty from unemployment spell (Jacobson et al. 1993)
-      financialDistressMonths: Int = 0,                    // consecutive months of deep financial distress
-      contractType: ContractType = ContractType.Permanent, // employment contract type (Kodeks Pracy / umowa zlecenie / B2B)
-      region: Region = Region.Central,                     // NUTS-1 macroregion (geographic labor market)
+      id: HhId,                                                                           // unique household identifier
+      monthlyRent: PLN,                                                                   // monthly rent payment (to landlord / housing market)
+      skill: Share,                                                                       // labor productivity multiplier [0,1], decays during unemployment
+      healthPenalty: Share,                                                               // cumulative health penalty from long-term unemployment (scarring)
+      mpc: Share,                                                                         // marginal propensity to consume (Beta-sampled at init)
+      status: HhStatus,                                                                   // current employment/activity status
+      socialNeighbors: Array[HhId],                                                       // Watts-Strogatz social network neighbor IDs
+      bankId: BankId,                                                                     // index into the explicit bank vector (multi-bank)
+      lastSectorIdx: SectorIdx,                                                           // last sector employed in (-1 = never)
+      isImmigrant: Boolean,                                                               // immigrant status for wage discount + remittances
+      numDependentChildren: Int,                                                          // children ≤ 18 for 800+ social transfers
+      education: Int,                                                                     // education level: 0=Primary, 1=Vocational, 2=Secondary, 3=Tertiary
+      taskRoutineness: Share,                                                             // how routine is this worker's task bundle [0,1] (Acemoglu & Restrepo 2020)
+      wageScar: Share,                                                                    // persistent wage penalty from unemployment spell (Jacobson et al. 1993)
+      financialDistressMonths: Int = 0,                                                   // consecutive months of deep financial distress
+      contractType: ContractType = ContractType.Permanent,                                // employment contract type (Kodeks Pracy / umowa zlecenie / B2B)
+      region: Region = Region.Central,                                                    // NUTS-1 macroregion (geographic labor market)
+      financialDistressState: HhFinancialDistressState = HhFinancialDistressState.Current, // financial arrears/default lifecycle state
   )
 
   /** Ledger-contracted household financial stocks carried through household
@@ -217,9 +233,21 @@ object Household:
       totalTemporaryOverdraft: PLN = PLN.Zero,                  // shortfall component attributed to other liquidity gaps
       totalMortgagePrincipal: PLN = PLN.Zero,                   // aggregate secured mortgage principal repaid
       totalMortgageInterest: PLN = PLN.Zero,                    // aggregate secured mortgage interest paid
+      distressCurrent: Int = 0,                                 // count of HH with no active financial distress
+      distressLiquidityStress: Int = 0,                         // count of HH in first-month liquidity stress
+      distressArrears: Int = 0,                                 // count of HH with repeated arrears/shortfall stress
+      distressRestructuring: Int = 0,                           // count of HH in post-arrears restructuring/recovery
+      distressDefaulted: Int = 0,                               // count of HH in persistent default before write-off
+      distressBankruptcy: Int = 0,                              // count of HH in personal-insolvency/write-off state
   ):
     def totalLiquidityShortfallComponents: PLN =
       totalConsumptionShortfall + totalRentArrears + totalMortgageArrears + totalConsumerDebtArrears + totalTemporaryOverdraft
+
+    def distressActiveCount: Int =
+      distressLiquidityStress + distressArrears + distressRestructuring + distressDefaulted + distressBankruptcy
+
+    def distressActiveShare(totalPopulation: Int): Share =
+      if totalPopulation > 0 then Share.fraction(distressActiveCount, totalPopulation) else Share.Zero
 
     def withFlowTotalsFrom(flowTotals: Aggregates): Aggregates =
       copy(
@@ -812,6 +840,53 @@ object Household:
     if monthlyPaymentHeadroom <= PLN.Zero || paymentFactor <= Rate.Zero then PLN.Zero
     else monthlyPaymentHeadroom / paymentFactor.toMultiplier
 
+  // First-month liquidity stress still goes through normal underwriting;
+  // repeated arrears/default states close access to new unsecured credit.
+  private def consumerCreditBlockedByDistress(state: HhFinancialDistressState): Boolean =
+    state match
+      case HhFinancialDistressState.Arrears | HhFinancialDistressState.Restructuring | HhFinancialDistressState.Defaulted |
+          HhFinancialDistressState.Bankruptcy =>
+        true
+      case HhFinancialDistressState.Current | HhFinancialDistressState.LiquidityStress =>
+        false
+
+  private def financialDistressConsumptionMultiplier(state: HhFinancialDistressState): Share =
+    state match
+      case HhFinancialDistressState.Current         => Share.One
+      case HhFinancialDistressState.LiquidityStress => LiquidityStressConsumptionMultiplier
+      case HhFinancialDistressState.Arrears         => ArrearsConsumptionMultiplier
+      case HhFinancialDistressState.Restructuring   => RestructuringConsumptionMultiplier
+      case HhFinancialDistressState.Defaulted       => DefaultedConsumptionMultiplier
+      case HhFinancialDistressState.Bankruptcy      => DefaultedConsumptionMultiplier
+
+  private def applyFinancialDistressConsumptionAdjustment(consumption: PLN, state: HhFinancialDistressState)(using p: SimParams): PLN =
+    val multiplier = financialDistressConsumptionMultiplier(state)
+    if multiplier >= Share.One || consumption <= PLN.Zero then consumption
+    else (consumption * multiplier).max(p.household.basicConsumptionFloor.min(consumption))
+
+  // Recovery is staged so a household that exits arrears/default spends one
+  // month in constrained restructuring before returning to Current.
+  private def recoveryDistressState(previous: HhFinancialDistressState): HhFinancialDistressState =
+    previous match
+      case HhFinancialDistressState.Arrears | HhFinancialDistressState.Defaulted | HhFinancialDistressState.Bankruptcy          =>
+        HhFinancialDistressState.Restructuring
+      case HhFinancialDistressState.Current | HhFinancialDistressState.LiquidityStress | HhFinancialDistressState.Restructuring =>
+        HhFinancialDistressState.Current
+
+  // The threshold month becomes Defaulted; personalInsolvency is the separate
+  // write-off branch that moves the household to Bankruptcy.
+  private def advanceFinancialDistressState(
+      previous: HhFinancialDistressState,
+      status: HhStatus,
+      distressMonths: Int,
+      personalInsolvency: Boolean,
+  )(using p: SimParams): HhFinancialDistressState =
+    if status == HhStatus.Bankrupt || personalInsolvency then HhFinancialDistressState.Bankruptcy
+    else if distressMonths <= 0 then recoveryDistressState(previous)
+    else if distressMonths >= p.household.bankruptcyDistressMonths then HhFinancialDistressState.Defaulted
+    else if distressMonths >= 2 then HhFinancialDistressState.Arrears
+    else HhFinancialDistressState.LiquidityStress
+
   /** Consumer credit for one HH: debt service, origination, principal. */
   private def processConsumerCredit(
       hh: State,
@@ -834,7 +909,7 @@ object Household:
     val (creditDemand, rejectedCreditDemand, newConsumerLoan, creditCapacity, creditAccessEligible) = hh.status match
       case HhStatus.Employed(_, _, wage)                                             =>
         val stressed = disposable < wage * DisposableWageThreshold
-        val eligible = stressed && p.household.ccEligRate.sampleBelow(rng)
+        val eligible = stressed && !consumerCreditBlockedByDistress(hh.financialDistressState) && p.household.ccEligRate.sampleBelow(rng)
         if !stressed then (PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, false)
         else
           val totalDbtSvc       = debtService + consumerDebtSvc
@@ -990,9 +1065,10 @@ object Household:
     val consumption         = consumptionBudget * hh.mpc
 
     // Social network precautionary effect
-    val neighborDistress = neighborDistressRatioFast(hh, distressedIds)
-    val consumptionAdj   =
+    val neighborDistress            = neighborDistressRatioFast(hh, distressedIds)
+    val consumptionAdj              =
       if neighborDistress > NeighborDistressThreshold then consumption * NeighborDistressConsAdj else consumption
+    val distressAdjustedConsumption = applyFinancialDistressConsumptionAdjustment(consumptionAdj, hh.financialDistressState)
 
     // Wealth effects: equity (GPW) + housing (Meen HPI)
     val newEquityWealth       = (financialStocks.equity * (Multiplier.One + equityIndexReturn.toMultiplier)).max(PLN.Zero)
@@ -1001,7 +1077,7 @@ object Household:
       if equityGain > PLN.Zero then equityGain * p.equity.wealthEffectMpc
       else PLN.Zero
     val housingBoost          = world.real.housing.lastWealthEffect / world.derivedTotalPopulation.toLong.max(1L)
-    val consumptionWithWealth = consumptionAdj + equityBoost + housingBoost
+    val consumptionWithWealth = distressAdjustedConsumption + equityBoost + housingBoost
     val consumptionWaterfall  =
       applyConsumptionWaterfall(financialStocks.demandDeposit, income, credit.newLoan, fullObligations, consumptionWithWealth)
 
@@ -1046,7 +1122,8 @@ object Household:
     val f              = computeMonthlyFlows(hh, financialStocks, world, rng, bankRates, equityIndexReturn, distressedIds)
     val distressMonths =
       if financialDistressTriggered(f) then hh.financialDistressMonths + 1 else 0
-    if distressMonths >= p.household.bankruptcyDistressMonths then resolveBankruptcy(f, distressMonths)
+    // One full month in Defaulted is observable before personal-insolvency write-off.
+    if distressMonths > p.household.bankruptcyDistressMonths then resolveBankruptcy(f, distressMonths)
     else resolveSurvival(f, sectorWages, sectorVacancies, rng, distressMonths)
 
   /** Diagnostic-only attribution: outflows consume available cash in a stable
@@ -1104,11 +1181,10 @@ object Household:
   /** Personal-insolvency branch: write off consumer debt and equity without
     * removing the household from the labor force.
     */
-  private def resolveBankruptcy(f: MonthlyFlows, distressMonths: Int): HhMonthlyResult =
+  private def resolveBankruptcy(f: MonthlyFlows, distressMonths: Int)(using p: SimParams): HhMonthlyResult =
     // Consumer credit stock is reduced earlier by same-month principal only.
     // Default the remaining balance so bankruptcy stays aligned with the stock
     // identity used by BankingEconomics/SFC.
-    val _                                   = distressMonths
     val liquidityShortfall                  = attributeLiquidityShortfall(f, f.newSavings, temporaryOutflow = PLN.Zero)
     val (finalDemandDeposit, settledCredit) = settleLiquidityShortfall(f.newSavings, f.credit, liquidityShortfall)
     val ccDefaultAmt                        = settledCredit.defaultAmt + settledCredit.updatedDebt
@@ -1123,6 +1199,7 @@ object Household:
       newState = f.hh.copy(
         status = f.newStatus,
         financialDistressMonths = 0,
+        financialDistressState = advanceFinancialDistressState(f.hh.financialDistressState, f.newStatus, distressMonths, personalInsolvency = true),
       ),
       income = f.income,
       benefit = f.benefit,
@@ -1165,6 +1242,8 @@ object Household:
 
     val (finalStatus, rAttempt, rSuccess) =
       tryRetraining(f.hh, f.financialStocks, afterVoluntary, f.neighborDistress, sectorWages, sectorVacancies, rng)
+    val nextFinancialDistressState        =
+      advanceFinancialDistressState(f.hh.financialDistressState, finalStatus, distressMonths, personalInsolvency = false)
 
     val retrainingCostThisMonth             = finalStatus match
       case HhStatus.Retraining(ml, _, cost) if ml == p.household.retrainingDuration - 1 => cost
@@ -1188,6 +1267,7 @@ object Household:
         mpc = afterMpc,
         status = finalStatus,
         financialDistressMonths = distressMonths,
+        financialDistressState = nextFinancialDistressState,
       ),
       income = f.income,
       benefit = f.benefit,
@@ -1238,7 +1318,9 @@ object Household:
     val mapped = households
       .zip(financialStocks)
       .map: (hh, stocks) =>
-        if hh.status == HhStatus.Bankrupt then (hh, None, stocks, MonthlyFlow.inactive(hh.id, stocks)) // absorbing barrier
+        if hh.status == HhStatus.Bankrupt then
+          val bankruptHh = hh.copy(financialDistressState = HhFinancialDistressState.Bankruptcy)
+          (bankruptHh, None, stocks, MonthlyFlow.inactive(hh.id, stocks)) // absorbing barrier
         else
           val result = processHousehold(hh, stocks, world, rng, bankRates, equityIndexReturn, sectorWages, sectorVacancies, distressedIds)
           val flow   = MonthlyFlow(
@@ -1295,9 +1377,12 @@ object Household:
     val bits = new java.util.BitSet(households.length)
     var i    = 0
     while i < households.length do
-      households(i).status match
-        case HhStatus.Bankrupt | HhStatus.Unemployed(_) => bits.set(i)
-        case _                                          =>
+      val hh = households(i)
+      hh.status match
+        case HhStatus.Bankrupt | HhStatus.Unemployed(_)                         => bits.set(i)
+        case _ if hh.financialDistressState != HhFinancialDistressState.Current =>
+          bits.set(i)
+        case _                                                                  =>
       i += 1
     bits
 
@@ -1442,16 +1527,22 @@ object Household:
     )
     val n = households.length
 
-    var nEmployed    = 0
-    var nUnemployed  = 0
-    var nRetraining  = 0
-    var nBankrupt    = 0
-    var sumSkill     = 0L
-    var sumHealth    = 0L
-    var sumSavings   = 0L
-    val incomes      = new Array[Long](n)
-    val consumptions = new Array[Long](n)
-    val savingsArr   = new Array[Long](n)
+    var nEmployed          = 0
+    var nUnemployed        = 0
+    var nRetraining        = 0
+    var nBankrupt          = 0
+    var nDistCurrent       = 0
+    var nDistStress        = 0
+    var nDistArrears       = 0
+    var nDistRestructuring = 0
+    var nDistDefaulted     = 0
+    var nDistBankruptcy    = 0
+    var sumSkill           = 0L
+    var sumHealth          = 0L
+    var sumSavings         = 0L
+    val incomes            = new Array[Long](n)
+    val consumptions       = new Array[Long](n)
+    val savingsArr         = new Array[Long](n)
 
     // Hot path: O(N_hh) single-pass with mutable accumulators + in-place arrays.
     // Intentionally imperative — foldLeft with 9-field accumulator would be slower and less readable.
@@ -1478,6 +1569,18 @@ object Household:
         case HhStatus.Bankrupt             =>
           nBankrupt += 1
           incomes(i) = 0L
+
+      // Legacy Bankrupt status rows always count as Bankruptcy even if their
+      // separate financial-distress field predates this state machine.
+      val distressState =
+        if hh.status == HhStatus.Bankrupt then HhFinancialDistressState.Bankruptcy else hh.financialDistressState
+      distressState match
+        case HhFinancialDistressState.Current         => nDistCurrent += 1
+        case HhFinancialDistressState.LiquidityStress => nDistStress += 1
+        case HhFinancialDistressState.Arrears         => nDistArrears += 1
+        case HhFinancialDistressState.Restructuring   => nDistRestructuring += 1
+        case HhFinancialDistressState.Defaulted       => nDistDefaulted += 1
+        case HhFinancialDistressState.Bankruptcy      => nDistBankruptcy += 1
 
       val rentRaw       = hh.monthlyRent.toLong
       val mortgageRate  = p.monetary.initialRate + p.housing.mortgageSpread
@@ -1562,6 +1665,12 @@ object Household:
       totalTemporaryOverdraft = t.temporaryOverdraft,
       totalMortgagePrincipal = t.mortgagePrincipal,
       totalMortgageInterest = t.mortgageInterest,
+      distressCurrent = nDistCurrent,
+      distressLiquidityStress = nDistStress,
+      distressArrears = nDistArrears,
+      distressRestructuring = nDistRestructuring,
+      distressDefaulted = nDistDefaulted,
+      distressBankruptcy = nDistBankruptcy,
     )
 
   /** Gini coefficient for a pre-sorted array (handles negatives by shifting).

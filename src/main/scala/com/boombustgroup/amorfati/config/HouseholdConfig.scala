@@ -67,8 +67,11 @@ import com.boombustgroup.amorfati.types.*
   * @param retrainingEnabled
   *   whether retraining mechanism is active
   * @param bankruptcyThreshold
-  *   savings threshold (in multiples of monthly wage) below which household
-  *   defaults
+  *   savings threshold (in multiples of monthly obligations) below which a
+  *   household accumulates financial distress
+  * @param bankruptcyDistressMonths
+  *   consecutive distressed months before the household enters default; one
+  *   further distressed month triggers personal-insolvency write-off
   * @param socialK
   *   Watts-Strogatz degree for household social network
   * @param socialP

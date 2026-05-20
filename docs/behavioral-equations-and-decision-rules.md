@@ -62,7 +62,7 @@ runtime ledger flows and validates SFC identities.
 
 | Rule group | Main implementation anchors | Representative output columns |
 | --- | --- | --- |
-| Household income, consumption, savings, credit | `agents/Household.scala`, `engine/economics/HouseholdIncomeEconomics.scala`, `engine/economics/HouseholdFinancialEconomics.scala` | `MarketWage`, `Unemployment`, `EffectivePitRate`, `ConsumerLoans`, `ConsumerOrigination`, `ConsumerApprovedOrigination`, `ConsumerCreditDemand`, `ConsumerRejectedOrigination`, `ConsumerDebtService`, `ConsumerDefault`, `ConsumerLoanDefault`, `LiquidityBridgeChargeOff`, `HouseholdLiquidity_ShortfallFinancing`, `HouseholdLiquidity_NetDemandDeposit`, `HouseholdLiquidity_PositiveDemandDeposits`, `HouseholdLiquidity_ImplicitOverdraft`, `HouseholdLiquidity_NegativeDepositShare`, `HouseholdLiquidity_DepositP01`-`P99`, `SectorMobilityRate`, `VoluntaryQuits`, `DiasporaRemittanceInflow`, `RemittanceOutflow`, `TourismExport`, `TourismImport` |
+| Household income, consumption, savings, credit | `agents/Household.scala`, `engine/economics/HouseholdIncomeEconomics.scala`, `engine/economics/HouseholdFinancialEconomics.scala` | `MarketWage`, `Unemployment`, `EffectivePitRate`, `ConsumerLoans`, `ConsumerOrigination`, `ConsumerApprovedOrigination`, `ConsumerCreditDemand`, `ConsumerRejectedOrigination`, `ConsumerDebtService`, `ConsumerDefault`, `ConsumerLoanDefault`, `LiquidityBridgeChargeOff`, `HouseholdDistress_Current`, `HouseholdDistress_LiquidityStress`, `HouseholdDistress_Arrears`, `HouseholdDistress_Restructuring`, `HouseholdDistress_Defaulted`, `HouseholdDistress_Bankruptcy`, `HouseholdDistress_ActiveShare`, `HouseholdLiquidity_ShortfallFinancing`, `HouseholdLiquidity_NetDemandDeposit`, `HouseholdLiquidity_PositiveDemandDeposits`, `HouseholdLiquidity_ImplicitOverdraft`, `HouseholdLiquidity_NegativeDepositShare`, `HouseholdLiquidity_DepositP01`-`P99`, `SectorMobilityRate`, `VoluntaryQuits`, `DiasporaRemittanceInflow`, `RemittanceOutflow`, `TourismExport`, `TourismImport` |
 | Labor, wages, demographics, social funds | `engine/economics/LaborEconomics.scala`, `agents/SocialSecurity.scala`, `agents/EarmarkedFunds.scala` | `MarketWage`, `Unemployment`, `WorkingAgePop`, `NRetirees`, `MonthlyRetirements`, `ZusContributions`, `ZusPensionPayments`, `NfzContributions`, `NfzSpending`, `PpkContributions`, `FpContributions`, `FgspSpending` |
 | Demand allocation and fiscal constraint | `engine/economics/DemandEconomics.scala`, `engine/markets/FiscalRules.scala`, `engine/markets/FiscalBudget.scala` | `GovCurrentSpend`, `GovCapitalSpendDomestic`, `FiscalRuleBinding`, `GovSpendingCutRatio`, `DebtToGdp`, `DeficitToGdp`, `PublicCapitalStock` |
 | Firm production, investment, technology, financing, default, entry | `agents/Firm.scala`, `engine/economics/FirmEconomics.scala`, `engine/mechanisms/FirmEntry.scala` | `TotalAdoption`, `AutoRatio`, `HybridRatio`, `Automation_TechCapex`, `Automation_TechImports`, `Automation_TechLoans`, `Automation_UpgradeFailures`, `Automation_AiDebtTrap`, `Automation_NewFullAi`, `Automation_NewHybrid`, `Adoption_MicroShare`, `Adoption_SmallShare`, `Adoption_MediumShare`, `Adoption_LargeShare`, `Adoption_CashQ1`-`Q4`, `Adoption_DebtQ1`-`Q4`, sector `*_Auto`, sector `*_Sigma`, `GrossInvestment`, `AggCapitalStock`, `AggInventoryStock`, `InventoryChange`, `AggEnergyCost`, `GreenInvestment`, `FirmBirths`, `FirmDeaths`, `NetEntry`, `LivingFirmCount`, `CorpBondIssuance`, `EquityIssuanceTotal` |
@@ -87,6 +87,8 @@ Each household carries:
 - behavioral traits: skill, health penalty, marginal propensity to consume
   (MPC), social-neighbor ids, education, task routineness, wage scar,
   dependent children, contract type, region, immigrant status;
+- financial-distress state: `Current`, `LiquidityStress`, `Arrears`,
+  `Restructuring`, `Defaulted`, or `Bankruptcy`;
 - bank routing id;
 - projected ledger financial stocks: non-negative demand deposit, mortgage
   loan, consumer loan, and listed equity.
@@ -245,11 +247,12 @@ but still keeps a protected buffer floor.
 
 ### Consumer Credit
 
-Underwritten consumer credit is available only to employed households. A household is
-eligible when disposable income is stressed relative to wage, a stochastic
-eligibility draw succeeds, and the resulting debt-service-to-income ratio has
-room below `ccMaxDti`. The DTI headroom is a monthly payment-capacity constraint,
-so the approved principal is computed by dividing monthly payment headroom by the
+Underwritten consumer credit is available only to employed households. A
+household is eligible when disposable income is stressed relative to wage, the
+financial-distress state still permits new credit, a stochastic eligibility draw
+succeeds, and the resulting debt-service-to-income ratio has room below
+`ccMaxDti`. The DTI headroom is a monthly payment-capacity constraint, so the
+approved principal is computed by dividing monthly payment headroom by the
 monthly consumer-credit payment factor:
 
 ```text
@@ -262,6 +265,11 @@ consumerCreditDemand_h = min(liquidityNeed_h, principalCapacity_h)
 approvedConsumerLoan_h = consumerCreditDemand_h if eligible else 0
 rejectedConsumerCreditDemand_h = consumerCreditDemand_h - approvedConsumerLoan_h
 ```
+
+`Current` and first-month `LiquidityStress` households can still pass the normal
+underwriting rule. `Arrears`, `Restructuring`, `Defaulted`, and `Bankruptcy`
+households report credit demand where relevant, but new underwritten
+consumer-credit approval is blocked.
 
 Liquidity-shortfall financing is not a discretionary credit decision and does
 not expand the consumption budget. It is a settlement leg booked after monthly
@@ -306,7 +314,7 @@ Long unemployment reduces skill, increases health penalty, and accumulates a
 wage scar. Re-employment decays the wage scar gradually.
 
 Financial distress is tracked as consecutive months with savings below a
-bankruptcy floor:
+distress floor:
 
 ```text
 bankruptcyFloor_h =
@@ -314,8 +322,28 @@ bankruptcyFloor_h =
   * bankruptcyThreshold
 ```
 
-After `bankruptcyDistressMonths`, the household enters the absorbing bankrupt
-state.
+The resulting financial-distress state is separate from labor-market status:
+
+```text
+Current
+  -> LiquidityStress       after first active distress month
+  -> Arrears               after repeated distress
+  -> Defaulted             at bankruptcyDistressMonths
+  -> Bankruptcy            after one further distressed month and write-off
+
+Arrears/Defaulted/Bankruptcy with no new distress -> Restructuring
+Restructuring with no new distress                -> Current
+LiquidityStress with no new distress              -> Current
+```
+
+The state affects behavior before the next monthly budget is closed. Non-current
+states apply precautionary consumption compression, bounded by the basic
+consumption floor. `Arrears`, `Restructuring`, `Defaulted`, and `Bankruptcy`
+also block new underwritten consumer credit. `Bankruptcy` is a personal
+insolvency/write-off state: remaining unsecured consumer credit and listed
+equity are written off, but the household is not removed from the labor force.
+The write-off remains SFC-consistent through `ConsumerDefault`,
+`ConsumerLoanDefault`, and `LiquidityBridgeChargeOff`.
 
 ## Labor, Demographics, And Social Funds
 

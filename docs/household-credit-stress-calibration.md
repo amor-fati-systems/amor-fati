@@ -80,6 +80,9 @@ default; liquidity bridge write-offs are reported separately. The #528 budget
 waterfall additionally reports unmet basic consumption and discretionary
 consumption compression so shortfall financing is not the only visible stress
 absorber. The #534 consumer-credit diagnostics report stressed borrower demand
-and rejected origination separately from approved origination. These bands should
-be replaced or narrowed when NBP, KNF, GUS or household microdata bridges are
-added.
+and rejected origination separately from approved origination. The #527
+financial-distress state machine adds `HouseholdDistress_*`,
+`HouseholdDistress_ActiveShare`, `HH_Distress_*`, and household-snapshot
+`FinancialDistressState` diagnostics, but these remain descriptive until the
+arrears/default calibration bridge is narrowed. These bands should be replaced
+or narrowed when NBP, KNF, GUS or household microdata bridges are added.

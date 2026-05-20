@@ -107,9 +107,12 @@ private[montecarlo] object McHouseholdShortfallCohortSchema:
     val monthShortfall = snapshotRows.map(_.monthlyFlow.liquidityShortfallFinancing).sumPln
     val incomeDeciles  = incomeDecileByIndex(snapshotRows)
 
+    // Cohort dimensions are diagnostic cuts over the full household snapshot,
+    // independent of the micro row selector used for the snapshot CSV.
     val dimensions: Vector[(String, (McHouseholdSnapshotSchema.Row, Int) => String)] = Vector(
       "All"                       -> ((_, _) => "All"),
       "Status"                    -> ((row, _) => status(row.household.status)),
+      "FinancialDistressState"    -> ((row, _) => row.household.financialDistressState.toString),
       "Region"                    -> ((row, _) => row.household.region.toString),
       "ContractType"              -> ((row, _) => row.household.contractType.toString),
       "IncomeDecile"              -> ((_, idx) => incomeDeciles(idx)),
