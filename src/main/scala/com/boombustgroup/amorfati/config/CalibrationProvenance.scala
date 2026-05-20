@@ -516,7 +516,7 @@ object CalibrationProvenance:
 | `household.wageScarRate`, `wageScarCap`, `wageScarDecay` | `0.025`, `0.30`, `0.005` | share/month | Code note bridge: Jacobson et al.; Davis and von Wachter | Wage scar accumulation and recovery | Direct | `HouseholdConfig` | `TUNED_NEEDS_VALIDATION` |
 | `household.retrainingCost`, `retrainingDuration` | `5000`, `6` | PLN/months | Structural labor-reskilling program prior | Retraining cost and duration | Direct | `HouseholdConfig` | `ASSUMED` |
 | `household.retrainingBaseSuccess`, `retrainingProb` | `0.60`, `0.15` | share | UNKNOWN_SOURCE | Retraining success/enrollment | Direct | `HouseholdConfig` | `TUNED_NEEDS_VALIDATION` |
-| `household.bankruptcyDistressMonths` | `3` | months | ASSUMED | Distress persistence before bankruptcy | Direct | `HouseholdConfig` | `ASSUMED` |
+| `household.bankruptcyDistressMonths` | `3` | months | ASSUMED | Distress persistence threshold before default and write-off review | Direct | `HouseholdConfig` | `ASSUMED` |
 | `household.depositSpread` | `0.02` | annual rate | Structural retail-deposit spread prior | Deposit rate below policy rate | Direct | `HouseholdConfig` | `ASSUMED` |
 | `household.ccSpread` | `0.04` | annual rate | Code note bridge: NBP MIR bridge prior | Consumer credit spread | Direct | `HouseholdConfig` | `CODE_NOTE_EMPIRICAL` |
 | `household.ccMaxDti` | `0.40` | share | Code note bridge: KNF Recommendation T | Consumer credit DTI cap | Direct | `HouseholdConfig` | `CODE_NOTE_EMPIRICAL` |

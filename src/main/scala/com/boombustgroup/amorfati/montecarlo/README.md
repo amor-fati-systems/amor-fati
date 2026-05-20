@@ -145,6 +145,30 @@ ConsumerLoanDefault
 LiquidityBridgeChargeOff
 ```
 
+The same mechanisms block exposes the household financial-distress state machine
+as counts and shares:
+
+```text
+HouseholdDistress_Current
+HouseholdDistress_LiquidityStress
+HouseholdDistress_Arrears
+HouseholdDistress_Restructuring
+HouseholdDistress_Defaulted
+HouseholdDistress_Bankruptcy
+HouseholdDistress_CurrentShare
+HouseholdDistress_LiquidityStressShare
+HouseholdDistress_ArrearsShare
+HouseholdDistress_RestructuringShare
+HouseholdDistress_DefaultedShare
+HouseholdDistress_BankruptcyShare
+HouseholdDistress_ActiveShare
+```
+
+`HouseholdDistress_Bankruptcy` is the personal-insolvency/write-off state. The
+older `HouseholdBankruptcies`, `HouseholdBankruptcyRate`, and terminal
+`HH_Bankrupt` fields remain activity-status counts for the legacy absorbing
+`HhStatus.Bankrupt` path.
+
 The timeseries also includes residual shortfall settlement and its component
 attribution. `ConsumerDefault` is the matching same-month default/write-off
 diagnostic for the combined consumer-credit stock identity; `ConsumerLoanDefault`
@@ -189,8 +213,9 @@ For the bridge component, the stock effect is zero because
 
 The `HouseholdLiquidity_ConsumptionShortfall`, `RentArrears`,
 `MortgageArrears`, `ConsumerDebtArrears`, and `TemporaryOverdraft` columns split
-that bridge amount by a diagnostic payment-priority attribution. They do not yet
-create persistent arrears stock. `TemporaryOverdraft` is not carried as a
+that bridge amount by a diagnostic payment-priority attribution. They do not
+create a separate monetary arrears stock; persistent household distress is
+carried by `FinancialDistressState`. `TemporaryOverdraft` is not carried as a
 separate household liability; any positive value is part of the same-month
 bridge/default path visible in `HouseholdLiquidity_ShortfallFinancing` and
 `ConsumerDefault`.
@@ -237,8 +262,8 @@ Poland-scale multiplier is applied to macro timeseries PLN columns. Raw
 household snapshot values are sample-level micro amounts, so reconcile them to
 the seed timeseries by applying the same scaling used by `McTimeseriesSchema`.
 Rows include run id, seed, month, household id, status, region, contract type,
-bank id, wage, rent, MPC, skill, health penalty, financial distress months,
-ledger-owned financial stocks, positive-deposit and implicit overdraft
+bank id, wage, rent, MPC, skill, health penalty, financial distress months and
+state, ledger-owned financial stocks, positive-deposit and implicit overdraft
 decompositions, net liquid and financial positions, opening demand deposit,
 opening/closing consumer-loan stock, monthly income, consumption, rent, mortgage
 debt service, monthly consumer-credit demand/approval/rejection flow components, and the split
@@ -248,8 +273,8 @@ The companion `household_shortfall_cohorts.csv` is always computed from the full
 household snapshot boundary, regardless of the micro row selector. This keeps
 cohort shares meaningful even when `--household-snapshot-selector shortfall`
 writes only shortfalling micro rows. Cohort dimensions include `All`, `Status`,
-`Region`, `ContractType`, `IncomeDecile`, `RentBurden`,
-`MortgageDebtServiceBurden`, `ConsumerDebtServiceBurden`, and
+`FinancialDistressState`, `Region`, `ContractType`, `IncomeDecile`,
+`RentBurden`, `MortgageDebtServiceBurden`, `ConsumerDebtServiceBurden`, and
 `ClosingConsumerLoanBurden`. The file reports counts, shortfall counts,
 shortfall shares, monthly flow sums, split shortfall-settlement components, and
 consumer-credit demand/approval/rejection sums plus burden ratios needed to diagnose which household cohorts drive

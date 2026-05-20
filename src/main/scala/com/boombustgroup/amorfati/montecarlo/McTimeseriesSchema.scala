@@ -661,8 +661,23 @@ object McTimeseriesSchema:
     // Endogenous Firm Entry
     ColumnDef("FirmBirths", ctx => ctx.world.flows.firmBirths),
     ColumnDef("FirmDeaths", ctx => ctx.world.flows.firmDeaths),
+    // Legacy activity-status bankruptcy; personal insolvency is reported by HouseholdDistress_Bankruptcy.
     ColumnDef("HouseholdBankruptcies", ctx => ctx.hhAgg.bankrupt),
     ColumnDef("HouseholdBankruptcyRate", ctx => ctx.hhAgg.bankruptcyRate),
+    // Financial-distress state machine counts and population shares.
+    ColumnDef("HouseholdDistress_Current", ctx => ctx.hhAgg.distressCurrent),
+    ColumnDef("HouseholdDistress_LiquidityStress", ctx => ctx.hhAgg.distressLiquidityStress),
+    ColumnDef("HouseholdDistress_Arrears", ctx => ctx.hhAgg.distressArrears),
+    ColumnDef("HouseholdDistress_Restructuring", ctx => ctx.hhAgg.distressRestructuring),
+    ColumnDef("HouseholdDistress_Defaulted", ctx => ctx.hhAgg.distressDefaulted),
+    ColumnDef("HouseholdDistress_Bankruptcy", ctx => ctx.hhAgg.distressBankruptcy),
+    ColumnDef("HouseholdDistress_CurrentShare", ctx => Share.fraction(ctx.hhAgg.distressCurrent, ctx.households.length)),
+    ColumnDef("HouseholdDistress_LiquidityStressShare", ctx => Share.fraction(ctx.hhAgg.distressLiquidityStress, ctx.households.length)),
+    ColumnDef("HouseholdDistress_ArrearsShare", ctx => Share.fraction(ctx.hhAgg.distressArrears, ctx.households.length)),
+    ColumnDef("HouseholdDistress_RestructuringShare", ctx => Share.fraction(ctx.hhAgg.distressRestructuring, ctx.households.length)),
+    ColumnDef("HouseholdDistress_DefaultedShare", ctx => Share.fraction(ctx.hhAgg.distressDefaulted, ctx.households.length)),
+    ColumnDef("HouseholdDistress_BankruptcyShare", ctx => Share.fraction(ctx.hhAgg.distressBankruptcy, ctx.households.length)),
+    ColumnDef("HouseholdDistress_ActiveShare", ctx => ctx.hhAgg.distressActiveShare(ctx.households.length)),
     ColumnDef("NetEntry", ctx => ctx.world.flows.firmBirths - ctx.world.flows.firmDeaths),
     ColumnDef("LivingFirmCount", ctx => ctx.nLiving),
     ColumnDef("NetFirmBirths", ctx => ctx.world.flows.netFirmBirths),

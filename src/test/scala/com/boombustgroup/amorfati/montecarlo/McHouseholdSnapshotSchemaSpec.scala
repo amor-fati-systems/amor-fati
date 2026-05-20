@@ -16,7 +16,7 @@ class McHouseholdSnapshotSchemaSpec extends AnyFlatSpec with Matchers:
 
   "McHouseholdSnapshotSchema" should "keep the household snapshot header stable" in {
     McHouseholdSnapshotSchema.header shouldBe
-      "RunId;Seed;Month;HouseholdId;Status;Region;ContractType;BankId;Wage;Rent;MPC;Skill;HealthPenalty;FinancialDistressMonths;DemandDeposit;MortgageLoan;ConsumerLoan;Equity;PositiveDeposit;ImplicitOverdraft;NetLiquidPosition;NetFinancialPosition;OpeningDemandDeposit;OpeningConsumerLoan;MonthlyIncome;Consumption;UnmetBasicConsumption;DiscretionaryConsumptionCompression;RentPaid;MortgageDebtService;ConsumerApprovedOrigination;ConsumerCreditDemand;ConsumerRejectedOrigination;LiquidityShortfallFinancing;ConsumptionShortfall;RentArrears;MortgageArrears;ConsumerDebtArrears;TemporaryOverdraft;ConsumerDebtService;ConsumerDefault;ConsumerLoanDefault;LiquidityBridgeChargeOff;ConsumerPrincipal;ClosingConsumerLoan"
+      "RunId;Seed;Month;HouseholdId;Status;Region;ContractType;BankId;Wage;Rent;MPC;Skill;HealthPenalty;FinancialDistressMonths;FinancialDistressState;DemandDeposit;MortgageLoan;ConsumerLoan;Equity;PositiveDeposit;ImplicitOverdraft;NetLiquidPosition;NetFinancialPosition;OpeningDemandDeposit;OpeningConsumerLoan;MonthlyIncome;Consumption;UnmetBasicConsumption;DiscretionaryConsumptionCompression;RentPaid;MortgageDebtService;ConsumerApprovedOrigination;ConsumerCreditDemand;ConsumerRejectedOrigination;LiquidityShortfallFinancing;ConsumptionShortfall;RentArrears;MortgageArrears;ConsumerDebtArrears;TemporaryOverdraft;ConsumerDebtService;ConsumerDefault;ConsumerLoanDefault;LiquidityBridgeChargeOff;ConsumerPrincipal;ClosingConsumerLoan"
   }
 
   "McHouseholdShortfallCohortSchema" should "keep the household shortfall cohort header stable" in {

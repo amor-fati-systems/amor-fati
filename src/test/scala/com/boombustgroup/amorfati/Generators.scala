@@ -101,6 +101,7 @@ object Generators:
       totalLiquidityShortfallFinancing = PLN.Zero,
       totalConsumerDefault = PLN.Zero,
       totalConsumerPrincipal = PLN.Zero,
+      distressCurrent = employed + unemployed,
     )
 
   def testWorld(

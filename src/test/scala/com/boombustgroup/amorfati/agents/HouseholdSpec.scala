@@ -203,6 +203,33 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
     val updated = step(Vector(hh), mkLiquidityShockWorld(), PLN(8000), PLN(4666), Share.decimal(4, 1), rng).households
     updated(0).status should not be HhStatus.Bankrupt
     updated(0).financialDistressMonths shouldBe 1
+    updated(0).financialDistressState shouldBe HhFinancialDistressState.LiquidityStress
+  }
+
+  it should "escalate repeated financial stress into arrears before insolvency" in {
+    val rng = RandomStream.seeded(42)
+    val hh  = mkHousehold(0, HhStatus.Unemployed(1), savings = PLN.Zero, rent = PLN(10000))
+      .copy(financialDistressMonths = 1, financialDistressState = HhFinancialDistressState.LiquidityStress)
+
+    val updated = step(Vector(hh), mkLiquidityShockWorld(), PLN(8000), PLN(4666), Share.decimal(4, 1), rng).households
+
+    updated(0).status should not be HhStatus.Bankrupt
+    updated(0).financialDistressMonths shouldBe 2
+    updated(0).financialDistressState shouldBe HhFinancialDistressState.Arrears
+  }
+
+  it should "enter default at the distress threshold before personal insolvency write-off" in {
+    val rng     = RandomStream.seeded(42)
+    val hh      = mkHousehold(
+      0,
+      HhStatus.Unemployed(1),
+      savings = PLN.Zero,
+      rent = PLN(10000),
+    ).copy(financialDistressMonths = p.household.bankruptcyDistressMonths - 1, financialDistressState = HhFinancialDistressState.Arrears)
+    val updated = step(Vector(hh), mkLiquidityShockWorld(), PLN(8000), PLN(4666), Share.decimal(4, 1), rng).households
+    updated(0).status shouldBe HhStatus.Unemployed(2)
+    updated(0).financialDistressMonths shouldBe p.household.bankruptcyDistressMonths
+    updated(0).financialDistressState shouldBe HhFinancialDistressState.Defaulted
   }
 
   it should "resolve persistent deep distress without removing the household from the labor force" in {
@@ -212,10 +239,11 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
       HhStatus.Unemployed(1),
       savings = PLN.Zero,
       rent = PLN(10000),
-    ).copy(financialDistressMonths = p.household.bankruptcyDistressMonths - 1)
+    ).copy(financialDistressMonths = p.household.bankruptcyDistressMonths, financialDistressState = HhFinancialDistressState.Defaulted)
     val updated = step(Vector(hh), mkLiquidityShockWorld(), PLN(8000), PLN(4666), Share.decimal(4, 1), rng).households
     updated(0).status shouldBe HhStatus.Unemployed(2)
     updated(0).financialDistressMonths shouldBe 0
+    updated(0).financialDistressState shouldBe HhFinancialDistressState.Bankruptcy
   }
 
   it should "preserve employment when resolving household financial insolvency" in {
@@ -224,13 +252,14 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
       0,
       HhStatus.Employed(FirmId(0), SectorIdx(0), PLN(8000)),
       savings = PLN.Zero,
-      rent = PLN(50000),
-    ).copy(financialDistressMonths = p.household.bankruptcyDistressMonths - 1)
+      rent = PLN(200000),
+    ).copy(financialDistressMonths = p.household.bankruptcyDistressMonths, financialDistressState = HhFinancialDistressState.Defaulted)
 
     val updated = step(Vector(hh), mkLiquidityShockWorld(), PLN(8000), PLN(4666), Share.decimal(4, 1), rng).households
 
     updated(0).status shouldBe a[HhStatus.Employed]
     updated(0).financialDistressMonths shouldBe 0
+    updated(0).financialDistressState shouldBe HhFinancialDistressState.Bankruptcy
   }
 
   it should "default the remaining consumer credit balance after same-month debt service on bankruptcy" in {
@@ -242,7 +271,7 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
       HhStatus.Unemployed(1),
       savings = PLN.Zero,
       rent = PLN(10000),
-    ).copy(financialDistressMonths = p.household.bankruptcyDistressMonths - 1)
+    ).copy(financialDistressMonths = p.household.bankruptcyDistressMonths, financialDistressState = HhFinancialDistressState.Defaulted)
     val totalRate           = p.household.ccAmortRate + (world.nbp.referenceRate + p.household.ccSpread).monthly
     val expectedDebtService = openingLoan * totalRate
     val expectedPrincipal   = openingLoan * p.household.ccAmortRate
@@ -282,10 +311,11 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
       HhStatus.Employed(FirmId(0), SectorIdx(0), PLN(8000)),
       savings = PLN(20000),
       rent = PLN(1800),
-    ).copy(financialDistressMonths = 2)
+    ).copy(financialDistressMonths = 2, financialDistressState = HhFinancialDistressState.Arrears)
     val updated = step(Vector(hh), mkWorld(), PLN(8000), PLN(4666), Share.decimal(4, 1), rng).households
     updated(0).status shouldBe a[HhStatus.Employed]
     updated(0).financialDistressMonths shouldBe 0
+    updated(0).financialDistressState shouldBe HhFinancialDistressState.Restructuring
   }
 
   it should "not enter voluntary retraining when the target sector has no vacancies" in {
@@ -420,6 +450,28 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
     result.aggregates.totalConsumerRejectedOrigination shouldBe flow.consumerRejectedOrigination
   }
 
+  it should "block new underwritten consumer credit while household is in arrears" in {
+    val creditP = SimParamsTestOverrides.consumerCreditEligibility(Share.One)
+    val rng     = RandomStream.seeded(42)
+    val hh      = mkHousehold(0, HhStatus.Employed(FirmId(0), SectorIdx(0), PLN(8000)), savings = PLN.Zero, rent = PLN(7500))
+      .copy(financialDistressState = HhFinancialDistressState.Arrears)
+
+    val result = Household.step(
+      Vector(hh),
+      Vector(TestHouseholdState.financial(savings = PLN.Zero, debt = PLN.Zero, consumerDebt = PLN.Zero, equityWealth = PLN.Zero)),
+      mkWorld(),
+      PLN(8000),
+      PLN(4666),
+      Share.decimal(4, 1),
+      rng,
+    )(using creditP)
+    val flow   = result.monthlyFlows.head
+
+    flow.consumerCreditDemand should be > PLN.Zero
+    flow.consumerApprovedOrigination shouldBe PLN.Zero
+    flow.consumerRejectedOrigination shouldBe flow.consumerCreditDemand
+  }
+
   it should "use remaining underwritten consumer-credit capacity before liquidity shortfall financing" in {
     val creditP = SimParamsTestOverrides.consumerCreditEligibility(Share.One)
     val rng     = RandomStream.seeded(42)
@@ -441,6 +493,33 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
     flow.consumerRejectedOrigination shouldBe PLN.Zero
     flow.liquidityShortfallFinancing shouldBe PLN.Zero
     result.financialStocks.head.demandDeposit shouldBe PLN.Zero
+  }
+
+  it should "compress consumption while household is in financial arrears" in {
+    val current = mkHousehold(0, HhStatus.Employed(FirmId(0), SectorIdx(0), PLN(8000)), savings = PLN.Zero, rent = PLN(1000))
+    val arrears = current.copy(financialDistressState = HhFinancialDistressState.Arrears)
+
+    val currentResult = Household.step(
+      Vector(current),
+      Vector(TestHouseholdState.financial(savings = PLN.Zero, debt = PLN.Zero, consumerDebt = PLN.Zero, equityWealth = PLN.Zero)),
+      mkWorld(),
+      PLN(8000),
+      PLN(4666),
+      Share.decimal(4, 1),
+      RandomStream.seeded(42),
+    )
+    val arrearsResult = Household.step(
+      Vector(arrears),
+      Vector(TestHouseholdState.financial(savings = PLN.Zero, debt = PLN.Zero, consumerDebt = PLN.Zero, equityWealth = PLN.Zero)),
+      mkWorld(),
+      PLN(8000),
+      PLN(4666),
+      Share.decimal(4, 1),
+      RandomStream.seeded(42),
+    )
+
+    arrearsResult.monthlyFlows.head.consumption should be < currentResult.monthlyFlows.head.consumption
+    arrearsResult.households.head.financialDistressState shouldBe HhFinancialDistressState.Restructuring
   }
 
   it should "compress discretionary consumption before creating liquidity shortfall financing" in {

@@ -129,6 +129,7 @@ object WorldInit:
       totalLiquidityShortfallFinancing = PLN.Zero,
       totalConsumerDefault = PLN.Zero,
       totalConsumerPrincipal = PLN.Zero,
+      distressCurrent = initEmployed + initUnemployed, // initial households start without active financial distress
     )
 
     val world0 = World(

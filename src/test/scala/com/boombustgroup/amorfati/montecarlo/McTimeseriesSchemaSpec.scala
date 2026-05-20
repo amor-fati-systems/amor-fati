@@ -300,6 +300,19 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     "FirmDeaths",
     "HouseholdBankruptcies",
     "HouseholdBankruptcyRate",
+    "HouseholdDistress_Current",
+    "HouseholdDistress_LiquidityStress",
+    "HouseholdDistress_Arrears",
+    "HouseholdDistress_Restructuring",
+    "HouseholdDistress_Defaulted",
+    "HouseholdDistress_Bankruptcy",
+    "HouseholdDistress_CurrentShare",
+    "HouseholdDistress_LiquidityStressShare",
+    "HouseholdDistress_ArrearsShare",
+    "HouseholdDistress_RestructuringShare",
+    "HouseholdDistress_DefaultedShare",
+    "HouseholdDistress_BankruptcyShare",
+    "HouseholdDistress_ActiveShare",
     "NetEntry",
     "LivingFirmCount",
     "NetFirmBirths",
@@ -371,7 +384,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     MetricValue.fromRaw(Share.fraction(numerator, denominator).toLong)
 
   "McTimeseriesSchema" should "expose the stable schema contract" in {
-    McTimeseriesSchema.nCols shouldBe 317
+    McTimeseriesSchema.nCols shouldBe 330
     McTimeseriesSchema.colNames.toVector shouldBe expectedColNames
   }
 
@@ -585,6 +598,8 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     valueAt(row, "FirmDeaths") shouldBe MetricValue.fromInt(init.world.flows.firmDeaths)
     valueAt(row, "HouseholdBankruptcies") shouldBe MetricValue.fromInt(init.householdAggregates.bankrupt)
     valueAt(row, "HouseholdBankruptcyRate") shouldBe MetricValue.fromRaw(init.householdAggregates.bankruptcyRate.toLong)
+    valueAt(row, "HouseholdDistress_Current") shouldBe MetricValue.fromInt(init.householdAggregates.distressCurrent)
+    valueAt(row, "HouseholdDistress_ActiveShare") shouldBe MetricValue.fromRaw(init.householdAggregates.distressActiveShare(init.households.length).toLong)
     valueAt(row, "BankFailures") shouldBe MetricValue.fromInt(init.banks.count(_.failed))
   }
 
