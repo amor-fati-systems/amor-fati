@@ -103,6 +103,7 @@ objects.
 | `credit-crunch` | `banking.loanRecovery` | `0.30` | `0.20` | Lower corporate-loan recovery. |
 | `credit-crunch` | `banking.eclMigrationSensitivity` | `3.0` | `4.5` | Faster IFRS 9 migration under stress. |
 | `credit-crunch` | `household.ccMaxDti` | `0.40` | `0.30` | Tighter household credit affordability cap. |
+| `credit-crunch` | `household.ccEligRate` | `0.85` | `0.30` | Lower stressed-household access to underwritten consumer credit. |
 | `energy-shock` | `climate.etsBasePrice` | `80` | `120` | Higher EU ETS starting price. |
 | `energy-shock` | `climate.energyCostShares` | `[0.02,0.10,0.04,0.05,0.03,0.06]` | `[0.03,0.15,0.06,0.075,0.045,0.09]` | 50% higher sector energy-cost burden. |
 | `energy-shock` | `climate.greenBudgetShare` | `0.20` | `0.12` | Lower discretionary green investment capacity under stress. |

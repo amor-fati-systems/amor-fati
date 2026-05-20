@@ -420,6 +420,29 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
     result.aggregates.totalConsumerRejectedOrigination shouldBe flow.consumerRejectedOrigination
   }
 
+  it should "use remaining underwritten consumer-credit capacity before liquidity shortfall financing" in {
+    val creditP = SimParamsTestOverrides.consumerCreditEligibility(Share.One)
+    val rng     = RandomStream.seeded(42)
+    val hh      = mkHousehold(0, HhStatus.Employed(FirmId(0), SectorIdx(0), PLN(8000)), savings = PLN.Zero, rent = PLN(9000))
+
+    val result = Household.step(
+      Vector(hh),
+      Vector(TestHouseholdState.financial(savings = PLN.Zero, debt = PLN.Zero, consumerDebt = PLN.Zero, equityWealth = PLN.Zero)),
+      mkWorld(),
+      PLN(8000),
+      PLN(4666),
+      Share.decimal(4, 1),
+      rng,
+    )(using creditP)
+    val flow   = result.monthlyFlows.head
+
+    flow.consumerApprovedOrigination should be > PLN(2400)
+    flow.consumerApprovedOrigination shouldBe flow.consumerCreditDemand
+    flow.consumerRejectedOrigination shouldBe PLN.Zero
+    flow.liquidityShortfallFinancing shouldBe PLN.Zero
+    result.financialStocks.head.demandDeposit shouldBe PLN.Zero
+  }
+
   it should "compress discretionary consumption before creating liquidity shortfall financing" in {
     val rng   = RandomStream.seeded(42)
     val hh    = mkHousehold(0, HhStatus.Employed(FirmId(0), SectorIdx(0), PLN(8000)), savings = PLN.Zero, rent = PLN(1000), mpc = BigDecimal("0.80"))
