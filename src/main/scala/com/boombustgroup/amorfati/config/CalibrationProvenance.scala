@@ -521,7 +521,7 @@ object CalibrationProvenance:
 | `household.ccSpread` | `0.04` | annual rate | Code note bridge: NBP MIR bridge prior | Consumer credit spread | Direct | `HouseholdConfig` | `CODE_NOTE_EMPIRICAL` |
 | `household.ccMaxDti` | `0.40` | share | Code note bridge: KNF Recommendation T | Consumer credit DTI cap | Direct | `HouseholdConfig` | `CODE_NOTE_EMPIRICAL` |
 | `household.ccMaxLoan` | `50000` | PLN | Structural unsecured-credit limit prior | Maximum unsecured consumer loan | Direct | `HouseholdConfig` | `ASSUMED` |
-| `household.ccEligRate` | `0.85` | monthly share | #534 credit-access calibration | Stressed-household access to underwritten consumer credit when DTI headroom exists | Tuned against ShortfallToApprovedOrigination and rejected-demand diagnostics | `HouseholdConfig` | `TUNED_NEEDS_VALIDATION` |
+| `household.ccEligRate` | `0.85` | monthly share | #534 credit-access calibration | Stressed-household access to underwritten consumer credit when payment-factor-derived principal capacity allows additional principal | Tuned against ShortfallToApprovedOrigination and rejected-demand diagnostics | `HouseholdConfig` | `TUNED_NEEDS_VALIDATION` |
 | `household.ccNplRecovery` | `0.15` | share | Code note bridge: BIK bridge prior | Consumer loan recovery | Direct | `HouseholdConfig` | `CODE_NOTE_EMPIRICAL` |
 | `labor.frictionMatrix` | `DefaultFrictionMatrix` | 6x6 share | Code note bridge: GUS LFS bridge prior, Shimer 2005 | Cross-sector mobility friction | Direct | `LaborConfig` | `CODE_NOTE_EMPIRICAL` |
 | `labor.voluntarySearchProb` | `0.02` | monthly share | UNKNOWN_SOURCE | Employed voluntary sector search | Direct | `LaborConfig` | `TUNED_NEEDS_VALIDATION` |
