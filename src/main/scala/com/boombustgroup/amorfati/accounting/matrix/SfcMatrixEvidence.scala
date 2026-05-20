@@ -466,7 +466,7 @@ object SfcMatrixEvidence:
               FlowMechanism.BankFirmInterest,
               FlowMechanism.BankGovBondIncome,
               FlowMechanism.MortgageInterest,
-              FlowMechanism.HhCcDebtService,
+              FlowMechanism.HhCcInterest,
               FlowMechanism.BankCorpBondCoupon,
               FlowMechanism.HhDepositInterest,
               FlowMechanism.BankReserveInterest,
@@ -572,7 +572,7 @@ object SfcMatrixEvidence:
         case ConsumerCredit              =>
           rowMetadata(
             "Consumer credit",
-            "Actual delta from consumer loan stocks; expected delta from origination minus debt service and defaults.",
+            "Actual delta from consumer loan stocks; expected delta from origination minus principal repayment and defaults.",
             Vector(AssetType.ConsumerLoan),
             Vector(FlowMechanism.HhCcOrigination, FlowMechanism.HhLiquidityShortfallFinancing, FlowMechanism.HhCcDebtService, FlowMechanism.HhCcDefault),
             "Bank loss recognition is separately included in the bank-capital identity.",

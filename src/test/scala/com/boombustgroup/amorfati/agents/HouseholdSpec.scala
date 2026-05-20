@@ -245,7 +245,8 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
     ).copy(financialDistressMonths = p.household.bankruptcyDistressMonths - 1)
     val totalRate           = p.household.ccAmortRate + (world.nbp.referenceRate + p.household.ccSpread).monthly
     val expectedDebtService = openingLoan * totalRate
-    val expectedDefault     = openingLoan - expectedDebtService
+    val expectedPrincipal   = openingLoan * p.household.ccAmortRate
+    val expectedDefault     = openingLoan - expectedPrincipal
 
     financialById.update(
       hh.id.toInt,
@@ -269,7 +270,7 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
     result.aggregates.totalLiquidityShortfallFinancing shouldBe result.aggregates.totalConsumerOrigination
     result.aggregates.totalLiquidityShortfallComponents shouldBe result.aggregates.totalLiquidityShortfallFinancing
     result.aggregates.totalConsumerDefault shouldBe expectedDefault + result.aggregates.totalConsumerOrigination
-    result.aggregates.totalConsumerDebtService + result.aggregates.totalConsumerDefault shouldBe openingLoan + result.aggregates.totalConsumerOrigination
+    result.aggregates.totalConsumerPrincipal + result.aggregates.totalConsumerDefault shouldBe openingLoan + result.aggregates.totalConsumerOrigination
   }
 
   it should "reset financial distress months after recovery" in {
@@ -416,7 +417,8 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
 
     flow.consumerDebtArrears shouldBe flow.consumerDebtService
     flow.consumerDefault shouldBe flow.consumerDebtArrears
-    flow.closingConsumerLoan shouldBe (openingLoan - flow.consumerDebtService).max(PLN.Zero)
+    flow.consumerDebtService should be > flow.consumerPrincipal
+    flow.closingConsumerLoan shouldBe (openingLoan - flow.consumerPrincipal).max(PLN.Zero)
     result.financialStocks.head.consumerLoan shouldBe flow.closingConsumerLoan
     result.aggregates.totalConsumerApprovedOrigination shouldBe PLN.Zero
   }

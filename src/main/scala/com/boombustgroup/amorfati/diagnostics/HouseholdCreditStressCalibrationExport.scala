@@ -149,8 +149,9 @@ object HouseholdCreditStressCalibrationExport:
       vintage = BaselineVintage,
       lower = Some(BigDecimal("0.00")),
       upper = Some(BigDecimal("0.08")),
-      sourceNote = "Stylized 2026-04-30 household cash-flow guardrail; formal calibration needs DSR microdata or bank loan-payment aggregates.",
-      interpretation = "Consumer instalments should not dominate regular household income in the baseline.",
+      sourceNote =
+        "Stylized 2026-04-30 household cash-flow guardrail; formal calibration needs DSR microdata or bank loan-payment aggregates. The numerator is the household instalment burden, while only the interest component is bank income.",
+      interpretation = "Consumer instalments, principal plus interest, should not dominate regular household income in the baseline.",
     ),
     TargetBand(
       id = "MortgageDebtServiceToIncome",

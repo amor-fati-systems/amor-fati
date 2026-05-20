@@ -109,6 +109,7 @@ object FlowSimulation:
       approvedCcOrigination: PLN,
       liquidityShortfallFinancing: PLN,
       totalCcDebtService: PLN,
+      totalCcPrincipal: PLN,
       totalCcDefault: PLN,
       // Stage 9: Gov budget
       govCurrentSpend: PLN,
@@ -228,7 +229,8 @@ object FlowSimulation:
           c.totalRemittances,
           c.approvedCcOrigination,
           c.liquidityShortfallFinancing,
-          c.totalCcDebtService,
+          c.totalCcPrincipal,
+          (c.totalCcDebtService - c.totalCcPrincipal).max(PLN.Zero),
           c.totalCcDefault,
         ),
       ),
@@ -669,6 +671,7 @@ object FlowSimulation:
       approvedCcOrigination = agg.totalConsumerApprovedOrigination,
       liquidityShortfallFinancing = agg.totalLiquidityShortfallFinancing,
       totalCcDebtService = agg.totalConsumerDebtService,
+      totalCcPrincipal = agg.totalConsumerPrincipal,
       totalCcDefault = agg.totalConsumerDefault,
       govCurrentSpend = s9.newGovWithYield.govCurrentSpend,
       firmTax = s5.sumTax,
@@ -1016,11 +1019,10 @@ object FlowSimulation:
       batches: Vector[BatchedFlow],
       fofResidual: PLN,
   )(using p: SimParams): Sfc.SemanticFlows =
-    val firms       = semanticProjection.firms
-    val hhFinancial = semanticProjection.hhFinancial
-    val openEcon    = semanticProjection.openEcon
-    val banking     = semanticProjection.banking
-    val evidence    = ExecutedFlowEvidence.from(batches)
+    val firms    = semanticProjection.firms
+    val openEcon = semanticProjection.openEcon
+    val banking  = semanticProjection.banking
+    val evidence = ExecutedFlowEvidence.from(batches)
     // Runtime-covered legs are sourced from executed flow evidence. Remaining
     // month-semantics reads are diagnostics or stock projections without a
     // first-class emitted mechanism yet.
@@ -1061,11 +1063,11 @@ object FlowSimulation:
       mortgageDefaultAmount = evidence.amount(FlowMechanism.MortgageDefault),
       remittanceOutflow = evidence.amount(FlowMechanism.HhRemittance),
       fofResidual = fofResidual,
-      consumerDebtService = evidence.amount(FlowMechanism.HhCcDebtService),
+      consumerDebtService = evidence.amount(FlowMechanism.HhCcDebtService) + evidence.amount(FlowMechanism.HhCcInterest),
       consumerNplLoss = evidence.amount(FlowMechanism.BankCcNplLoss),
       consumerOrigination = evidence.amount(FlowMechanism.HhCcOrigination) + evidence.amount(FlowMechanism.HhLiquidityShortfallFinancing),
       consumerLiquidityShortfallFinancing = evidence.amount(FlowMechanism.HhLiquidityShortfallFinancing),
-      consumerPrincipalRepaid = hhFinancial.consumerPrincipal,
+      consumerPrincipalRepaid = evidence.amount(FlowMechanism.HhCcDebtService),
       consumerDefaultAmount = evidence.amount(FlowMechanism.HhCcDefault),
       corpBondCouponIncome = evidence.amount(FlowMechanism.BankCorpBondCoupon),
       corpBondDefaultLoss = evidence.amount(FlowMechanism.BankCorpBondLoss),

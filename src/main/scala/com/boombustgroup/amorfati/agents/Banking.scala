@@ -945,7 +945,7 @@ object Banking:
       standingFacilityIncome: PLN, // standing facility net income
       interbankInterest: PLN,      // interbank market interest
       mortgageInterestIncome: PLN, // mortgage interest income (bank share)
-      consumerDebtService: PLN,    // consumer credit debt service
+      consumerInterestIncome: PLN, // consumer credit interest income
       corpBondCoupon: PLN,         // corporate bond coupon income (bank share)
   )
 
@@ -964,7 +964,7 @@ object Banking:
       in.corpBondDefaultLoss + in.bfgLevy + in.unrealizedBondLoss
     val grossIncome    = in.intIncome + in.bondIncome - in.depositInterest +
       in.reserveInterest + in.standingFacilityIncome + in.interbankInterest +
-      in.mortgageInterestIncome + in.consumerDebtService + in.corpBondCoupon
+      in.mortgageInterestIncome + in.consumerInterestIncome + in.corpBondCoupon
     val retainedIncome = grossIncome * p.banking.profitRetention
     CapitalPnlOutput(newCapital = in.prevCapital - losses + retainedIncome)
 

@@ -192,6 +192,7 @@ object SfcSymbolicMatrices:
           mechanisms = Vector(
             FlowMechanism.FirmInterestPaid,
             FlowMechanism.MortgageInterest,
+            FlowMechanism.HhCcInterest,
             FlowMechanism.BankFirmInterest,
           ),
         ),

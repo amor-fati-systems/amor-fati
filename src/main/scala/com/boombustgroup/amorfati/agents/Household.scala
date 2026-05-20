@@ -616,6 +616,7 @@ object Household:
   private case class CreditResult(
       debtService: PLN,                                 // total consumer debt service (amortization + interest)
       principal: PLN,                                   // principal component of debt service
+      interest: PLN,                                    // interest component of debt service
       newLoan: PLN,                                     // underwritten new consumer loan, excluding same-month liquidity bridge
       liquidityShortfall: LiquidityShortfallComponents, // same-month bridge/write-off split by diagnostic source
       defaultAmt: PLN,                                  // same-month bridge charge-off plus bankruptcy default amount
@@ -761,8 +762,9 @@ object Household:
     val consumerRate: Rate = bankRates match
       case Some(br) => br.lendingRates(hh.bankId.toInt) + p.household.ccSpread
       case None     => world.nbp.referenceRate + p.household.ccSpread
-    val consumerDebtSvc    = financialStocks.consumerLoan * (p.household.ccAmortRate + consumerRate.monthly)
     val consumerPrin       = financialStocks.consumerLoan * p.household.ccAmortRate
+    val consumerInterest   = financialStocks.consumerLoan * consumerRate.monthly
+    val consumerDebtSvc    = consumerPrin + consumerInterest
 
     val newConsumerLoan = hh.status match
       case HhStatus.Employed(_, _, wage)                                             =>
@@ -778,11 +780,12 @@ object Household:
           if desired > MinConsumerLoanSize then desired else PLN.Zero
       case HhStatus.Unemployed(_) | HhStatus.Retraining(_, _, _) | HhStatus.Bankrupt => PLN.Zero
 
-    val updatedDebt = (financialStocks.consumerLoan + newConsumerLoan - consumerDebtSvc).max(PLN.Zero)
+    val updatedDebt = (financialStocks.consumerLoan + newConsumerLoan - consumerPrin).max(PLN.Zero)
 
     CreditResult(
       debtService = consumerDebtSvc,
       principal = consumerPrin,
+      interest = consumerInterest,
       newLoan = newConsumerLoan,
       liquidityShortfall = LiquidityShortfallComponents.Zero,
       defaultAmt = PLN.Zero,
@@ -969,10 +972,9 @@ object Household:
     * removing the household from the labor force.
     */
   private def resolveBankruptcy(f: MonthlyFlows, distressMonths: Int): HhMonthlyResult =
-    // Consumer credit stock is reduced earlier by the same-month debt-service
-    // amount carried in credit.updatedDebt. Default the remaining balance, not
-    // a principal-only reconstruction, so bankruptcy stays aligned with the
-    // stock identity used by BankingEconomics/SFC.
+    // Consumer credit stock is reduced earlier by same-month principal only.
+    // Default the remaining balance so bankruptcy stays aligned with the stock
+    // identity used by BankingEconomics/SFC.
     val _                                   = distressMonths
     val liquidityShortfall                  = attributeLiquidityShortfall(f, f.newSavings, temporaryOutflow = PLN.Zero)
     val (finalDemandDeposit, settledCredit) = settleLiquidityShortfall(f.newSavings, f.credit, liquidityShortfall)

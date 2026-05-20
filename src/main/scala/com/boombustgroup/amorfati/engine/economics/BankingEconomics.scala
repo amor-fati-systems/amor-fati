@@ -127,6 +127,7 @@ object BankingEconomics:
       consShare: PLN,     // household consumption allocated to this bank
       depInterest: PLN,   // deposit interest paid by this bank to households
       ccDebtService: PLN, // consumer credit debt service to this bank
+      ccPrincipal: PLN,   // consumer credit principal repaid to this bank
       ccOrigination: PLN, // total consumer-loan stock origination at this bank
       ccDefault: PLN,     // consumer credit defaults at this bank
   )
@@ -521,6 +522,7 @@ object BankingEconomics:
           consShare = f.consumption,
           depInterest = f.depositInterest,
           ccDebtService = f.consumerDebtService,
+          ccPrincipal = f.consumerPrincipal,
           ccOrigination = f.consumerOrigination,
           ccDefault = f.consumerDefault,
         )
@@ -531,6 +533,7 @@ object BankingEconomics:
           consShare = in.s3.consumption * ws,
           depInterest = PLN.Zero,
           ccDebtService = in.s6.consumerDebtService * ws,
+          ccPrincipal = in.s6.consumerPrincipal * ws,
           ccOrigination = in.s6.consumerOrigination * ws,
           ccDefault = in.s6.consumerDefaultAmt * ws,
         )
@@ -614,8 +617,9 @@ object BankingEconomics:
     val bankMortgageNplLoss       = mortgageFlows.defaultLoss * workerShare
     val bankCcNplLoss             = hhFlows.ccDefault * (Share.One - p.household.ccNplRecovery)
     val bankCcStockReduction: PLN = in.s3.perBankHhFlowsOpt match
-      case Some(pbf) => pbf(bId).consumerDebtService
-      case _         => hhFlows.ccDebtService
+      case Some(pbf) => pbf(bId).consumerPrincipal
+      case _         => hhFlows.ccPrincipal
+    val bankCcInterestIncome      = hhFlows.ccDebtService - hhFlows.ccPrincipal
     val bankCorpBondCoupon        = in.s8.corpBonds.corpBondBankCoupon * workerShare
     val bankCorpBondDefaultLoss   = in.s8.corpBonds.corpBondBankDefaultLoss * workerShare
     val bankBfgLevy               =
@@ -642,7 +646,7 @@ object BankingEconomics:
         standingFacilityIncome = bankSfInc,
         interbankInterest = bankIbInt,
         mortgageInterestIncome = bankMortgageIntIncome,
-        consumerDebtService = hhFlows.ccDebtService,
+        consumerInterestIncome = bankCcInterestIncome,
         corpBondCoupon = bankCorpBondCoupon,
       ),
     )
@@ -1047,7 +1051,7 @@ object BankingEconomics:
       prevBankAgg.govBondHoldings * in.s8.monetary.newBondYield.monthly -
       in.s6.depositInterestPaid + in.s8.banking.totalReserveInterest +
       in.s8.banking.totalStandingFacilityIncome + in.s8.banking.totalInterbankInterest +
-      mortgageFlows.interest + in.s6.consumerDebtService + in.s8.corpBonds.corpBondBankCoupon
+      mortgageFlows.interest + (in.s6.consumerDebtService - in.s6.consumerPrincipal) + in.s8.corpBonds.corpBondBankCoupon
     val targetCapital      = prevBankAgg.capital - capitalLosses + capitalGrossIncome * p.banking.profitRetention
     val targetDeposits     = prevBankAgg.deposits + in.s3.totalIncome - in.s3.consumption +
       investNetDepositFlow + jstDepositChange + quasiFiscalDepositChange + in.s7.netDomesticDividends -

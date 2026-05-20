@@ -120,6 +120,7 @@ object RuntimeMechanismSurvivability:
       FlowMechanism.HhCcOrigination,
       FlowMechanism.HhLiquidityShortfallFinancing,
       FlowMechanism.HhCcDebtService,
+      FlowMechanism.HhCcInterest,
       FlowMechanism.HhCcDefault,
       FlowMechanism.HhTotalIncome,
       FlowMechanism.FirmCit,

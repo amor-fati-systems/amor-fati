@@ -1,4 +1,4 @@
-<!-- schema=sfc-matrix-v1 seed=1 month=12 commit=cd1eb5e2 sfc=pass matrix=pass output=symbolic -->
+<!-- schema=sfc-matrix-v1 seed=1 month=12 commit=5c6e2704-dirty sfc=pass matrix=pass output=symbolic -->
 
 # Symbolic Balance Sheet Matrix
 

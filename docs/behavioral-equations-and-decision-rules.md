@@ -236,12 +236,18 @@ income, obligations, approved credit, consumption, and retraining cost have
 already determined the raw closing liquid balance. This keeps
 `demandDeposit >= 0` while preserving the liability-side stock-flow identity.
 
-Consumer-loan service is:
+Consumer-loan service separates principal repayment from interest:
 
 ```text
-consumerDebtService_h =
-  consumerLoan_h * (ccAmortRate + (lendingRate_b + ccSpread).monthly)
+consumerPrincipal_h = consumerLoan_h * ccAmortRate
+consumerInterest_h = consumerLoan_h * (lendingRate_b + ccSpread).monthly
+consumerDebtService_h = consumerPrincipal_h + consumerInterest_h
+consumerLoan'_h = max(consumerLoan_h + approvedConsumerLoan_h - consumerPrincipal_h, 0)
 ```
+
+`consumerDebtService_h` is the household instalment burden used in DTI and
+liquidity stress diagnostics. Only `consumerInterest_h` is bank income;
+`consumerPrincipal_h` reduces the consumer-loan stock.
 
 Household bankruptcy writes off the remaining unsecured consumer loan stock and
 sets household equity to zero.
@@ -713,14 +719,13 @@ losses_b =
 
 grossIncome_b =
   firmLoanInterest_b
-  + householdDebtService_b
   + govBondIncome_b
   - depositInterest_b
   + reserveInterest_b
   + standingFacilityIncome_b
   + interbankInterest_b
   + mortgageInterestIncome_b
-  + consumerDebtService_b
+  + consumerInterestIncome_b
   + corporateBondCoupon_b
 
 capital'_b = capital_b - losses_b + grossIncome_b * profitRetention

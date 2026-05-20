@@ -431,6 +431,16 @@ class SfcSpec extends AnyFlatSpec with Matchers:
     errorDelta(result, Sfc.SfcIdentity.BankCapital) shouldBe (BigDecimal("2000.0") +- BigDecimal("0.01"))
   }
 
+  it should "include only consumer credit interest in bank capital" in {
+    val prev   =
+      zeroSnap.copy(firmCash = PLN(500000), bankCapital = PLN(200000), bankDeposits = PLN(1000000), consumerLoans = PLN(100000))
+    // consumer instalment=6000, principal=4000 -> interest income=2000 -> retained=600
+    val curr   = prev.copy(bankCapital = prev.bankCapital + PLN(600), consumerLoans = prev.consumerLoans - PLN(4000))
+    val flows  = zeroFlows.copy(consumerDebtService = PLN(6000), consumerPrincipalRepaid = PLN(4000))
+    val result = Sfc.validateStockExactness(prev, curr, flows)
+    result shouldBe Right(())
+  }
+
   // ---- Identity 2: Bank deposits ----
 
   "Sfc.validateStockExactness (bank deposits)" should "pass when change matches income - consumption" in {
@@ -886,6 +896,32 @@ class SfcSpec extends AnyFlatSpec with Matchers:
       mortgageOrigination = PLN(2000),
       mortgagePrincipalRepaid = PLN(5000),
       mortgageDefaultAmount = PLN(500),
+    )
+    val result = Sfc.validateStockExactness(prev, curr, flows)
+    result shouldBe Right(())
+  }
+
+  // ---- Identity 8: Consumer credit stock ----
+
+  "Sfc.validateStockExactness (consumer credit stock)" should "use principal repayment, not full instalment, for stock reduction" in {
+    val prev   = zeroSnap.copy(
+      firmCash = PLN(500000),
+      bankCapital = PLN(200000),
+      bankDeposits = PLN(1000000),
+      consumerLoans = PLN(100000),
+    )
+    // origination=5000, principal=3000, default=500 -> stock delta=1500.
+    // The 1000 interest component affects bank capital, not the consumer-loan stock.
+    val curr   = prev.copy(
+      bankCapital = prev.bankCapital + PLN(300),
+      bankDeposits = prev.bankDeposits + PLN(5000),
+      consumerLoans = PLN(101500),
+    )
+    val flows  = zeroFlows.copy(
+      consumerOrigination = PLN(5000),
+      consumerDebtService = PLN(4000),
+      consumerPrincipalRepaid = PLN(3000),
+      consumerDefaultAmount = PLN(500),
     )
     val result = Sfc.validateStockExactness(prev, curr, flows)
     result shouldBe Right(())

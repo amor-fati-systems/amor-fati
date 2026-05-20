@@ -605,7 +605,7 @@ object Generators:
       val expectedBankCapChange  = -flows.nplLoss - flows.mortgageNplLoss - flows.consumerNplLoss
         - flows.corpBondDefaultLoss - flows.bfgLevy - flows.unrealizedBondLoss - flows.htmRealizedLoss - flows.bankCapitalDestruction +
         (flows.interestIncome + flows.bankBondIncome + flows.mortgageInterestIncome
-          + flows.consumerDebtService + flows.corpBondCouponIncome
+          + (flows.consumerDebtService - flows.consumerPrincipalRepaid) + flows.corpBondCouponIncome
           - flows.depositInterestPaid
           + flows.reserveInterest + flows.standingFacilityIncome + flows.interbankInterest) * Share.decimal(3, 1)
       val expectedDepChange      = flows.totalIncome - flows.totalConsumption + flows.investNetDepositFlow +
