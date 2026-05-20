@@ -144,11 +144,13 @@ object Household:
     * execution.
     */
   case class FinancialStocks(
-      demandDeposit: PLN, // non-negative bank demand deposits owned by the household
-      mortgageLoan: PLN,  // outstanding secured mortgage principal
-      consumerLoan: PLN,  // outstanding unsecured consumer-loan principal
-      equity: PLN,        // listed equity owned by the household
-  )
+      demandDeposit: PLN,              // non-negative bank demand deposits owned by the household
+      mortgageLoan: PLN,               // outstanding secured mortgage principal
+      consumerLoan: PLN,               // outstanding unsecured consumer-loan principal
+      equity: PLN,                     // listed equity owned by the household
+      mortgageRemainingMonths: Int = 0, // remaining contractual mortgage-payment months; 0 means no active mortgage
+  ):
+    require(mortgageRemainingMonths >= 0, s"mortgageRemainingMonths must be non-negative: $mortgageRemainingMonths")
 
   /** Diagnostic attribution of residual household liquidity settlement.
     * Components sum to `HouseholdLiquidity_ShortfallFinancing`, which is
@@ -176,6 +178,20 @@ object Household:
   object LiquidityShortfallComponents:
     val Zero: LiquidityShortfallComponents =
       LiquidityShortfallComponents(PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero)
+
+  private[amorfati] def activeMortgageRemainingMonths(stocks: FinancialStocks)(using p: SimParams): Int =
+    if stocks.mortgageLoan <= PLN.Zero then 0
+    else if stocks.mortgageRemainingMonths > 0 then stocks.mortgageRemainingMonths
+    else p.housing.mortgageMaturity
+
+  private[amorfati] def scheduledMortgagePrincipal(stocks: FinancialStocks)(using p: SimParams): PLN =
+    val remainingMonths = activeMortgageRemainingMonths(stocks)
+    if remainingMonths <= 0 then PLN.Zero
+    else stocks.mortgageLoan / remainingMonths
+
+  private[amorfati] def remainingMortgageMonthsAfterPayment(stocks: FinancialStocks, closingMortgageLoan: PLN)(using p: SimParams): Int =
+    if closingMortgageLoan <= PLN.Zero then 0
+    else (activeMortgageRemainingMonths(stocks).max(1) - 1).max(1)
 
   /** Aggregate statistics computed from individual households (Paper-06). */
   case class Aggregates(
@@ -471,7 +487,7 @@ object Household:
       if stocks.isEmpty then stocks
       else
         val target = p.housing.initMortgage
-        if target <= PLN.Zero then stocks.map(_.copy(mortgageLoan = PLN.Zero))
+        if target <= PLN.Zero then stocks.map(_.copy(mortgageLoan = PLN.Zero, mortgageRemainingMonths = 0))
         else
           val current   = stocks.iterator.map(_.mortgageLoan).sumPln
           val weights   =
@@ -479,7 +495,12 @@ object Household:
             else Array.fill(stocks.length)(1L)
           val allocated = com.boombustgroup.ledger.Distribute.distribute(target.toLong, weights)
           stocks.zip(allocated).map { case (stock, rawMortgageLoan) =>
-            stock.copy(mortgageLoan = PLN.fromRaw(rawMortgageLoan))
+            val mortgageLoan = PLN.fromRaw(rawMortgageLoan)
+            val remaining    =
+              if mortgageLoan <= PLN.Zero then 0
+              else if stock.mortgageRemainingMonths > 0 then stock.mortgageRemainingMonths
+              else p.housing.mortgageMaturity
+            stock.copy(mortgageLoan = mortgageLoan, mortgageRemainingMonths = remaining)
           }
 
     private case class SampledHousehold(
@@ -533,6 +554,7 @@ object Household:
           mortgageLoan = debt,
           consumerLoan = consDebt,
           equity = eqWealth,
+          mortgageRemainingMonths = if debt > PLN.Zero then p.housing.mortgageMaturity else 0,
         ),
       )
 
@@ -965,6 +987,7 @@ object Household:
       newEquityWealth: PLN,
       newSavings: PLN, // raw closing liquid balance before non-negative deposit settlement
       newDebt: PLN,
+      newMortgageRemainingMonths: Int,
       neighborDistress: Share,
   )
 
@@ -1033,7 +1056,7 @@ object Household:
   )(using p: SimParams): MonthlyFlows =
     val (baseIncome, benefit, newStatus) = computeIncome(hh)
 
-    // Mortgage service uses housing maturity for principal and bank rates for interest.
+    // Mortgage service uses the contract's remaining maturity for principal and bank rates for interest.
     val mortgageRate: Rate = bankRates match
       case Some(br) => br.lendingRates(hh.bankId.toInt)
       case None     => world.nbp.referenceRate + p.housing.mortgageSpread
@@ -1047,9 +1070,10 @@ object Household:
     val pitTax            = computeMonthlyPit(grossIncome)
     val socialTransfer    = computeSocialTransfer(hh.numDependentChildren)
     val income            = grossIncome - pitTax + socialTransfer
-    val mortgagePrincipal = financialStocks.mortgageLoan / p.housing.mortgageMaturity
+    val mortgagePrincipal = scheduledMortgagePrincipal(financialStocks)
     val mortgageInterest  = financialStocks.mortgageLoan * mortgageRate.max(Rate.Zero).monthly
     val thisDebtService   = mortgagePrincipal + mortgageInterest
+    val newMortgageLoan   = (financialStocks.mortgageLoan - mortgagePrincipal).max(PLN.Zero)
 
     val remittance =
       if hh.isImmigrant then income * p.immigration.remitRate
@@ -1101,7 +1125,8 @@ object Household:
       discretionaryConsumptionCompression = consumptionWaterfall.discretionaryConsumptionCompression,
       newEquityWealth = newEquityWealth,
       newSavings = financialStocks.demandDeposit + income - fullObligations + credit.newLoan - consumptionWaterfall.actualConsumption,
-      newDebt = (financialStocks.mortgageLoan - mortgagePrincipal).max(PLN.Zero),
+      newDebt = newMortgageLoan,
+      newMortgageRemainingMonths = remainingMortgageMonthsAfterPayment(financialStocks, newMortgageLoan),
       neighborDistress = neighborDistress,
     )
     underwriteResidualShortfall(initialFlows)
@@ -1194,6 +1219,7 @@ object Household:
       mortgageLoan = f.newDebt,
       consumerLoan = PLN.Zero,
       equity = PLN.Zero,
+      mortgageRemainingMonths = f.newMortgageRemainingMonths,
     )
     HhMonthlyResult(
       newState = f.hh.copy(
@@ -1257,6 +1283,7 @@ object Household:
       mortgageLoan = f.newDebt,
       consumerLoan = settledCredit.updatedDebt,
       equity = f.newEquityWealth,
+      mortgageRemainingMonths = f.newMortgageRemainingMonths,
     )
 
     HhMonthlyResult(
@@ -1584,7 +1611,7 @@ object Household:
 
       val rentRaw       = hh.monthlyRent.toLong
       val mortgageRate  = p.monetary.initialRate + p.housing.mortgageSpread
-      val debtSvcRaw    = ((stocks.mortgageLoan / p.housing.mortgageMaturity) + (stocks.mortgageLoan * mortgageRate.monthly)).toLong
+      val debtSvcRaw    = (scheduledMortgagePrincipal(stocks) + (stocks.mortgageLoan * mortgageRate.monthly)).toLong
       val disposableRaw = math.max(0L, incomes(i) - rentRaw - debtSvcRaw)
       consumptions(i) = FixedPointBase.multiplyRaw(disposableRaw, hh.mpc.toLong)
       savingsArr(i) = stocks.demandDeposit.toLong

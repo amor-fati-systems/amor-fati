@@ -1,6 +1,7 @@
 package com.boombustgroup.amorfati.engine.ledger
 
 import com.boombustgroup.amorfati.agents.{Banking, Firm, Household, Insurance, Nbfi, Nbp, QuasiFiscal}
+import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.markets.CorporateBondMarket
 import com.boombustgroup.amorfati.types.*
 import com.boombustgroup.ledger.Distribute
@@ -47,6 +48,7 @@ object LedgerFinancialState:
       mortgageLoan = stocks.mortgageLoan,
       consumerLoan = stocks.consumerLoan,
       equity = stocks.equity,
+      mortgageRemainingMonths = stocks.mortgageRemainingMonths,
     )
 
   /** Project ledger-owned household balances into the household execution DTO.
@@ -61,6 +63,7 @@ object LedgerFinancialState:
       mortgageLoan = balances.mortgageLoan,
       consumerLoan = balances.consumerLoan,
       equity = balances.equity,
+      mortgageRemainingMonths = balances.mortgageRemainingMonths,
     )
 
   def householdMortgageStock(ledgerFinancialState: LedgerFinancialState): PLN =
@@ -102,10 +105,14 @@ object LedgerFinancialState:
   /** Writes the aggregate mortgage model's closing principal back into
     * household ledger rows. Until origination/defaults are modeled per
     * household, the aggregate stock is distributed proportionally across the
-    * existing household mortgage book.
+    * existing household mortgage book, and new origination extends remaining
+    * maturity by weighted average.
     */
-  def settleHouseholdMortgageStock(households: Vector[HouseholdBalances], closingStock: PLN): Vector[HouseholdBalances] =
+  def settleHouseholdMortgageStock(households: Vector[HouseholdBalances], closingStock: PLN, newOrigination: PLN = PLN.Zero)(using
+      p: SimParams,
+  ): Vector[HouseholdBalances] =
     require(closingStock >= PLN.Zero, s"LedgerFinancialState.settleHouseholdMortgageStock requires non-negative closing stock, got $closingStock")
+    require(newOrigination >= PLN.Zero, s"LedgerFinancialState.settleHouseholdMortgageStock requires non-negative newOrigination, got $newOrigination")
     if households.isEmpty then
       require(
         closingStock == PLN.Zero,
@@ -114,17 +121,40 @@ object LedgerFinancialState:
       households
     else
       val currentStock = householdMortgageStock(households)
-      if currentStock == closingStock then households
+      if currentStock == closingStock && newOrigination <= PLN.Zero then
+        households.map(balances => balances.copy(mortgageRemainingMonths = mortgageRemainingMonthsFor(balances, balances.mortgageLoan, 0L)))
       else
         val mortgageWeights = households.map(_.mortgageLoan.distributeRaw.max(0L)).toArray
         val weights         =
           if mortgageWeights.exists(_ > 0L) then mortgageWeights
           else Array.fill(households.length)(1L)
+        val originationRows = Distribute.distribute(newOrigination.distributeRaw, weights)
         Distribute
           .distribute(closingStock.distributeRaw, weights)
+          .zip(originationRows)
           .zip(households)
-          .map((rawStock, balances) => balances.copy(mortgageLoan = PLN.fromRaw(rawStock)))
+          .map { case ((rawStock, rawOrigination), balances) =>
+            val mortgageLoan = PLN.fromRaw(rawStock)
+            balances.copy(
+              mortgageLoan = mortgageLoan,
+              mortgageRemainingMonths = mortgageRemainingMonthsFor(balances, mortgageLoan, rawOrigination),
+            )
+          }
           .toVector
+
+  private def mortgageRemainingMonthsFor(balances: HouseholdBalances, closingMortgageLoan: PLN, allocatedOriginationRaw: Long)(using p: SimParams): Int =
+    if closingMortgageLoan <= PLN.Zero then 0
+    else
+      val previousMonths = if balances.mortgageRemainingMonths > 0 then balances.mortgageRemainingMonths else p.housing.mortgageMaturity
+      val previousRaw    = balances.mortgageLoan.distributeRaw.max(0L)
+      val closingRaw     = closingMortgageLoan.distributeRaw.max(0L)
+      val originatedRaw  = allocatedOriginationRaw.max(0L).min(closingRaw)
+      if previousRaw <= 0L then p.housing.mortgageMaturity
+      else if originatedRaw <= 0L then previousMonths
+      else
+        val previousComponentRaw = closingRaw - originatedRaw
+        val weightedMonths       = BigInt(previousComponentRaw) * previousMonths + BigInt(originatedRaw) * p.housing.mortgageMaturity
+        ((weightedMonths + BigInt(closingRaw) - 1) / BigInt(closingRaw)).toInt.max(1)
 
   /** Writes the aggregate mortgage book into bank-side ledger asset rows.
     *
@@ -425,7 +455,12 @@ object LedgerFinancialState:
       lifeReserveAsset: PLN = PLN.Zero,
       /** Non-life insurance technical reserve asset owned by the household. */
       nonLifeReserveAsset: PLN = PLN.Zero,
-  )
+      /** Remaining contractual mortgage-payment months; 0 means no active
+        * mortgage.
+        */
+      mortgageRemainingMonths: Int = 0,
+  ):
+    require(mortgageRemainingMonths >= 0, s"mortgageRemainingMonths must be non-negative: $mortgageRemainingMonths")
 
   /** Ledger-backed financial balances owned or issued by a single firm.
     */

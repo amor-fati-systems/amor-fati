@@ -114,6 +114,7 @@ object Immigration:
         mortgageLoan = PLN.Zero,
         consumerLoan = PLN.Zero,
         equity = PLN.Zero,
+        mortgageRemainingMonths = 0,
       )
       (household, stocks)
     }.toVector
