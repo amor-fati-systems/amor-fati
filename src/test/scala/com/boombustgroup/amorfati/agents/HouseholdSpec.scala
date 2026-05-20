@@ -441,9 +441,9 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
   // --- Variable-rate debt service + deposit interest ---
 
   "Household.step with bankRates" should "use variable lending rate for debt service" in {
-    val rng         = RandomStream.seeded(42)
-    val debt        = PLN(100000)
-    val hhs         = Vector(
+    val rng          = RandomStream.seeded(42)
+    val debt         = PLN(100000)
+    val hhs          = Vector(
       mkHousehold(
         0,
         HhStatus.Employed(FirmId(0), SectorIdx(0), PLN(8000)),
@@ -460,17 +460,21 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
       ),
     )
     // Bank 0: 6% annual lending rate, Bank 1: 10% annual
-    val br          = BankRates(
+    val br           = BankRates(
       lendingRates = Vector(Rate.decimal(6, 2), Rate.decimal(10, 2)),
       depositRates = Vector(Rate.decimal(4, 2), Rate.decimal(4, 2)),
     )
-    val result      = step(hhs, mkWorld(), PLN(8000), PLN(4666), Share.decimal(4, 1), rng, nBanks = 2, bankRates = Some(br))
-    val pbf         = result.perBankFlows.get
-    val principal   = decimal(debt) / BigDecimal(p.housing.mortgageMaturity)
-    val expectedDs0 = principal + decimal(debt) * BigDecimal("0.06") / BigDecimal("12.0")
-    val expectedDs1 = principal + decimal(debt) * BigDecimal("0.10") / BigDecimal("12.0")
+    val result       = step(hhs, mkWorld(), PLN(8000), PLN(4666), Share.decimal(4, 1), rng, nBanks = 2, bankRates = Some(br))
+    val pbf          = result.perBankFlows.get
+    val principal    = decimal(debt) / BigDecimal(p.housing.mortgageMaturity)
+    val expectedInt0 = decimal(debt) * BigDecimal("0.06") / BigDecimal("12.0")
+    val expectedInt1 = decimal(debt) * BigDecimal("0.10") / BigDecimal("12.0")
+    val expectedDs0  = principal + expectedInt0
+    val expectedDs1  = principal + expectedInt1
     decimal(pbf(0).debtService) shouldBe (decimal(plnBD(expectedDs0)) +- decimal(PLN(10)))
     decimal(pbf(1).debtService) shouldBe (decimal(plnBD(expectedDs1)) +- decimal(PLN(10)))
+    decimal(pbf(0).mortgageInterest) shouldBe (decimal(plnBD(expectedInt0)) +- decimal(PLN(10)))
+    decimal(pbf(1).mortgageInterest) shouldBe (decimal(plnBD(expectedInt1)) +- decimal(PLN(10)))
     decimal(result.aggregates.totalMortgagePrincipal) shouldBe (decimal(plnBD(principal * 2)) +- decimal(PLN(10)))
     decimal(result.aggregates.totalMortgageInterest) shouldBe (decimal(plnBD(expectedDs0 + expectedDs1 - principal * 2)) +- decimal(PLN(10)))
     // Bank 1's higher rate should mean higher debt service
@@ -494,6 +498,21 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
     result.aggregates.totalMortgagePrincipal shouldBe principal
     result.aggregates.totalMortgageInterest shouldBe interest
     result.aggregates.totalDebtService shouldBe principal + interest
+  }
+
+  it should "use the live policy rate for mortgage interest when bankRates are absent" in {
+    val rng          = RandomStream.seeded(42)
+    val debt         = PLN(120000)
+    val policyRate   = Rate.decimal(12, 2)
+    val world        = mkWorld().copy(nbp = Nbp.State(policyRate, false, PLN.Zero, PLN.Zero))
+    val hh           = mkHousehold(21, HhStatus.Employed(FirmId(0), SectorIdx(0), PLN(9000)), savings = PLN(100000), debt = debt, bankId = 0)
+    val result       = step(Vector(hh), world, PLN(8000), PLN(4666), Share.decimal(4, 1), rng)
+    val mortgageRate = policyRate + p.housing.mortgageSpread
+    val expectedInt  = debt * mortgageRate.monthly
+    val expectedPrin = debt / p.housing.mortgageMaturity
+
+    result.aggregates.totalMortgageInterest shouldBe expectedInt
+    result.aggregates.totalDebtService shouldBe expectedPrin + expectedInt
   }
 
   it should "pay deposit interest to HH with positive savings" in {

@@ -123,13 +123,14 @@ object BankingEconomics:
   )
 
   private case class PerBankHhFlows(
-      incomeShare: PLN,   // household income allocated to this bank
-      consShare: PLN,     // household consumption allocated to this bank
-      depInterest: PLN,   // deposit interest paid by this bank to households
-      ccDebtService: PLN, // consumer credit debt service to this bank
-      ccPrincipal: PLN,   // consumer credit principal repaid to this bank
-      ccOrigination: PLN, // total consumer-loan stock origination at this bank
-      ccDefault: PLN,     // consumer credit defaults at this bank
+      incomeShare: PLN,      // household income allocated to this bank
+      consShare: PLN,        // household consumption allocated to this bank
+      mortgageInterest: PLN, // mortgage interest income routed to this bank
+      depInterest: PLN,      // deposit interest paid by this bank to households
+      ccDebtService: PLN,    // consumer credit debt service to this bank
+      ccPrincipal: PLN,      // consumer credit principal repaid to this bank
+      ccOrigination: PLN,    // total consumer-loan stock origination at this bank
+      ccDefault: PLN,        // consumer credit defaults at this bank
   )
 
   private case class SingleBankUpdate(
@@ -520,6 +521,7 @@ object BankingEconomics:
         PerBankHhFlows(
           incomeShare = f.income,
           consShare = f.consumption,
+          mortgageInterest = f.mortgageInterest,
           depInterest = f.depositInterest,
           ccDebtService = f.consumerDebtService,
           ccPrincipal = f.consumerPrincipal,
@@ -531,6 +533,7 @@ object BankingEconomics:
         PerBankHhFlows(
           incomeShare = in.s3.totalIncome * ws,
           consShare = in.s3.consumption * ws,
+          mortgageInterest = in.s3.hhAgg.totalMortgageInterest * ws,
           depInterest = PLN.Zero,
           ccDebtService = in.s6.consumerDebtService * ws,
           ccPrincipal = in.s6.consumerPrincipal * ws,
@@ -613,7 +616,7 @@ object BankingEconomics:
       in.s8.nonBank.insNetDepositChange * workerShare +
       in.s8.nonBank.nbfiDepositDrain * workerShare
 
-    val bankMortgageIntIncome     = mortgageFlows.interest * workerShare
+    val bankMortgageIntIncome     = hhFlows.mortgageInterest
     val bankMortgageNplLoss       = mortgageFlows.defaultLoss * workerShare
     val bankCcNplLoss             = hhFlows.ccDefault * (Share.One - p.household.ccNplRecovery)
     val bankCcStockReduction: PLN = in.s3.perBankHhFlowsOpt match

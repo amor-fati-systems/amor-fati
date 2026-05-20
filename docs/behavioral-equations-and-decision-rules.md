@@ -131,6 +131,10 @@ interest. When bank-specific rates are unavailable, the fallback rate is the
 policy rate plus the housing mortgage spread:
 
 ```text
+mortgageRate_h =
+  lendingRate_b                         if bank-specific lendingRate_b exists
+  nbp.referenceRate + housing.mortgageSpread
+                                        otherwise
 mortgagePrincipal_h = mortgageLoan_h / housing.mortgageMaturity
 mortgageInterest_h = mortgageLoan_h * mortgageRate_h.monthly
 scheduledMortgagePayment_h =

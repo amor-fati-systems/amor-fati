@@ -31,6 +31,7 @@ case class PerBankFlow(
     income: PLN,                      // total income (incl. deposit interest)
     consumption: PLN,                 // total consumption (goods + rent)
     debtService: PLN,                 // total mortgage/secured debt service
+    mortgageInterest: PLN,            // mortgage interest routed to this bank
     depositInterest: PLN,             // total deposit interest paid
     consumerDebtService: PLN,         // consumer (unsecured) debt service
     consumerOrigination: PLN,         // gross underwritten loan plus same-month bridge origination
@@ -41,7 +42,7 @@ case class PerBankFlow(
 )
 
 object PerBankFlow:
-  val zero: PerBankFlow = PerBankFlow(PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero)
+  val zero: PerBankFlow = PerBankFlow(PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero)
 
 object Household:
   def isEmployed(hh: State): Boolean =
@@ -600,6 +601,7 @@ object Household:
         income = cur.income + r.income,
         consumption = cur.consumption + r.consumption + r.rent,
         debtService = cur.debtService + r.debtService,
+        mortgageInterest = cur.mortgageInterest + r.mortgageInterest,
         depositInterest = cur.depositInterest + r.depositInterest,
         consumerDebtService = cur.consumerDebtService + r.credit.debtService,
         consumerOrigination = cur.consumerOrigination + r.credit.totalOrigination,
@@ -834,7 +836,7 @@ object Household:
     // Mortgage service uses housing maturity for principal and bank rates for interest.
     val mortgageRate: Rate = bankRates match
       case Some(br) => br.lendingRates(hh.bankId.toInt)
-      case None     => p.monetary.initialRate + p.housing.mortgageSpread
+      case None     => world.nbp.referenceRate + p.housing.mortgageSpread
 
     // Deposit interest (monetary transmission channel 2)
     val depInterest: PLN = bankRates match
