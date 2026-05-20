@@ -55,6 +55,8 @@ private[montecarlo] object McHouseholdSnapshotSchema:
     "TemporaryOverdraft"          -> (row => row.monthlyFlow.temporaryOverdraft.format(2)),
     "ConsumerDebtService"         -> (row => row.monthlyFlow.consumerDebtService.format(2)),
     "ConsumerDefault"             -> (row => row.monthlyFlow.consumerDefault.format(2)),
+    "ConsumerLoanDefault"         -> (row => row.monthlyFlow.consumerLoanDefault.format(2)),
+    "LiquidityBridgeChargeOff"    -> (row => row.monthlyFlow.liquidityBridgeChargeOff.format(2)),
     "ConsumerPrincipal"           -> (row => row.monthlyFlow.consumerPrincipal.format(2)),
     "ClosingConsumerLoan"         -> (row => row.monthlyFlow.closingConsumerLoan.format(2)),
   )

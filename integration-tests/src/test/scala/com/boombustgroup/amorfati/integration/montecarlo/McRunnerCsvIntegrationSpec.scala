@@ -36,9 +36,9 @@ class McRunnerCsvIntegrationSpec extends AnyFlatSpec with Matchers:
   private val ExpectedFirmSnapshotHeader =
     "RunId;Seed;Month;FirmId;Sector;Region;SizeClass;Workers;TechState;BankruptcyReason;DigitalReadiness;Cash;FirmLoan;Equity;BankId;RiskProfile;InitialSize;CapitalStock;Inventory;GreenCapital;ForeignOwned;StateOwned"
   private val ExpectedHouseholdSnapshotHeader =
-    "RunId;Seed;Month;HouseholdId;Status;Region;ContractType;BankId;Wage;Rent;MPC;Skill;HealthPenalty;FinancialDistressMonths;DemandDeposit;MortgageLoan;ConsumerLoan;Equity;PositiveDeposit;ImplicitOverdraft;NetLiquidPosition;NetFinancialPosition;OpeningDemandDeposit;OpeningConsumerLoan;MonthlyIncome;Consumption;RentPaid;MortgageDebtService;ConsumerApprovedOrigination;LiquidityShortfallFinancing;ConsumptionShortfall;RentArrears;MortgageArrears;ConsumerDebtArrears;TemporaryOverdraft;ConsumerDebtService;ConsumerDefault;ConsumerPrincipal;ClosingConsumerLoan"
+    "RunId;Seed;Month;HouseholdId;Status;Region;ContractType;BankId;Wage;Rent;MPC;Skill;HealthPenalty;FinancialDistressMonths;DemandDeposit;MortgageLoan;ConsumerLoan;Equity;PositiveDeposit;ImplicitOverdraft;NetLiquidPosition;NetFinancialPosition;OpeningDemandDeposit;OpeningConsumerLoan;MonthlyIncome;Consumption;RentPaid;MortgageDebtService;ConsumerApprovedOrigination;LiquidityShortfallFinancing;ConsumptionShortfall;RentArrears;MortgageArrears;ConsumerDebtArrears;TemporaryOverdraft;ConsumerDebtService;ConsumerDefault;ConsumerLoanDefault;LiquidityBridgeChargeOff;ConsumerPrincipal;ClosingConsumerLoan"
   private val ExpectedHouseholdShortfallCohortHeader =
-    "RunId;Seed;Month;Dimension;Cohort;HouseholdCount;ShortfallHouseholdCount;ShortfallHouseholdShare;LiquidityShortfallFinancing;ShortfallShareOfMonth;ConsumptionShortfall;RentArrears;MortgageArrears;ConsumerDebtArrears;TemporaryOverdraft;ConsumerApprovedOrigination;ConsumerDebtService;ConsumerDefault;ConsumerPrincipal;OpeningDemandDeposit;ClosingDemandDeposit;OpeningConsumerLoan;ClosingConsumerLoan;MonthlyIncome;Consumption;Rent;MortgageDebtService;RentToIncome;MortgageDebtServiceToIncome;ConsumerDebtServiceToIncome;ClosingConsumerLoanToIncome"
+    "RunId;Seed;Month;Dimension;Cohort;HouseholdCount;ShortfallHouseholdCount;ShortfallHouseholdShare;LiquidityShortfallFinancing;ShortfallShareOfMonth;ConsumptionShortfall;RentArrears;MortgageArrears;ConsumerDebtArrears;TemporaryOverdraft;ConsumerApprovedOrigination;ConsumerDebtService;ConsumerDefault;ConsumerLoanDefault;LiquidityBridgeChargeOff;ConsumerPrincipal;OpeningDemandDeposit;ClosingDemandDeposit;OpeningConsumerLoan;ClosingConsumerLoan;MonthlyIncome;Consumption;Rent;MortgageDebtService;RentToIncome;MortgageDebtServiceToIncome;ConsumerDebtServiceToIncome;ClosingConsumerLoanToIncome"
 
   private def rc =
     McRunConfig(
@@ -303,6 +303,9 @@ class McRunnerCsvIntegrationSpec extends AnyFlatSpec with Matchers:
       val mortgageArrearsIdx = cohortHeader.indexOf("MortgageArrears")
       val consumerDebtArrearsIdx = cohortHeader.indexOf("ConsumerDebtArrears")
       val temporaryOverdraftIdx = cohortHeader.indexOf("TemporaryOverdraft")
+      val consumerDefaultIdx = cohortHeader.indexOf("ConsumerDefault")
+      val consumerLoanDefaultIdx = cohortHeader.indexOf("ConsumerLoanDefault")
+      val liquidityBridgeChargeOffIdx = cohortHeader.indexOf("LiquidityBridgeChargeOff")
       dimensionIdx should be >= 0
       cohortIdx should be >= 0
       countIdx should be >= 0
@@ -313,6 +316,9 @@ class McRunnerCsvIntegrationSpec extends AnyFlatSpec with Matchers:
       mortgageArrearsIdx should be >= 0
       consumerDebtArrearsIdx should be >= 0
       temporaryOverdraftIdx should be >= 0
+      consumerDefaultIdx should be >= 0
+      consumerLoanDefaultIdx should be >= 0
+      liquidityBridgeChargeOffIdx should be >= 0
 
       val allRows = cohortLines.tail.map(_.split(';').toVector).filter(row => row(dimensionIdx) == "All")
       allRows.map(row => row(cohortIdx)).toSet.shouldBe(Set("All"))
@@ -325,6 +331,8 @@ class McRunnerCsvIntegrationSpec extends AnyFlatSpec with Matchers:
         BigDecimal(row(mortgageArrearsIdx)) should be >= BigDecimal(0)
         BigDecimal(row(consumerDebtArrearsIdx)) should be >= BigDecimal(0)
         BigDecimal(row(temporaryOverdraftIdx)) should be >= BigDecimal(0)
+        BigDecimal(row(consumerDefaultIdx)) shouldBe
+          BigDecimal(row(consumerLoanDefaultIdx)) + BigDecimal(row(liquidityBridgeChargeOffIdx)) +- BigDecimal("0.05")
         val componentSum =
           BigDecimal(row(consumptionShortfallIdx)) +
             BigDecimal(row(rentArrearsIdx)) +

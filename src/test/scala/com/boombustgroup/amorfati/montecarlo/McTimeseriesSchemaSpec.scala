@@ -170,6 +170,8 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     "ConsumerApprovedOrigination",
     "ConsumerDebtService",
     "ConsumerDefault",
+    "ConsumerLoanDefault",
+    "LiquidityBridgeChargeOff",
     "TotalCreditStock",
     "BankFirmLoansToGdp",
     "ConsumerLoansToGdp",
@@ -365,7 +367,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     MetricValue.fromRaw(Share.fraction(numerator, denominator).toLong)
 
   "McTimeseriesSchema" should "expose the stable schema contract" in {
-    McTimeseriesSchema.nCols shouldBe 311
+    McTimeseriesSchema.nCols shouldBe 313
     McTimeseriesSchema.colNames.toVector shouldBe expectedColNames
   }
 
@@ -551,12 +553,18 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
         sectorOutputs = Vector.fill(summon[SimParams].sectorDefs.length)(PLN.Zero),
       ),
     )
-    val hhAgg         = init.householdAggregates.copy(totalConsumerDefault = PLN(7))
+    val hhAgg         = init.householdAggregates.copy(
+      totalConsumerDefault = PLN(7),
+      totalConsumerLoanDefault = PLN(3),
+      totalLiquidityBridgeChargeOff = PLN(4),
+    )
     val row           = computeRow(world, ledger, householdAggregates = hhAgg)
 
     valueAt(row, "BankFirmLoans") shouldBe polandScale(bankFirmLoans)
     valueAt(row, "ConsumerLoans") shouldBe polandScale(consumerLoans)
     valueAt(row, "ConsumerDefault") shouldBe polandScale(PLN(7))
+    valueAt(row, "ConsumerLoanDefault") shouldBe polandScale(PLN(3))
+    valueAt(row, "LiquidityBridgeChargeOff") shouldBe polandScale(PLN(4))
     valueAt(row, "NbfiLoanStock") shouldBe polandScale(nbfiLoans)
     valueAt(row, "TotalCreditStock") shouldBe polandScale(totalCredit)
     valueAt(row, "BankFirmLoansToGdp") shouldBe MetricValue.fromRaw((bankFirmLoans / annualGdp).toLong)

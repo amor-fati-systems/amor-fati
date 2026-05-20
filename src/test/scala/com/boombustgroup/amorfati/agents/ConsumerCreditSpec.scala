@@ -172,6 +172,8 @@ class ConsumerCreditSpec extends AnyFlatSpec with Matchers:
     agg.totalConsumerDebtArrears shouldBe PLN.Zero
     agg.totalTemporaryOverdraft shouldBe PLN.Zero
     agg.totalConsumerDefault shouldBe PLN.Zero
+    agg.totalConsumerLoanDefault shouldBe PLN.Zero
+    agg.totalLiquidityBridgeChargeOff shouldBe PLN.Zero
   }
 
   "Household financial stocks" should "default consumer loan to 0" in {

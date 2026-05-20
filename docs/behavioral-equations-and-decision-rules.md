@@ -62,7 +62,7 @@ runtime ledger flows and validates SFC identities.
 
 | Rule group | Main implementation anchors | Representative output columns |
 | --- | --- | --- |
-| Household income, consumption, savings, credit | `agents/Household.scala`, `engine/economics/HouseholdIncomeEconomics.scala`, `engine/economics/HouseholdFinancialEconomics.scala` | `MarketWage`, `Unemployment`, `EffectivePitRate`, `ConsumerLoans`, `ConsumerOrigination`, `ConsumerApprovedOrigination`, `ConsumerDebtService`, `HouseholdLiquidity_ShortfallFinancing`, `HouseholdLiquidity_NetDemandDeposit`, `HouseholdLiquidity_PositiveDemandDeposits`, `HouseholdLiquidity_ImplicitOverdraft`, `HouseholdLiquidity_NegativeDepositShare`, `HouseholdLiquidity_DepositP01`-`P99`, `SectorMobilityRate`, `VoluntaryQuits`, `DiasporaRemittanceInflow`, `RemittanceOutflow`, `TourismExport`, `TourismImport` |
+| Household income, consumption, savings, credit | `agents/Household.scala`, `engine/economics/HouseholdIncomeEconomics.scala`, `engine/economics/HouseholdFinancialEconomics.scala` | `MarketWage`, `Unemployment`, `EffectivePitRate`, `ConsumerLoans`, `ConsumerOrigination`, `ConsumerApprovedOrigination`, `ConsumerDebtService`, `ConsumerDefault`, `ConsumerLoanDefault`, `LiquidityBridgeChargeOff`, `HouseholdLiquidity_ShortfallFinancing`, `HouseholdLiquidity_NetDemandDeposit`, `HouseholdLiquidity_PositiveDemandDeposits`, `HouseholdLiquidity_ImplicitOverdraft`, `HouseholdLiquidity_NegativeDepositShare`, `HouseholdLiquidity_DepositP01`-`P99`, `SectorMobilityRate`, `VoluntaryQuits`, `DiasporaRemittanceInflow`, `RemittanceOutflow`, `TourismExport`, `TourismImport` |
 | Labor, wages, demographics, social funds | `engine/economics/LaborEconomics.scala`, `agents/SocialSecurity.scala`, `agents/EarmarkedFunds.scala` | `MarketWage`, `Unemployment`, `WorkingAgePop`, `NRetirees`, `MonthlyRetirements`, `ZusContributions`, `ZusPensionPayments`, `NfzContributions`, `NfzSpending`, `PpkContributions`, `FpContributions`, `FgspSpending` |
 | Demand allocation and fiscal constraint | `engine/economics/DemandEconomics.scala`, `engine/markets/FiscalRules.scala`, `engine/markets/FiscalBudget.scala` | `GovCurrentSpend`, `GovCapitalSpendDomestic`, `FiscalRuleBinding`, `GovSpendingCutRatio`, `DebtToGdp`, `DeficitToGdp`, `PublicCapitalStock` |
 | Firm production, investment, technology, financing, default, entry | `agents/Firm.scala`, `engine/economics/FirmEconomics.scala`, `engine/mechanisms/FirmEntry.scala` | `TotalAdoption`, `AutoRatio`, `HybridRatio`, `Automation_TechCapex`, `Automation_TechImports`, `Automation_TechLoans`, `Automation_UpgradeFailures`, `Automation_AiDebtTrap`, `Automation_NewFullAi`, `Automation_NewHybrid`, `Adoption_MicroShare`, `Adoption_SmallShare`, `Adoption_MediumShare`, `Adoption_LargeShare`, `Adoption_CashQ1`-`Q4`, `Adoption_DebtQ1`-`Q4`, sector `*_Auto`, sector `*_Sigma`, `GrossInvestment`, `AggCapitalStock`, `AggInventoryStock`, `InventoryChange`, `AggEnergyCost`, `GreenInvestment`, `FirmBirths`, `FirmDeaths`, `NetEntry`, `LivingFirmCount`, `CorpBondIssuance`, `EquityIssuanceTotal` |
@@ -204,6 +204,11 @@ the shortfall-financing leg is included in the consumer-credit default amount.
 `HhCcOrigination` carries only the underwritten loan; `HhLiquidityShortfallFinancing`
 carries the residual settlement leg. SFC consumer-credit stock identities use
 the sum of both mechanisms.
+
+For diagnostics, `ConsumerDefault` remains the combined SFC default/write-off
+flow. `ConsumerLoanDefault` isolates default of ordinary outstanding consumer
+loan principal, while `LiquidityBridgeChargeOff` isolates the same-month bridge
+write-off used to keep demand deposits non-negative.
 
 ### MPC Adaptation
 

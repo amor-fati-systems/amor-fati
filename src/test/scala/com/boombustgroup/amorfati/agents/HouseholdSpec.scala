@@ -270,6 +270,8 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
     result.aggregates.totalLiquidityShortfallFinancing shouldBe result.aggregates.totalConsumerOrigination
     result.aggregates.totalLiquidityShortfallComponents shouldBe result.aggregates.totalLiquidityShortfallFinancing
     result.aggregates.totalConsumerDefault shouldBe expectedDefault + result.aggregates.totalConsumerOrigination
+    result.aggregates.totalConsumerLoanDefault shouldBe expectedDefault
+    result.aggregates.totalLiquidityBridgeChargeOff shouldBe result.aggregates.totalLiquidityShortfallFinancing
     result.aggregates.totalConsumerPrincipal + result.aggregates.totalConsumerDefault shouldBe openingLoan + result.aggregates.totalConsumerOrigination
   }
 
@@ -398,6 +400,8 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
     result.aggregates.totalConsumerOrigination shouldBe result.aggregates.totalLiquidityShortfallFinancing
     result.aggregates.totalConsumerApprovedOrigination shouldBe PLN.Zero
     result.aggregates.totalConsumerDefault shouldBe result.aggregates.totalLiquidityShortfallFinancing
+    result.aggregates.totalConsumerLoanDefault shouldBe PLN.Zero
+    result.aggregates.totalLiquidityBridgeChargeOff shouldBe result.aggregates.totalLiquidityShortfallFinancing
     result.aggregates.totalLiquidityShortfallComponents shouldBe result.aggregates.totalLiquidityShortfallFinancing
     result.monthlyFlows.head.rentArrears + result.monthlyFlows.head.temporaryOverdraft should be > PLN.Zero
     result.aggregates.meanSavings shouldBe PLN.Zero
@@ -417,6 +421,8 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
 
     flow.consumerDebtArrears shouldBe flow.consumerDebtService
     flow.consumerDefault shouldBe flow.consumerDebtArrears
+    flow.consumerLoanDefault shouldBe PLN.Zero
+    flow.liquidityBridgeChargeOff shouldBe flow.consumerDefault
     flow.consumerDebtService should be > flow.consumerPrincipal
     flow.closingConsumerLoan shouldBe (openingLoan - flow.consumerPrincipal).max(PLN.Zero)
     result.financialStocks.head.consumerLoan shouldBe flow.closingConsumerLoan
