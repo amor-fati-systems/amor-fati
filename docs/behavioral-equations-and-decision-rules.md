@@ -133,10 +133,14 @@ policy rate plus the housing mortgage spread:
 ```text
 mortgagePrincipal_h = mortgageLoan_h / housing.mortgageMaturity
 mortgageInterest_h = mortgageLoan_h * mortgageRate_h.monthly
-mortgageDebtService_h =
+scheduledMortgagePayment_h =
   mortgagePrincipal_h + mortgageInterest_h
 mortgageLoan'_h = max(mortgageLoan_h - mortgagePrincipal_h, 0)
 ```
+
+`scheduledMortgagePayment_h` is a household budget burden. It is not a single
+bank-income flow: principal reduces the mortgage stock, while interest enters
+bank income.
 
 Aggregate mortgage origination is calibrated from the outstanding mortgage
 book, not from the full residential-property value:
@@ -155,7 +159,7 @@ The disposable budget is computed after rent, secured debt service, remittance,
 and consumer-credit service:
 
 ```text
-obligations_h = rent_h + mortgageDebtService_h + remittance_h
+obligations_h = rent_h + scheduledMortgagePayment_h + remittance_h
 disposablePreCredit_h = max(income_h - obligations_h, 0)
 approvedConsumerLoan_h = consumerCreditRule(...)
 fullObligations_h = obligations_h + consumerCreditDebtService_h
@@ -267,7 +271,7 @@ bankruptcy floor:
 
 ```text
 bankruptcyFloor_h =
-  max(rent_h + mortgageDebtService_h + consumerDebtService_h, rent_h)
+  max(rent_h + scheduledMortgagePayment_h + consumerDebtService_h, rent_h)
   * bankruptcyThreshold
 ```
 
