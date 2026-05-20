@@ -163,56 +163,58 @@ object Household:
 
   /** Aggregate statistics computed from individual households (Paper-06). */
   case class Aggregates(
-      employed: Int,                                 // count of employed HH
-      unemployed: Int,                               // count of unemployed HH
-      retraining: Int,                               // count of HH in retraining
-      bankrupt: Int,                                 // count of bankrupt HH
-      totalIncome: PLN,                              // aggregate income (wages + benefits + interest + transfers)
-      consumption: PLN,                              // aggregate consumption (goods + rent)
-      domesticConsumption: PLN,                      // domestic component of consumption
-      importConsumption: PLN,                        // import component of consumption
-      marketWage: PLN,                               // current market-clearing wage
-      reservationWage: PLN,                          // minimum acceptable wage for job search
-      giniIndividual: Share,                         // Gini of income distribution
-      giniWealth: Share,                             // Gini of liquid demand-deposit wealth
-      meanSavings: PLN,                              // mean liquid demand deposits across all HH
-      medianSavings: PLN,                            // median liquid demand deposits across all HH
-      povertyRate50: Share,                          // share with income < 50% median (EU AROP)
-      bankruptcyRate: Share,                         // share of bankrupt HH
-      meanSkill: Share,                              // mean skill of alive (non-bankrupt) HH
-      meanHealthPenalty: Share,                      // mean health scarring of alive HH
-      retrainingAttempts: Int,                       // retraining attempts this month
-      retrainingSuccesses: Int,                      // successful retraining completions this month
-      consumptionP10: PLN,                           // 10th percentile of consumption
-      consumptionP50: PLN,                           // median consumption
-      consumptionP90: PLN,                           // 90th percentile of consumption
-      meanMonthsToRuin: Scalar,                      // mean months until bankruptcy (placeholder)
-      povertyRate30: Share,                          // share with income < 30% median (deep poverty)
-      totalRent: PLN,                                // aggregate rent payments
-      totalDebtService: PLN,                         // aggregate secured debt service
-      totalUnempBenefits: PLN,                       // aggregate unemployment benefits paid
-      totalDepositInterest: PLN,                     // aggregate deposit interest received
-      crossSectorHires: Int,                         // cross-sector hires this month
-      voluntaryQuits: Int,                           // voluntary quits (cross-sector search)
-      sectorMobilityRate: Share,                     // fraction employed in different sector than last
-      totalRemittances: PLN,                         // aggregate remittances sent abroad
-      totalPit: PLN,                                 // aggregate PIT paid
-      totalSocialTransfers: PLN,                     // aggregate 800+ social transfers
-      totalConsumerDebtService: PLN,                 // aggregate consumer debt service
-      totalConsumerOrigination: PLN,                 // aggregate gross consumer-loan and bridge origination
-      totalConsumerApprovedOrigination: PLN,         // aggregate underwritten consumer-credit origination
-      totalLiquidityShortfallFinancing: PLN,         // aggregate same-month bridge/write-off for liquidity gaps
-      totalConsumerDefault: PLN,                     // aggregate consumer defaults plus bridge charge-offs
-      totalConsumerPrincipal: PLN,                   // aggregate consumer loan principal repaid
-      totalConsumerLoanDefault: PLN = PLN.Zero,      // default of ordinary outstanding consumer-loan principal
-      totalLiquidityBridgeChargeOff: PLN = PLN.Zero, // same-month bridge charge-off, not ordinary consumer-loan default
-      totalConsumptionShortfall: PLN = PLN.Zero,     // shortfall component attributed to consumption
-      totalRentArrears: PLN = PLN.Zero,              // shortfall component attributed to rent
-      totalMortgageArrears: PLN = PLN.Zero,          // shortfall component attributed to mortgage service
-      totalConsumerDebtArrears: PLN = PLN.Zero,      // shortfall component attributed to consumer debt service
-      totalTemporaryOverdraft: PLN = PLN.Zero,       // shortfall component attributed to other liquidity gaps
-      totalMortgagePrincipal: PLN = PLN.Zero,        // aggregate secured mortgage principal repaid
-      totalMortgageInterest: PLN = PLN.Zero,         // aggregate secured mortgage interest paid
+      employed: Int,                                            // count of employed HH
+      unemployed: Int,                                          // count of unemployed HH
+      retraining: Int,                                          // count of HH in retraining
+      bankrupt: Int,                                            // count of bankrupt HH
+      totalIncome: PLN,                                         // aggregate income (wages + benefits + interest + transfers)
+      consumption: PLN,                                         // aggregate consumption (goods + rent)
+      domesticConsumption: PLN,                                 // domestic component of consumption
+      importConsumption: PLN,                                   // import component of consumption
+      marketWage: PLN,                                          // current market-clearing wage
+      reservationWage: PLN,                                     // minimum acceptable wage for job search
+      giniIndividual: Share,                                    // Gini of income distribution
+      giniWealth: Share,                                        // Gini of liquid demand-deposit wealth
+      meanSavings: PLN,                                         // mean liquid demand deposits across all HH
+      medianSavings: PLN,                                       // median liquid demand deposits across all HH
+      povertyRate50: Share,                                     // share with income < 50% median (EU AROP)
+      bankruptcyRate: Share,                                    // share of bankrupt HH
+      meanSkill: Share,                                         // mean skill of alive (non-bankrupt) HH
+      meanHealthPenalty: Share,                                 // mean health scarring of alive HH
+      retrainingAttempts: Int,                                  // retraining attempts this month
+      retrainingSuccesses: Int,                                 // successful retraining completions this month
+      consumptionP10: PLN,                                      // 10th percentile of consumption
+      consumptionP50: PLN,                                      // median consumption
+      consumptionP90: PLN,                                      // 90th percentile of consumption
+      meanMonthsToRuin: Scalar,                                 // mean months until bankruptcy (placeholder)
+      povertyRate30: Share,                                     // share with income < 30% median (deep poverty)
+      totalRent: PLN,                                           // aggregate rent payments
+      totalDebtService: PLN,                                    // aggregate secured debt service
+      totalUnempBenefits: PLN,                                  // aggregate unemployment benefits paid
+      totalDepositInterest: PLN,                                // aggregate deposit interest received
+      crossSectorHires: Int,                                    // cross-sector hires this month
+      voluntaryQuits: Int,                                      // voluntary quits (cross-sector search)
+      sectorMobilityRate: Share,                                // fraction employed in different sector than last
+      totalRemittances: PLN,                                    // aggregate remittances sent abroad
+      totalPit: PLN,                                            // aggregate PIT paid
+      totalSocialTransfers: PLN,                                // aggregate 800+ social transfers
+      totalConsumerDebtService: PLN,                            // aggregate consumer debt service
+      totalConsumerOrigination: PLN,                            // aggregate gross consumer-loan and bridge origination
+      totalConsumerApprovedOrigination: PLN,                    // aggregate underwritten consumer-credit origination
+      totalLiquidityShortfallFinancing: PLN,                    // aggregate same-month bridge/write-off for liquidity gaps
+      totalConsumerDefault: PLN,                                // aggregate consumer defaults plus bridge charge-offs
+      totalConsumerPrincipal: PLN,                              // aggregate consumer loan principal repaid
+      totalConsumerLoanDefault: PLN = PLN.Zero,                 // default of ordinary outstanding consumer-loan principal
+      totalLiquidityBridgeChargeOff: PLN = PLN.Zero,            // same-month bridge charge-off, not ordinary consumer-loan default
+      totalUnmetBasicConsumption: PLN = PLN.Zero,               // basic consumption need not covered by cash before arrears/default
+      totalDiscretionaryConsumptionCompression: PLN = PLN.Zero, // discretionary consumption cut before bridge/default
+      totalConsumptionShortfall: PLN = PLN.Zero,                // shortfall component attributed to consumption
+      totalRentArrears: PLN = PLN.Zero,                         // shortfall component attributed to rent
+      totalMortgageArrears: PLN = PLN.Zero,                     // shortfall component attributed to mortgage service
+      totalConsumerDebtArrears: PLN = PLN.Zero,                 // shortfall component attributed to consumer debt service
+      totalTemporaryOverdraft: PLN = PLN.Zero,                  // shortfall component attributed to other liquidity gaps
+      totalMortgagePrincipal: PLN = PLN.Zero,                   // aggregate secured mortgage principal repaid
+      totalMortgageInterest: PLN = PLN.Zero,                    // aggregate secured mortgage interest paid
   ):
     def totalLiquidityShortfallComponents: PLN =
       totalConsumptionShortfall + totalRentArrears + totalMortgageArrears + totalConsumerDebtArrears + totalTemporaryOverdraft
@@ -242,6 +244,8 @@ object Household:
         totalConsumerPrincipal = flowTotals.totalConsumerPrincipal,
         totalConsumerLoanDefault = flowTotals.totalConsumerLoanDefault,
         totalLiquidityBridgeChargeOff = flowTotals.totalLiquidityBridgeChargeOff,
+        totalUnmetBasicConsumption = flowTotals.totalUnmetBasicConsumption,
+        totalDiscretionaryConsumptionCompression = flowTotals.totalDiscretionaryConsumptionCompression,
         totalConsumptionShortfall = flowTotals.totalConsumptionShortfall,
         totalRentArrears = flowTotals.totalRentArrears,
         totalMortgageArrears = flowTotals.totalMortgageArrears,
@@ -271,26 +275,28 @@ object Household:
     * exports.
     */
   case class MonthlyFlow(
-      householdId: HhId,                        // household identifier for joining with post-month state
-      openingDemandDeposit: PLN,                // opening liquid deposit before the household month step
-      openingConsumerLoan: PLN,                 // opening unsecured consumer-loan principal
-      monthlyIncome: PLN,                       // net monthly household income after PIT and transfers
-      consumption: PLN,                         // monthly household goods consumption
-      rent: PLN,                                // monthly rent paid by the household
-      mortgageDebtService: PLN,                 // monthly secured mortgage debt service
-      consumerApprovedOrigination: PLN,         // underwritten consumer credit originated by the DTI rule
-      liquidityShortfallFinancing: PLN,         // same-month bridge/write-off preventing negative closing deposits
-      consumerDebtService: PLN,                 // monthly unsecured consumer-credit debt service
-      consumerDefault: PLN,                     // gross consumer default plus bridge charge-off this month
-      consumerPrincipal: PLN,                   // principal component of consumer debt service
-      closingConsumerLoan: PLN,                 // closing unsecured consumer-loan principal
-      consumerLoanDefault: PLN = PLN.Zero,      // default of ordinary outstanding consumer-loan principal
-      liquidityBridgeChargeOff: PLN = PLN.Zero, // same-month bridge charge-off, not ordinary consumer-loan default
-      consumptionShortfall: PLN = PLN.Zero,     // shortfall attributed to modeled consumption outflow
-      rentArrears: PLN = PLN.Zero,              // shortfall attributed to rent payment
-      mortgageArrears: PLN = PLN.Zero,          // shortfall attributed to mortgage debt service
-      consumerDebtArrears: PLN = PLN.Zero,      // shortfall attributed to consumer debt service
-      temporaryOverdraft: PLN = PLN.Zero,       // shortfall attributed to other current liquidity gaps
+      householdId: HhId,                                   // household identifier for joining with post-month state
+      openingDemandDeposit: PLN,                           // opening liquid deposit before the household month step
+      openingConsumerLoan: PLN,                            // opening unsecured consumer-loan principal
+      monthlyIncome: PLN,                                  // net monthly household income after PIT and transfers
+      consumption: PLN,                                    // monthly household goods consumption
+      rent: PLN,                                           // monthly rent paid by the household
+      mortgageDebtService: PLN,                            // monthly secured mortgage debt service
+      consumerApprovedOrigination: PLN,                    // underwritten consumer credit originated by the DTI rule
+      liquidityShortfallFinancing: PLN,                    // same-month bridge/write-off preventing negative closing deposits
+      consumerDebtService: PLN,                            // monthly unsecured consumer-credit debt service
+      consumerDefault: PLN,                                // gross consumer default plus bridge charge-off this month
+      consumerPrincipal: PLN,                              // principal component of consumer debt service
+      closingConsumerLoan: PLN,                            // closing unsecured consumer-loan principal
+      consumerLoanDefault: PLN = PLN.Zero,                 // default of ordinary outstanding consumer-loan principal
+      liquidityBridgeChargeOff: PLN = PLN.Zero,            // same-month bridge charge-off, not ordinary consumer-loan default
+      unmetBasicConsumption: PLN = PLN.Zero,               // non-discretionary consumption need not covered by cash
+      discretionaryConsumptionCompression: PLN = PLN.Zero, // discretionary consumption cut before bridge/default
+      consumptionShortfall: PLN = PLN.Zero,                // shortfall attributed to modeled consumption outflow
+      rentArrears: PLN = PLN.Zero,                         // shortfall attributed to rent payment
+      mortgageArrears: PLN = PLN.Zero,                     // shortfall attributed to mortgage debt service
+      consumerDebtArrears: PLN = PLN.Zero,                 // shortfall attributed to consumer debt service
+      temporaryOverdraft: PLN = PLN.Zero,                  // shortfall attributed to other current liquidity gaps
   )
 
   object MonthlyFlow:
@@ -311,6 +317,8 @@ object Household:
         closingConsumerLoan = stocks.consumerLoan,
         consumerLoanDefault = PLN.Zero,
         liquidityBridgeChargeOff = PLN.Zero,
+        unmetBasicConsumption = PLN.Zero,
+        discretionaryConsumptionCompression = PLN.Zero,
         consumptionShortfall = PLN.Zero,
         rentArrears = PLN.Zero,
         mortgageArrears = PLN.Zero,
@@ -545,6 +553,8 @@ object Household:
     private var ccPrincipalAcc: PLN          = PLN.Zero
     private var ccLoanDefaultAcc: PLN        = PLN.Zero
     private var bridgeChargeOffAcc: PLN      = PLN.Zero
+    private var unmetBasicConsAcc: PLN       = PLN.Zero
+    private var discretionaryCutAcc: PLN     = PLN.Zero
     var retrainingAttempts: Int              = 0
     var retrainingSuccesses: Int             = 0
     var voluntaryQuits: Int                  = 0
@@ -574,6 +584,8 @@ object Household:
       ccPrincipalAcc = ccPrincipalAcc + r.credit.principal
       ccLoanDefaultAcc = ccLoanDefaultAcc + r.credit.consumerLoanDefault
       bridgeChargeOffAcc = bridgeChargeOffAcc + r.credit.liquidityBridgeChargeOff
+      unmetBasicConsAcc = unmetBasicConsAcc + r.unmetBasicConsumption
+      discretionaryCutAcc = discretionaryCutAcc + r.discretionaryConsumptionCompression
       retrainingAttempts += r.retrainingAttempt
       retrainingSuccesses += r.retrainingSuccess
       voluntaryQuits += r.voluntaryQuit
@@ -602,6 +614,8 @@ object Household:
     def consumerPrincipal: PLN           = ccPrincipalAcc
     def consumerLoanDefault: PLN         = ccLoanDefaultAcc
     def liquidityBridgeChargeOff: PLN    = bridgeChargeOffAcc
+    def unmetBasicConsumption: PLN       = unmetBasicConsAcc
+    def discretionaryConsumptionCut: PLN = discretionaryCutAcc
 
   /** Build per-bank flow vector from (BankId, HhMonthlyResult) pairs. PLN is
     * Long — addition is exact, no Kahan needed.
@@ -644,28 +658,38 @@ object Household:
     // Gross flow preserves the SFC bridge leg; defaultAmt offsets bridge stock in the same month.
     def totalOrigination: PLN            = newLoan + liquidityShortfallFinancing
 
+  /** Result of the household budget waterfall before residual settlement. */
+  private case class ConsumptionWaterfall(
+      desiredConsumption: PLN,                 // behavioral consumption before cash-priority compression
+      actualConsumption: PLN,                  // consumption paid before residual bridge/default settlement
+      unmetBasicConsumption: PLN,              // non-discretionary consumption need not covered by cash
+      discretionaryConsumptionCompression: PLN, // discretionary consumption cut before bridge/default
+  )
+
   /** Per-HH monthly result — updated state + all flow variables for
     * aggregation.
     */
   private case class HhMonthlyResult(
-      newState: State,        // updated household state
-      income: PLN,            // gross income net of PIT plus social transfers
-      benefit: PLN,           // unemployment benefit component
-      consumption: PLN,       // total consumption (goods + wealth effect, before rent)
-      debtService: PLN,       // secured (mortgage) debt service
-      mortgagePrincipal: PLN, // mortgage principal component of secured debt service
-      mortgageInterest: PLN,  // mortgage interest component of secured debt service
-      depositInterest: PLN,   // deposit interest received
-      remittance: PLN,        // remittance sent abroad (immigrants only)
-      pitTax: PLN,            // PIT paid
-      socialTransfer: PLN,    // 800+ social transfer received
-      credit: CreditResult,   // consumer credit flows
-      voluntaryQuit: Int,     // 1 if voluntary cross-sector quit, 0 otherwise
-      retrainingAttempt: Int, // 1 if retraining attempted, 0 otherwise
-      retrainingSuccess: Int, // 1 if retraining succeeded, 0 otherwise
-      equityWealth: PLN,      // updated equity wealth after revaluation
-      rent: PLN,              // monthly rent payment
+      newState: State,                         // updated household state
+      income: PLN,                             // gross income net of PIT plus social transfers
+      benefit: PLN,                            // unemployment benefit component
+      consumption: PLN,                        // total consumption (goods + wealth effect, before rent)
+      debtService: PLN,                        // secured (mortgage) debt service
+      mortgagePrincipal: PLN,                  // mortgage principal component of secured debt service
+      mortgageInterest: PLN,                   // mortgage interest component of secured debt service
+      depositInterest: PLN,                    // deposit interest received
+      remittance: PLN,                         // remittance sent abroad (immigrants only)
+      pitTax: PLN,                             // PIT paid
+      socialTransfer: PLN,                     // 800+ social transfer received
+      credit: CreditResult,                    // consumer credit flows
+      voluntaryQuit: Int,                      // 1 if voluntary cross-sector quit, 0 otherwise
+      retrainingAttempt: Int,                  // 1 if retraining attempted, 0 otherwise
+      retrainingSuccess: Int,                  // 1 if retraining succeeded, 0 otherwise
+      equityWealth: PLN,                       // updated equity wealth after revaluation
+      rent: PLN,                               // monthly rent payment
       financialStocks: FinancialStocks,
+      unmetBasicConsumption: PLN,              // basic consumption need not covered by cash
+      discretionaryConsumptionCompression: PLN, // discretionary consumption cut before bridge/default
   )
 
   // ---- Logic ----
@@ -826,16 +850,49 @@ object Household:
       pitTax: PLN,
       socialTransfer: PLN,
       credit: CreditResult,
+      desiredConsumption: PLN,
       consumption: PLN,
+      unmetBasicConsumption: PLN,
+      discretionaryConsumptionCompression: PLN,
       newEquityWealth: PLN,
       newSavings: PLN, // raw closing liquid balance before non-negative deposit settlement
       newDebt: PLN,
       neighborDistress: Share,
   )
 
-  private def bankruptcyFloor(f: MonthlyFlows)(using p: SimParams): PLN =
+  /** Pay non-discretionary consumption first, then obligations, then only the
+    * affordable discretionary part. Unpaid basic need is deprivation, not
+    * bridge debt; unpaid obligations still flow to the residual settlement
+    * diagnostics.
+    */
+  private def applyConsumptionWaterfall(
+      openingDemandDeposit: PLN,
+      income: PLN,
+      approvedConsumerLoan: PLN,
+      obligations: PLN,
+      desiredConsumption: PLN,
+  )(using p: SimParams): ConsumptionWaterfall =
+    if desiredConsumption <= PLN.Zero then ConsumptionWaterfall(desiredConsumption, desiredConsumption, PLN.Zero, PLN.Zero)
+    else
+      val desiredPositive      = desiredConsumption.max(PLN.Zero)
+      val basicNeed            = p.household.basicConsumptionFloor.min(desiredPositive)
+      val availableCash        = (openingDemandDeposit + income + approvedConsumerLoan).max(PLN.Zero)
+      val paidBasic            = basicNeed.min(availableCash)
+      val availableAfterBasic  = (availableCash - paidBasic).max(PLN.Zero)
+      val availableAfterBills  = (availableAfterBasic - obligations.max(PLN.Zero)).max(PLN.Zero)
+      val desiredDiscretionary = (desiredPositive - basicNeed).max(PLN.Zero)
+      val paidDiscretionary    = desiredDiscretionary.min(availableAfterBills)
+      ConsumptionWaterfall(
+        desiredConsumption = desiredConsumption,
+        actualConsumption = paidBasic + paidDiscretionary,
+        unmetBasicConsumption = basicNeed - paidBasic,
+        discretionaryConsumptionCompression = desiredDiscretionary - paidDiscretionary,
+      )
+
+  private def financialDistressTriggered(f: MonthlyFlows)(using p: SimParams): Boolean =
     val essentialOutflows = (f.hh.monthlyRent + f.debtService + f.credit.debtService).max(f.hh.monthlyRent)
-    essentialOutflows * p.household.bankruptcyThreshold.toMultiplier
+    val configuredFloor   = essentialOutflows * p.household.bankruptcyThreshold.toMultiplier
+    f.newSavings < PLN.Zero || f.unmetBasicConsumption > PLN.Zero || f.newSavings < configuredFloor
 
   /** Per-HH monthly pipeline: income → tax → credit → consumption → equity. */
   private def computeMonthlyFlows(
@@ -893,6 +950,8 @@ object Household:
       else PLN.Zero
     val housingBoost          = world.real.housing.lastWealthEffect / world.derivedTotalPopulation.toLong.max(1L)
     val consumptionWithWealth = consumptionAdj + equityBoost + housingBoost
+    val consumptionWaterfall  =
+      applyConsumptionWaterfall(financialStocks.demandDeposit, income, credit.newLoan, fullObligations, consumptionWithWealth)
 
     MonthlyFlows(
       hh = hh,
@@ -908,9 +967,12 @@ object Household:
       pitTax = pitTax,
       socialTransfer = socialTransfer,
       credit = credit,
-      consumption = consumptionWithWealth,
+      desiredConsumption = consumptionWaterfall.desiredConsumption,
+      consumption = consumptionWaterfall.actualConsumption,
+      unmetBasicConsumption = consumptionWaterfall.unmetBasicConsumption,
+      discretionaryConsumptionCompression = consumptionWaterfall.discretionaryConsumptionCompression,
       newEquityWealth = newEquityWealth,
-      newSavings = financialStocks.demandDeposit + income - fullObligations + credit.newLoan - consumptionWithWealth,
+      newSavings = financialStocks.demandDeposit + income - fullObligations + credit.newLoan - consumptionWaterfall.actualConsumption,
       newDebt = (financialStocks.mortgageLoan - mortgagePrincipal).max(PLN.Zero),
       neighborDistress = neighborDistress,
     )
@@ -930,7 +992,7 @@ object Household:
   )(using p: SimParams): HhMonthlyResult =
     val f              = computeMonthlyFlows(hh, financialStocks, world, rng, bankRates, equityIndexReturn, distressedIds)
     val distressMonths =
-      if f.newSavings < bankruptcyFloor(f) then hh.financialDistressMonths + 1 else 0
+      if financialDistressTriggered(f) then hh.financialDistressMonths + 1 else 0
     if distressMonths >= p.household.bankruptcyDistressMonths then resolveBankruptcy(f, distressMonths)
     else resolveSurvival(f, sectorWages, sectorVacancies, rng, distressMonths)
 
@@ -1026,6 +1088,8 @@ object Household:
       equityWealth = PLN.Zero,
       rent = f.hh.monthlyRent,
       financialStocks = financial,
+      unmetBasicConsumption = f.unmetBasicConsumption,
+      discretionaryConsumptionCompression = f.discretionaryConsumptionCompression,
     )
 
   /** Survival branch: skill decay, labor transitions, state update. */
@@ -1089,6 +1153,8 @@ object Household:
       equityWealth = f.newEquityWealth,
       rent = f.hh.monthlyRent,
       financialStocks = financial,
+      unmetBasicConsumption = f.unmetBasicConsumption,
+      discretionaryConsumptionCompression = f.discretionaryConsumptionCompression,
     )
 
   /** Monthly entry point: map processHousehold + accumulate + aggregate. */
@@ -1138,6 +1204,8 @@ object Household:
             closingConsumerLoan = result.financialStocks.consumerLoan,
             consumerLoanDefault = result.credit.consumerLoanDefault,
             liquidityBridgeChargeOff = result.credit.liquidityBridgeChargeOff,
+            unmetBasicConsumption = result.unmetBasicConsumption,
+            discretionaryConsumptionCompression = result.discretionaryConsumptionCompression,
             consumptionShortfall = result.credit.liquidityShortfall.consumptionShortfall,
             rentArrears = result.credit.liquidityShortfall.rentArrears,
             mortgageArrears = result.credit.liquidityShortfall.mortgageArrears,
@@ -1428,6 +1496,8 @@ object Household:
       totalConsumerPrincipal = t.consumerPrincipal,
       totalConsumerLoanDefault = t.consumerLoanDefault,
       totalLiquidityBridgeChargeOff = t.liquidityBridgeChargeOff,
+      totalUnmetBasicConsumption = t.unmetBasicConsumption,
+      totalDiscretionaryConsumptionCompression = t.discretionaryConsumptionCut,
       totalConsumptionShortfall = t.consumptionShortfall,
       totalRentArrears = t.rentArrears,
       totalMortgageArrears = t.mortgageArrears,

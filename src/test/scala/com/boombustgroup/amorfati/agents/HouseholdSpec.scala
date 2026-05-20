@@ -375,6 +375,22 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
     updated(0).savings should be < openingSavings
   }
 
+  it should "compress discretionary consumption before creating liquidity shortfall financing" in {
+    val rng   = RandomStream.seeded(42)
+    val hh    = mkHousehold(0, HhStatus.Employed(FirmId(0), SectorIdx(0), PLN(8000)), savings = PLN.Zero, rent = PLN(1000), mpc = BigDecimal("0.80"))
+    val base  = mkWorld()
+    val world = base.copy(real = base.real.copy(housing = base.real.housing.copy(lastWealthEffect = PLN(1000000000L))))
+
+    val result = step(Vector(hh), world, PLN(8000), PLN(4666), Share.decimal(4, 1), rng)
+    val flow   = result.monthlyFlows.head
+
+    flow.discretionaryConsumptionCompression should be > PLN.Zero
+    flow.unmetBasicConsumption shouldBe PLN.Zero
+    flow.liquidityShortfallFinancing shouldBe PLN.Zero
+    result.aggregates.totalDiscretionaryConsumptionCompression shouldBe flow.discretionaryConsumptionCompression
+    result.aggregates.totalUnmetBasicConsumption shouldBe PLN.Zero
+  }
+
   it should "return ledger-facing financial balances in the step result" in {
     val rng     = RandomStream.seeded(42)
     val hh      = mkHousehold(0, HhStatus.Employed(FirmId(0), SectorIdx(2), PLN(8000)), savings = PLN(50000))

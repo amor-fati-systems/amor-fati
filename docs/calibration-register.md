@@ -39,7 +39,7 @@ These counts are rendered from `CalibrationProvenance.Baseline` at generation ti
 | `EMPIRICAL` | 36 |
 | `EMPIRICAL_TRANSFORMED` | 17 |
 | `CODE_NOTE_EMPIRICAL` | 61 |
-| `ASSUMED` | 31 |
+| `ASSUMED` | 32 |
 | `TUNED_NEEDS_VALIDATION` | 85 |
 | `POLICY_SCENARIO` | 7 |
 | `PLACEHOLDER` | 1 |
@@ -225,6 +225,7 @@ a concrete diagnostic artifact path.
 | `household.debtMu`, `debtSigma` | `10.5, 1.5` | log PLN params | Structural initialization prior: household debt dispersion | Initial debt distribution | Lognormal draw | `HouseholdConfig` | `ASSUMED` |
 | `household.rentMean`, `rentStd`, `rentFloor` | `3500, 800, 1200` | PLN/month | Otodom March 2026 provincial-city asking-rent bridge | Rent distribution | Truncated normal draw | `HouseholdConfig` | `EMPIRICAL_TRANSFORMED` |
 | `household.bufferTargetMonths` | `6.0` | months | Carroll-style buffer-stock model | Target liquid buffer | Direct | `HouseholdConfig` | `ASSUMED` |
+| `household.basicConsumptionFloor` | `1500` | PLN/month | #528 budget-waterfall structural floor | Non-discretionary consumption slice protected before discretionary spending | Direct | `HouseholdConfig` | `ASSUMED` |
 | `household.laborSupplySteepness` | `4.0` | coefficient | #461 labor-market calibration | Labor-supply response steepness; calibrated so wage clearing supports strong 2026 growth without forcing persistent labor shedding | Direct | `HouseholdConfig` | `TUNED_NEEDS_VALIDATION` |
 | `household.bufferSensitivity` | `0.2` | coefficient | #461 calibration | MPC response to buffer gap | Direct | `HouseholdConfig` | `TUNED_NEEDS_VALIDATION` |
 | `household.mpcUnemployedBoost` | `0.10` | share | UNKNOWN_SOURCE | Extra MPC while unemployed | Direct | `HouseholdConfig` | `TUNED_NEEDS_VALIDATION` |

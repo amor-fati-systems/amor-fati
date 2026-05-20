@@ -45,6 +45,9 @@ import com.boombustgroup.amorfati.types.*
   *   Beta distribution alpha parameter for heterogeneous MPC
   * @param mpcBeta
   *   Beta distribution beta parameter for heterogeneous MPC
+  * @param basicConsumptionFloor
+  *   monthly non-discretionary consumption floor protected before discretionary
+  *   consumption is allowed (PLN)
   * @param skillDecayRate
   *   monthly skill depreciation rate while unemployed
   * @param scarringRate
@@ -115,6 +118,7 @@ case class HouseholdConfig(
     bufferProtectedShare: Share = Share.decimal(50, 2),         // protected share of target buffer under stress
     bufferExcessDrawdownRate: Share = Share.decimal(20, 2),     // monthly drawdown rate for savings above target buffer
     bufferStressDrawdownRate: Share = Share.decimal(35, 2),     // monthly drawdown rate for savings above protected buffer under stress
+    basicConsumptionFloor: PLN = PLN(1500),                     // non-discretionary monthly consumption floor
     // Skill decay & scarring
     skillDecayRate: Share = Share.decimal(2, 2),
     scarringRate: Share = Share.decimal(2, 2),

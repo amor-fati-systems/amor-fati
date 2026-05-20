@@ -115,6 +115,8 @@ object HouseholdCreditStressCalibrationExport:
     "MedianDepositToMeanMonthlyIncome",
     "NegativeDepositShare",
     "DebtArrearsToShortfall",
+    "UnmetBasicConsumptionToIncome",
+    "DiscretionaryConsumptionCompressionToIncome",
     "ShortfallToIncome",
     "ShortfallToApprovedOrigination",
   )
@@ -277,6 +279,28 @@ object HouseholdCreditStressCalibrationExport:
       interpretation = "Shows whether shortfall pressure comes mainly from debt/rent service or from consumption/liquidity residuals.",
     ),
     TargetBand(
+      id = "UnmetBasicConsumptionToIncome",
+      label = "Unmet basic consumption / monthly household income",
+      unit = "ratio",
+      guardrailClass = GuardrailClass.ExploratoryDiagnostic,
+      vintage = BaselineVintage,
+      lower = Some(BigDecimal("0.00")),
+      upper = None,
+      sourceNote = "Issue #528 budget-waterfall diagnostic over non-discretionary consumption needs.",
+      interpretation = "Shows deprivation created before bridge/default settlement; it is not treated as financeable household debt.",
+    ),
+    TargetBand(
+      id = "DiscretionaryConsumptionCompressionToIncome",
+      label = "Compressed discretionary consumption / monthly household income",
+      unit = "ratio",
+      guardrailClass = GuardrailClass.ExploratoryDiagnostic,
+      vintage = BaselineVintage,
+      lower = Some(BigDecimal("0.00")),
+      upper = None,
+      sourceNote = "Issue #528 budget-waterfall diagnostic over consumption cuts before shortfall financing.",
+      interpretation = "Shows how much spending pressure is absorbed by reducing discretionary consumption before creating bridge charge-offs.",
+    ),
+    TargetBand(
       id = "ShortfallToIncome",
       label = "Liquidity shortfall financing / monthly household income",
       unit = "ratio",
@@ -337,6 +361,14 @@ object HouseholdCreditStressCalibrationExport:
         agg.totalRentArrears + agg.totalMortgageArrears + agg.totalConsumerDebtArrears,
         agg.totalLiquidityShortfallFinancing,
       ),
+    ),
+    metric("UnmetBasicConsumptionToIncome")(ctx =>
+      val agg = ctx.result.terminalState.householdAggregates
+      ctx.householdRatio(agg.totalUnmetBasicConsumption, agg.totalIncome),
+    ),
+    metric("DiscretionaryConsumptionCompressionToIncome")(ctx =>
+      val agg = ctx.result.terminalState.householdAggregates
+      ctx.householdRatio(agg.totalDiscretionaryConsumptionCompression, agg.totalIncome),
     ),
     metric("ShortfallToIncome")(ctx =>
       val agg = ctx.result.terminalState.householdAggregates
