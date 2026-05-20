@@ -134,7 +134,6 @@ object Sfc:
       govRevenue: PLN,                          // total treasury inflow from explicit runtime channels (firm CIT + household PIT + dividend tax + SOE dividends + VAT + excise + customs + NBP remittance)
       nplLoss: PLN,                             // bank NPL write-off loss (firm loans, after recovery)
       interestIncome: PLN,                      // bank interest income from firm loans
-      hhDebtService: PLN,                       // household debt service payments → bank capital
       totalIncome: PLN,                         // aggregate household income (wages + benefits + transfers)
       totalConsumption: PLN,                    // aggregate household consumption expenditure
       newLoans: PLN,                            // new firm loans originated this month
@@ -167,7 +166,7 @@ object Sfc:
       mortgageDefaultAmount: PLN,               // gross mortgage defaults (before recovery)
       remittanceOutflow: PLN,                   // immigrant remittances → deposit outflow
       fofResidual: PLN,                         // flow-of-funds residual (Σ firmRevenue - Σ sectorDemand)
-      consumerDebtService: PLN,                 // consumer credit: monthly debt service (principal + interest)
+      consumerDebtService: PLN,                 // consumer credit: monthly instalment burden (principal + interest)
       consumerNplLoss: PLN,                     // consumer credit: NPL loss (after recovery)
       consumerOrigination: PLN,                 // consumer credit: total new loan origination
       consumerLiquidityShortfallFinancing: PLN, // consumer credit: residual shortfall settlement
@@ -329,10 +328,10 @@ object Sfc:
     *
     *   1. Bank capital: Δ = -nplLoss - mortgageNplLoss - consumerNplLoss -
     *      corpBondDefaultLoss - bfgLevy - bankCapitalDestruction +
-    *      (interestIncome + hhDebtService + bankBondIncome +
-    *      mortgageInterestIncome + consumerDebtService + corpBondCouponIncome -
-    *      depositInterestPaid + reserveInterest + standingFacilityIncome +
-    *      interbankInterest) × BankProfitRetention
+    *      (interestIncome + bankBondIncome + mortgageInterestIncome + consumer
+    *      interest income + corpBondCouponIncome - depositInterestPaid +
+    *      reserveInterest + standingFacilityIncome + interbankInterest) ×
+    *      BankProfitRetention
     *   2. Bank deposits: Δ = totalIncome - totalConsumption +
     *      investNetDepositFlow + jstDepositChange + dividendIncome -
     *      foreignDividendOutflow - remittanceOutflow + diasporaInflow +
@@ -418,11 +417,12 @@ object Sfc:
         BankCapital,
         "bank capital change (profit retention + losses)",
         expected = {
-          val losses      = flows.nplLoss + flows.mortgageNplLoss + flows.consumerNplLoss +
+          val losses                 = flows.nplLoss + flows.mortgageNplLoss + flows.consumerNplLoss +
             flows.corpBondDefaultLoss + flows.bfgLevy + flows.unrealizedBondLoss +
             flows.htmRealizedLoss + flows.eclProvisionChange + flows.bankCapitalDestruction
-          val grossIncome = flows.interestIncome + flows.hhDebtService + flows.bankBondIncome +
-            flows.mortgageInterestIncome + flows.consumerDebtService + flows.corpBondCouponIncome -
+          val consumerInterestIncome = flows.consumerDebtService - flows.consumerPrincipalRepaid
+          val grossIncome            = flows.interestIncome + flows.bankBondIncome +
+            flows.mortgageInterestIncome + consumerInterestIncome + flows.corpBondCouponIncome -
             flows.depositInterestPaid + flows.reserveInterest + flows.standingFacilityIncome +
             flows.interbankInterest
           -losses + grossIncome * p.banking.profitRetention
@@ -478,11 +478,11 @@ object Sfc:
         expected = PLN.Zero,
         actual = flows.fofResidual,
       ),
-      // 8. Consumer credit: origination − debtService − default (debtSvc = P+I reduces stock)
+      // 8. Consumer credit: origination − principal repayment − default
       IdentitySpec(
         ConsumerCredit,
         "consumer credit stock change",
-        expected = flows.consumerOrigination - flows.consumerDebtService - flows.consumerDefaultAmount,
+        expected = flows.consumerOrigination - flows.consumerPrincipalRepaid - flows.consumerDefaultAmount,
         actual = curr.consumerLoans - prev.consumerLoans,
       ),
       // 9. Corporate bond stock: issuance − amortization − default

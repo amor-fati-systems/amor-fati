@@ -10,10 +10,9 @@ import com.boombustgroup.amorfati.types.*
 /** Pure economic logic for household financial flows — no state mutation, no
   * flows.
   *
-  * Computes mortgage debt service, deposit interest, diaspora remittance
-  * inflows (NBP BoP bridge prior), tourism services (GUS TSA 2023), and
-  * consumer credit aggregation. Connects household-level flows to the banking
-  * sector and external accounts.
+  * Aggregates deposit interest, diaspora remittance inflows (NBP BoP bridge
+  * prior), tourism services (GUS TSA 2023), and consumer credit. Connects
+  * household-level flows to the banking sector and external accounts.
   *
   * Extracted from HouseholdFinancialStep (Calculus vs Accounting split).
   */
@@ -41,7 +40,6 @@ object HouseholdFinancialEconomics:
       case _  => Coefficient.decimal(8660254038L, 10)
 
   case class Output(
-      hhDebtService: PLN,               // total household mortgage debt service
       depositInterestPaid: PLN,         // total deposit interest paid to households
       remittanceOutflow: PLN,           // total household remittance outflow
       diasporaInflow: PLN,              // diaspora remittance inflow (NBP BoP)
@@ -63,7 +61,6 @@ object HouseholdFinancialEconomics:
       hhAgg: Household.Aggregates,
       @annotation.unused rng: RandomStream,
   )(using p: SimParams): Output =
-    val hhDebtService       = hhAgg.totalDebtService
     val depositInterestPaid = hhAgg.totalDepositInterest
     val remittanceOutflow   = hhAgg.totalRemittances
 
@@ -107,7 +104,6 @@ object HouseholdFinancialEconomics:
     val consumerPrincipal           = hhAgg.totalConsumerPrincipal
 
     Output(
-      hhDebtService,
       depositInterestPaid,
       remittanceOutflow,
       diasporaInflow,

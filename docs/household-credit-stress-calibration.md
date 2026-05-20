@@ -44,8 +44,10 @@ outside the reference band is still reported as `WARN`, but the warning means
 | --- | --- | --- | --- | --- | --- |
 | `ConsumerLoansToGdp` | `SOFT_CALIBRATION_WARNING` | `2026-04-30 model-start baseline` | `0.03` to `0.08` | ratio | Consumer credit should be material, but far below mortgage credit as a share of GDP. |
 | `MortgageLoansToGdp` | `SOFT_CALIBRATION_WARNING` | `2026-04-30 model-start baseline` | `0.09` to `0.16` | ratio | Mortgage stock should sit near the Polish housing-credit scale, not EU high-mortgage economies. |
-| `ConsumerDebtServiceToIncome` | `SOFT_CALIBRATION_WARNING` | `2026-04-30 model-start baseline` | `0.00` to `0.08` | ratio | Consumer instalments should not dominate regular household income in the baseline. |
+| `ConsumerDebtServiceToIncome` | `SOFT_CALIBRATION_WARNING` | `2026-04-30 model-start baseline` | `0.00` to `0.08` | ratio | Consumer instalments, principal plus interest, should not dominate regular household income in the baseline. |
 | `MortgageDebtServiceToIncome` | `SOFT_CALIBRATION_WARNING` | `2026-04-30 model-start baseline` | `0.00` to `0.12` | ratio | Mortgage payments can be larger than consumer instalments, but should remain a minority of monthly income. |
+| `MortgagePrincipalToIncome` | `EXPLORATORY_DIAGNOSTIC` | `2026-04-30 model-start baseline` | `0.00` to n/a | ratio | Separates amortization pressure from interest-rate pass-through in the secured debt-service burden. |
+| `MortgageInterestToIncome` | `EXPLORATORY_DIAGNOSTIC` | `2026-04-30 model-start baseline` | `0.00` to n/a | ratio | Shows the rate-sensitive part of mortgage debt service separately from scheduled principal repayment. |
 | `ConsumerDefaultToConsumerLoans` | `EXPLORATORY_DIAGNOSTIC` | `2026-04-30 model-start baseline` | `0.00` to `0.03` | monthly ratio | Flow/stock stress ratio for spotting liquidity bridges leaking into consumer-credit losses. |
 | `MortgageDefaultToMortgageLoans` | `EXPLORATORY_DIAGNOSTIC` | `2026-04-30 model-start baseline` | `0.00` to `0.01` | monthly ratio | Flow/stock stress ratio for mortgage stress; this should later be mapped to arrears/default definitions. |
 | `PositiveDepositsToMonthlyIncome` | `SOFT_CALIBRATION_WARNING` | `2026-04-30 model-start baseline` | `1.00` to `8.00` | months of income | Aggregate liquid buffers should be neither exhausted nor implausibly huge relative to household income. |
@@ -59,7 +61,11 @@ outside the reference band is still reported as `WARN`, but the warning means
 
 The current bands are stylized for the `2026-04-30` Poland model-start
 baseline. `MortgageLoansToGdp` is anchored to the existing empirical-validation
-manifest bridge for KNF housing loans relative to model GDP. The consumer-credit,
+manifest bridge for KNF housing loans relative to model GDP. Mortgage principal
+and interest ratios decompose `MortgageDebtServiceToIncome`; they are internal
+diagnostics, not standalone empirical acceptance bands. `ConsumerDebtServiceToIncome`
+is also a household cash-flow burden: principal reduces the consumer-loan stock,
+while only the interest component enters bank income. The consumer-credit,
 household DSR, arrears/default and liquidity-buffer ranges are deliberately
 documented as guardrails, not final empirical pass/fail tests. They should be
 replaced or narrowed when NBP, KNF, GUS or household microdata bridges are added.

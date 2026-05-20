@@ -494,7 +494,6 @@ object Generators:
     govRev       <- genDecimal("0.0", "1000000000.0")
     nplLoss      <- genDecimal("0.0", "100000000.0")
     intIncome    <- genDecimal("0.0", "100000000.0")
-    hhDebtSvc    <- genDecimal("0.0", "10000000.0")
     totIncome    <- genDecimal("0.0", "10000000000.0")
     totCons      <- genDecimal("0.0", "10000000000.0")
     newLoans     <- genDecimal("0.0", "1000000000.0")
@@ -527,7 +526,6 @@ object Generators:
     govRevenue = plnBD(govRev),
     nplLoss = plnBD(nplLoss),
     interestIncome = plnBD(intIncome),
-    hhDebtService = plnBD(hhDebtSvc),
     totalIncome = plnBD(totIncome),
     totalConsumption = plnBD(totCons),
     newLoans = plnBD(newLoans),
@@ -606,8 +604,8 @@ object Generators:
     yield
       val expectedBankCapChange  = -flows.nplLoss - flows.mortgageNplLoss - flows.consumerNplLoss
         - flows.corpBondDefaultLoss - flows.bfgLevy - flows.unrealizedBondLoss - flows.htmRealizedLoss - flows.bankCapitalDestruction +
-        (flows.interestIncome + flows.hhDebtService + flows.bankBondIncome
-          + flows.mortgageInterestIncome + flows.consumerDebtService + flows.corpBondCouponIncome
+        (flows.interestIncome + flows.bankBondIncome + flows.mortgageInterestIncome
+          + (flows.consumerDebtService - flows.consumerPrincipalRepaid) + flows.corpBondCouponIncome
           - flows.depositInterestPaid
           + flows.reserveInterest + flows.standingFacilityIncome + flows.interbankInterest) * Share.decimal(3, 1)
       val expectedDepChange      = flows.totalIncome - flows.totalConsumption + flows.investNetDepositFlow +

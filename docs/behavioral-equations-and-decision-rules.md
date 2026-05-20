@@ -126,13 +126,25 @@ income_h = grossIncome_h - pit_h + socialTransfer_h
 
 ### Consumption, Saving, And Wealth Effects
 
-Mortgage debt service is variable-rate when bank-specific lending rates are
-available:
+Mortgage debt service separates scheduled principal repayment from variable-rate
+interest. When bank-specific rates are unavailable, the fallback rate is the
+policy rate plus the housing mortgage spread:
 
 ```text
-mortgageDebtService_h =
-  mortgageLoan_h * (baseAmortRate + lendingRate_b.monthly)
+mortgageRate_h =
+  lendingRate_b                         if bank-specific lendingRate_b exists
+  nbp.referenceRate + housing.mortgageSpread
+                                        otherwise
+mortgagePrincipal_h = mortgageLoan_h / housing.mortgageMaturity
+mortgageInterest_h = mortgageLoan_h * mortgageRate_h.monthly
+scheduledMortgagePayment_h =
+  mortgagePrincipal_h + mortgageInterest_h
+mortgageLoan'_h = max(mortgageLoan_h - mortgagePrincipal_h, 0)
 ```
+
+`scheduledMortgagePayment_h` is a household budget burden. It is not a single
+bank-income flow: principal reduces the mortgage stock, while interest enters
+bank income.
 
 Aggregate mortgage origination is calibrated from the outstanding mortgage
 book, not from the full residential-property value:
@@ -151,7 +163,7 @@ The disposable budget is computed after rent, secured debt service, remittance,
 and consumer-credit service:
 
 ```text
-obligations_h = rent_h + mortgageDebtService_h + remittance_h
+obligations_h = rent_h + scheduledMortgagePayment_h + remittance_h
 disposablePreCredit_h = max(income_h - obligations_h, 0)
 approvedConsumerLoan_h = consumerCreditRule(...)
 fullObligations_h = obligations_h + consumerCreditDebtService_h
@@ -228,12 +240,18 @@ income, obligations, approved credit, consumption, and retraining cost have
 already determined the raw closing liquid balance. This keeps
 `demandDeposit >= 0` while preserving the liability-side stock-flow identity.
 
-Consumer-loan service is:
+Consumer-loan service separates principal repayment from interest:
 
 ```text
-consumerDebtService_h =
-  consumerLoan_h * (ccAmortRate + (lendingRate_b + ccSpread).monthly)
+consumerPrincipal_h = consumerLoan_h * ccAmortRate
+consumerInterest_h = consumerLoan_h * (lendingRate_b + ccSpread).monthly
+consumerDebtService_h = consumerPrincipal_h + consumerInterest_h
+consumerLoan'_h = max(consumerLoan_h + approvedConsumerLoan_h - consumerPrincipal_h, 0)
 ```
+
+`consumerDebtService_h` is the household instalment burden used in DTI and
+liquidity stress diagnostics. Only `consumerInterest_h` is bank income;
+`consumerPrincipal_h` reduces the consumer-loan stock.
 
 Household bankruptcy writes off the remaining unsecured consumer loan stock and
 sets household equity to zero.
@@ -263,7 +281,7 @@ bankruptcy floor:
 
 ```text
 bankruptcyFloor_h =
-  max(rent_h + mortgageDebtService_h + consumerDebtService_h, rent_h)
+  max(rent_h + scheduledMortgagePayment_h + consumerDebtService_h, rent_h)
   * bankruptcyThreshold
 ```
 
@@ -705,14 +723,13 @@ losses_b =
 
 grossIncome_b =
   firmLoanInterest_b
-  + householdDebtService_b
   + govBondIncome_b
   - depositInterest_b
   + reserveInterest_b
   + standingFacilityIncome_b
   + interbankInterest_b
   + mortgageInterestIncome_b
-  + consumerDebtService_b
+  + consumerInterestIncome_b
   + corporateBondCoupon_b
 
 capital'_b = capital_b - losses_b + grossIncome_b * profitRetention

@@ -11,12 +11,12 @@ class HouseholdFlowsSpec extends AnyFlatSpec with Matchers:
     consumption = PLN(40000000),
     rent = PLN(8000000),
     pit = PLN(5000000),
-    debtService = PLN(3000000),
     depositInterest = PLN(1000000),
     remittances = PLN(500000),
     approvedCcOrigination = PLN(2000000),
     liquidityShortfallFinancing = PLN(300000),
-    ccDebtService = PLN(1500000),
+    ccPrincipalRepayment = PLN(1100000),
+    ccInterest = PLN(400000),
     ccDefault = PLN(200000),
   )
 
@@ -31,17 +31,17 @@ class HouseholdFlowsSpec extends AnyFlatSpec with Matchers:
     val balances = Interpreter.applyAll(Map.empty[Int, Long], flows)
 
     val outflows = baseInput.consumption + baseInput.rent + baseInput.pit +
-      baseInput.debtService + baseInput.remittances + baseInput.ccDebtService + baseInput.ccDefault
+      baseInput.remittances + baseInput.ccPrincipalRepayment + baseInput.ccInterest + baseInput.ccDefault
     val inflows  = baseInput.depositInterest + baseInput.approvedCcOrigination + baseInput.liquidityShortfallFinancing
 
     balances(HouseholdFlows.HH_ACCOUNT) shouldBe (inflows - outflows).toLong
   }
 
-  it should "have bank balance = debtService + ccDebtService + ccDefault - depositInterest - credit origination" in {
+  it should "have bank balance = cc principal + interest + default - depositInterest - credit origination" in {
     val flows    = HouseholdFlows.emit(baseInput)
     val balances = Interpreter.applyAll(Map.empty[Int, Long], flows)
 
-    val bankNet = baseInput.debtService + baseInput.ccDebtService + baseInput.ccDefault -
+    val bankNet = baseInput.ccPrincipalRepayment + baseInput.ccInterest + baseInput.ccDefault -
       baseInput.depositInterest - baseInput.approvedCcOrigination - baseInput.liquidityShortfallFinancing
 
     balances(HouseholdFlows.BANK_ACCOUNT) shouldBe bankNet.toLong

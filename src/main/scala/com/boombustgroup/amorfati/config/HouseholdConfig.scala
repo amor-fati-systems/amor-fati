@@ -70,10 +70,6 @@ import com.boombustgroup.amorfati.types.*
   *   Watts-Strogatz degree for household social network
   * @param socialP
   *   Watts-Strogatz rewiring probability for household network
-  * @param debtServiceRate
-  *   monthly debt service as fraction of outstanding debt
-  * @param baseAmortRate
-  *   monthly amortization rate on household debt
   * @param depositSpread
   *   spread below policy rate for household deposit remuneration
   * @param ccSpread
@@ -140,9 +136,7 @@ case class HouseholdConfig(
     // Social network
     socialK: Int = 10,
     socialP: Share = Share.decimal(15, 2),
-    // Debt service
-    debtServiceRate: Share = Share.decimal(2, 2),
-    baseAmortRate: Share = Share.decimal(15, 3),
+    // Household deposit rates
     depositSpread: Rate = Rate.decimal(2, 2),
     // Consumer credit
     ccSpread: Rate = Rate.decimal(4, 2),

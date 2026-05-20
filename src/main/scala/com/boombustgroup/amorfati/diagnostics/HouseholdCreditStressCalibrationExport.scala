@@ -105,6 +105,8 @@ object HouseholdCreditStressCalibrationExport:
     "MortgageLoansToGdp",
     "ConsumerDebtServiceToIncome",
     "MortgageDebtServiceToIncome",
+    "MortgagePrincipalToIncome",
+    "MortgageInterestToIncome",
     "ConsumerDefaultToConsumerLoans",
     "MortgageDefaultToMortgageLoans",
     "PositiveDepositsToMonthlyIncome",
@@ -147,8 +149,9 @@ object HouseholdCreditStressCalibrationExport:
       vintage = BaselineVintage,
       lower = Some(BigDecimal("0.00")),
       upper = Some(BigDecimal("0.08")),
-      sourceNote = "Stylized 2026-04-30 household cash-flow guardrail; formal calibration needs DSR microdata or bank loan-payment aggregates.",
-      interpretation = "Consumer instalments should not dominate regular household income in the baseline.",
+      sourceNote =
+        "Stylized 2026-04-30 household cash-flow guardrail; formal calibration needs DSR microdata or bank loan-payment aggregates. The numerator is the household instalment burden, while only the interest component is bank income.",
+      interpretation = "Consumer instalments, principal plus interest, should not dominate regular household income in the baseline.",
     ),
     TargetBand(
       id = "MortgageDebtServiceToIncome",
@@ -160,6 +163,28 @@ object HouseholdCreditStressCalibrationExport:
       upper = Some(BigDecimal("0.12")),
       sourceNote = "Stylized 2026-04-30 household cash-flow guardrail for secured debt service.",
       interpretation = "Mortgage payments can be larger than consumer instalments, but should remain a minority of monthly income.",
+    ),
+    TargetBand(
+      id = "MortgagePrincipalToIncome",
+      label = "Mortgage principal service / monthly household income",
+      unit = "ratio",
+      guardrailClass = GuardrailClass.ExploratoryDiagnostic,
+      vintage = BaselineVintage,
+      lower = Some(BigDecimal("0.00")),
+      upper = None,
+      sourceNote = "Issue #533 mortgage DSR decomposition; principal follows the housing mortgage-maturity schedule.",
+      interpretation = "Separates amortization pressure from interest-rate pass-through in the secured debt-service burden.",
+    ),
+    TargetBand(
+      id = "MortgageInterestToIncome",
+      label = "Mortgage interest service / monthly household income",
+      unit = "ratio",
+      guardrailClass = GuardrailClass.ExploratoryDiagnostic,
+      vintage = BaselineVintage,
+      lower = Some(BigDecimal("0.00")),
+      upper = None,
+      sourceNote = "Issue #533 mortgage DSR decomposition; interest follows the household bank lending-rate channel.",
+      interpretation = "Shows the rate-sensitive part of mortgage debt service separately from scheduled principal repayment.",
     ),
     TargetBand(
       id = "ConsumerDefaultToConsumerLoans",
@@ -259,6 +284,12 @@ object HouseholdCreditStressCalibrationExport:
     ),
     metric("MortgageDebtServiceToIncome")(ctx =>
       ctx.householdRatio(ctx.result.terminalState.householdAggregates.totalDebtService, ctx.result.terminalState.householdAggregates.totalIncome),
+    ),
+    metric("MortgagePrincipalToIncome")(ctx =>
+      ctx.householdRatio(ctx.result.terminalState.householdAggregates.totalMortgagePrincipal, ctx.result.terminalState.householdAggregates.totalIncome),
+    ),
+    metric("MortgageInterestToIncome")(ctx =>
+      ctx.householdRatio(ctx.result.terminalState.householdAggregates.totalMortgageInterest, ctx.result.terminalState.householdAggregates.totalIncome),
     ),
     metric("ConsumerDefaultToConsumerLoans")(ctx => ctx.ratioColumn("ConsumerDefault", "ConsumerLoans")),
     metric("MortgageDefaultToMortgageLoans")(ctx => ctx.ratioColumn("MortgageDefault", "MortgageStock")),
