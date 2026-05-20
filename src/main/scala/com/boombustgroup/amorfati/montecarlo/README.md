@@ -137,6 +137,8 @@ The monthly timeseries consumer-credit block relevant to this reconciliation is:
 ```text
 ConsumerOrigination
 ConsumerApprovedOrigination
+ConsumerCreditDemand
+ConsumerRejectedOrigination
 ConsumerDebtService
 ConsumerDefault
 ConsumerLoanDefault
@@ -177,6 +179,9 @@ charged off through `ConsumerDefault` in the same month, so it does not survive
 as ordinary household consumer-loan stock and does not bypass DTI underwriting.
 `ConsumerOrigination` remains the gross SFC bridge plus approved-origination
 flow, while `ConsumerApprovedOrigination` is the underwritten credit channel.
+`ConsumerCreditDemand` records stressed households' DTI-based requested
+principal before eligibility denial, and `ConsumerRejectedOrigination` records
+the requested principal not approved by the consumer-credit rule.
 `ConsumerLoanDefault` reports only default of ordinary outstanding consumer-loan
 principal; `LiquidityBridgeChargeOff` reports the same-month bridge write-off.
 For the bridge component, the stock effect is zero because
@@ -236,7 +241,7 @@ bank id, wage, rent, MPC, skill, health penalty, financial distress months,
 ledger-owned financial stocks, positive-deposit and implicit overdraft
 decompositions, net liquid and financial positions, opening demand deposit,
 opening/closing consumer-loan stock, monthly income, consumption, rent, mortgage
-debt service, monthly consumer-credit flow components, and the split
+debt service, monthly consumer-credit demand/approval/rejection flow components, and the split
 shortfall-settlement components.
 
 The companion `household_shortfall_cohorts.csv` is always computed from the full
@@ -247,7 +252,7 @@ writes only shortfalling micro rows. Cohort dimensions include `All`, `Status`,
 `MortgageDebtServiceBurden`, `ConsumerDebtServiceBurden`, and
 `ClosingConsumerLoanBurden`. The file reports counts, shortfall counts,
 shortfall shares, monthly flow sums, split shortfall-settlement components, and
-burden ratios needed to diagnose which household cohorts drive
+consumer-credit demand/approval/rejection sums plus burden ratios needed to diagnose which household cohorts drive
 `HouseholdLiquidity_ShortfallFinancing`.
 
 ## Firm Snapshots

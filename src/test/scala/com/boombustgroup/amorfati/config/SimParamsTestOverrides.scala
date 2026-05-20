@@ -26,6 +26,13 @@ object SimParamsTestOverrides:
       ),
     )
 
+  def consumerCreditEligibility(rate: Share): SimParams =
+    SimParams.defaults.copy(
+      household = SimParams.defaults.household.copy(
+        ccEligRate = rate,
+      ),
+    )
+
   val pfronDeficit: SimParams =
     SimParams.defaults.copy(
       earmarked = SimParams.defaults.earmarked.copy(

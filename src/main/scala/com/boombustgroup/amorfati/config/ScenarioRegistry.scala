@@ -205,6 +205,7 @@ object ScenarioRegistry:
           ParameterDelta("banking.loanRecovery", "0.30", "0.20", "Lower corporate-loan recovery.", CreditCrunchProvenance),
           ParameterDelta("banking.eclMigrationSensitivity", "3.0", "4.5", "Faster IFRS 9 migration under stress.", CreditCrunchProvenance),
           ParameterDelta("household.ccMaxDti", "0.40", "0.30", "Tighter household credit affordability cap.", CreditCrunchProvenance),
+          ParameterDelta("household.ccEligRate", "0.85", "0.30", "Lower stressed-household access to underwritten consumer credit.", CreditCrunchProvenance),
         ),
         params = Baseline.copy(
           banking = Baseline.banking.copy(
@@ -213,7 +214,7 @@ object ScenarioRegistry:
             loanRecovery = Share.decimal(20, 2),
             eclMigrationSensitivity = Coefficient.decimal(45, 1),
           ),
-          household = Baseline.household.copy(ccMaxDti = Share.decimal(30, 2)),
+          household = Baseline.household.copy(ccMaxDti = Share.decimal(30, 2), ccEligRate = Share.decimal(30, 2)),
         ),
       ),
       ScenarioSpec(

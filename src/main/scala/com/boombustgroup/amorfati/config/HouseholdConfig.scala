@@ -148,5 +148,5 @@ case class HouseholdConfig(
     ccMaxLoan: PLN = PLN(50000),
     ccAmortRate: Rate = Rate.decimal(25, 3),
     ccNplRecovery: Share = Share.decimal(15, 2),
-    ccEligRate: Share = Share.decimal(30, 2),
+    ccEligRate: Share = Share.decimal(85, 2),
 )

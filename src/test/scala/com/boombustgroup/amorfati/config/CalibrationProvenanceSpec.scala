@@ -39,11 +39,11 @@ class CalibrationProvenanceSpec extends AnyFlatSpec with Matchers:
 
   "Baseline calibration provenance" should "preserve the active default inventory status counts in code" in {
     CalibrationProvenance.Baseline.parseErrors shouldBe empty
-    CalibrationProvenance.Baseline.parameters should have size 239
+    CalibrationProvenance.Baseline.parameters should have size 240
     CalibrationProvenance.Baseline.statusCounts should contain(Empirical -> 36)
     CalibrationProvenance.Baseline.statusCounts should contain(EmpiricalTransformed -> 17)
     CalibrationProvenance.Baseline.statusCounts should contain(CodeNoteEmpirical -> 61)
-    CalibrationProvenance.Baseline.statusCounts should contain(TunedNeedsValidation -> 85)
+    CalibrationProvenance.Baseline.statusCounts should contain(TunedNeedsValidation -> 86)
     CalibrationProvenance.Baseline.statusCounts.getOrElse(UnknownSource, 0) shouldBe 0
     CalibrationProvenance.Baseline.statusCounts should contain(Placeholder -> 1)
     CalibrationProvenance.Baseline.statusCounts should contain(Assumed -> 32)
@@ -134,7 +134,7 @@ class CalibrationProvenanceSpec extends AnyFlatSpec with Matchers:
     val pathCounts = CalibrationProvenance.Baseline.tunedValidationEvidencePathCounts
 
     CalibrationProvenance.Baseline.tunedValidationEvidenceErrors shouldBe empty
-    tuned should have size 85
+    tuned should have size 86
     tuned.flatMap(_.validationEvidence) should have size tuned.size
     CalibrationProvenance.Baseline.tunedValidationModeCounts.values.sum shouldBe tuned.size
     CalibrationValidationMode.values.foreach: mode =>

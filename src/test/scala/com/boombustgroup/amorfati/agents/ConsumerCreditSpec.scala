@@ -21,16 +21,19 @@ class ConsumerCreditSpec extends AnyFlatSpec with Matchers:
     p.household.ccMaxLoan shouldBe PLN(50000)
     p.household.ccAmortRate shouldBe Rate.decimal(25, 3)
     p.household.ccNplRecovery shouldBe Share.decimal(15, 2)
-    p.household.ccEligRate shouldBe Share.decimal(30, 2)
+    p.household.ccEligRate shouldBe Share.decimal(85, 2)
   }
 
-  "DTI limit" should "cap loan at headroom x income" in {
-    // HH with income 8000, existing DTI = 0.20 -> headroom = (0.40 - 0.20) x 8000 = 1600
-    val income      = BigDecimal("8000.0")
-    val existingDti = BigDecimal("0.20")
-    val headroom    = DecimalMath.max(BigDecimal("0.0"), decimal(p.household.ccMaxDti) - existingDti) * income
-    headroom shouldBe BigDecimal("1600.0") +- BigDecimal("0.01")
-    headroom should be < decimal(p.household.ccMaxLoan) // 1600 < 50000
+  "DTI limit" should "convert monthly payment headroom into principal capacity" in {
+    // HH with income 8000, existing DTI = 0.20 -> payment headroom = (0.40 - 0.20) x 8000 = 1600.
+    val income          = BigDecimal("8000.0")
+    val existingDti     = BigDecimal("0.20")
+    val paymentHeadroom = DecimalMath.max(BigDecimal("0.0"), decimal(p.household.ccMaxDti) - existingDti) * income
+    val paymentFactor   = decimal(p.household.ccAmortRate) + (BigDecimal("0.0575") + decimal(p.household.ccSpread)) / BigDecimal("12.0")
+    val principalCap    = paymentHeadroom / paymentFactor
+    paymentHeadroom shouldBe BigDecimal("1600.0") +- BigDecimal("0.01")
+    principalCap shouldBe BigDecimal("48301.89") +- BigDecimal("0.10")
+    principalCap should be < decimal(p.household.ccMaxLoan)
   }
 
   it should "produce zero loan when at max DTI" in {
@@ -41,11 +44,13 @@ class ConsumerCreditSpec extends AnyFlatSpec with Matchers:
   }
 
   "Loan size" should "not exceed CcMaxLoan" in {
-    // HH with high income, low DTI -> headroom > CcMaxLoan -> capped
-    val income      = BigDecimal("200000.0")
-    val existingDti = BigDecimal("0.0")
-    val headroom    = DecimalMath.max(BigDecimal("0.0"), decimal(p.household.ccMaxDti) - existingDti) * income
-    val desired     = DecimalMath.min(headroom, decimal(p.household.ccMaxLoan))
+    // HH with high income, low DTI -> principal capacity > CcMaxLoan -> capped.
+    val income          = BigDecimal("200000.0")
+    val existingDti     = BigDecimal("0.0")
+    val paymentHeadroom = DecimalMath.max(BigDecimal("0.0"), decimal(p.household.ccMaxDti) - existingDti) * income
+    val paymentFactor   = decimal(p.household.ccAmortRate) + (BigDecimal("0.0575") + decimal(p.household.ccSpread)) / BigDecimal("12.0")
+    val principalCap    = paymentHeadroom / paymentFactor
+    val desired         = DecimalMath.min(principalCap, decimal(p.household.ccMaxLoan))
     desired shouldBe decimal(p.household.ccMaxLoan)
   }
 
@@ -165,6 +170,8 @@ class ConsumerCreditSpec extends AnyFlatSpec with Matchers:
     agg.totalConsumerDebtService shouldBe PLN.Zero
     agg.totalConsumerOrigination shouldBe PLN.Zero
     agg.totalConsumerApprovedOrigination shouldBe PLN.Zero
+    agg.totalConsumerCreditDemand shouldBe PLN.Zero
+    agg.totalConsumerRejectedOrigination shouldBe PLN.Zero
     agg.totalLiquidityShortfallFinancing shouldBe PLN.Zero
     agg.totalConsumptionShortfall shouldBe PLN.Zero
     agg.totalRentArrears shouldBe PLN.Zero

@@ -204,6 +204,8 @@ object Household:
       totalLiquidityShortfallFinancing: PLN,                    // aggregate same-month bridge/write-off for liquidity gaps
       totalConsumerDefault: PLN,                                // aggregate consumer defaults plus bridge charge-offs
       totalConsumerPrincipal: PLN,                              // aggregate consumer loan principal repaid
+      totalConsumerCreditDemand: PLN = PLN.Zero,                // aggregate underwritten consumer-credit demand before eligibility denial
+      totalConsumerRejectedOrigination: PLN = PLN.Zero,         // aggregate consumer-credit demand rejected by access/underwriting
       totalConsumerLoanDefault: PLN = PLN.Zero,                 // default of ordinary outstanding consumer-loan principal
       totalLiquidityBridgeChargeOff: PLN = PLN.Zero,            // same-month bridge charge-off, not ordinary consumer-loan default
       totalUnmetBasicConsumption: PLN = PLN.Zero,               // basic consumption need not covered by cash before arrears/default
@@ -242,6 +244,8 @@ object Household:
         totalLiquidityShortfallFinancing = flowTotals.totalLiquidityShortfallFinancing,
         totalConsumerDefault = flowTotals.totalConsumerDefault,
         totalConsumerPrincipal = flowTotals.totalConsumerPrincipal,
+        totalConsumerCreditDemand = flowTotals.totalConsumerCreditDemand,
+        totalConsumerRejectedOrigination = flowTotals.totalConsumerRejectedOrigination,
         totalConsumerLoanDefault = flowTotals.totalConsumerLoanDefault,
         totalLiquidityBridgeChargeOff = flowTotals.totalLiquidityBridgeChargeOff,
         totalUnmetBasicConsumption = flowTotals.totalUnmetBasicConsumption,
@@ -283,6 +287,8 @@ object Household:
       rent: PLN,                                           // monthly rent paid by the household
       mortgageDebtService: PLN,                            // monthly secured mortgage debt service
       consumerApprovedOrigination: PLN,                    // underwritten consumer credit originated by the DTI rule
+      consumerCreditDemand: PLN,                           // underwritten consumer-credit demand before eligibility denial
+      consumerRejectedOrigination: PLN,                    // consumer-credit demand rejected by access/underwriting
       liquidityShortfallFinancing: PLN,                    // same-month bridge/write-off preventing negative closing deposits
       consumerDebtService: PLN,                            // monthly unsecured consumer-credit debt service
       consumerDefault: PLN,                                // gross consumer default plus bridge charge-off this month
@@ -310,6 +316,8 @@ object Household:
         rent = PLN.Zero,
         mortgageDebtService = PLN.Zero,
         consumerApprovedOrigination = PLN.Zero,
+        consumerCreditDemand = PLN.Zero,
+        consumerRejectedOrigination = PLN.Zero,
         liquidityShortfallFinancing = PLN.Zero,
         consumerDebtService = PLN.Zero,
         consumerDefault = PLN.Zero,
@@ -543,6 +551,8 @@ object Household:
     private var ccDebtSvcAcc: PLN            = PLN.Zero
     private var ccOrigAcc: PLN               = PLN.Zero
     private var ccApprovedOrigAcc: PLN       = PLN.Zero
+    private var ccDemandAcc: PLN             = PLN.Zero
+    private var ccRejectedAcc: PLN           = PLN.Zero
     private var liquidityShortfallAcc: PLN   = PLN.Zero
     private var consumptionShortfallAcc: PLN = PLN.Zero
     private var rentArrearsAcc: PLN          = PLN.Zero
@@ -574,6 +584,8 @@ object Household:
       ccDebtSvcAcc = ccDebtSvcAcc + r.credit.debtService
       ccOrigAcc = ccOrigAcc + r.credit.totalOrigination
       ccApprovedOrigAcc = ccApprovedOrigAcc + r.credit.newLoan
+      ccDemandAcc = ccDemandAcc + r.credit.creditDemand
+      ccRejectedAcc = ccRejectedAcc + r.credit.rejectedCreditDemand
       liquidityShortfallAcc = liquidityShortfallAcc + r.credit.liquidityShortfallFinancing
       consumptionShortfallAcc = consumptionShortfallAcc + r.credit.liquidityShortfall.consumptionShortfall
       rentArrearsAcc = rentArrearsAcc + r.credit.liquidityShortfall.rentArrears
@@ -590,32 +602,34 @@ object Household:
       retrainingSuccesses += r.retrainingSuccess
       voluntaryQuits += r.voluntaryQuit
 
-    def income: PLN                      = incomeAcc
-    def unempBenefits: PLN               = benefitAcc
-    def debtService: PLN                 = debtSvcAcc
-    def mortgagePrincipal: PLN           = mortgagePrincipalAcc
-    def mortgageInterest: PLN            = mortgageInterestAcc
-    def depositInterest: PLN             = depIntAcc
-    def goodsConsumption: PLN            = goodsConsAcc
-    def rent: PLN                        = rentAcc
-    def remittances: PLN                 = remitAcc
-    def pit: PLN                         = pitAcc
-    def socialTransfers: PLN             = socialAcc
-    def consumerDebtService: PLN         = ccDebtSvcAcc
-    def consumerOrigination: PLN         = ccOrigAcc
-    def consumerApprovedOrigination: PLN = ccApprovedOrigAcc
-    def liquidityShortfallFinancing: PLN = liquidityShortfallAcc
-    def consumptionShortfall: PLN        = consumptionShortfallAcc
-    def rentArrears: PLN                 = rentArrearsAcc
-    def mortgageArrears: PLN             = mortgageArrearsAcc
-    def consumerDebtArrears: PLN         = consumerDebtArrearsAcc
-    def temporaryOverdraft: PLN          = temporaryOverdraftAcc
-    def consumerDefault: PLN             = ccDefaultAcc
-    def consumerPrincipal: PLN           = ccPrincipalAcc
-    def consumerLoanDefault: PLN         = ccLoanDefaultAcc
-    def liquidityBridgeChargeOff: PLN    = bridgeChargeOffAcc
-    def unmetBasicConsumption: PLN       = unmetBasicConsAcc
-    def discretionaryConsumptionCut: PLN = discretionaryCutAcc
+    def income: PLN                           = incomeAcc
+    def unempBenefits: PLN                    = benefitAcc
+    def debtService: PLN                      = debtSvcAcc
+    def mortgagePrincipal: PLN                = mortgagePrincipalAcc
+    def mortgageInterest: PLN                 = mortgageInterestAcc
+    def depositInterest: PLN                  = depIntAcc
+    def goodsConsumption: PLN                 = goodsConsAcc
+    def rent: PLN                             = rentAcc
+    def remittances: PLN                      = remitAcc
+    def pit: PLN                              = pitAcc
+    def socialTransfers: PLN                  = socialAcc
+    def consumerDebtService: PLN              = ccDebtSvcAcc
+    def consumerOrigination: PLN              = ccOrigAcc
+    def consumerApprovedOrigination: PLN      = ccApprovedOrigAcc
+    def totalConsumerCreditDemand: PLN        = ccDemandAcc
+    def totalConsumerRejectedOrigination: PLN = ccRejectedAcc
+    def liquidityShortfallFinancing: PLN      = liquidityShortfallAcc
+    def consumptionShortfall: PLN             = consumptionShortfallAcc
+    def rentArrears: PLN                      = rentArrearsAcc
+    def mortgageArrears: PLN                  = mortgageArrearsAcc
+    def consumerDebtArrears: PLN              = consumerDebtArrearsAcc
+    def temporaryOverdraft: PLN               = temporaryOverdraftAcc
+    def consumerDefault: PLN                  = ccDefaultAcc
+    def consumerPrincipal: PLN                = ccPrincipalAcc
+    def consumerLoanDefault: PLN              = ccLoanDefaultAcc
+    def liquidityBridgeChargeOff: PLN         = bridgeChargeOffAcc
+    def unmetBasicConsumption: PLN            = unmetBasicConsAcc
+    def discretionaryConsumptionCut: PLN      = discretionaryCutAcc
 
   /** Build per-bank flow vector from (BankId, HhMonthlyResult) pairs. PLN is
     * Long — addition is exact, no Kahan needed.
@@ -648,6 +662,10 @@ object Household:
       principal: PLN,                                   // principal component of debt service
       interest: PLN,                                    // interest component of debt service
       newLoan: PLN,                                     // underwritten new consumer loan, excluding same-month liquidity bridge
+      creditDemand: PLN,                                // requested underwritten consumer-credit principal before eligibility denial
+      rejectedCreditDemand: PLN,                        // requested principal rejected by access/underwriting
+      creditCapacity: PLN,                              // maximum DTI-based principal capacity available this month
+      creditAccessEligible: Boolean,                    // whether stochastic access allows underwritten credit this month
       liquidityShortfall: LiquidityShortfallComponents, // same-month bridge/write-off split by diagnostic source
       defaultAmt: PLN,                                  // same-month bridge charge-off plus bankruptcy default amount
       updatedDebt: PLN,                                 // outstanding consumer debt after this month's flows
@@ -790,6 +808,10 @@ object Household:
 
       case _ => (status, 0, 0)
 
+  private def consumerLoanCapacity(monthlyPaymentHeadroom: PLN, paymentFactor: Rate): PLN =
+    if monthlyPaymentHeadroom <= PLN.Zero || paymentFactor <= Rate.Zero then PLN.Zero
+    else monthlyPaymentHeadroom / paymentFactor.toMultiplier
+
   /** Consumer credit for one HH: debt service, origination, principal. */
   private def processConsumerCredit(
       hh: State,
@@ -807,20 +829,27 @@ object Household:
     val consumerPrin       = financialStocks.consumerLoan * p.household.ccAmortRate
     val consumerInterest   = financialStocks.consumerLoan * consumerRate.monthly
     val consumerDebtSvc    = consumerPrin + consumerInterest
+    val paymentFactor      = p.household.ccAmortRate + consumerRate.monthly
 
-    val newConsumerLoan = hh.status match
+    val (creditDemand, rejectedCreditDemand, newConsumerLoan, creditCapacity, creditAccessEligible) = hh.status match
       case HhStatus.Employed(_, _, wage)                                             =>
         val stressed = disposable < wage * DisposableWageThreshold
         val eligible = stressed && p.household.ccEligRate.sampleBelow(rng)
-        if !eligible then PLN.Zero
+        if !stressed then (PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, false)
         else
-          val totalDbtSvc   = debtService + consumerDebtSvc
-          val existingDti   = if income > PLN.Zero then (totalDbtSvc / income).toShare else Share.One
-          val headroomShare = (p.household.ccMaxDti - existingDti).max(Share.Zero)
-          val headroom      = income * headroomShare
-          val desired       = headroom.min(p.household.ccMaxLoan)
-          if desired > MinConsumerLoanSize then desired else PLN.Zero
-      case HhStatus.Unemployed(_) | HhStatus.Retraining(_, _, _) | HhStatus.Bankrupt => PLN.Zero
+          val totalDbtSvc       = debtService + consumerDebtSvc
+          val existingDti       = if income > PLN.Zero then (totalDbtSvc / income).toShare else Share.One
+          val headroomShare     = (p.household.ccMaxDti - existingDti).max(Share.Zero)
+          val paymentHeadroom   = income * headroomShare
+          val principalCapacity = consumerLoanCapacity(paymentHeadroom, paymentFactor).min(p.household.ccMaxLoan)
+          val stressGap         = (wage * DisposableWageThreshold - disposable).max(PLN.Zero)
+          val essentialGap      = (p.household.basicConsumptionFloor + consumerDebtSvc - disposable).max(PLN.Zero)
+          val desired           = stressGap.max(essentialGap).min(principalCapacity)
+          val demand            = if desired > MinConsumerLoanSize then desired else PLN.Zero
+          val approved          = if eligible then demand else PLN.Zero
+          val rejected          = demand - approved
+          (demand, rejected, approved, principalCapacity, eligible)
+      case HhStatus.Unemployed(_) | HhStatus.Retraining(_, _, _) | HhStatus.Bankrupt => (PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, false)
 
     val updatedDebt = (financialStocks.consumerLoan + newConsumerLoan - consumerPrin).max(PLN.Zero)
 
@@ -829,6 +858,10 @@ object Household:
       principal = consumerPrin,
       interest = consumerInterest,
       newLoan = newConsumerLoan,
+      creditDemand = creditDemand,
+      rejectedCreditDemand = rejectedCreditDemand,
+      creditCapacity = creditCapacity,
+      creditAccessEligible = creditAccessEligible,
       liquidityShortfall = LiquidityShortfallComponents.Zero,
       defaultAmt = PLN.Zero,
       updatedDebt = updatedDebt,
@@ -894,6 +927,25 @@ object Household:
     val configuredFloor   = essentialOutflows * p.household.bankruptcyThreshold.toMultiplier
     f.newSavings < PLN.Zero || f.unmetBasicConsumption > PLN.Zero || f.newSavings < configuredFloor
 
+  private def underwriteResidualShortfall(f: MonthlyFlows): MonthlyFlows =
+    val shortfall         = (PLN.Zero - f.newSavings).max(PLN.Zero)
+    val remainingCapacity = (f.credit.creditCapacity - f.credit.newLoan).max(PLN.Zero)
+    val desired           = shortfall.min(remainingCapacity)
+    val demand            = if desired > MinConsumerLoanSize then desired else PLN.Zero
+    if demand <= PLN.Zero then f
+    else
+      val approved = if f.credit.creditAccessEligible then demand else PLN.Zero
+      val rejected = demand - approved
+      f.copy(
+        credit = f.credit.copy(
+          newLoan = f.credit.newLoan + approved,
+          creditDemand = f.credit.creditDemand + demand,
+          rejectedCreditDemand = f.credit.rejectedCreditDemand + rejected,
+          updatedDebt = f.credit.updatedDebt + approved,
+        ),
+        newSavings = f.newSavings + approved,
+      )
+
   /** Per-HH monthly pipeline: income → tax → credit → consumption → equity. */
   private def computeMonthlyFlows(
       hh: State,
@@ -953,7 +1005,7 @@ object Household:
     val consumptionWaterfall  =
       applyConsumptionWaterfall(financialStocks.demandDeposit, income, credit.newLoan, fullObligations, consumptionWithWealth)
 
-    MonthlyFlows(
+    val initialFlows = MonthlyFlows(
       hh = hh,
       financialStocks = financialStocks,
       income = income,
@@ -976,6 +1028,7 @@ object Household:
       newDebt = (financialStocks.mortgageLoan - mortgagePrincipal).max(PLN.Zero),
       neighborDistress = neighborDistress,
     )
+    underwriteResidualShortfall(initialFlows)
 
   /** Resolve flows into final HhMonthlyResult: bankruptcy or survival branch.
     */
@@ -1197,6 +1250,8 @@ object Household:
             rent = result.rent,
             mortgageDebtService = result.debtService,
             consumerApprovedOrigination = result.credit.newLoan,
+            consumerCreditDemand = result.credit.creditDemand,
+            consumerRejectedOrigination = result.credit.rejectedCreditDemand,
             liquidityShortfallFinancing = result.credit.liquidityShortfallFinancing,
             consumerDebtService = result.credit.debtService,
             consumerDefault = result.credit.defaultAmt,
@@ -1494,6 +1549,8 @@ object Household:
       totalLiquidityShortfallFinancing = t.liquidityShortfallFinancing,
       totalConsumerDefault = t.consumerDefault,
       totalConsumerPrincipal = t.consumerPrincipal,
+      totalConsumerCreditDemand = t.totalConsumerCreditDemand,
+      totalConsumerRejectedOrigination = t.totalConsumerRejectedOrigination,
       totalConsumerLoanDefault = t.consumerLoanDefault,
       totalLiquidityBridgeChargeOff = t.liquidityBridgeChargeOff,
       totalUnmetBasicConsumption = t.unmetBasicConsumption,

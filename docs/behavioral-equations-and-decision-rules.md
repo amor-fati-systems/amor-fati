@@ -62,7 +62,7 @@ runtime ledger flows and validates SFC identities.
 
 | Rule group | Main implementation anchors | Representative output columns |
 | --- | --- | --- |
-| Household income, consumption, savings, credit | `agents/Household.scala`, `engine/economics/HouseholdIncomeEconomics.scala`, `engine/economics/HouseholdFinancialEconomics.scala` | `MarketWage`, `Unemployment`, `EffectivePitRate`, `ConsumerLoans`, `ConsumerOrigination`, `ConsumerApprovedOrigination`, `ConsumerDebtService`, `ConsumerDefault`, `ConsumerLoanDefault`, `LiquidityBridgeChargeOff`, `HouseholdLiquidity_ShortfallFinancing`, `HouseholdLiquidity_NetDemandDeposit`, `HouseholdLiquidity_PositiveDemandDeposits`, `HouseholdLiquidity_ImplicitOverdraft`, `HouseholdLiquidity_NegativeDepositShare`, `HouseholdLiquidity_DepositP01`-`P99`, `SectorMobilityRate`, `VoluntaryQuits`, `DiasporaRemittanceInflow`, `RemittanceOutflow`, `TourismExport`, `TourismImport` |
+| Household income, consumption, savings, credit | `agents/Household.scala`, `engine/economics/HouseholdIncomeEconomics.scala`, `engine/economics/HouseholdFinancialEconomics.scala` | `MarketWage`, `Unemployment`, `EffectivePitRate`, `ConsumerLoans`, `ConsumerOrigination`, `ConsumerApprovedOrigination`, `ConsumerCreditDemand`, `ConsumerRejectedOrigination`, `ConsumerDebtService`, `ConsumerDefault`, `ConsumerLoanDefault`, `LiquidityBridgeChargeOff`, `HouseholdLiquidity_ShortfallFinancing`, `HouseholdLiquidity_NetDemandDeposit`, `HouseholdLiquidity_PositiveDemandDeposits`, `HouseholdLiquidity_ImplicitOverdraft`, `HouseholdLiquidity_NegativeDepositShare`, `HouseholdLiquidity_DepositP01`-`P99`, `SectorMobilityRate`, `VoluntaryQuits`, `DiasporaRemittanceInflow`, `RemittanceOutflow`, `TourismExport`, `TourismImport` |
 | Labor, wages, demographics, social funds | `engine/economics/LaborEconomics.scala`, `agents/SocialSecurity.scala`, `agents/EarmarkedFunds.scala` | `MarketWage`, `Unemployment`, `WorkingAgePop`, `NRetirees`, `MonthlyRetirements`, `ZusContributions`, `ZusPensionPayments`, `NfzContributions`, `NfzSpending`, `PpkContributions`, `FpContributions`, `FgspSpending` |
 | Demand allocation and fiscal constraint | `engine/economics/DemandEconomics.scala`, `engine/markets/FiscalRules.scala`, `engine/markets/FiscalBudget.scala` | `GovCurrentSpend`, `GovCapitalSpendDomestic`, `FiscalRuleBinding`, `GovSpendingCutRatio`, `DebtToGdp`, `DeficitToGdp`, `PublicCapitalStock` |
 | Firm production, investment, technology, financing, default, entry | `agents/Firm.scala`, `engine/economics/FirmEconomics.scala`, `engine/mechanisms/FirmEntry.scala` | `TotalAdoption`, `AutoRatio`, `HybridRatio`, `Automation_TechCapex`, `Automation_TechImports`, `Automation_TechLoans`, `Automation_UpgradeFailures`, `Automation_AiDebtTrap`, `Automation_NewFullAi`, `Automation_NewHybrid`, `Adoption_MicroShare`, `Adoption_SmallShare`, `Adoption_MediumShare`, `Adoption_LargeShare`, `Adoption_CashQ1`-`Q4`, `Adoption_DebtQ1`-`Q4`, sector `*_Auto`, sector `*_Sigma`, `GrossInvestment`, `AggCapitalStock`, `AggInventoryStock`, `InventoryChange`, `AggEnergyCost`, `GreenInvestment`, `FirmBirths`, `FirmDeaths`, `NetEntry`, `LivingFirmCount`, `CorpBondIssuance`, `EquityIssuanceTotal` |
@@ -201,9 +201,11 @@ rawLiquidBalance'_h =
 The persisted demand-deposit asset is then floored at zero. Any negative raw
 balance is not treated as a negative deposit. It is routed through a distinct
 liquidity-shortfall financing mechanism so underwritten credit and residual
-settlement remain separately auditable. Unmet basic consumption is deprivation,
-not bridge-financed debt; discretionary consumption compression absorbs stress
-before `liquidityShortfallFinancing_h` is created:
+settlement remain separately auditable. Before the bridge is booked, any
+remaining negative raw balance is offered to the same underwritten
+consumer-credit rule up to unused DTI principal capacity. Unmet basic consumption
+is deprivation, not bridge-financed debt; discretionary consumption compression
+absorbs stress before `liquidityShortfallFinancing_h` is created:
 
 ```text
 liquidityShortfallFinancing_h = max(-rawLiquidBalance'_h, 0)
@@ -246,12 +248,19 @@ but still keeps a protected buffer floor.
 Underwritten consumer credit is available only to employed households. A household is
 eligible when disposable income is stressed relative to wage, a stochastic
 eligibility draw succeeds, and the resulting debt-service-to-income ratio has
-room below `ccMaxDti`:
+room below `ccMaxDti`. The DTI headroom is a monthly payment-capacity constraint,
+so the approved principal is computed by dividing monthly payment headroom by the
+monthly consumer-credit payment factor:
 
 ```text
 stressed_h = disposablePreCredit_h < wage_h * DisposableWageThreshold
-headroom_h = income_h * max(ccMaxDti - existingDti_h, 0)
-approvedConsumerLoan_h = min(headroom_h, ccMaxLoan) if eligible else 0
+paymentHeadroom_h = income_h * max(ccMaxDti - existingDti_h, 0)
+paymentFactor_h = ccAmortRate + consumerCreditRate_h.monthly
+principalCapacity_h = min(paymentHeadroom_h / paymentFactor_h, ccMaxLoan)
+liquidityNeed_h = max(disposable-stress gap, essential-consumption gap)
+consumerCreditDemand_h = min(liquidityNeed_h, principalCapacity_h)
+approvedConsumerLoan_h = consumerCreditDemand_h if eligible else 0
+rejectedConsumerCreditDemand_h = consumerCreditDemand_h - approvedConsumerLoan_h
 ```
 
 Liquidity-shortfall financing is not a discretionary credit decision and does

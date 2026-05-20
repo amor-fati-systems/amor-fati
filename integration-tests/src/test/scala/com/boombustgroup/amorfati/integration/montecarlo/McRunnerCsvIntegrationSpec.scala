@@ -36,9 +36,9 @@ class McRunnerCsvIntegrationSpec extends AnyFlatSpec with Matchers:
   private val ExpectedFirmSnapshotHeader =
     "RunId;Seed;Month;FirmId;Sector;Region;SizeClass;Workers;TechState;BankruptcyReason;DigitalReadiness;Cash;FirmLoan;Equity;BankId;RiskProfile;InitialSize;CapitalStock;Inventory;GreenCapital;ForeignOwned;StateOwned"
   private val ExpectedHouseholdSnapshotHeader =
-    "RunId;Seed;Month;HouseholdId;Status;Region;ContractType;BankId;Wage;Rent;MPC;Skill;HealthPenalty;FinancialDistressMonths;DemandDeposit;MortgageLoan;ConsumerLoan;Equity;PositiveDeposit;ImplicitOverdraft;NetLiquidPosition;NetFinancialPosition;OpeningDemandDeposit;OpeningConsumerLoan;MonthlyIncome;Consumption;UnmetBasicConsumption;DiscretionaryConsumptionCompression;RentPaid;MortgageDebtService;ConsumerApprovedOrigination;LiquidityShortfallFinancing;ConsumptionShortfall;RentArrears;MortgageArrears;ConsumerDebtArrears;TemporaryOverdraft;ConsumerDebtService;ConsumerDefault;ConsumerLoanDefault;LiquidityBridgeChargeOff;ConsumerPrincipal;ClosingConsumerLoan"
+    "RunId;Seed;Month;HouseholdId;Status;Region;ContractType;BankId;Wage;Rent;MPC;Skill;HealthPenalty;FinancialDistressMonths;DemandDeposit;MortgageLoan;ConsumerLoan;Equity;PositiveDeposit;ImplicitOverdraft;NetLiquidPosition;NetFinancialPosition;OpeningDemandDeposit;OpeningConsumerLoan;MonthlyIncome;Consumption;UnmetBasicConsumption;DiscretionaryConsumptionCompression;RentPaid;MortgageDebtService;ConsumerApprovedOrigination;ConsumerCreditDemand;ConsumerRejectedOrigination;LiquidityShortfallFinancing;ConsumptionShortfall;RentArrears;MortgageArrears;ConsumerDebtArrears;TemporaryOverdraft;ConsumerDebtService;ConsumerDefault;ConsumerLoanDefault;LiquidityBridgeChargeOff;ConsumerPrincipal;ClosingConsumerLoan"
   private val ExpectedHouseholdShortfallCohortHeader =
-    "RunId;Seed;Month;Dimension;Cohort;HouseholdCount;ShortfallHouseholdCount;ShortfallHouseholdShare;LiquidityShortfallFinancing;ShortfallShareOfMonth;ConsumptionShortfall;RentArrears;MortgageArrears;ConsumerDebtArrears;TemporaryOverdraft;ConsumerApprovedOrigination;ConsumerDebtService;ConsumerDefault;ConsumerLoanDefault;LiquidityBridgeChargeOff;ConsumerPrincipal;OpeningDemandDeposit;ClosingDemandDeposit;OpeningConsumerLoan;ClosingConsumerLoan;MonthlyIncome;Consumption;UnmetBasicConsumption;DiscretionaryConsumptionCompression;Rent;MortgageDebtService;RentToIncome;MortgageDebtServiceToIncome;ConsumerDebtServiceToIncome;ClosingConsumerLoanToIncome"
+    "RunId;Seed;Month;Dimension;Cohort;HouseholdCount;ShortfallHouseholdCount;ShortfallHouseholdShare;LiquidityShortfallFinancing;ShortfallShareOfMonth;ConsumptionShortfall;RentArrears;MortgageArrears;ConsumerDebtArrears;TemporaryOverdraft;ConsumerApprovedOrigination;ConsumerCreditDemand;ConsumerRejectedOrigination;ConsumerDebtService;ConsumerDefault;ConsumerLoanDefault;LiquidityBridgeChargeOff;ConsumerPrincipal;OpeningDemandDeposit;ClosingDemandDeposit;OpeningConsumerLoan;ClosingConsumerLoan;MonthlyIncome;Consumption;UnmetBasicConsumption;DiscretionaryConsumptionCompression;Rent;MortgageDebtService;RentToIncome;MortgageDebtServiceToIncome;ConsumerDebtServiceToIncome;ClosingConsumerLoanToIncome"
 
   private def rc =
     McRunConfig(
@@ -303,6 +303,8 @@ class McRunnerCsvIntegrationSpec extends AnyFlatSpec with Matchers:
       val mortgageArrearsIdx = cohortHeader.indexOf("MortgageArrears")
       val consumerDebtArrearsIdx = cohortHeader.indexOf("ConsumerDebtArrears")
       val temporaryOverdraftIdx = cohortHeader.indexOf("TemporaryOverdraft")
+      val consumerCreditDemandIdx = cohortHeader.indexOf("ConsumerCreditDemand")
+      val consumerRejectedOriginationIdx = cohortHeader.indexOf("ConsumerRejectedOrigination")
       val unmetBasicConsumptionIdx = cohortHeader.indexOf("UnmetBasicConsumption")
       val discretionaryCompressionIdx = cohortHeader.indexOf("DiscretionaryConsumptionCompression")
       val consumerDefaultIdx = cohortHeader.indexOf("ConsumerDefault")
@@ -318,6 +320,8 @@ class McRunnerCsvIntegrationSpec extends AnyFlatSpec with Matchers:
       mortgageArrearsIdx should be >= 0
       consumerDebtArrearsIdx should be >= 0
       temporaryOverdraftIdx should be >= 0
+      consumerCreditDemandIdx should be >= 0
+      consumerRejectedOriginationIdx should be >= 0
       unmetBasicConsumptionIdx should be >= 0
       discretionaryCompressionIdx should be >= 0
       consumerDefaultIdx should be >= 0
@@ -335,6 +339,8 @@ class McRunnerCsvIntegrationSpec extends AnyFlatSpec with Matchers:
         BigDecimal(row(mortgageArrearsIdx)) should be >= BigDecimal(0)
         BigDecimal(row(consumerDebtArrearsIdx)) should be >= BigDecimal(0)
         BigDecimal(row(temporaryOverdraftIdx)) should be >= BigDecimal(0)
+        BigDecimal(row(consumerCreditDemandIdx)) should be >= BigDecimal(0)
+        BigDecimal(row(consumerRejectedOriginationIdx)) should be >= BigDecimal(0)
         BigDecimal(row(unmetBasicConsumptionIdx)) should be >= BigDecimal(0)
         BigDecimal(row(discretionaryCompressionIdx)) should be >= BigDecimal(0)
         BigDecimal(row(consumerDefaultIdx)) shouldBe

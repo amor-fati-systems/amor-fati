@@ -119,6 +119,8 @@ object HouseholdCreditStressCalibrationExport:
     "DiscretionaryConsumptionCompressionToIncome",
     "ShortfallToIncome",
     "ShortfallToApprovedOrigination",
+    "RejectedConsumerCreditDemandToApprovedOrigination",
+    "RejectedConsumerCreditDemandToShortfall",
   )
 
   private[diagnostics] val Targets: Vector[TargetBand] = Vector(
@@ -322,6 +324,28 @@ object HouseholdCreditStressCalibrationExport:
       sourceNote = "Stylized 2026-04-30 guardrail added after the diagnostic run where shortfalls dwarfed approved credit.",
       interpretation = "The non-underwritten liquidity bridge should not structurally dominate normal approved consumer credit.",
     ),
+    TargetBand(
+      id = "RejectedConsumerCreditDemandToApprovedOrigination",
+      label = "Rejected consumer-credit demand / approved consumer-credit origination",
+      unit = "ratio",
+      guardrailClass = GuardrailClass.ExploratoryDiagnostic,
+      vintage = BaselineVintage,
+      lower = Some(BigDecimal("0.00")),
+      upper = None,
+      sourceNote = "Issue #534 diagnostic over stressed households with positive DTI-based consumer-credit demand.",
+      interpretation = "Shows whether normal credit origination is suppressed by access/underwriting denial rather than by lack of borrower demand.",
+    ),
+    TargetBand(
+      id = "RejectedConsumerCreditDemandToShortfall",
+      label = "Rejected consumer-credit demand / liquidity shortfall financing",
+      unit = "ratio",
+      guardrailClass = GuardrailClass.ExploratoryDiagnostic,
+      vintage = BaselineVintage,
+      lower = Some(BigDecimal("0.00")),
+      upper = None,
+      sourceNote = "Issue #534 diagnostic comparing denied normal-credit demand with residual emergency bridge/write-off flow.",
+      interpretation = "Shows whether emergency shortfall is plausibly linked to denied underwritten consumer-credit demand.",
+    ),
   )
 
   private val Metrics: Vector[MetricDef] = Vector(
@@ -377,6 +401,14 @@ object HouseholdCreditStressCalibrationExport:
     metric("ShortfallToApprovedOrigination")(ctx =>
       val agg = ctx.result.terminalState.householdAggregates
       ctx.householdRatio(agg.totalLiquidityShortfallFinancing, agg.totalConsumerApprovedOrigination),
+    ),
+    metric("RejectedConsumerCreditDemandToApprovedOrigination")(ctx =>
+      val agg = ctx.result.terminalState.householdAggregates
+      ctx.householdRatio(agg.totalConsumerRejectedOrigination, agg.totalConsumerApprovedOrigination),
+    ),
+    metric("RejectedConsumerCreditDemandToShortfall")(ctx =>
+      val agg = ctx.result.terminalState.householdAggregates
+      ctx.householdRatio(agg.totalConsumerRejectedOrigination, agg.totalLiquidityShortfallFinancing),
     ),
   )
 
