@@ -711,6 +711,8 @@ object McTimeseriesSchema:
     ColumnDef.macroPln("HouseholdLiquidity_DepositP95", ctx => ctx.householdLiquidity.depositP95),
     ColumnDef.macroPln("HouseholdLiquidity_DepositP99", ctx => ctx.householdLiquidity.depositP99),
     ColumnDef.macroPln("HouseholdLiquidity_ShortfallFinancing", ctx => ctx.hhAgg.totalLiquidityShortfallFinancing),
+    ColumnDef.macroPln("HouseholdLiquidity_UnmetBasicConsumption", ctx => ctx.hhAgg.totalUnmetBasicConsumption),
+    ColumnDef.macroPln("HouseholdLiquidity_DiscretionaryConsumptionCompression", ctx => ctx.hhAgg.totalDiscretionaryConsumptionCompression),
     ColumnDef.macroPln("HouseholdLiquidity_ConsumptionShortfall", ctx => ctx.hhAgg.totalConsumptionShortfall),
     ColumnDef.macroPln("HouseholdLiquidity_RentArrears", ctx => ctx.hhAgg.totalRentArrears),
     ColumnDef.macroPln("HouseholdLiquidity_MortgageArrears", ctx => ctx.hhAgg.totalMortgageArrears),

@@ -150,6 +150,8 @@ and `LiquidityBridgeChargeOff` split that flow for interpretation:
 
 ```text
 HouseholdLiquidity_ShortfallFinancing
+HouseholdLiquidity_UnmetBasicConsumption
+HouseholdLiquidity_DiscretionaryConsumptionCompression
 HouseholdLiquidity_ConsumptionShortfall
 HouseholdLiquidity_RentArrears
 HouseholdLiquidity_MortgageArrears
@@ -165,7 +167,12 @@ as an invariant guard without writing household-level microdata by default.
 
 `HouseholdLiquidity_ShortfallFinancing` is the residual liquidity bridge needed
 to keep runtime household demand deposits non-negative after the household
-budget has closed. It is separate from `ConsumerApprovedOrigination` and is
+budget has closed. Before this bridge is created, the household budget waterfall
+compresses discretionary consumption. `HouseholdLiquidity_UnmetBasicConsumption`
+records basic consumption need that was not covered by cash, and
+`HouseholdLiquidity_DiscretionaryConsumptionCompression` records spending that
+was cut before arrears/default settlement. The bridge is separate from
+`ConsumerApprovedOrigination` and is
 charged off through `ConsumerDefault` in the same month, so it does not survive
 as ordinary household consumer-loan stock and does not bypass DTI underwriting.
 `ConsumerOrigination` remains the gross SFC bridge plus approved-origination

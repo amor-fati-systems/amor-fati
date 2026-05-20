@@ -30,6 +30,8 @@ class HouseholdCreditStressCalibrationExportSpec extends AnyFlatSpec with Matche
       "MedianDepositToMeanMonthlyIncome",
       "NegativeDepositShare",
       "DebtArrearsToShortfall",
+      "UnmetBasicConsumptionToIncome",
+      "DiscretionaryConsumptionCompressionToIncome",
       "ShortfallToIncome",
       "ShortfallToApprovedOrigination",
     )

@@ -56,6 +56,8 @@ outside the reference band is still reported as `WARN`, but the warning means
 | `MedianDepositToMeanMonthlyIncome` | `SOFT_CALIBRATION_WARNING` | `2026-04-30 model-start baseline` | `0.20` to `6.00` | months of mean income | The median household should have some liquidity, but not years of income in demand deposits. |
 | `NegativeDepositShare` | `HARD_INVARIANT` | `2026-04-30 model-start baseline` | `0.00` to `0.00` | share | Demand deposits are non-negative bank liabilities. |
 | `DebtArrearsToShortfall` | `EXPLORATORY_DIAGNOSTIC` | `2026-04-30 model-start baseline` | `0.00` to `1.00` | share | Shows whether shortfall pressure comes mainly from debt/rent service or from consumption/liquidity residuals. |
+| `UnmetBasicConsumptionToIncome` | `EXPLORATORY_DIAGNOSTIC` | `2026-04-30 model-start baseline` | `0.00` to n/a | ratio | Basic consumption need not covered by cash before bridge/default settlement. |
+| `DiscretionaryConsumptionCompressionToIncome` | `EXPLORATORY_DIAGNOSTIC` | `2026-04-30 model-start baseline` | `0.00` to n/a | ratio | Discretionary consumption pressure absorbed before creating bridge charge-offs. |
 | `ShortfallToIncome` | `SOFT_CALIBRATION_WARNING` | `2026-04-30 model-start baseline` | `0.00` to `0.05` | ratio | Shortfall financing should be a stress channel, not a large routine substitute for income. |
 | `ShortfallToApprovedOrigination` | `SOFT_CALIBRATION_WARNING` | `2026-04-30 model-start baseline` | `0.00` to `2.00` | ratio | The non-underwritten liquidity bridge should not structurally dominate normal approved consumer credit. |
 
@@ -72,6 +74,8 @@ household DSR, arrears/default and liquidity-buffer ranges are deliberately
 documented as guardrails, not final empirical pass/fail tests. `ConsumerDefault`
 remains the combined SFC flow used for stock closure and bank losses, while
 `ConsumerDefaultToConsumerLoans` now uses only ordinary consumer-loan principal
-default; liquidity bridge write-offs are reported separately. These bands should
-be replaced or narrowed when NBP, KNF, GUS or household microdata bridges are
-added.
+default; liquidity bridge write-offs are reported separately. The #528 budget
+waterfall additionally reports unmet basic consumption and discretionary
+consumption compression so shortfall financing is not the only visible stress
+absorber. These bands should be replaced or narrowed when NBP, KNF, GUS or
+household microdata bridges are added.

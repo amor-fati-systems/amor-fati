@@ -170,12 +170,25 @@ fullObligations_h = obligations_h + consumerCreditDebtService_h
 disposable_h = max(income_h - fullObligations_h, 0)
 savingsDrawdown_h = savingsBufferDrawdown(...)
 consumptionBudget_h = disposable_h + approvedConsumerLoan_h + savingsDrawdown_h
-baseConsumption_h = mpc_h * consumptionBudget_h
+desiredConsumption_h = mpc_h * consumptionBudget_h
 ```
 
 If more than the neighbor-distress threshold of social neighbors are bankrupt
 or unemployed, the household applies a precautionary consumption multiplier.
 Positive equity revaluation and housing wealth effects then add to consumption.
+Before residual bridge/default settlement, the household budget waterfall pays
+the non-discretionary part of desired consumption up to
+`household.basicConsumptionFloor`, then rent, mortgage service, remittances and
+consumer-debt service, and only then the affordable discretionary part of
+consumption:
+
+```text
+basicNeed_h = min(desiredConsumption_h, household.basicConsumptionFloor)
+unmetBasicConsumption_h = max(basicNeed_h - availableCash_h, 0)
+discretionaryConsumptionCompression_h =
+  max(desiredConsumption_h - basicNeed_h - affordableDiscretionaryConsumption_h, 0)
+consumption_h = paidBasicConsumption_h + affordableDiscretionaryConsumption_h
+```
 
 Household liquidity is first computed as a raw closing liquid-balance signal:
 
@@ -188,7 +201,9 @@ rawLiquidBalance'_h =
 The persisted demand-deposit asset is then floored at zero. Any negative raw
 balance is not treated as a negative deposit. It is routed through a distinct
 liquidity-shortfall financing mechanism so underwritten credit and residual
-settlement remain separately auditable:
+settlement remain separately auditable. Unmet basic consumption is deprivation,
+not bridge-financed debt; discretionary consumption compression absorbs stress
+before `liquidityShortfallFinancing_h` is created:
 
 ```text
 liquidityShortfallFinancing_h = max(-rawLiquidBalance'_h, 0)
