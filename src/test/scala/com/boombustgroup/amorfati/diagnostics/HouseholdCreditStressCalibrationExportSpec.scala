@@ -34,6 +34,8 @@ class HouseholdCreditStressCalibrationExportSpec extends AnyFlatSpec with Matche
       "DiscretionaryConsumptionCompressionToIncome",
       "ShortfallToIncome",
       "ShortfallToApprovedOrigination",
+      "RejectedConsumerCreditDemandToApprovedOrigination",
+      "RejectedConsumerCreditDemandToShortfall",
     )
     Targets.map(_.guardrailClass).toSet should contain allOf (
       GuardrailClass.HardInvariant,

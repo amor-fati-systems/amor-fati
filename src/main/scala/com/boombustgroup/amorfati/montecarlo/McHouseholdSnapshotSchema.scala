@@ -49,6 +49,8 @@ private[montecarlo] object McHouseholdSnapshotSchema:
     "RentPaid"                            -> (row => row.monthlyFlow.rent.format(2)),
     "MortgageDebtService"                 -> (row => row.monthlyFlow.mortgageDebtService.format(2)),
     "ConsumerApprovedOrigination"         -> (row => row.monthlyFlow.consumerApprovedOrigination.format(2)),
+    "ConsumerCreditDemand"                -> (row => row.monthlyFlow.consumerCreditDemand.format(2)),
+    "ConsumerRejectedOrigination"         -> (row => row.monthlyFlow.consumerRejectedOrigination.format(2)),
     "LiquidityShortfallFinancing"         -> (row => row.monthlyFlow.liquidityShortfallFinancing.format(2)),
     "ConsumptionShortfall"                -> (row => row.monthlyFlow.consumptionShortfall.format(2)),
     "RentArrears"                         -> (row => row.monthlyFlow.rentArrears.format(2)),

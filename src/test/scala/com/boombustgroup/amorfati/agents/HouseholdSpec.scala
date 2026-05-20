@@ -375,6 +375,51 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
     updated(0).savings should be < openingSavings
   }
 
+  it should "convert consumer-credit DTI payment headroom into principal demand" in {
+    val creditP = SimParamsTestOverrides.consumerCreditEligibility(Share.One)
+    val rng     = RandomStream.seeded(42)
+    val hh      = mkHousehold(0, HhStatus.Employed(FirmId(0), SectorIdx(0), PLN(8000)), savings = PLN.Zero, rent = PLN(7500))
+
+    val result = Household.step(
+      Vector(hh),
+      Vector(TestHouseholdState.financial(savings = PLN.Zero, debt = PLN.Zero, consumerDebt = PLN.Zero, equityWealth = PLN.Zero)),
+      mkWorld(),
+      PLN(8000),
+      PLN(4666),
+      Share.decimal(4, 1),
+      rng,
+    )(using creditP)
+    val flow   = result.monthlyFlows.head
+
+    flow.consumerCreditDemand should be > PLN(1600)
+    flow.consumerApprovedOrigination shouldBe flow.consumerCreditDemand
+    flow.consumerApprovedOrigination should be <= creditP.household.ccMaxLoan
+    flow.consumerRejectedOrigination shouldBe PLN.Zero
+    result.aggregates.totalConsumerCreditDemand shouldBe flow.consumerCreditDemand
+  }
+
+  it should "expose rejected consumer-credit demand when access eligibility fails" in {
+    val creditP = SimParamsTestOverrides.consumerCreditEligibility(Share.Zero)
+    val rng     = RandomStream.seeded(42)
+    val hh      = mkHousehold(0, HhStatus.Employed(FirmId(0), SectorIdx(0), PLN(8000)), savings = PLN.Zero, rent = PLN(7500))
+
+    val result = Household.step(
+      Vector(hh),
+      Vector(TestHouseholdState.financial(savings = PLN.Zero, debt = PLN.Zero, consumerDebt = PLN.Zero, equityWealth = PLN.Zero)),
+      mkWorld(),
+      PLN(8000),
+      PLN(4666),
+      Share.decimal(4, 1),
+      rng,
+    )(using creditP)
+    val flow   = result.monthlyFlows.head
+
+    flow.consumerCreditDemand should be > PLN.Zero
+    flow.consumerApprovedOrigination shouldBe PLN.Zero
+    flow.consumerRejectedOrigination shouldBe flow.consumerCreditDemand
+    result.aggregates.totalConsumerRejectedOrigination shouldBe flow.consumerRejectedOrigination
+  }
+
   it should "compress discretionary consumption before creating liquidity shortfall financing" in {
     val rng   = RandomStream.seeded(42)
     val hh    = mkHousehold(0, HhStatus.Employed(FirmId(0), SectorIdx(0), PLN(8000)), savings = PLN.Zero, rent = PLN(1000), mpc = BigDecimal("0.80"))

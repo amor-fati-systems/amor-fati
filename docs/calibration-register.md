@@ -40,7 +40,7 @@ These counts are rendered from `CalibrationProvenance.Baseline` at generation ti
 | `EMPIRICAL_TRANSFORMED` | 17 |
 | `CODE_NOTE_EMPIRICAL` | 61 |
 | `ASSUMED` | 32 |
-| `TUNED_NEEDS_VALIDATION` | 85 |
+| `TUNED_NEEDS_VALIDATION` | 86 |
 | `POLICY_SCENARIO` | 7 |
 | `PLACEHOLDER` | 1 |
 | `UNKNOWN_SOURCE` | 0 |
@@ -77,7 +77,7 @@ a concrete diagnostic artifact path.
 | Validation mode | Count | Linked evidence paths | Missing evidence paths |
 | --- | ---: | ---: | ---: |
 | `HISTORICAL_FIT` | 30 | 4 | 26 |
-| `STYLIZED_FACT_TARGET` | 10 | 6 | 4 |
+| `STYLIZED_FACT_TARGET` | 11 | 7 | 4 |
 | `SENSITIVITY_RANGE` | 31 | 5 | 26 |
 | `MODEL_BEHAVIOR_CALIBRATION` | 14 | 0 | 14 |
 
@@ -103,6 +103,7 @@ a concrete diagnostic artifact path.
 | `household.scarringRate`, `scarringCap`, `scarringOnset` | `HISTORICAL_FIT` | `MISSING_VALIDATION_EVIDENCE` |  |  | Long-run unemployment scarring | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
 | `household.wageScarRate`, `wageScarCap`, `wageScarDecay` | `HISTORICAL_FIT` | `MISSING_VALIDATION_EVIDENCE` |  |  | Wage scar accumulation and recovery | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
 | `household.retrainingBaseSuccess`, `retrainingProb` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` |  |  | Retraining success/enrollment | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `household.ccEligRate` | `STYLIZED_FACT_TARGET` | docs/household-credit-stress-calibration.md | household-credit-stress-summary.csv | issue-534 | Liquidity shortfall versus approved consumer-credit origination | HouseholdCreditStressCalibrationExport reports ShortfallToApprovedOrigination and rejected consumer-credit demand diagnostics for the #534 credit-access calibration. |
 | `labor.voluntarySearchProb` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` |  |  | Employed voluntary sector search | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
 | `labor.voluntaryWageThreshold` | `HISTORICAL_FIT` | `MISSING_VALIDATION_EVIDENCE` |  |  | Required wage gain for voluntary search | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
 | `labor.unionRigidity` | `HISTORICAL_FIT` | `MISSING_VALIDATION_EVIDENCE` |  |  | Downward nominal wage rigidity | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
@@ -239,6 +240,7 @@ a concrete diagnostic artifact path.
 | `household.ccSpread` | `0.04` | annual rate | Code note bridge: NBP MIR bridge prior | Consumer credit spread | Direct | `HouseholdConfig` | `CODE_NOTE_EMPIRICAL` |
 | `household.ccMaxDti` | `0.40` | share | Code note bridge: KNF Recommendation T | Consumer credit DTI cap | Direct | `HouseholdConfig` | `CODE_NOTE_EMPIRICAL` |
 | `household.ccMaxLoan` | `50000` | PLN | Structural unsecured-credit limit prior | Maximum unsecured consumer loan | Direct | `HouseholdConfig` | `ASSUMED` |
+| `household.ccEligRate` | `0.85` | monthly share | #534 credit-access calibration | Stressed-household access to underwritten consumer credit when DTI headroom exists | Tuned against ShortfallToApprovedOrigination and rejected-demand diagnostics | `HouseholdConfig` | `TUNED_NEEDS_VALIDATION` |
 | `household.ccNplRecovery` | `0.15` | share | Code note bridge: BIK bridge prior | Consumer loan recovery | Direct | `HouseholdConfig` | `CODE_NOTE_EMPIRICAL` |
 | `labor.frictionMatrix` | `DefaultFrictionMatrix` | 6x6 share | Code note bridge: GUS LFS bridge prior, Shimer 2005 | Cross-sector mobility friction | Direct | `LaborConfig` | `CODE_NOTE_EMPIRICAL` |
 | `labor.voluntarySearchProb` | `0.02` | monthly share | UNKNOWN_SOURCE | Employed voluntary sector search | Direct | `LaborConfig` | `TUNED_NEEDS_VALIDATION` |

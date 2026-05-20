@@ -16,12 +16,12 @@ class McHouseholdSnapshotSchemaSpec extends AnyFlatSpec with Matchers:
 
   "McHouseholdSnapshotSchema" should "keep the household snapshot header stable" in {
     McHouseholdSnapshotSchema.header shouldBe
-      "RunId;Seed;Month;HouseholdId;Status;Region;ContractType;BankId;Wage;Rent;MPC;Skill;HealthPenalty;FinancialDistressMonths;DemandDeposit;MortgageLoan;ConsumerLoan;Equity;PositiveDeposit;ImplicitOverdraft;NetLiquidPosition;NetFinancialPosition;OpeningDemandDeposit;OpeningConsumerLoan;MonthlyIncome;Consumption;UnmetBasicConsumption;DiscretionaryConsumptionCompression;RentPaid;MortgageDebtService;ConsumerApprovedOrigination;LiquidityShortfallFinancing;ConsumptionShortfall;RentArrears;MortgageArrears;ConsumerDebtArrears;TemporaryOverdraft;ConsumerDebtService;ConsumerDefault;ConsumerLoanDefault;LiquidityBridgeChargeOff;ConsumerPrincipal;ClosingConsumerLoan"
+      "RunId;Seed;Month;HouseholdId;Status;Region;ContractType;BankId;Wage;Rent;MPC;Skill;HealthPenalty;FinancialDistressMonths;DemandDeposit;MortgageLoan;ConsumerLoan;Equity;PositiveDeposit;ImplicitOverdraft;NetLiquidPosition;NetFinancialPosition;OpeningDemandDeposit;OpeningConsumerLoan;MonthlyIncome;Consumption;UnmetBasicConsumption;DiscretionaryConsumptionCompression;RentPaid;MortgageDebtService;ConsumerApprovedOrigination;ConsumerCreditDemand;ConsumerRejectedOrigination;LiquidityShortfallFinancing;ConsumptionShortfall;RentArrears;MortgageArrears;ConsumerDebtArrears;TemporaryOverdraft;ConsumerDebtService;ConsumerDefault;ConsumerLoanDefault;LiquidityBridgeChargeOff;ConsumerPrincipal;ClosingConsumerLoan"
   }
 
   "McHouseholdShortfallCohortSchema" should "keep the household shortfall cohort header stable" in {
     McHouseholdShortfallCohortSchema.header shouldBe
-      "RunId;Seed;Month;Dimension;Cohort;HouseholdCount;ShortfallHouseholdCount;ShortfallHouseholdShare;LiquidityShortfallFinancing;ShortfallShareOfMonth;ConsumptionShortfall;RentArrears;MortgageArrears;ConsumerDebtArrears;TemporaryOverdraft;ConsumerApprovedOrigination;ConsumerDebtService;ConsumerDefault;ConsumerLoanDefault;LiquidityBridgeChargeOff;ConsumerPrincipal;OpeningDemandDeposit;ClosingDemandDeposit;OpeningConsumerLoan;ClosingConsumerLoan;MonthlyIncome;Consumption;UnmetBasicConsumption;DiscretionaryConsumptionCompression;Rent;MortgageDebtService;RentToIncome;MortgageDebtServiceToIncome;ConsumerDebtServiceToIncome;ClosingConsumerLoanToIncome"
+      "RunId;Seed;Month;Dimension;Cohort;HouseholdCount;ShortfallHouseholdCount;ShortfallHouseholdShare;LiquidityShortfallFinancing;ShortfallShareOfMonth;ConsumptionShortfall;RentArrears;MortgageArrears;ConsumerDebtArrears;TemporaryOverdraft;ConsumerApprovedOrigination;ConsumerCreditDemand;ConsumerRejectedOrigination;ConsumerDebtService;ConsumerDefault;ConsumerLoanDefault;LiquidityBridgeChargeOff;ConsumerPrincipal;OpeningDemandDeposit;ClosingDemandDeposit;OpeningConsumerLoan;ClosingConsumerLoan;MonthlyIncome;Consumption;UnmetBasicConsumption;DiscretionaryConsumptionCompression;Rent;MortgageDebtService;RentToIncome;MortgageDebtServiceToIncome;ConsumerDebtServiceToIncome;ClosingConsumerLoanToIncome"
   }
 
   it should "apply the liquidity-shortfall selector to rendered rows" in {
@@ -68,6 +68,9 @@ class McHouseholdSnapshotSchemaSpec extends AnyFlatSpec with Matchers:
               discretionaryConsumptionCompression = PLN(70),
               rent = PLN(500),
               mortgageDebtService = PLN(100),
+              consumerApprovedOrigination = PLN(20),
+              consumerCreditDemand = PLN(80),
+              consumerRejectedOrigination = PLN(60),
               liquidityShortfallFinancing = PLN(123),
               consumerDefault = PLN(123),
               consumerLoanDefault = PLN.Zero,
@@ -89,6 +92,9 @@ class McHouseholdSnapshotSchemaSpec extends AnyFlatSpec with Matchers:
     all.shortfallHouseholdCount shouldBe 1
     all.liquidityShortfallFinancing shouldBe PLN(123)
     all.consumerDefault shouldBe PLN(123)
+    all.consumerApprovedOrigination shouldBe PLN(20)
+    all.consumerCreditDemand shouldBe PLN(80)
+    all.consumerRejectedOrigination shouldBe PLN(60)
     all.consumerLoanDefault shouldBe PLN.Zero
     all.liquidityBridgeChargeOff shouldBe PLN(123)
     all.unmetBasicConsumption shouldBe PLN(50)
