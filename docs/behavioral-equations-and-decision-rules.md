@@ -134,6 +134,13 @@ mortgageDebtService_h =
   mortgageLoan_h * (baseAmortRate + lendingRate_b.monthly)
 ```
 
+Aggregate mortgage origination is calibrated from the outstanding mortgage
+book, not from the full residential-property value:
+
+```text
+baseMortgageOrigination = mortgageStock * housing.originationRate
+```
+
 Immigrant households send remittances:
 
 ```text

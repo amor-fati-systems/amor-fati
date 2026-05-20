@@ -270,7 +270,7 @@ object HousingMarket:
           )
 
   private def computeRawOrigination(prev: State, totalIncome: PLN, mortgageRate: Rate)(using p: SimParams): PLN =
-    val baseOrigination = prev.totalValue * p.housing.originationRate
+    val baseOrigination = prev.mortgageStock * p.housing.originationRate
     val rateAdj         =
       (-(mortgageRate - Rate.decimal(6, 2)).toCoefficient * Coefficient.decimal(5, 1)).growthMultiplier
         .clamp(Multiplier.decimal(3, 1), Multiplier(2))
