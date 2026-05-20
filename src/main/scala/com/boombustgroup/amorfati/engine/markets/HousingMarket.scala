@@ -310,17 +310,19 @@ object HousingMarket:
       regions = Some(updatedRegions),
     )
 
-  def processMortgageFlows(prev: State, mortgageRate: Rate, unemploymentRate: Share)(using p: SimParams): MortgageFlows =
+  def processMortgageFlows(prev: State, mortgageRate: Rate, unemploymentRate: Share, scheduledPrincipal: Option[PLN] = None)(using
+      p: SimParams,
+  ): MortgageFlows =
     if prev.mortgageStock <= PLN.Zero
     then MortgageFlows(PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero)
     else
       val stock         = prev.mortgageStock
       val interest      = stock * mortgageRate.max(Rate.Zero).monthly
-      val principal     = stock / p.housing.mortgageMaturity
+      val principal     = scheduledPrincipal.getOrElse(stock / p.housing.mortgageMaturity).max(PLN.Zero).min(stock)
       val unempExcess   = (unemploymentRate - Share.decimal(5, 2)).max(Share.Zero)
       val stressAdj     = (p.housing.defaultUnempSens * unempExcess).toMultiplier
       val defaultRate   = p.housing.defaultBase + stressAdj.toShare
-      val defaultAmount = stock * defaultRate
+      val defaultAmount = (stock * defaultRate).min((stock - principal).max(PLN.Zero))
       val defaultLoss   = defaultAmount * (Share.One - p.housing.mortgageRecovery)
       MortgageFlows(interest, principal, defaultAmount, defaultLoss)
 

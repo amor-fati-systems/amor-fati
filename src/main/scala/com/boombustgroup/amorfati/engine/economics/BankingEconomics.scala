@@ -222,7 +222,11 @@ object BankingEconomics:
 
     val rawLedgerFinancialState =
       in.s5.ledgerFinancialState.copy(
-        households = LedgerFinancialState.settleHouseholdMortgageStock(in.s5.ledgerFinancialState.households, housing.housingAfterFlows.mortgageStock),
+        households = LedgerFinancialState.settleHouseholdMortgageStock(
+          in.s5.ledgerFinancialState.households,
+          housing.housingAfterFlows.mortgageStock,
+          housing.housingAfterFlows.lastOrigination,
+        ),
         firms = issuerSettledFirmBalances,
         banks = multi.finalBankLedgerBalances,
         government = LedgerFinancialState.GovernmentBalances(govBondOutstanding = govJst.newGovBondOutstanding),
@@ -416,7 +420,8 @@ object BankingEconomics:
     )
     val housingAfterOrig       =
       HousingMarket.processOrigination(housingAfterPrice, in.s3.totalIncome, mortgageRate, true)
-    val mortgageFlows          = HousingMarket.processMortgageFlows(housingAfterOrig, mortgageRate, unempRate)
+    val scheduledPrincipal     = Some(in.s3.hhAgg.totalMortgagePrincipal)
+    val mortgageFlows          = HousingMarket.processMortgageFlows(housingAfterOrig, mortgageRate, unempRate, scheduledPrincipal)
     val housingAfterFlows      = HousingMarket.applyFlows(housingAfterOrig, mortgageFlows)
 
     HousingResult(housingAfterFlows = housingAfterFlows, mortgageFlows = mortgageFlows)

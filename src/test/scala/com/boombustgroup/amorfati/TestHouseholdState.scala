@@ -15,12 +15,14 @@ object TestHouseholdState:
       debt: PLN = PLN.Zero,
       consumerDebt: PLN = PLN.Zero,
       equityWealth: PLN = PLN.Zero,
+      mortgageRemainingMonths: Int = 0,
   ): Household.FinancialStocks =
     Household.FinancialStocks(
       demandDeposit = savings,
       mortgageLoan = debt,
       consumerLoan = consumerDebt,
       equity = equityWealth,
+      mortgageRemainingMonths = mortgageRemainingMonths,
     )
 
   def fixture(
@@ -46,6 +48,7 @@ object TestHouseholdState:
       contractType: ContractType = ContractType.Permanent,
       region: Region = Region.Central,
       financialDistressState: HhFinancialDistressState = HhFinancialDistressState.Current,
+      mortgageRemainingMonths: Int = 0,
   ): Fixture =
     Fixture(
       state = apply(
@@ -68,7 +71,13 @@ object TestHouseholdState:
         region = region,
         financialDistressState = financialDistressState,
       ),
-      financialStocks = financial(savings = savings, debt = debt, consumerDebt = consumerDebt, equityWealth = equityWealth),
+      financialStocks = financial(
+        savings = savings,
+        debt = debt,
+        consumerDebt = consumerDebt,
+        equityWealth = equityWealth,
+        mortgageRemainingMonths = mortgageRemainingMonths,
+      ),
     )
 
   def apply(

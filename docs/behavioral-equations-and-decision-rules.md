@@ -137,11 +137,20 @@ mortgageRate_h =
   lendingRate_b                         if bank-specific lendingRate_b exists
   nbp.referenceRate + housing.mortgageSpread
                                         otherwise
-mortgagePrincipal_h = mortgageLoan_h / housing.mortgageMaturity
+remainingMortgageMonths_h =
+  remainingMortgageMonths_h             if mortgageLoan_h > 0 and remainingMortgageMonths_h > 0
+  housing.mortgageMaturity              if mortgageLoan_h > 0 and no contract state exists
+  0                                     otherwise
+mortgagePrincipal_h =
+  mortgageLoan_h / remainingMortgageMonths_h if mortgageLoan_h > 0
+  0                                          otherwise
 mortgageInterest_h = mortgageLoan_h * mortgageRate_h.monthly
 scheduledMortgagePayment_h =
   mortgagePrincipal_h + mortgageInterest_h
 mortgageLoan'_h = max(mortgageLoan_h - mortgagePrincipal_h, 0)
+remainingMortgageMonths'_h =
+  max(remainingMortgageMonths_h - 1, 1)  if mortgageLoan'_h > 0
+  0                                     otherwise
 ```
 
 `scheduledMortgagePayment_h` is a household budget burden. It is not a single

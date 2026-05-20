@@ -669,6 +669,38 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
     result.aggregates.totalDebtService shouldBe principal + interest
   }
 
+  it should "close a mortgage to zero at its remaining contractual maturity" in {
+    val debt = PLN(3000)
+    val hh   = mkHousehold(
+      22,
+      HhStatus.Employed(FirmId(0), SectorIdx(0), PLN(9000)),
+      savings = PLN(100000),
+      debt = debt,
+      rent = PLN.Zero,
+      bankId = 0,
+      mortgageRemainingMonths = 3,
+    )
+    val br   = BankRates(
+      lendingRates = Vector(Rate.Zero),
+      depositRates = Vector(Rate.Zero),
+    )
+
+    val month1 = step(Vector(hh), mkWorld(), PLN(8000), PLN(4666), Share.decimal(4, 1), RandomStream.seeded(101), bankRates = Some(br))
+    month1.financialStocks.head.mortgageLoan shouldBe PLN(2000)
+    month1.financialStocks.head.mortgageRemainingMonths shouldBe 2
+    month1.aggregates.totalMortgagePrincipal shouldBe PLN(1000)
+
+    val month2 = step(month1.households, mkWorld(), PLN(8000), PLN(4666), Share.decimal(4, 1), RandomStream.seeded(102), bankRates = Some(br))
+    month2.financialStocks.head.mortgageLoan shouldBe PLN(1000)
+    month2.financialStocks.head.mortgageRemainingMonths shouldBe 1
+    month2.aggregates.totalMortgagePrincipal shouldBe PLN(1000)
+
+    val month3 = step(month2.households, mkWorld(), PLN(8000), PLN(4666), Share.decimal(4, 1), RandomStream.seeded(103), bankRates = Some(br))
+    month3.financialStocks.head.mortgageLoan shouldBe PLN.Zero
+    month3.financialStocks.head.mortgageRemainingMonths shouldBe 0
+    month3.aggregates.totalMortgagePrincipal shouldBe PLN(1000)
+  }
+
   it should "use the live policy rate for mortgage interest when bankRates are absent" in {
     val rng          = RandomStream.seeded(42)
     val debt         = PLN(120000)
@@ -892,6 +924,7 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
       healthPenalty: BigDecimal = BigDecimal("0.0"),
       mpc: BigDecimal = BigDecimal("0.82"),
       bankId: Int = 0,
+      mortgageRemainingMonths: Int = 0,
   ): Household.State =
     val hh = TestHouseholdState(
       HhId(id),
@@ -913,7 +946,16 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
       taskRoutineness = Share.decimal(5, 1),
       wageScar = Share.Zero,
     )
-    financialById.update(id, TestHouseholdState.financial(savings = savings, debt = debt, consumerDebt = PLN.Zero, equityWealth = PLN.Zero))
+    financialById.update(
+      id,
+      TestHouseholdState.financial(
+        savings = savings,
+        debt = debt,
+        consumerDebt = PLN.Zero,
+        equityWealth = PLN.Zero,
+        mortgageRemainingMonths = mortgageRemainingMonths,
+      ),
+    )
     hh
 
   private def mkWorld(): World =

@@ -25,7 +25,7 @@ class LedgerFinancialStateSpec extends AnyFlatSpec with Matchers:
     val existingHousehold = existing
     val newHousehold      = init.households.last.copy(id = HhId(previous.length))
     val newStocks         =
-      Household.FinancialStocks(demandDeposit = PLN(777), mortgageLoan = PLN(55), consumerLoan = PLN(11), equity = PLN(22))
+      Household.FinancialStocks(demandDeposit = PLN(777), mortgageLoan = PLN(55), consumerLoan = PLN(11), equity = PLN(22), mortgageRemainingMonths = 120)
 
     val refreshed =
       LedgerFinancialState.refreshHouseholdBalances(Vector(existingHousehold, newHousehold), init.households, previous, Map(newHousehold.id -> newStocks))
@@ -45,6 +45,15 @@ class LedgerFinancialStateSpec extends AnyFlatSpec with Matchers:
       LedgerFinancialState.HouseholdBalances(demandDeposit = PLN(-1), mortgageLoan = PLN.Zero, consumerLoan = PLN.Zero, equity = PLN.Zero)
 
     an[IllegalArgumentException] should be thrownBy LedgerFinancialState.projectHouseholdFinancialStocks(balances)
+  }
+
+  it should "preserve mortgage remaining maturity through household projection" in {
+    val stocks   =
+      Household.FinancialStocks(demandDeposit = PLN(10), mortgageLoan = PLN(20), consumerLoan = PLN(30), equity = PLN(40), mortgageRemainingMonths = 180)
+    val balances = LedgerFinancialState.householdBalances(stocks)
+
+    balances.mortgageRemainingMonths shouldBe 180
+    LedgerFinancialState.projectHouseholdFinancialStocks(balances) shouldBe stocks
   }
 
   "LedgerFinancialState.settleHouseholdMortgageStock" should "write an aggregate closing mortgage stock into household rows" in {
@@ -71,6 +80,47 @@ class LedgerFinancialStateSpec extends AnyFlatSpec with Matchers:
     settled.map(_.equity) shouldBe households.map(_.equity)
   }
 
+  it should "preserve active household mortgage maturities when aggregate stock is reallocated" in {
+    val households = Vector(
+      LedgerFinancialState.HouseholdBalances(
+        demandDeposit = PLN.Zero,
+        mortgageLoan = PLN(10),
+        consumerLoan = PLN.Zero,
+        equity = PLN.Zero,
+        mortgageRemainingMonths = 12,
+      ),
+      LedgerFinancialState.HouseholdBalances(
+        demandDeposit = PLN.Zero,
+        mortgageLoan = PLN(30),
+        consumerLoan = PLN.Zero,
+        equity = PLN.Zero,
+        mortgageRemainingMonths = 24,
+      ),
+    )
+
+    val settled = LedgerFinancialState.settleHouseholdMortgageStock(households, PLN(20))
+
+    LedgerFinancialState.householdMortgageStock(settled) shouldBe PLN(20)
+    settled.map(_.mortgageRemainingMonths) shouldBe Vector(12, 24)
+  }
+
+  it should "blend aggregate mortgage origination into remaining maturity even when net stock is unchanged" in {
+    val households = Vector(
+      LedgerFinancialState.HouseholdBalances(
+        demandDeposit = PLN.Zero,
+        mortgageLoan = PLN(100),
+        consumerLoan = PLN.Zero,
+        equity = PLN.Zero,
+        mortgageRemainingMonths = 12,
+      ),
+    )
+
+    val settled = LedgerFinancialState.settleHouseholdMortgageStock(households, closingStock = PLN(100), newOrigination = PLN(50))
+
+    LedgerFinancialState.householdMortgageStock(settled) shouldBe PLN(100)
+    settled.head.mortgageRemainingMonths shouldBe 156
+  }
+
   it should "allocate a positive closing mortgage stock across zero-debt household rows" in {
     val households = Vector.fill(2)(
       LedgerFinancialState.HouseholdBalances(
@@ -84,6 +134,7 @@ class LedgerFinancialStateSpec extends AnyFlatSpec with Matchers:
     val settled = LedgerFinancialState.settleHouseholdMortgageStock(households, PLN(30))
 
     LedgerFinancialState.householdMortgageStock(settled) shouldBe PLN(30)
+    settled.map(_.mortgageRemainingMonths) shouldBe Vector.fill(2)(summon[SimParams].housing.mortgageMaturity)
   }
 
   "LedgerFinancialState.settleHouseholdInsuranceReserveAssets" should "mirror aggregate insurance reserves into household asset rows" in {
