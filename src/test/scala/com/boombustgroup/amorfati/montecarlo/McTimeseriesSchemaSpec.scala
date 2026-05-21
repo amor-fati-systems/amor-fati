@@ -1,10 +1,10 @@
 package com.boombustgroup.amorfati.montecarlo
 
 import com.boombustgroup.amorfati.FixedPointSpecSupport.*
-import com.boombustgroup.amorfati.agents.{Firm, Household, TechState}
+import com.boombustgroup.amorfati.agents.{Banking, EclStaging, Firm, Household, TechState}
 import com.boombustgroup.amorfati.config.{HousingConfig, SimParams}
 import com.boombustgroup.amorfati.engine.SimulationMonth.ExecutionMonth
-import com.boombustgroup.amorfati.engine.{BankCapitalDiagnostics, BankFailureDiagnostics, BankReconciliationDiagnostics, World}
+import com.boombustgroup.amorfati.engine.{BankCapitalDiagnostics, BankEclDiagnostics, BankFailureDiagnostics, BankReconciliationDiagnostics, World}
 import com.boombustgroup.amorfati.engine.flows.FlowSimulation
 import com.boombustgroup.amorfati.engine.ledger.LedgerFinancialState
 import com.boombustgroup.amorfati.init.{InitRandomness, WorldInit}
@@ -238,6 +238,17 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     "EclStage1",
     "EclStage2",
     "EclStage3",
+    "BankEcl_OpeningAllowance",
+    "BankEcl_ClosingAllowance",
+    "BankEcl_BaselineStage1Allowance",
+    "BankEcl_ExcessAllowance",
+    "BankEcl_ExcessAllowanceShare",
+    "BankEcl_ProvisionChangeToOpeningCapital",
+    "BankEcl_ProvisionChangeToRealizedLoss",
+    "BankEcl_Stage2Share",
+    "BankEcl_Stage3Share",
+    "BankEcl_MigrationRate",
+    "BankEcl_GdpGrowthMonthly",
     "BfgLevyTotal",
     "BfgFundBalance",
     "BailInLoss",
@@ -401,6 +412,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
       world: World,
       ledgerFinancialState: LedgerFinancialState = initState.ledgerFinancialState,
       firms: Vector[Firm.State] = init.firms,
+      banks: Vector[Banking.BankState] = init.banks,
       householdAggregates: Household.Aggregates = init.householdAggregates,
       preserveSectorOutputs: Boolean = false,
   ): Array[MetricValue] =
@@ -412,7 +424,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
       world = effectiveWorld,
       firms = firms,
       households = init.households,
-      banks = init.banks,
+      banks = banks,
       householdAggregates = householdAggregates,
       ledgerFinancialState = ledgerFinancialState,
     )
@@ -429,7 +441,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     MetricValue.fromRaw(Share.fraction(numerator, denominator).toLong)
 
   "McTimeseriesSchema" should "expose the stable schema contract" in {
-    McTimeseriesSchema.nCols shouldBe 375
+    McTimeseriesSchema.nCols shouldBe 386
     McTimeseriesSchema.colNames.toVector shouldBe expectedColNames
   }
 
@@ -666,6 +678,43 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     valueAt(row, "BankCreditLoss_ConsumerLossRate") shouldBe MetricValue.fromRaw((bankCapital.consumerNplLoss / consumerLoans).toLong)
     valueAt(row, "BankCreditLoss_CorpBondDefaultRate") shouldBe MetricValue.fromRaw((corpBondGrossDefault / bankCorpBonds).toLong)
     valueAt(row, "BankCreditLoss_CorpBondLossRate") shouldBe MetricValue.fromRaw((bankCapital.corpBondDefaultLoss / bankCorpBonds).toLong)
+  }
+
+  it should "emit bank ECL allowance and provisioning diagnostics" in {
+    val staging = EclStaging.State(PLN(80), PLN(15), PLN(5))
+    val banks   = init.banks.zipWithIndex.map: (bank, idx) =>
+      if idx == 0 then bank.copy(eclStaging = staging) else bank.copy(eclStaging = EclStaging.State.zero)
+    val ecl     = BankEclDiagnostics(
+      openingAllowance = PLN(10),
+      closingAllowance = PLN(20),
+      baselineStage1Allowance = PLN(5),
+      excessAllowance = PLN(15),
+      migrationRate = Share.decimal(2, 2),
+      gdpGrowthMonthly = Coefficient.decimal(-1, 2),
+    )
+    val world   = init.world.copy(
+      flows = init.world.flows.copy(
+        sectorOutputs = Vector.fill(summon[SimParams].sectorDefs.length)(PLN.Zero),
+        bankCapital = BankCapitalDiagnostics(openingCapital = PLN(100), eclProvisionChange = PLN(4), firmNplLoss = PLN(6)),
+        bankEcl = ecl,
+      ),
+    )
+    val row     = computeRow(world, banks = banks)
+
+    valueAt(row, "EclStage1") shouldBe polandScale(PLN(80))
+    valueAt(row, "EclStage2") shouldBe polandScale(PLN(15))
+    valueAt(row, "EclStage3") shouldBe polandScale(PLN(5))
+    valueAt(row, "BankEcl_OpeningAllowance") shouldBe polandScale(PLN(10))
+    valueAt(row, "BankEcl_ClosingAllowance") shouldBe polandScale(PLN(20))
+    valueAt(row, "BankEcl_BaselineStage1Allowance") shouldBe polandScale(PLN(5))
+    valueAt(row, "BankEcl_ExcessAllowance") shouldBe polandScale(PLN(15))
+    valueAt(row, "BankEcl_ExcessAllowanceShare") shouldBe MetricValue.fromRaw((PLN(15) / PLN(20)).toLong)
+    valueAt(row, "BankEcl_ProvisionChangeToOpeningCapital") shouldBe MetricValue.fromRaw((PLN(4) / PLN(100)).toLong)
+    valueAt(row, "BankEcl_ProvisionChangeToRealizedLoss") shouldBe MetricValue.fromRaw((PLN(4) / PLN(6)).toLong)
+    valueAt(row, "BankEcl_Stage2Share") shouldBe MetricValue.fromRaw((PLN(15) / PLN(100)).toLong)
+    valueAt(row, "BankEcl_Stage3Share") shouldBe MetricValue.fromRaw((PLN(5) / PLN(100)).toLong)
+    valueAt(row, "BankEcl_MigrationRate") shouldBe MetricValue.fromRaw(Share.decimal(2, 2).toLong)
+    valueAt(row, "BankEcl_GdpGrowthMonthly") shouldBe MetricValue.fromRaw(Coefficient.decimal(-1, 2).toLong)
   }
 
   it should "emit household bankruptcy validation fields alongside firm and bank failures" in {

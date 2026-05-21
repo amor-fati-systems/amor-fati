@@ -41,6 +41,15 @@ class EclStagingSpec extends AnyFlatSpec with Matchers:
     decimal(result.newStaging.stage2) shouldBe BigDecimal("0.0") +- BigDecimal("1.0")
   }
 
+  "EclStaging.allowance" should "sum provision rates across stages" in {
+    val state    = EclStaging.State(PLN(100), PLN(50), PLN(20))
+    val expected = state.stage1 * summon[SimParams].banking.eclRate1 +
+      state.stage2 * summon[SimParams].banking.eclRate2 +
+      state.stage3 * summon[SimParams].banking.eclRate3
+
+    EclStaging.allowance(state) shouldBe expected
+  }
+
   it should "migrate S1->S2 when unemployment rises" in {
     val result = EclStaging.step(init, loans, PLN.Zero, Share.decimal(10, 2), Coefficient.Zero)
     decimal(result.newStaging.stage2) should be > BigDecimal("0.0")

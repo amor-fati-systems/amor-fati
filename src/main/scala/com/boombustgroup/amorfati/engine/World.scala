@@ -379,39 +379,57 @@ object BankReconciliationDiagnostics:
       postResidualReasonCode = reasonAfter.map(_.code).getOrElse(0),
     )
 
+/** Monthly IFRS 9 / ECL provisioning diagnostics.
+  *
+  * Allowances are accounting provisions implied by the S1/S2/S3 staging stock.
+  * `excessAllowance` is the amount above an all-performing Stage-1 baseline.
+  */
+case class BankEclDiagnostics(
+    openingAllowance: PLN = PLN.Zero,                // ECL allowance implied by opening bank staging
+    closingAllowance: PLN = PLN.Zero,                // ECL allowance implied by closing bank staging
+    baselineStage1Allowance: PLN = PLN.Zero,         // closing staged ECL book if all stayed at Stage 1
+    excessAllowance: PLN = PLN.Zero,                 // closing allowance above the all-Stage-1 baseline
+    migrationRate: Share = Share.Zero,               // macro-driven S1->S2 migration rate used this month
+    gdpGrowthMonthly: Coefficient = Coefficient.Zero, // month-on-month GDP growth used by ECL staging
+)
+
+object BankEclDiagnostics:
+  val zero: BankEclDiagnostics = BankEclDiagnostics()
+
 /** Single-step derived flow outputs — recomputed each step, zero at init. Feed
   * into SFC identities and output columns.
   */
 case class FlowState(
-    monthlyGdpProxy: PLN = PLN.Zero,                                                       // cached monthly GDP proxy for diagnostics / output ratios
-    sectorOutputs: Vector[PLN] = Vector.empty,                                             // nominal monthly output by schema sector
-    ioFlows: PLN = PLN.Zero,                                                               // I-O intermediate payments between sectors
-    fdiProfitShifting: PLN = PLN.Zero,                                                     // intangible imports booked abroad (profit shifting)
-    fdiRepatriation: PLN = PLN.Zero,                                                       // dividend repatriation by foreign-owned firms
-    fdiCitLoss: PLN = PLN.Zero,                                                            // CIT lost to profit shifting
-    diasporaRemittanceInflow: PLN = PLN.Zero,                                              // diaspora remittance inflow
-    tourismExport: PLN = PLN.Zero,                                                         // inbound tourism services export
-    tourismImport: PLN = PLN.Zero,                                                         // outbound tourism services import
-    aggInventoryStock: PLN = PLN.Zero,                                                     // aggregate firm inventory stock
-    aggInventoryChange: PLN = PLN.Zero,                                                    // ΔInventories (enters GDP)
-    aggEnergyCost: PLN = PLN.Zero,                                                         // aggregate energy + CO₂ costs
-    automationTechCapex: PLN = PLN.Zero,                                                   // technology CAPEX for automation/hybrid upgrades
-    automationTechImports: PLN = PLN.Zero,                                                 // import content of technology CAPEX
-    automationTechLoans: PLN = PLN.Zero,                                                   // bank-credit component of technology financing
-    automationUpgradeFailures: Int = 0,                                                    // implementation failures causing firm bankruptcy
-    automationAiDebtTrap: Int = 0,                                                         // AI debt-trap bankruptcies
-    automationNewFullAi: Int = 0,                                                          // new full-AI adopters
-    automationNewHybrid: Int = 0,                                                          // new hybrid adopters
-    firmBirths: Int = 0,                                                                   // new firms (recycled + net new)
-    firmDeaths: Int = 0,                                                                   // firms bankrupt this step
-    netFirmBirths: Int = 0,                                                                // net new firms appended to vector
-    taxEvasionLoss: PLN = PLN.Zero,                                                        // tax lost to 4-channel evasion (CIT+VAT+PIT+excise)
-    realizedTaxShadowShare: Share = Share.Zero,                                            // current-period realized aggregate tax-side shadow share
-    bailInLoss: PLN = PLN.Zero,                                                            // bail-in deposit haircut imposed on bank creditors
-    bfgLevyTotal: PLN = PLN.Zero,                                                          // BFG resolution levy from all banks
-    bankCapital: BankCapitalDiagnostics = BankCapitalDiagnostics.zero,                     // monthly bank-capital waterfall diagnostics
-    bankFailure: BankFailureDiagnostics = BankFailureDiagnostics.zero,                     // monthly bank-failure trigger diagnostics
+    monthlyGdpProxy: PLN = PLN.Zero,                                                        // cached monthly GDP proxy for diagnostics / output ratios
+    sectorOutputs: Vector[PLN] = Vector.empty,                                              // nominal monthly output by schema sector
+    ioFlows: PLN = PLN.Zero,                                                                // I-O intermediate payments between sectors
+    fdiProfitShifting: PLN = PLN.Zero,                                                      // intangible imports booked abroad (profit shifting)
+    fdiRepatriation: PLN = PLN.Zero,                                                        // dividend repatriation by foreign-owned firms
+    fdiCitLoss: PLN = PLN.Zero,                                                             // CIT lost to profit shifting
+    diasporaRemittanceInflow: PLN = PLN.Zero,                                               // diaspora remittance inflow
+    tourismExport: PLN = PLN.Zero,                                                          // inbound tourism services export
+    tourismImport: PLN = PLN.Zero,                                                          // outbound tourism services import
+    aggInventoryStock: PLN = PLN.Zero,                                                      // aggregate firm inventory stock
+    aggInventoryChange: PLN = PLN.Zero,                                                     // ΔInventories (enters GDP)
+    aggEnergyCost: PLN = PLN.Zero,                                                          // aggregate energy + CO₂ costs
+    automationTechCapex: PLN = PLN.Zero,                                                    // technology CAPEX for automation/hybrid upgrades
+    automationTechImports: PLN = PLN.Zero,                                                  // import content of technology CAPEX
+    automationTechLoans: PLN = PLN.Zero,                                                    // bank-credit component of technology financing
+    automationUpgradeFailures: Int = 0,                                                     // implementation failures causing firm bankruptcy
+    automationAiDebtTrap: Int = 0,                                                          // AI debt-trap bankruptcies
+    automationNewFullAi: Int = 0,                                                           // new full-AI adopters
+    automationNewHybrid: Int = 0,                                                           // new hybrid adopters
+    firmBirths: Int = 0,                                                                    // new firms (recycled + net new)
+    firmDeaths: Int = 0,                                                                    // firms bankrupt this step
+    netFirmBirths: Int = 0,                                                                 // net new firms appended to vector
+    taxEvasionLoss: PLN = PLN.Zero,                                                         // tax lost to 4-channel evasion (CIT+VAT+PIT+excise)
+    realizedTaxShadowShare: Share = Share.Zero,                                             // current-period realized aggregate tax-side shadow share
+    bailInLoss: PLN = PLN.Zero,                                                             // bail-in deposit haircut imposed on bank creditors
+    bfgLevyTotal: PLN = PLN.Zero,                                                           // BFG resolution levy from all banks
+    bankCapital: BankCapitalDiagnostics = BankCapitalDiagnostics.zero,                      // monthly bank-capital waterfall diagnostics
+    bankFailure: BankFailureDiagnostics = BankFailureDiagnostics.zero,                      // monthly bank-failure trigger diagnostics
     bankReconciliation: BankReconciliationDiagnostics = BankReconciliationDiagnostics.zero, // exactness-patch impact on target bank capital/CAR
+    bankEcl: BankEclDiagnostics = BankEclDiagnostics.zero,                                  // IFRS 9 ECL allowance and staging diagnostics
 )
 object FlowState:
   val zero: FlowState = FlowState()

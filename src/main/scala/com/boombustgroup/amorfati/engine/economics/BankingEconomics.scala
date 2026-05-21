@@ -65,6 +65,7 @@ object BankingEconomics:
       bankCapitalDiagnostics: BankCapitalDiagnostics,               // aggregate monthly bank-capital waterfall diagnostics
       bankFailureDiagnostics: BankFailureDiagnostics,               // monthly bank-failure trigger diagnostics
       bankReconciliationDiagnostics: BankReconciliationDiagnostics, // exactness-patch impact on target bank capital/CAR
+      bankEclDiagnostics: BankEclDiagnostics,                       // IFRS 9 ECL allowance and migration diagnostics
       monAgg: Option[Banking.MonetaryAggregates],                   // M0/M1/M2/M3 (when credit diagnostics on)
       finalHhAgg: Household.Aggregates,                             // recomputed HH aggregates
       vat: PLN,                                                     // gross VAT revenue
@@ -155,6 +156,7 @@ object BankingEconomics:
       bankCapitalTerms: BankCapitalTerms,                           // shared capital-waterfall terms used by reconciliation and diagnostics
       bankFailureDiagnostics: BankFailureDiagnostics,               // failure trigger reason diagnostics for this month
       bankReconciliationDiagnostics: BankReconciliationDiagnostics, // exactness-patch impact on target bank capital/CAR
+      bankEclDiagnostics: BankEclDiagnostics,                       // IFRS 9 ECL allowance and migration diagnostics
       resolvedBank: Banking.Aggregate,                              // aggregate banking sector after resolution
       htmRealizedLoss: PLN,                                         // realized loss from HTM forced reclassification
       // Bond waterfall outputs — single source of truth for buyer holdings
@@ -326,6 +328,7 @@ object BankingEconomics:
       bankCapitalDiagnostics = bankCapitalDiagnostics,
       bankFailureDiagnostics = multi.bankFailureDiagnostics,
       bankReconciliationDiagnostics = multi.bankReconciliationDiagnostics,
+      bankEclDiagnostics = multi.bankEclDiagnostics,
       monAgg = monAgg,
       finalHhAgg = finalHhAgg,
       vat = govJst.tax.vat,
@@ -698,9 +701,7 @@ object BankingEconomics:
 
     // IFRS 9 ECL staging: provision change hits capital
     val unemployment: Share              = in.w.unemploymentRate(in.s2.employed)
-    val prevGdp: PLN                     = in.w.cachedMonthlyGdpProxy
-    val gdpGrowth: Coefficient           =
-      if prevGdp > PLN.Zero then (in.s7.gdp.ratioTo(prevGdp) - Scalar.One).toCoefficient else Coefficient.Zero
+    val gdpGrowth: Coefficient           = eclGdpGrowth(in)
     val eclResult: EclStaging.StepResult = EclStaging.step(b.eclStaging, newLoansTotal + stocks.consumerLoan, bankNplNew, unemployment, gdpGrowth)
 
     SingleBankUpdate(
@@ -980,6 +981,9 @@ object BankingEconomics:
     val failureDiagnostics    =
       BankFailureDiagnostics.fromEvents(failureEvents, resolveResult.allFailedFallbackUsed || reconciled.allFailedFallbackUsed, invariantMismatches)
     val anyFailureForMobility = anyFailed || reconciled.newFailuresDelta > 0
+    val eclGdpGrowthMonthly   = eclGdpGrowth(in)
+    val eclMigrationRate      = EclStaging.migrationRate(in.w.unemploymentRate(in.s2.employed), eclGdpGrowthMonthly)
+    val eclDiagnostics        = computeBankEclDiagnostics(in.banks, finalFailureBanks, eclMigrationRate, eclGdpGrowthMonthly)
 
     // Repair stale failed-bank routing every month; mobility validates survivor bankIds.
     val reassignedFirms =
@@ -1024,6 +1028,7 @@ object BankingEconomics:
       bankCapitalTerms = bankCapitalTerms,
       bankFailureDiagnostics = failureDiagnostics,
       bankReconciliationDiagnostics = reconciled.bankReconciliationDiagnostics,
+      bankEclDiagnostics = eclDiagnostics,
       resolvedBank = Banking.aggregateFromBankStocks(finalFailureBanks, finalFailureStocks, finalCorpBondLookup),
       htmRealizedLoss = htmResult.totalRealizedLoss,
       finalNbp = finalNbp,
@@ -1060,10 +1065,8 @@ object BankingEconomics:
     while i < finalBanks.length do
       val curr     = finalBanks(i)
       val prev     = in.banks(i)
-      val currProv =
-        curr.eclStaging.stage1 * p.banking.eclRate1 + curr.eclStaging.stage2 * p.banking.eclRate2 + curr.eclStaging.stage3 * p.banking.eclRate3
-      val prevProv =
-        prev.eclStaging.stage1 * p.banking.eclRate1 + prev.eclStaging.stage2 * p.banking.eclRate2 + prev.eclStaging.stage3 * p.banking.eclRate3
+      val currProv = EclStaging.allowance(curr.eclStaging)
+      val prevProv = EclStaging.allowance(prev.eclStaging)
       eclRaw += (currProv - prevProv).toLong
       i += 1
     val eclProvisionChange = PLN.fromRaw(eclRaw)
@@ -1078,6 +1081,33 @@ object BankingEconomics:
       eclProvisionChange = eclProvisionChange,
       capitalGrossIncome = capitalGrossIncome,
       retainedIncome = capitalGrossIncome * p.banking.profitRetention,
+    )
+
+  private def eclGdpGrowth(in: StepInput): Coefficient =
+    val prevGdp = in.w.cachedMonthlyGdpProxy
+    if prevGdp > PLN.Zero then (in.s7.gdp.ratioTo(prevGdp) - Scalar.One).toCoefficient else Coefficient.Zero
+
+  private def computeBankEclDiagnostics(
+      openingBanks: Vector[Banking.BankState],
+      closingBanks: Vector[Banking.BankState],
+      migrationRate: Share,
+      gdpGrowthMonthly: Coefficient,
+  )(using p: SimParams): BankEclDiagnostics =
+    val openingAllowance        = openingBanks.iterator.map(bank => EclStaging.allowance(bank.eclStaging)).sumPln
+    val closingAllowance        = closingBanks.iterator.map(bank => EclStaging.allowance(bank.eclStaging)).sumPln
+    val closingStages           = closingBanks.iterator.map(_.eclStaging)
+    var stageTotalRaw           = 0L
+    closingStages.foreach: staging =>
+      stageTotalRaw += staging.stage1.toLong + staging.stage2.toLong + staging.stage3.toLong
+    val stageTotal              = PLN.fromRaw(stageTotalRaw)
+    val baselineStage1Allowance = stageTotal * p.banking.eclRate1
+    BankEclDiagnostics(
+      openingAllowance = openingAllowance,
+      closingAllowance = closingAllowance,
+      baselineStage1Allowance = baselineStage1Allowance,
+      excessAllowance = (closingAllowance - baselineStage1Allowance).max(PLN.Zero),
+      migrationRate = migrationRate,
+      gdpGrowthMonthly = gdpGrowthMonthly,
     )
 
   private def reconcileAggregateExactness(
