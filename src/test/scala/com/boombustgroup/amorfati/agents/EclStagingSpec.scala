@@ -50,34 +50,46 @@ class EclStagingSpec extends AnyFlatSpec with Matchers:
     EclStaging.allowance(state) shouldBe expected
   }
 
-  it should "migrate S1->S2 when unemployment rises" in {
+  "EclStaging.step" should "migrate S1->S2 when unemployment rises" in {
     val result = EclStaging.step(init, loans, PLN.Zero, Share.decimal(10, 2), Coefficient.Zero)
     decimal(result.newStaging.stage2) should be > BigDecimal("0.0")
     decimal(result.newStaging.stage1) should be < decimal(loans)
   }
 
-  it should "move defaults to S3" in {
+  "EclStaging.step" should "move defaults to S3" in {
     val nplNew = PLN(100000000)
     val s2Init = EclStaging.State(loans - nplNew, nplNew, PLN.Zero)
     val result = EclStaging.step(s2Init, loans, nplNew, Share.decimal(4, 2), Coefficient.decimal(1, 2))
     decimal(result.newStaging.stage3) should be > BigDecimal("0.0")
   }
 
-  it should "increase provisions when loans migrate S1->S2" in {
+  "EclStaging.step" should "increase provisions when loans migrate S1->S2" in {
     val result = EclStaging.step(init, loans, PLN.Zero, Share.decimal(10, 2), Coefficient.decimal(-2, 2))
     // S1->S2 migration -> higher provisions -> positive provisionChange
     decimal(result.provisionChange) should be > BigDecimal("0.0")
   }
 
-  it should "preserve total loans across stages" in {
+  "EclStaging.step" should "preserve total loans across stages" in {
     val result = EclStaging.step(init, loans, PLN(50000000), Share.decimal(8, 2), Coefficient.decimal(-1, 2))
     val total  = result.newStaging.stage1 + result.newStaging.stage2 + result.newStaging.stage3
     decimal(total) shouldBe decimal(loans) +- BigDecimal("1.0")
   }
 
-  it should "cure some S3 loans back to S2" in {
+  "EclStaging.step" should "cure some S3 loans back to S2" in {
     val s3Init = EclStaging.State(PLN.Zero, PLN.Zero, loans)
     val result = EclStaging.step(s3Init, loans, PLN.Zero, Share.decimal(4, 2), Coefficient.decimal(1, 2))
     decimal(result.newStaging.stage2) should be > BigDecimal("0.0")
     decimal(result.newStaging.stage3) should be < decimal(loans)
+  }
+
+  "EclStaging.State.allStage1" should "seed an all-performing opening book" in {
+    val state = EclStaging.State.allStage1(loans)
+
+    state.stage1 shouldBe loans
+    state.stage2 shouldBe PLN.Zero
+    state.stage3 shouldBe PLN.Zero
+  }
+
+  it should "reject negative opening covered loans" in {
+    an[IllegalArgumentException] should be thrownBy EclStaging.State.allStage1(PLN(-1))
   }

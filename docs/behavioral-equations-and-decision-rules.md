@@ -704,6 +704,11 @@ CAR_b = capital_b / RWA_b
 When the denominator is effectively zero, the implementation returns a safe
 ratio floor.
 
+Opening IFRS 9 ECL staging is seeded from the bank-owned firm and consumer loan
+book as all-performing Stage 1 exposure. The opening allowance is therefore a
+pre-existing baseline allowance, while `BankCapital_EclProvisionChange` measures
+monthly movement in that allowance.
+
 The monthly bank-capital diagnostic waterfall is:
 
 ```text
