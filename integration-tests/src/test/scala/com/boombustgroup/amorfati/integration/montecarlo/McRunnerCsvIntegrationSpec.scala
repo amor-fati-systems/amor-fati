@@ -118,6 +118,14 @@ class McRunnerCsvIntegrationSpec extends AnyFlatSpec with Matchers:
     val invariantIdx     = columnIndex(header, "BankFailure_InvariantViolation")
     val firstReasonIdx   = columnIndex(header, "BankFailure_FirstNewReasonCode")
     val firstBankIdx     = columnIndex(header, "BankFailure_FirstNewBankId")
+    val reconTargetIdx   = columnIndex(header, "BankReconciliation_TargetBankId")
+    val reconCapIdx      = columnIndex(header, "BankReconciliation_CapitalResidual")
+    val reconBeforeIdx   = columnIndex(header, "BankReconciliation_TargetCapitalBefore")
+    val reconAfterIdx    = columnIndex(header, "BankReconciliation_TargetCapitalAfter")
+    val reconRatioIdx    = columnIndex(header, "BankReconciliation_ResidualToTargetCapital")
+    val reconMaterialIdx = columnIndex(header, "BankReconciliation_MaterialResidual")
+    val reconCrossedIdx  = columnIndex(header, "BankReconciliation_CrossedFailureThreshold")
+    val reconReasonIdx   = columnIndex(header, "BankReconciliation_PostResidualReasonCode")
     val realizedCredit   =
       row(firmLossIdx) + row(mortgageLossIdx) + row(consumerLossIdx) + row(corpBondLossIdx)
     val expectedDelta    =
@@ -138,6 +146,13 @@ class McRunnerCsvIntegrationSpec extends AnyFlatSpec with Matchers:
     row(invariantIdx) should be >= BigDecimal(0)
     row(firstReasonIdx) should (be >= BigDecimal(0) and be <= BigDecimal(5))
     row(firstBankIdx) should be >= BigDecimal(-1)
+    row(reconTargetIdx) should be >= BigDecimal(-1)
+    row(reconAfterIdx) shouldBe row(reconBeforeIdx) + row(reconCapIdx) +- BigDecimal("0.05")
+    row(reconRatioIdx) should be >= BigDecimal(0)
+    row(reconMaterialIdx) should (be >= BigDecimal(0) and be <= BigDecimal(1))
+    row(reconCrossedIdx) should (be >= BigDecimal(0) and be <= BigDecimal(1))
+    row(reconReasonIdx) should (be >= BigDecimal(0) and be <= BigDecimal(5))
+    if row(reconCrossedIdx) == BigDecimal(1) then row(reconReasonIdx) should be > BigDecimal(0)
 
   private def expectedRun(seed: Long): RunResult =
     McRunner.runSingle(seed, DurationMonths).fold(err => fail(err.toString), identity)

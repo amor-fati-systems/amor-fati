@@ -167,6 +167,16 @@ BankFailure_AllFailedFallback
 BankFailure_InvariantViolation
 BankFailure_FirstNewReasonCode
 BankFailure_FirstNewBankId
+BankReconciliation_TargetBankId
+BankReconciliation_CapitalResidual
+BankReconciliation_TargetCapitalBefore
+BankReconciliation_TargetCapitalAfter
+BankReconciliation_TargetCarBefore
+BankReconciliation_TargetCarAfter
+BankReconciliation_ResidualToTargetCapital
+BankReconciliation_MaterialResidual
+BankReconciliation_CrossedFailureThreshold
+BankReconciliation_PostResidualReasonCode
 ```
 
 `BankFailure_NewNegativeCapital`, `BankFailure_NewCarBreach`, and
@@ -181,6 +191,16 @@ failure-event diagnostics no longer reconcile to the new-failure count and the
 run should be treated as an invalid model state. `BankFailure_FirstNewReasonCode`
 uses stable codes: `0` none, `1` negative capital, `2` CAR breach,
 `3` LCR/liquidity breach, `4` all-failed fallback, `5` invariant mismatch.
+
+`BankReconciliation_*` columns quantify the exactness patch applied after the
+normal bank update. `BankReconciliation_TargetBankId` identifies the bank row
+receiving the patch. The capital before/after and CAR before/after fields show
+whether the patch is just fixed-point cleanup or a material balance-sheet
+transfer. `BankReconciliation_MaterialResidual` is `1` when the absolute
+capital residual is at least 1 bp of the target bank's pre-patch capital.
+`BankReconciliation_CrossedFailureThreshold` is `1` when the patch alone moves
+the target bank from no failure trigger to a failure trigger; the post-patch
+reason code uses the same reason-code mapping as `BankFailure_FirstNewReasonCode`.
 
 ## Household Liquidity Diagnostics
 

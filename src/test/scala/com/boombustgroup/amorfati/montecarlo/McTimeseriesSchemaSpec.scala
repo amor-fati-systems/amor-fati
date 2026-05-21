@@ -4,7 +4,7 @@ import com.boombustgroup.amorfati.FixedPointSpecSupport.*
 import com.boombustgroup.amorfati.agents.{Firm, Household, TechState}
 import com.boombustgroup.amorfati.config.{HousingConfig, SimParams}
 import com.boombustgroup.amorfati.engine.SimulationMonth.ExecutionMonth
-import com.boombustgroup.amorfati.engine.{BankFailureDiagnostics, World}
+import com.boombustgroup.amorfati.engine.{BankFailureDiagnostics, BankReconciliationDiagnostics, World}
 import com.boombustgroup.amorfati.engine.flows.FlowSimulation
 import com.boombustgroup.amorfati.engine.ledger.LedgerFinancialState
 import com.boombustgroup.amorfati.init.{InitRandomness, WorldInit}
@@ -164,6 +164,16 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     "BankFailure_InvariantViolation",
     "BankFailure_FirstNewReasonCode",
     "BankFailure_FirstNewBankId",
+    "BankReconciliation_TargetBankId",
+    "BankReconciliation_CapitalResidual",
+    "BankReconciliation_TargetCapitalBefore",
+    "BankReconciliation_TargetCapitalAfter",
+    "BankReconciliation_TargetCarBefore",
+    "BankReconciliation_TargetCarAfter",
+    "BankReconciliation_ResidualToTargetCapital",
+    "BankReconciliation_MaterialResidual",
+    "BankReconciliation_CrossedFailureThreshold",
+    "BankReconciliation_PostResidualReasonCode",
     "MinBankLCR",
     "MinBankNSFR",
     "AvgTermDepositFrac",
@@ -409,7 +419,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     MetricValue.fromRaw(Share.fraction(numerator, denominator).toLong)
 
   "McTimeseriesSchema" should "expose the stable schema contract" in {
-    McTimeseriesSchema.nCols shouldBe 355
+    McTimeseriesSchema.nCols shouldBe 365
     McTimeseriesSchema.colNames.toVector shouldBe expectedColNames
   }
 
@@ -653,6 +663,39 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     valueAt(row, "BankFailure_InvariantViolation") shouldBe MetricValue.Zero
     valueAt(row, "BankFailure_FirstNewReasonCode") shouldBe MetricValue.fromInt(3)
     valueAt(row, "BankFailure_FirstNewBankId") shouldBe MetricValue.fromInt(4)
+  }
+
+  it should "emit bank reconciliation residual impact diagnostics" in {
+    val diagnostics = BankReconciliationDiagnostics(
+      targetBankId = 2,
+      capitalResidual = PLN(-7),
+      targetCapitalBefore = PLN(100),
+      targetCapitalAfter = PLN(93),
+      targetCarBefore = Multiplier.decimal(12, 2),
+      targetCarAfter = Multiplier.decimal(9, 2),
+      residualToTargetCapital = Scalar.decimal(7, 2),
+      materialResidual = 1,
+      crossedFailureThreshold = 1,
+      postResidualReasonCode = 2,
+    )
+    val world       = init.world.copy(
+      flows = init.world.flows.copy(
+        sectorOutputs = Vector.fill(summon[SimParams].sectorDefs.length)(PLN.Zero),
+        bankReconciliation = diagnostics,
+      ),
+    )
+    val row         = computeRow(world)
+
+    valueAt(row, "BankReconciliation_TargetBankId") shouldBe MetricValue.fromInt(2)
+    valueAt(row, "BankReconciliation_CapitalResidual") shouldBe polandScale(PLN(-7))
+    valueAt(row, "BankReconciliation_TargetCapitalBefore") shouldBe polandScale(PLN(100))
+    valueAt(row, "BankReconciliation_TargetCapitalAfter") shouldBe polandScale(PLN(93))
+    valueAt(row, "BankReconciliation_TargetCarBefore") shouldBe MetricValue.fromRaw(Multiplier.decimal(12, 2).toLong)
+    valueAt(row, "BankReconciliation_TargetCarAfter") shouldBe MetricValue.fromRaw(Multiplier.decimal(9, 2).toLong)
+    valueAt(row, "BankReconciliation_ResidualToTargetCapital") shouldBe MetricValue.fromRaw(Scalar.decimal(7, 2).toLong)
+    valueAt(row, "BankReconciliation_MaterialResidual") shouldBe MetricValue.fromInt(1)
+    valueAt(row, "BankReconciliation_CrossedFailureThreshold") shouldBe MetricValue.fromInt(1)
+    valueAt(row, "BankReconciliation_PostResidualReasonCode") shouldBe MetricValue.fromInt(2)
   }
 
   it should "emit annualized deficit-to-GDP consistently with fiscal rules" in {
