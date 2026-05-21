@@ -144,6 +144,13 @@ object McTimeseriesSchema:
     def monthlyFlowToGdpRatio(flow: PLN): Scalar =
       if monthlyGdp > PLN.Zero then flow / monthlyGdp else Scalar.Zero
 
+    def flowToStockRate(flow: PLN, stock: PLN): Scalar =
+      if stock > PLN.Zero then flow / stock else Scalar.Zero
+
+    def grossDefaultFromLoss(loss: PLN, recovery: Share): PLN =
+      val lossRate = Share.One - recovery
+      if loss > PLN.Zero && lossRate > Share.Zero then loss / lossRate else PLN.Zero
+
     lazy val meanEmployedWage: PLN =
       var total = PLN.Zero
       var count = 0
@@ -563,6 +570,22 @@ object McTimeseriesSchema:
     ColumnDef.macroPln("BankCapital_WaterfallResidual", ctx => ctx.bankCapital.waterfallResidual),
     ColumnDef.macroPln("BankCapital_DepositBailInLoss", ctx => ctx.bankCapital.depositBailInLoss),
     ColumnDef("BankCapital_NewFailures", ctx => ctx.bankCapital.newFailures),
+    ColumnDef("BankCreditLoss_RealizedToOpeningCapital", ctx => ctx.flowToStockRate(ctx.bankCapital.realizedCreditLoss, ctx.bankCapital.openingCapital)),
+    ColumnDef(
+      "BankCreditLoss_FirmDefaultRate",
+      ctx => ctx.flowToStockRate(ctx.grossDefaultFromLoss(ctx.bankCapital.firmNplLoss, ctx.p.banking.loanRecovery), ctx.bankFirmLoans),
+    ),
+    ColumnDef("BankCreditLoss_FirmLossRate", ctx => ctx.flowToStockRate(ctx.bankCapital.firmNplLoss, ctx.bankFirmLoans)),
+    ColumnDef("BankCreditLoss_MortgageDefaultRate", ctx => ctx.flowToStockRate(ctx.world.real.housing.lastDefault, ctx.ledgerHouseholdMortgageStock)),
+    ColumnDef("BankCreditLoss_MortgageLossRate", ctx => ctx.flowToStockRate(ctx.bankCapital.mortgageNplLoss, ctx.ledgerHouseholdMortgageStock)),
+    ColumnDef("BankCreditLoss_ConsumerLoanDefaultRate", ctx => ctx.flowToStockRate(ctx.hhAgg.totalConsumerLoanDefault, ctx.consumerLoanStock)),
+    ColumnDef("BankCreditLoss_LiquidityBridgeChargeOffRate", ctx => ctx.flowToStockRate(ctx.hhAgg.totalLiquidityBridgeChargeOff, ctx.consumerLoanStock)),
+    ColumnDef("BankCreditLoss_ConsumerLossRate", ctx => ctx.flowToStockRate(ctx.bankCapital.consumerNplLoss, ctx.consumerLoanStock)),
+    ColumnDef(
+      "BankCreditLoss_CorpBondDefaultRate",
+      ctx => ctx.flowToStockRate(ctx.grossDefaultFromLoss(ctx.bankCapital.corpBondDefaultLoss, ctx.p.corpBond.recovery), ctx.bankAgg.corpBondHoldings),
+    ),
+    ColumnDef("BankCreditLoss_CorpBondLossRate", ctx => ctx.flowToStockRate(ctx.bankCapital.corpBondDefaultLoss, ctx.bankAgg.corpBondHoldings)),
   )
 
   private def realGroup: Vector[ColumnDef] =
@@ -953,10 +976,9 @@ object McTimeseriesSchema:
     val BankCapitalWaterfallResidual: Col              = lookup("BankCapital_WaterfallResidual")
     val BankCapitalDepositBailInLoss: Col              = lookup("BankCapital_DepositBailInLoss")
     val BankCapitalNewFailures: Col                    = lookup("BankCapital_NewFailures")
-
-    private val sectorAutoNames   = sectorColumns.map(_.autoColName)
-    private val sectorOutputNames = sectorColumns.map(_.outputColName)
-    private val sectorSigmaNames  = sectorColumns.map(_.sigmaColName)
+    private val sectorAutoNames                        = sectorColumns.map(_.autoColName)
+    private val sectorOutputNames                      = sectorColumns.map(_.outputColName)
+    private val sectorSigmaNames                       = sectorColumns.map(_.sigmaColName)
 
     private def sectorCol(names: Vector[String], sectorIndex: Int, kind: String): Col =
       names
