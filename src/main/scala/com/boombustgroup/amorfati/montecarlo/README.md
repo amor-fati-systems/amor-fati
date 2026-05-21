@@ -142,13 +142,15 @@ are positive when they reduce capital. `BankCapital_RetainedIncome` is positive
 when retained bank income raises capital. `BankCapital_RealizedCreditLoss` is
 the sum of firm-loan, mortgage, consumer-credit, and bank-held corporate-bond
 losses. `BankCapital_WaterfallResidual` reports
-the post-reconciliation exactness patch rather than a separate economic P&L
-term: positive values mean the patch added capital to one per-bank row, and
-negative values mean it removed capital.
+the remaining unexplained capital delta after the ordinary waterfall terms and
+the exactness patch. It should stay close to zero; non-zero values indicate a
+missing diagnostic term.
 
 `BankCapital_ReconciliationResidual` reports the exactness correction applied
-to one per-bank capital row after the normal bank update. It is a diagnostic
-for per-bank allocation artifacts, not a standalone economic loss channel.
+to one per-bank capital row after the normal bank update. Positive values mean
+the patch added capital, and negative values mean it removed capital. It is a
+diagnostic for per-bank allocation artifacts, not a standalone economic loss
+channel.
 `BankCapital_DepositBailInLoss` mirrors the existing `BailInLoss` column inside
 the bank-capital diagnostic block; it is a resolution-adjacent depositor haircut
 and is not included in the equity-capital waterfall identity.

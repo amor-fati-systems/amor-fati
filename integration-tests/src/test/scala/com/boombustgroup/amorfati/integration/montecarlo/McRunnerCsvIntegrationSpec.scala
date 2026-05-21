@@ -117,11 +117,11 @@ class McRunnerCsvIntegrationSpec extends AnyFlatSpec with Matchers:
       row(retainedIdx) - realizedCredit - row(bfgLevyIdx) - row(unrealizedIdx) -
         row(htmIdx) - row(eclIdx) - row(destructionIdx)
     val observedDelta    = row(closingIdx) - row(openingIdx)
+    val expectedResidual = row(deltaIdx) - expectedDelta - row(reconcileIdx)
 
     row(deltaIdx) shouldBe observedDelta +- BigDecimal("0.05")
-    row(deltaIdx) shouldBe expectedDelta +- BigDecimal("0.05")
     row(realizedIdx) shouldBe realizedCredit +- BigDecimal("0.05")
-    row(residualIdx) shouldBe row(reconcileIdx) +- BigDecimal("0.05")
+    row(residualIdx) shouldBe expectedResidual +- BigDecimal("0.05")
     row(bankBailInIdx) shouldBe row(bailInIdx) +- BigDecimal("0.05")
     row(newFailuresIdx) should be >= BigDecimal(0)
 

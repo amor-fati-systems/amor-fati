@@ -716,6 +716,11 @@ deltaCapital =
   - eclProvisionChange
   - capitalDestruction
 
+waterfallResidual =
+  observedDeltaCapital
+  - deltaCapital
+  - reconciliationResidual
+
 realizedCreditLoss =
   firmNplLoss
   + mortgageNplLoss
@@ -724,8 +729,9 @@ realizedCreditLoss =
 ```
 
 `BankCapital_ReconciliationResidual` is reported separately as an exactness
-correction to the per-bank allocation; `BankCapital_WaterfallResidual` mirrors
-that patch with positive values meaning capital was added to one per-bank row.
+correction to the per-bank allocation. `BankCapital_WaterfallResidual` is the
+remaining unexplained capital delta after that correction and should remain near
+zero unless a diagnostic term is missing.
 `BankCapital_DepositBailInLoss` is also reported for resolution analysis, but it
 is a depositor haircut rather than an equity-capital P&L term.
 

@@ -276,7 +276,7 @@ case class BankCapitalDiagnostics(
     htmRealizedLoss: PLN = PLN.Zero,        // HTM forced-reclassification realized loss
     eclProvisionChange: PLN = PLN.Zero,     // IFRS 9 provision increase, positive when capital is hit
     capitalDestruction: PLN = PLN.Zero,     // shareholder capital wiped when banks newly fail
-    reconciliationResidual: PLN = PLN.Zero, // exactness correction applied to per-bank capital rows
+    reconciliationResidual: PLN = PLN.Zero, // per-bank exactness patch; positive values add capital
     depositBailInLoss: PLN = PLN.Zero,      // depositor haircut from resolution, not equity-capital P&L
     newFailures: Int = 0,                   // banks newly marked failed during the month
 ):
@@ -289,11 +289,11 @@ case class BankCapitalDiagnostics(
     retainedIncome - realizedCreditLoss - bfgLevy - unrealizedBondLoss -
       htmRealizedLoss - eclProvisionChange - capitalDestruction
 
-  /** Positive when aggregate exactness adds capital to one per-bank row;
-    * negative when it removes capital.
+  /** Unexplained capital delta after ordinary waterfall terms and the per-bank
+    * exactness patch. Values away from zero indicate a missing diagnostic term.
     */
   def waterfallResidual: PLN =
-    reconciliationResidual
+    delta - expectedDelta - reconciliationResidual
 
 object BankCapitalDiagnostics:
   val zero: BankCapitalDiagnostics = BankCapitalDiagnostics()
