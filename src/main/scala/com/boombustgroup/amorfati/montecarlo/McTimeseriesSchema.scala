@@ -74,6 +74,7 @@ object McTimeseriesSchema:
       Banking.bankCorpBondHoldingsFromVector(ledgerFinancialState.banks.map(_.corpBond))
     lazy val bankAgg: Banking.Aggregate                                                             =
       Banking.aggregateFromBankStocks(banks, ledgerFinancialState.banks.map(LedgerFinancialState.projectBankFinancialStocks), bankCorpBondHoldings)
+    lazy val bankCapital: BankCapitalDiagnostics                                                    = world.flows.bankCapital
     lazy val ledgerBankStocksById: Map[BankId, Banking.BankFinancialStocks]                         =
       banks.zip(ledgerFinancialState.banks).map((bank, balances) => bank.id -> LedgerFinancialState.projectBankFinancialStocks(balances)).toMap
     lazy val aliveBankRows: Vector[(Banking.BankState, Banking.BankFinancialStocks)]                =
@@ -524,6 +525,25 @@ object McTimeseriesSchema:
     ColumnDef.macroPln("BfgLevyTotal", ctx => ctx.world.flows.bfgLevyTotal),
     ColumnDef.macroPln("BfgFundBalance", ctx => ctx.world.mechanisms.bfgFundBalance),
     ColumnDef.macroPln("BailInLoss", ctx => ctx.world.flows.bailInLoss),
+    // Bank-capital attribution: sector aggregate opening-to-closing waterfall.
+    ColumnDef.macroPln("BankCapital_Opening", ctx => ctx.bankCapital.openingCapital),
+    ColumnDef.macroPln("BankCapital_Closing", ctx => ctx.bankCapital.closingCapital),
+    ColumnDef.macroPln("BankCapital_Delta", ctx => ctx.bankCapital.delta),
+    ColumnDef.macroPln("BankCapital_RetainedIncome", ctx => ctx.bankCapital.retainedIncome),
+    ColumnDef.macroPln("BankCapital_RealizedCreditLoss", ctx => ctx.bankCapital.realizedCreditLoss),
+    ColumnDef.macroPln("BankCapital_FirmNplLoss", ctx => ctx.bankCapital.firmNplLoss),
+    ColumnDef.macroPln("BankCapital_MortgageNplLoss", ctx => ctx.bankCapital.mortgageNplLoss),
+    ColumnDef.macroPln("BankCapital_ConsumerNplLoss", ctx => ctx.bankCapital.consumerNplLoss),
+    ColumnDef.macroPln("BankCapital_CorpBondDefaultLoss", ctx => ctx.bankCapital.corpBondDefaultLoss),
+    ColumnDef.macroPln("BankCapital_BfgLevy", ctx => ctx.bankCapital.bfgLevy),
+    ColumnDef.macroPln("BankCapital_UnrealizedBondLoss", ctx => ctx.bankCapital.unrealizedBondLoss),
+    ColumnDef.macroPln("BankCapital_HtmRealizedLoss", ctx => ctx.bankCapital.htmRealizedLoss),
+    ColumnDef.macroPln("BankCapital_EclProvisionChange", ctx => ctx.bankCapital.eclProvisionChange),
+    ColumnDef.macroPln("BankCapital_CapitalDestruction", ctx => ctx.bankCapital.capitalDestruction),
+    ColumnDef.macroPln("BankCapital_ReconciliationResidual", ctx => ctx.bankCapital.reconciliationResidual),
+    ColumnDef.macroPln("BankCapital_WaterfallResidual", ctx => ctx.bankCapital.waterfallResidual),
+    ColumnDef.macroPln("BankCapital_DepositBailInLoss", ctx => ctx.bankCapital.depositBailInLoss),
+    ColumnDef("BankCapital_NewFailures", ctx => ctx.bankCapital.newFailures),
   )
 
   private def realGroup: Vector[ColumnDef] =
@@ -879,6 +899,24 @@ object McTimeseriesSchema:
     val StandingFacilityNet: Col                      = lookup("StandingFacilityNet")
     val DepositFacilityUsage: Col                     = lookup("DepositFacilityUsage")
     val InterbankInterestNet: Col                     = lookup("InterbankInterestNet")
+    val BankCapitalOpening: Col                       = lookup("BankCapital_Opening")
+    val BankCapitalClosing: Col                       = lookup("BankCapital_Closing")
+    val BankCapitalDelta: Col                         = lookup("BankCapital_Delta")
+    val BankCapitalRetainedIncome: Col                = lookup("BankCapital_RetainedIncome")
+    val BankCapitalRealizedCreditLoss: Col            = lookup("BankCapital_RealizedCreditLoss")
+    val BankCapitalFirmNplLoss: Col                   = lookup("BankCapital_FirmNplLoss")
+    val BankCapitalMortgageNplLoss: Col               = lookup("BankCapital_MortgageNplLoss")
+    val BankCapitalConsumerNplLoss: Col               = lookup("BankCapital_ConsumerNplLoss")
+    val BankCapitalCorpBondDefaultLoss: Col           = lookup("BankCapital_CorpBondDefaultLoss")
+    val BankCapitalBfgLevy: Col                       = lookup("BankCapital_BfgLevy")
+    val BankCapitalUnrealizedBondLoss: Col            = lookup("BankCapital_UnrealizedBondLoss")
+    val BankCapitalHtmRealizedLoss: Col               = lookup("BankCapital_HtmRealizedLoss")
+    val BankCapitalEclProvisionChange: Col            = lookup("BankCapital_EclProvisionChange")
+    val BankCapitalCapitalDestruction: Col            = lookup("BankCapital_CapitalDestruction")
+    val BankCapitalReconciliationResidual: Col        = lookup("BankCapital_ReconciliationResidual")
+    val BankCapitalWaterfallResidual: Col             = lookup("BankCapital_WaterfallResidual")
+    val BankCapitalDepositBailInLoss: Col             = lookup("BankCapital_DepositBailInLoss")
+    val BankCapitalNewFailures: Col                   = lookup("BankCapital_NewFailures")
 
     private val sectorAutoNames   = sectorColumns.map(_.autoColName)
     private val sectorOutputNames = sectorColumns.map(_.outputColName)

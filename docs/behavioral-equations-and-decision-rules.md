@@ -704,6 +704,37 @@ CAR_b = capital_b / RWA_b
 When the denominator is effectively zero, the implementation returns a safe
 ratio floor.
 
+The monthly bank-capital diagnostic waterfall is:
+
+```text
+deltaCapital =
+  retainedIncome
+  - realizedCreditLoss
+  - bfgLevy
+  - unrealizedBondLoss
+  - htmRealizedLoss
+  - eclProvisionChange
+  - capitalDestruction
+
+waterfallResidual =
+  observedDeltaCapital
+  - deltaCapital
+  - reconciliationResidual
+
+realizedCreditLoss =
+  firmNplLoss
+  + mortgageNplLoss
+  + consumerNplLoss
+  + bankHeldCorporateBondDefaultLoss
+```
+
+`BankCapital_ReconciliationResidual` is reported separately as an exactness
+correction to the per-bank allocation. `BankCapital_WaterfallResidual` is the
+remaining unexplained capital delta after that correction and should remain near
+zero unless a diagnostic term is missing.
+`BankCapital_DepositBailInLoss` is also reported for resolution analysis, but it
+is a depositor haircut rather than an equity-capital P&L term.
+
 Liquidity ratios are:
 
 ```text
