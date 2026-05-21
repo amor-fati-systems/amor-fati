@@ -219,6 +219,13 @@ for empirical analysis. The internal `gdpRatio` scaling factor is not emitted
 as a CSV column; it remains a model-computation boundary. Agent-level prices,
 wages, indexes, rates, shares, and counts remain in their native units.
 
+The seed time-series files also include always-on aggregate diagnostic blocks
+for household liquidity, firm automation/adoption, and bank capital. The bank
+capital block uses `BankCapital_*` columns to reconcile opening capital,
+retained income, realized credit losses, provisions, valuation losses,
+failure-related capital destruction, reconciliation residuals, and closing
+capital. No extra flag is needed for these aggregate diagnostics.
+
 Firm-level micro snapshots are optional and off by default. Enable them with
 `--firm-snapshots terminal`, `--firm-snapshots every:12`, or
 `--firm-snapshots months:1,6,12`. When enabled, the runner also writes:

@@ -255,36 +255,77 @@ object PipelineState:
 
   def zero(using p: SimParams): PipelineState = zero(p.sectorDefs.length)
 
+/** Monthly banking-sector capital attribution used by Monte Carlo diagnostics.
+  *
+  * Amounts are aggregate sector PLN. Loss components are positive when they
+  * reduce bank capital; retained income is positive when it increases capital.
+  * Deposit bail-in is carried here as a resolution-adjacent diagnostic, but it
+  * is not part of the bank-capital identity because it haircuts deposits rather
+  * than equity capital.
+  */
+case class BankCapitalDiagnostics(
+    openingCapital: PLN = PLN.Zero,         // aggregate bank capital at the start of the month
+    closingCapital: PLN = PLN.Zero,         // aggregate bank capital after monthly banking settlement
+    retainedIncome: PLN = PLN.Zero,         // retained ordinary bank income after profit-retention rule
+    firmNplLoss: PLN = PLN.Zero,            // realized firm-loan credit loss net of recovery
+    mortgageNplLoss: PLN = PLN.Zero,        // realized mortgage credit loss net of recovery
+    consumerNplLoss: PLN = PLN.Zero,        // realized consumer-credit loss net of recovery
+    corpBondDefaultLoss: PLN = PLN.Zero,    // bank-held corporate-bond default loss
+    bfgLevy: PLN = PLN.Zero,                // monthly BFG levy paid by active banks
+    unrealizedBondLoss: PLN = PLN.Zero,     // AFS government-bond mark-to-market capital hit
+    htmRealizedLoss: PLN = PLN.Zero,        // HTM forced-reclassification realized loss
+    eclProvisionChange: PLN = PLN.Zero,     // IFRS 9 provision increase, positive when capital is hit
+    capitalDestruction: PLN = PLN.Zero,     // shareholder capital wiped when banks newly fail
+    reconciliationResidual: PLN = PLN.Zero, // exactness correction applied to per-bank capital rows
+    depositBailInLoss: PLN = PLN.Zero,      // depositor haircut from resolution, not equity-capital P&L
+    newFailures: Int = 0,                   // banks newly marked failed during the month
+):
+  def delta: PLN = closingCapital - openingCapital
+
+  def realizedCreditLoss: PLN =
+    firmNplLoss + mortgageNplLoss + consumerNplLoss + corpBondDefaultLoss
+
+  def expectedDelta: PLN =
+    retainedIncome - realizedCreditLoss - bfgLevy - unrealizedBondLoss -
+      htmRealizedLoss - eclProvisionChange - capitalDestruction
+
+  def waterfallResidual: PLN =
+    delta - expectedDelta
+
+object BankCapitalDiagnostics:
+  val zero: BankCapitalDiagnostics = BankCapitalDiagnostics()
+
 /** Single-step derived flow outputs — recomputed each step, zero at init. Feed
   * into SFC identities and output columns.
   */
 case class FlowState(
-    monthlyGdpProxy: PLN = PLN.Zero,            // cached monthly GDP proxy for diagnostics / output ratios
-    sectorOutputs: Vector[PLN] = Vector.empty,  // nominal monthly output by schema sector
-    ioFlows: PLN = PLN.Zero,                    // I-O intermediate payments between sectors
-    fdiProfitShifting: PLN = PLN.Zero,          // intangible imports booked abroad (profit shifting)
-    fdiRepatriation: PLN = PLN.Zero,            // dividend repatriation by foreign-owned firms
-    fdiCitLoss: PLN = PLN.Zero,                 // CIT lost to profit shifting
-    diasporaRemittanceInflow: PLN = PLN.Zero,   // diaspora remittance inflow
-    tourismExport: PLN = PLN.Zero,              // inbound tourism services export
-    tourismImport: PLN = PLN.Zero,              // outbound tourism services import
-    aggInventoryStock: PLN = PLN.Zero,          // aggregate firm inventory stock
-    aggInventoryChange: PLN = PLN.Zero,         // ΔInventories (enters GDP)
-    aggEnergyCost: PLN = PLN.Zero,              // aggregate energy + CO₂ costs
-    automationTechCapex: PLN = PLN.Zero,        // technology CAPEX for automation/hybrid upgrades
-    automationTechImports: PLN = PLN.Zero,      // import content of technology CAPEX
-    automationTechLoans: PLN = PLN.Zero,        // bank-credit component of technology financing
-    automationUpgradeFailures: Int = 0,         // implementation failures causing firm bankruptcy
-    automationAiDebtTrap: Int = 0,              // AI debt-trap bankruptcies
-    automationNewFullAi: Int = 0,               // new full-AI adopters
-    automationNewHybrid: Int = 0,               // new hybrid adopters
-    firmBirths: Int = 0,                        // new firms (recycled + net new)
-    firmDeaths: Int = 0,                        // firms bankrupt this step
-    netFirmBirths: Int = 0,                     // net new firms appended to vector
-    taxEvasionLoss: PLN = PLN.Zero,             // tax lost to 4-channel evasion (CIT+VAT+PIT+excise)
-    realizedTaxShadowShare: Share = Share.Zero, // current-period realized aggregate tax-side shadow share
-    bailInLoss: PLN = PLN.Zero,                 // bail-in capital loss on bank creditors
-    bfgLevyTotal: PLN = PLN.Zero,               // BFG resolution levy from all banks
+    monthlyGdpProxy: PLN = PLN.Zero,                                  // cached monthly GDP proxy for diagnostics / output ratios
+    sectorOutputs: Vector[PLN] = Vector.empty,                        // nominal monthly output by schema sector
+    ioFlows: PLN = PLN.Zero,                                          // I-O intermediate payments between sectors
+    fdiProfitShifting: PLN = PLN.Zero,                                // intangible imports booked abroad (profit shifting)
+    fdiRepatriation: PLN = PLN.Zero,                                  // dividend repatriation by foreign-owned firms
+    fdiCitLoss: PLN = PLN.Zero,                                       // CIT lost to profit shifting
+    diasporaRemittanceInflow: PLN = PLN.Zero,                         // diaspora remittance inflow
+    tourismExport: PLN = PLN.Zero,                                    // inbound tourism services export
+    tourismImport: PLN = PLN.Zero,                                    // outbound tourism services import
+    aggInventoryStock: PLN = PLN.Zero,                                // aggregate firm inventory stock
+    aggInventoryChange: PLN = PLN.Zero,                               // ΔInventories (enters GDP)
+    aggEnergyCost: PLN = PLN.Zero,                                    // aggregate energy + CO₂ costs
+    automationTechCapex: PLN = PLN.Zero,                              // technology CAPEX for automation/hybrid upgrades
+    automationTechImports: PLN = PLN.Zero,                            // import content of technology CAPEX
+    automationTechLoans: PLN = PLN.Zero,                              // bank-credit component of technology financing
+    automationUpgradeFailures: Int = 0,                               // implementation failures causing firm bankruptcy
+    automationAiDebtTrap: Int = 0,                                    // AI debt-trap bankruptcies
+    automationNewFullAi: Int = 0,                                     // new full-AI adopters
+    automationNewHybrid: Int = 0,                                     // new hybrid adopters
+    firmBirths: Int = 0,                                              // new firms (recycled + net new)
+    firmDeaths: Int = 0,                                              // firms bankrupt this step
+    netFirmBirths: Int = 0,                                           // net new firms appended to vector
+    taxEvasionLoss: PLN = PLN.Zero,                                   // tax lost to 4-channel evasion (CIT+VAT+PIT+excise)
+    realizedTaxShadowShare: Share = Share.Zero,                       // current-period realized aggregate tax-side shadow share
+    bailInLoss: PLN = PLN.Zero,                                       // bail-in deposit haircut imposed on bank creditors
+    bfgLevyTotal: PLN = PLN.Zero,                                     // BFG resolution levy from all banks
+    bankCapital: BankCapitalDiagnostics = BankCapitalDiagnostics.zero, // monthly bank-capital waterfall diagnostics
 )
 object FlowState:
   val zero: FlowState = FlowState()

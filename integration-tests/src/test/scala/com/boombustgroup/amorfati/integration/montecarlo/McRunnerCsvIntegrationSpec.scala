@@ -86,6 +86,44 @@ class McRunnerCsvIntegrationSpec extends AnyFlatSpec with Matchers:
   private def parseCsvRow(line: String): Vector[BigDecimal] =
     line.split(';').toVector.map(value => BigDecimal(value.replace(',', '.')))
 
+  private def columnIndex(header: Vector[String], name: String): Int =
+    val idx = header.indexOf(name)
+    idx should be >= 0
+    idx
+
+  private def assertBankCapitalWaterfall(header: Vector[String], row: Vector[BigDecimal]): Unit =
+    val openingIdx       = columnIndex(header, "BankCapital_Opening")
+    val closingIdx       = columnIndex(header, "BankCapital_Closing")
+    val deltaIdx         = columnIndex(header, "BankCapital_Delta")
+    val retainedIdx      = columnIndex(header, "BankCapital_RetainedIncome")
+    val realizedIdx      = columnIndex(header, "BankCapital_RealizedCreditLoss")
+    val firmLossIdx      = columnIndex(header, "BankCapital_FirmNplLoss")
+    val mortgageLossIdx  = columnIndex(header, "BankCapital_MortgageNplLoss")
+    val consumerLossIdx  = columnIndex(header, "BankCapital_ConsumerNplLoss")
+    val corpBondLossIdx  = columnIndex(header, "BankCapital_CorpBondDefaultLoss")
+    val bfgLevyIdx       = columnIndex(header, "BankCapital_BfgLevy")
+    val unrealizedIdx    = columnIndex(header, "BankCapital_UnrealizedBondLoss")
+    val htmIdx           = columnIndex(header, "BankCapital_HtmRealizedLoss")
+    val eclIdx           = columnIndex(header, "BankCapital_EclProvisionChange")
+    val destructionIdx   = columnIndex(header, "BankCapital_CapitalDestruction")
+    val residualIdx      = columnIndex(header, "BankCapital_WaterfallResidual")
+    val bailInIdx        = columnIndex(header, "BailInLoss")
+    val bankBailInIdx    = columnIndex(header, "BankCapital_DepositBailInLoss")
+    val newFailuresIdx   = columnIndex(header, "BankCapital_NewFailures")
+    val realizedCredit   =
+      row(firmLossIdx) + row(mortgageLossIdx) + row(consumerLossIdx) + row(corpBondLossIdx)
+    val expectedDelta    =
+      row(retainedIdx) - realizedCredit - row(bfgLevyIdx) - row(unrealizedIdx) -
+        row(htmIdx) - row(eclIdx) - row(destructionIdx)
+    val observedDelta    = row(closingIdx) - row(openingIdx)
+    val expectedResidual = row(deltaIdx) - expectedDelta
+
+    row(deltaIdx) shouldBe observedDelta +- BigDecimal("0.05")
+    row(realizedIdx) shouldBe realizedCredit +- BigDecimal("0.05")
+    row(residualIdx) shouldBe expectedResidual +- BigDecimal("0.05")
+    row(bankBailInIdx) shouldBe row(bailInIdx) +- BigDecimal("0.05")
+    row(newFailuresIdx) should be >= BigDecimal(0)
+
   private def expectedRun(seed: Long): RunResult =
     McRunner.runSingle(seed, DurationMonths).fold(err => fail(err.toString), identity)
 
@@ -179,6 +217,7 @@ class McRunnerCsvIntegrationSpec extends AnyFlatSpec with Matchers:
         val path   = outputDir.resolve(seedFileName(seed, rc))
         val lines  = readLines(path)
         val result = expectedRuns(seed)
+        val header = lines.head.split(';').toVector
 
         lines.head.shouldBe(McTimeseriesSchema.colNames.mkString(";"))
         lines.length.shouldBe(DurationMonths + 1)
@@ -194,6 +233,9 @@ class McRunnerCsvIntegrationSpec extends AnyFlatSpec with Matchers:
             withClue(s"seed=$seed month=${month.toInt} col=$col: ") {
               actual(col).shouldBe(decimal(expected(col)) +- BigDecimal("1e-6"))
             }
+          withClue(s"seed=$seed month=${month.toInt} bank capital waterfall: ") {
+            assertBankCapitalWaterfall(header, actual)
+          }
 
       val hhLines = readLines(outputDir.resolve(s"${filePrefix(rc)}_hh.csv"))
       hhLines.head.shouldBe(ExpectedHhHeader)

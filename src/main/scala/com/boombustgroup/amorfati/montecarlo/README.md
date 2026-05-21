@@ -109,6 +109,49 @@ adoption means `Hybrid` or `Automated`. Size cohorts use `McFirmSizeClass`.
 Cash and debt quartiles sort living firms by closing ledger cash or firm-loan
 principal respectively; `Q1` is the lowest cash/debt quartile.
 
+## Bank Capital Diagnostics
+
+The seed timeseries includes aggregate banking-sector capital waterfall columns
+without a separate CLI flag:
+
+```text
+BankCapital_Opening
+BankCapital_Closing
+BankCapital_Delta
+BankCapital_RetainedIncome
+BankCapital_RealizedCreditLoss
+BankCapital_FirmNplLoss
+BankCapital_MortgageNplLoss
+BankCapital_ConsumerNplLoss
+BankCapital_CorpBondDefaultLoss
+BankCapital_BfgLevy
+BankCapital_UnrealizedBondLoss
+BankCapital_HtmRealizedLoss
+BankCapital_EclProvisionChange
+BankCapital_CapitalDestruction
+BankCapital_ReconciliationResidual
+BankCapital_WaterfallResidual
+BankCapital_DepositBailInLoss
+BankCapital_NewFailures
+```
+
+These columns follow the same pattern as household and firm aggregate
+diagnostics: they are cheap monthly sector metrics in each seed CSV, while
+heavier per-agent drilldowns remain separate optional outputs. Loss components
+are positive when they reduce capital. `BankCapital_RetainedIncome` is positive
+when retained bank income raises capital. `BankCapital_RealizedCreditLoss` is
+the sum of firm-loan, mortgage, consumer-credit, and bank-held corporate-bond
+losses. `BankCapital_WaterfallResidual` reconciles
+`BankCapital_Delta` against retained income minus the reported capital-loss
+components.
+
+`BankCapital_ReconciliationResidual` reports the exactness correction applied
+to one per-bank capital row after the normal bank update. It is a diagnostic
+for per-bank allocation artifacts, not a standalone economic loss channel.
+`BankCapital_DepositBailInLoss` mirrors the existing `BailInLoss` column inside
+the bank-capital diagnostic block; it is a resolution-adjacent depositor haircut
+and is not included in the equity-capital waterfall identity.
+
 ## Household Liquidity Diagnostics
 
 The timeseries schema and terminal `_hh.csv` summary include generic household
