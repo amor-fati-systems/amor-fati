@@ -57,6 +57,19 @@ class BankBalanceSheetBenchmarkExportSpec extends AnyFlatSpec with Matchers:
     evaluate(ObservedValue.Finite(BigDecimal("0.25")), exploratory) shouldBe Status.Warn
   }
 
+  it should "summarize a metric with the worst per-seed status instead of the mean status" in {
+    val target = Targets.find(_.id == "DepositSplitCoverage").get
+    val rows   = Vector(
+      SeedMetric("bank-spec", 1L, target, ObservedValue.Finite(BigDecimal("0.00")), Status.Fail),
+      SeedMetric("bank-spec", 2L, target, ObservedValue.Finite(BigDecimal("2.00")), Status.Fail),
+    )
+
+    val summary = summarize(Config(runId = "bank-spec", seeds = 2), rows).find(_.target.id == "DepositSplitCoverage").get
+
+    summary.mean shouldBe ObservedValue.Finite(BigDecimal("1.00"))
+    summary.status shouldBe Status.Fail
+  }
+
   it should "render seed, summary, target, bank-row and report artifacts" in {
     val target  = Targets.find(_.id == "ReserveToDeposits").get
     val rows    = Vector(

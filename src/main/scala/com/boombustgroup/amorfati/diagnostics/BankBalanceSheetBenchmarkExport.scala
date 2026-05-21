@@ -141,6 +141,11 @@ object BankBalanceSheetBenchmarkExport:
         case ObservedValue.NotAvailable     => BigDecimal(0)
 
     private def bankRows(): Vector[BankRow] =
+      if init.banks.size != bankBalances.size then
+        val bankIds = init.banks.map(_.id.toInt).mkString("[", ",", "]")
+        throw new IllegalStateException(
+          s"Bank balance-sheet benchmark requires aligned bank and ledger rows, got banks=${init.banks.size} bankBalances=${bankBalances.size} bankIds=$bankIds",
+        )
       init.banks
         .zip(bankBalances)
         .map: (bank, balances) =>
@@ -519,6 +524,9 @@ object BankBalanceSheetBenchmarkExport:
         if metricRows.exists(_.value == ObservedValue.PositiveInfinity) then ObservedValue.PositiveInfinity
         else if finite.nonEmpty then ObservedValue.Finite(finite.sum / BigDecimal(finite.size))
         else ObservedValue.NotAvailable
+      val status     =
+        if metricRows.nonEmpty then worstStatus(metricRows.map(row => worstStatus(Vector(row.status, evaluate(row.value, target)))))
+        else evaluate(mean, target)
       SummaryMetric(
         runId = config.runId,
         seeds = config.seeds,
@@ -526,7 +534,7 @@ object BankBalanceSheetBenchmarkExport:
         mean = mean,
         min = if finite.nonEmpty then Some(finite.min) else None,
         max = if finite.nonEmpty then Some(finite.max) else None,
-        status = evaluate(mean, target),
+        status = status,
       )
 
   private def computeSeed(config: Config, seed: Long, init: WorldInit.InitResult)(using SimParams): (Vector[SeedMetric], Vector[BankRow]) =
@@ -723,6 +731,16 @@ object BankBalanceSheetBenchmarkExport:
 
   private def finiteMaximum(values: Vector[BigDecimal]): ObservedValue =
     if values.nonEmpty then ObservedValue.Finite(values.max) else ObservedValue.NotAvailable
+
+  private def worstStatus(statuses: Vector[Status]): Status =
+    statuses.maxBy(statusSeverity)
+
+  private def statusSeverity(status: Status): Int =
+    status match
+      case Status.Fail => 3
+      case Status.Warn => 2
+      case Status.Info => 1
+      case Status.Pass => 0
 
   private def bankAssets(rows: Vector[LedgerFinancialState.BankBalances]): PLN =
     rows.map(singleBankAssets).sumPln
