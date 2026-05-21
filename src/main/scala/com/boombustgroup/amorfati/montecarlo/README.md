@@ -141,9 +141,10 @@ heavier per-agent drilldowns remain separate optional outputs. Loss components
 are positive when they reduce capital. `BankCapital_RetainedIncome` is positive
 when retained bank income raises capital. `BankCapital_RealizedCreditLoss` is
 the sum of firm-loan, mortgage, consumer-credit, and bank-held corporate-bond
-losses. `BankCapital_WaterfallResidual` reconciles
-`BankCapital_Delta` against retained income minus the reported capital-loss
-components.
+losses. `BankCapital_WaterfallResidual` reports
+the post-reconciliation exactness patch rather than a separate economic P&L
+term: positive values mean the patch added capital to one per-bank row, and
+negative values mean it removed capital.
 
 `BankCapital_ReconciliationResidual` reports the exactness correction applied
 to one per-bank capital row after the normal bank update. It is a diagnostic

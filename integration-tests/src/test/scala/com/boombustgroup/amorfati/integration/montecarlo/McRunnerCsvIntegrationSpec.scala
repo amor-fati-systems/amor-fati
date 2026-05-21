@@ -106,6 +106,7 @@ class McRunnerCsvIntegrationSpec extends AnyFlatSpec with Matchers:
     val htmIdx           = columnIndex(header, "BankCapital_HtmRealizedLoss")
     val eclIdx           = columnIndex(header, "BankCapital_EclProvisionChange")
     val destructionIdx   = columnIndex(header, "BankCapital_CapitalDestruction")
+    val reconcileIdx     = columnIndex(header, "BankCapital_ReconciliationResidual")
     val residualIdx      = columnIndex(header, "BankCapital_WaterfallResidual")
     val bailInIdx        = columnIndex(header, "BailInLoss")
     val bankBailInIdx    = columnIndex(header, "BankCapital_DepositBailInLoss")
@@ -116,11 +117,11 @@ class McRunnerCsvIntegrationSpec extends AnyFlatSpec with Matchers:
       row(retainedIdx) - realizedCredit - row(bfgLevyIdx) - row(unrealizedIdx) -
         row(htmIdx) - row(eclIdx) - row(destructionIdx)
     val observedDelta    = row(closingIdx) - row(openingIdx)
-    val expectedResidual = row(deltaIdx) - expectedDelta
 
     row(deltaIdx) shouldBe observedDelta +- BigDecimal("0.05")
+    row(deltaIdx) shouldBe expectedDelta +- BigDecimal("0.05")
     row(realizedIdx) shouldBe realizedCredit +- BigDecimal("0.05")
-    row(residualIdx) shouldBe expectedResidual +- BigDecimal("0.05")
+    row(residualIdx) shouldBe row(reconcileIdx) +- BigDecimal("0.05")
     row(bankBailInIdx) shouldBe row(bailInIdx) +- BigDecimal("0.05")
     row(newFailuresIdx) should be >= BigDecimal(0)
 

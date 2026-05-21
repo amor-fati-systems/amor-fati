@@ -289,8 +289,11 @@ case class BankCapitalDiagnostics(
     retainedIncome - realizedCreditLoss - bfgLevy - unrealizedBondLoss -
       htmRealizedLoss - eclProvisionChange - capitalDestruction
 
+  /** Positive when aggregate exactness adds capital to one per-bank row;
+    * negative when it removes capital.
+    */
   def waterfallResidual: PLN =
-    delta - expectedDelta
+    reconciliationResidual
 
 object BankCapitalDiagnostics:
   val zero: BankCapitalDiagnostics = BankCapitalDiagnostics()

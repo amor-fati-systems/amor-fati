@@ -724,9 +724,10 @@ realizedCreditLoss =
 ```
 
 `BankCapital_ReconciliationResidual` is reported separately as an exactness
-correction to the per-bank allocation. `BankCapital_DepositBailInLoss` is also
-reported for resolution analysis, but it is a depositor haircut rather than an
-equity-capital P&L term.
+correction to the per-bank allocation; `BankCapital_WaterfallResidual` mirrors
+that patch with positive values meaning capital was added to one per-bank row.
+`BankCapital_DepositBailInLoss` is also reported for resolution analysis, but it
+is a depositor haircut rather than an equity-capital P&L term.
 
 Liquidity ratios are:
 
