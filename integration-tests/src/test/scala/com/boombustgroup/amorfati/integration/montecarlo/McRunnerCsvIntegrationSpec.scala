@@ -126,6 +126,16 @@ class McRunnerCsvIntegrationSpec extends AnyFlatSpec with Matchers:
     val reconMaterialIdx = columnIndex(header, "BankReconciliation_MaterialResidual")
     val reconCrossedIdx  = columnIndex(header, "BankReconciliation_CrossedFailureThreshold")
     val reconReasonIdx   = columnIndex(header, "BankReconciliation_PostResidualReasonCode")
+    val realizedCapitalIdx = columnIndex(header, "BankCreditLoss_RealizedToOpeningCapital")
+    val firmDefaultRateIdx = columnIndex(header, "BankCreditLoss_FirmDefaultRate")
+    val firmLossRateIdx = columnIndex(header, "BankCreditLoss_FirmLossRate")
+    val mortgageDefaultRateIdx = columnIndex(header, "BankCreditLoss_MortgageDefaultRate")
+    val mortgageLossRateIdx = columnIndex(header, "BankCreditLoss_MortgageLossRate")
+    val consumerDefaultRateIdx = columnIndex(header, "BankCreditLoss_ConsumerLoanDefaultRate")
+    val bridgeChargeOffRateIdx = columnIndex(header, "BankCreditLoss_LiquidityBridgeChargeOffRate")
+    val consumerLossRateIdx = columnIndex(header, "BankCreditLoss_ConsumerLossRate")
+    val corpBondDefaultRateIdx = columnIndex(header, "BankCreditLoss_CorpBondDefaultRate")
+    val corpBondLossRateIdx = columnIndex(header, "BankCreditLoss_CorpBondLossRate")
     val realizedCredit   =
       row(firmLossIdx) + row(mortgageLossIdx) + row(consumerLossIdx) + row(corpBondLossIdx)
     val expectedDelta    =
@@ -153,6 +163,18 @@ class McRunnerCsvIntegrationSpec extends AnyFlatSpec with Matchers:
     row(reconCrossedIdx) should (be >= BigDecimal(0) and be <= BigDecimal(1))
     row(reconReasonIdx) should (be >= BigDecimal(0) and be <= BigDecimal(5))
     if row(reconCrossedIdx) == BigDecimal(1) then row(reconReasonIdx) should be > BigDecimal(0)
+    Vector(
+      realizedCapitalIdx,
+      firmDefaultRateIdx,
+      firmLossRateIdx,
+      mortgageDefaultRateIdx,
+      mortgageLossRateIdx,
+      consumerDefaultRateIdx,
+      bridgeChargeOffRateIdx,
+      consumerLossRateIdx,
+      corpBondDefaultRateIdx,
+      corpBondLossRateIdx,
+    ).foreach(idx => row(idx) should be >= BigDecimal(0))
 
   private def expectedRun(seed: Long): RunResult =
     McRunner.runSingle(seed, DurationMonths).fold(err => fail(err.toString), identity)

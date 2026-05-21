@@ -66,7 +66,7 @@ runtime ledger flows and validates SFC identities.
 | Labor, wages, demographics, social funds | `engine/economics/LaborEconomics.scala`, `agents/SocialSecurity.scala`, `agents/EarmarkedFunds.scala` | `MarketWage`, `Unemployment`, `WorkingAgePop`, `NRetirees`, `MonthlyRetirements`, `ZusContributions`, `ZusPensionPayments`, `NfzContributions`, `NfzSpending`, `PpkContributions`, `FpContributions`, `FgspSpending` |
 | Demand allocation and fiscal constraint | `engine/economics/DemandEconomics.scala`, `engine/markets/FiscalRules.scala`, `engine/markets/FiscalBudget.scala` | `GovCurrentSpend`, `GovCapitalSpendDomestic`, `FiscalRuleBinding`, `GovSpendingCutRatio`, `DebtToGdp`, `DeficitToGdp`, `PublicCapitalStock` |
 | Firm production, investment, technology, financing, default, entry | `agents/Firm.scala`, `engine/economics/FirmEconomics.scala`, `engine/mechanisms/FirmEntry.scala` | `TotalAdoption`, `AutoRatio`, `HybridRatio`, `Automation_TechCapex`, `Automation_TechImports`, `Automation_TechLoans`, `Automation_UpgradeFailures`, `Automation_AiDebtTrap`, `Automation_NewFullAi`, `Automation_NewHybrid`, `Adoption_MicroShare`, `Adoption_SmallShare`, `Adoption_MediumShare`, `Adoption_LargeShare`, `Adoption_CashQ1`-`Q4`, `Adoption_DebtQ1`-`Q4`, sector `*_Auto`, sector `*_Sigma`, `GrossInvestment`, `AggCapitalStock`, `AggInventoryStock`, `InventoryChange`, `AggEnergyCost`, `GreenInvestment`, `FirmBirths`, `FirmDeaths`, `NetEntry`, `LivingFirmCount`, `CorpBondIssuance`, `EquityIssuanceTotal` |
-| Banking and monetary plumbing | `agents/Banking.scala`, `engine/economics/BankingEconomics.scala`, `agents/EclStaging.scala`, `agents/DepositMobility.scala`, `agents/InterbankContagion.scala` | `NPL`, `MinBankCAR`, `MaxBankNPL`, `MinBankLCR`, `MinBankNSFR`, `BankFailures`, `BankFailure_*`, `BankReconciliation_*`, `InterbankRate`, `WIBOR_1M`, `WIBOR_3M`, `WIBOR_6M`, `BfgLevyTotal`, `BailInLoss`, `M0`, `M1`, `M2`, `M3`, `CreditMultiplier` |
+| Banking and monetary plumbing | `agents/Banking.scala`, `engine/economics/BankingEconomics.scala`, `agents/EclStaging.scala`, `agents/DepositMobility.scala`, `agents/InterbankContagion.scala` | `NPL`, `MinBankCAR`, `MaxBankNPL`, `MinBankLCR`, `MinBankNSFR`, `BankFailures`, `BankFailure_*`, `BankCreditLoss_*`, `BankReconciliation_*`, `InterbankRate`, `WIBOR_1M`, `WIBOR_3M`, `WIBOR_6M`, `BfgLevyTotal`, `BailInLoss`, `M0`, `M1`, `M2`, `M3`, `CreditMultiplier` |
 | Fiscal, NBP, bond market, external sector | `agents/Nbp.scala`, `engine/markets/OpenEconomy.scala`, `engine/economics/OpenEconEconomics.scala`, `engine/markets/CorporateBondMarket.scala`, `engine/markets/BondAuction.scala` | `RefRate`, `BondYield`, `WeightedCoupon`, `BondsOutstanding`, `NbpBondHoldings`, `ForeignBondHoldings`, `QeActive`, `FxReserves`, `FxInterventionAmt`, `CurrentAccount`, `CapitalAccount`, `TradeBalance_OE`, `Exports_OE`, `TotalImports_OE`, `NFA`, `FDI` |
 | Insurance, NBFI, quasi-fiscal, local government | `agents/Insurance.scala`, `agents/Nbfi.scala`, `agents/QuasiFiscal.scala`, `agents/Jst.scala` | `InsLifeReserves`, `InsNonLifeReserves`, `InsLifePremium`, `InsNonLifePremium`, `InsLifeClaims`, `InsNonLifeClaims`, `NbfiTfiAum`, `NbfiOrigination`, `NbfiDefaults`, `NbfiBankTightness`, `QfBondsOutstanding`, `QfIssuance`, `QfLoanPortfolio`, `Esa2010DebtToGdp`, `JstRevenue`, `JstSpending`, `JstDebt`, `JstDeposits` |
 
@@ -743,6 +743,13 @@ post-patch reason code uses the same `0..5` reason-code mapping as
 `BankFailure_FirstNewReasonCode`.
 `BankCapital_DepositBailInLoss` is also reported for resolution analysis, but it
 is a depositor haircut rather than an equity-capital P&L term.
+
+Realized credit-loss rates are emitted as `BankCreditLoss_*`. They use closing
+exposure stocks as denominators, so the columns can be joined directly with
+monthly `BankFailure_*` rows. The block separates firm-loan, mortgage,
+consumer-loan, liquidity-bridge charge-off, and bank-held corporate-bond
+channels. `BankCapital_EclProvisionChange` remains a separate accounting
+provision term and is not included in these realized-loss rates.
 
 Liquidity ratios are:
 

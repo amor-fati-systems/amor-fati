@@ -4,7 +4,7 @@ import com.boombustgroup.amorfati.FixedPointSpecSupport.*
 import com.boombustgroup.amorfati.agents.{Firm, Household, TechState}
 import com.boombustgroup.amorfati.config.{HousingConfig, SimParams}
 import com.boombustgroup.amorfati.engine.SimulationMonth.ExecutionMonth
-import com.boombustgroup.amorfati.engine.{BankFailureDiagnostics, BankReconciliationDiagnostics, World}
+import com.boombustgroup.amorfati.engine.{BankCapitalDiagnostics, BankFailureDiagnostics, BankReconciliationDiagnostics, World}
 import com.boombustgroup.amorfati.engine.flows.FlowSimulation
 import com.boombustgroup.amorfati.engine.ledger.LedgerFinancialState
 import com.boombustgroup.amorfati.init.{InitRandomness, WorldInit}
@@ -259,6 +259,16 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     "BankCapital_WaterfallResidual",
     "BankCapital_DepositBailInLoss",
     "BankCapital_NewFailures",
+    "BankCreditLoss_RealizedToOpeningCapital",
+    "BankCreditLoss_FirmDefaultRate",
+    "BankCreditLoss_FirmLossRate",
+    "BankCreditLoss_MortgageDefaultRate",
+    "BankCreditLoss_MortgageLossRate",
+    "BankCreditLoss_ConsumerLoanDefaultRate",
+    "BankCreditLoss_LiquidityBridgeChargeOffRate",
+    "BankCreditLoss_ConsumerLossRate",
+    "BankCreditLoss_CorpBondDefaultRate",
+    "BankCreditLoss_CorpBondLossRate",
     "HousingPriceIndex",
     "HousingMarketValue",
     "MortgageStock",
@@ -419,7 +429,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     MetricValue.fromRaw(Share.fraction(numerator, denominator).toLong)
 
   "McTimeseriesSchema" should "expose the stable schema contract" in {
-    McTimeseriesSchema.nCols shouldBe 365
+    McTimeseriesSchema.nCols shouldBe 375
     McTimeseriesSchema.colNames.toVector shouldBe expectedColNames
   }
 
@@ -591,20 +601,33 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
   it should "emit validation-ready credit stock splits and GDP ratios" in {
     val bankFirmLoans = PLN(10) * initState.ledgerFinancialState.banks.length
     val consumerLoans = PLN(2) * initState.ledgerFinancialState.banks.length
+    val bankCorpBonds = PLN(25) * initState.ledgerFinancialState.banks.length
+    val mortgageStock = PLN(20)
     val nbfiLoans     = PLN(6)
-    val totalCredit   = bankFirmLoans + consumerLoans + nbfiLoans
+    val totalCredit   = bankFirmLoans + consumerLoans + mortgageStock + nbfiLoans
     val annualGdp     = PLN(10) * 12
+    val householdRows = initState.ledgerFinancialState.households.zipWithIndex.map: (household, idx) =>
+      household.copy(mortgageLoan = if idx == 0 then mortgageStock else PLN.Zero)
     val ledger        = initState.ledgerFinancialState.copy(
-      households = initState.ledgerFinancialState.households.map(_.copy(mortgageLoan = PLN.Zero)),
-      banks = initState.ledgerFinancialState.banks.map(_.copy(firmLoan = PLN(10), consumerLoan = PLN(2))),
+      households = householdRows,
+      banks = initState.ledgerFinancialState.banks.map(_.copy(firmLoan = PLN(10), consumerLoan = PLN(2), corpBond = PLN(25))),
       funds = initState.ledgerFinancialState.funds.copy(
         nbfi = initState.ledgerFinancialState.funds.nbfi.copy(nbfiLoanStock = nbfiLoans),
       ),
     )
+    val bankCapital   = BankCapitalDiagnostics(
+      openingCapital = PLN(1000),
+      firmNplLoss = PLN(2),
+      mortgageNplLoss = PLN(2),
+      consumerNplLoss = PLN(5),
+      corpBondDefaultLoss = PLN(3),
+    )
     val world         = init.world.copy(
+      real = init.world.real.copy(housing = init.world.real.housing.copy(lastDefault = PLN(6))),
       flows = init.world.flows.copy(
         monthlyGdpProxy = PLN(10),
         sectorOutputs = Vector.fill(summon[SimParams].sectorDefs.length)(PLN.Zero),
+        bankCapital = bankCapital,
       ),
     )
     val hhAgg         = init.householdAggregates.copy(
@@ -625,6 +648,24 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     valueAt(row, "ConsumerLoansToGdp") shouldBe MetricValue.fromRaw((consumerLoans / annualGdp).toLong)
     valueAt(row, "NbfiLoansToGdp") shouldBe MetricValue.fromRaw((nbfiLoans / annualGdp).toLong)
     valueAt(row, "TotalCreditToGdp") shouldBe MetricValue.fromRaw((totalCredit / annualGdp).toLong)
+
+    val firmGrossDefault     =
+      val lossRate = Share.One - summon[SimParams].banking.loanRecovery
+      if lossRate > Share.Zero then bankCapital.firmNplLoss / lossRate else PLN.Zero
+    val corpBondGrossDefault =
+      val lossRate = Share.One - summon[SimParams].corpBond.recovery
+      if lossRate > Share.Zero then bankCapital.corpBondDefaultLoss / lossRate else PLN.Zero
+
+    valueAt(row, "BankCreditLoss_RealizedToOpeningCapital") shouldBe MetricValue.fromRaw((bankCapital.realizedCreditLoss / bankCapital.openingCapital).toLong)
+    valueAt(row, "BankCreditLoss_FirmDefaultRate") shouldBe MetricValue.fromRaw((firmGrossDefault / bankFirmLoans).toLong)
+    valueAt(row, "BankCreditLoss_FirmLossRate") shouldBe MetricValue.fromRaw((bankCapital.firmNplLoss / bankFirmLoans).toLong)
+    valueAt(row, "BankCreditLoss_MortgageDefaultRate") shouldBe MetricValue.fromRaw((PLN(6) / mortgageStock).toLong)
+    valueAt(row, "BankCreditLoss_MortgageLossRate") shouldBe MetricValue.fromRaw((bankCapital.mortgageNplLoss / mortgageStock).toLong)
+    valueAt(row, "BankCreditLoss_ConsumerLoanDefaultRate") shouldBe MetricValue.fromRaw((PLN(3) / consumerLoans).toLong)
+    valueAt(row, "BankCreditLoss_LiquidityBridgeChargeOffRate") shouldBe MetricValue.fromRaw((PLN(4) / consumerLoans).toLong)
+    valueAt(row, "BankCreditLoss_ConsumerLossRate") shouldBe MetricValue.fromRaw((bankCapital.consumerNplLoss / consumerLoans).toLong)
+    valueAt(row, "BankCreditLoss_CorpBondDefaultRate") shouldBe MetricValue.fromRaw((corpBondGrossDefault / bankCorpBonds).toLong)
+    valueAt(row, "BankCreditLoss_CorpBondLossRate") shouldBe MetricValue.fromRaw((bankCapital.corpBondDefaultLoss / bankCorpBonds).toLong)
   }
 
   it should "emit household bankruptcy validation fields alongside firm and bank failures" in {

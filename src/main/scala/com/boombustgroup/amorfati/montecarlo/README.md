@@ -133,6 +133,16 @@ BankCapital_ReconciliationResidual
 BankCapital_WaterfallResidual
 BankCapital_DepositBailInLoss
 BankCapital_NewFailures
+BankCreditLoss_RealizedToOpeningCapital
+BankCreditLoss_FirmDefaultRate
+BankCreditLoss_FirmLossRate
+BankCreditLoss_MortgageDefaultRate
+BankCreditLoss_MortgageLossRate
+BankCreditLoss_ConsumerLoanDefaultRate
+BankCreditLoss_LiquidityBridgeChargeOffRate
+BankCreditLoss_ConsumerLossRate
+BankCreditLoss_CorpBondDefaultRate
+BankCreditLoss_CorpBondLossRate
 ```
 
 These columns follow the same pattern as household and firm aggregate
@@ -154,6 +164,15 @@ channel.
 `BankCapital_DepositBailInLoss` mirrors the existing `BailInLoss` column inside
 the bank-capital diagnostic block; it is a resolution-adjacent depositor haircut
 and is not included in the equity-capital waterfall identity.
+
+`BankCreditLoss_*` columns normalize realized credit losses and gross
+default/write-off flows by the relevant closing exposure stock, so bank-failure
+months can be read without post-processing. `RealizedToOpeningCapital` measures
+the total realized credit-loss hit against opening bank capital. Firm and
+corporate-bond default rates reverse the configured recovery rate to estimate
+gross default flow from net loss. Consumer diagnostics separate ordinary
+consumer-loan default from liquidity-bridge charge-off; `ConsumerLossRate`
+keeps the combined capital-loss view used by the bank waterfall.
 
 ## Bank Failure Diagnostics
 

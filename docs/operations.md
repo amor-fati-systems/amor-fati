@@ -225,10 +225,13 @@ failure triggers. The bank capital block uses `BankCapital_*` columns to
 reconcile opening capital, retained income, realized credit losses, provisions,
 valuation losses, failure-related capital destruction, reconciliation residuals,
 and closing capital. The `BankFailure_*` block identifies the monthly primary
-trigger for newly failed banks. The `BankReconciliation_*` block identifies the
-bank row that absorbed the exactness patch, reports capital and CAR before/after
-that patch, and flags material residuals or residual-induced failure-threshold
-crossings. No extra flag is needed for these aggregate diagnostics.
+trigger for newly failed banks. The `BankCreditLoss_*` block reports realized
+loss/default/write-off rates by major exposure class and keeps them separate
+from `BankCapital_EclProvisionChange`. The `BankReconciliation_*` block
+identifies the bank row that absorbed the exactness patch, reports capital and
+CAR before/after that patch, and flags material residuals or residual-induced
+failure-threshold crossings. No extra flag is needed for these aggregate
+diagnostics.
 
 Firm-level micro snapshots are optional and off by default. Enable them with
 `--firm-snapshots terminal`, `--firm-snapshots every:12`, or
