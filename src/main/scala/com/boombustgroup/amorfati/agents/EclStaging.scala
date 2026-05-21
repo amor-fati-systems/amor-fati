@@ -42,6 +42,9 @@ object EclStaging:
       provisionChange: PLN, // Δ provision this month (positive = additional provision → capital hit)
   )
 
+  def allowance(state: State)(using p: SimParams): PLN =
+    state.stage1 * p.banking.eclRate1 + state.stage2 * p.banking.eclRate2 + state.stage3 * p.banking.eclRate3
+
   /** Compute macro-driven S1→S2 migration rate.
     *
     * When unemployment rises above NAIRU or GDP contracts, a fraction of
@@ -91,8 +94,8 @@ object EclStaging:
     val newStaging: State = State(newS1, newS2, newS3)
 
     // Provision = Σ(stage × eclRate) — change vs previous month
-    val prevProvision: PLN   = prev.stage1 * p.banking.eclRate1 + prev.stage2 * p.banking.eclRate2 + prev.stage3 * p.banking.eclRate3
-    val newProvision: PLN    = newS1 * p.banking.eclRate1 + newS2 * p.banking.eclRate2 + newS3 * p.banking.eclRate3
+    val prevProvision: PLN   = allowance(prev)
+    val newProvision: PLN    = allowance(newStaging)
     val provisionChange: PLN = newProvision - prevProvision
 
     StepResult(newStaging, provisionChange)

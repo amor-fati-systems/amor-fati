@@ -77,6 +77,7 @@ object McTimeseriesSchema:
     lazy val bankCapital: BankCapitalDiagnostics                                                    = world.flows.bankCapital
     lazy val bankFailure: BankFailureDiagnostics                                                    = world.flows.bankFailure
     lazy val bankReconciliation: BankReconciliationDiagnostics                                      = world.flows.bankReconciliation
+    lazy val bankEcl: BankEclDiagnostics                                                            = world.flows.bankEcl
     lazy val ledgerBankStocksById: Map[BankId, Banking.BankFinancialStocks]                         =
       banks.zip(ledgerFinancialState.banks).map((bank, balances) => bank.id -> LedgerFinancialState.projectBankFinancialStocks(balances)).toMap
     lazy val aliveBankRows: Vector[(Banking.BankState, Banking.BankFinancialStocks)]                =
@@ -94,6 +95,10 @@ object McTimeseriesSchema:
     lazy val bankFirmLoans: PLN                                                                     = bankAgg.totalLoans
     lazy val consumerLoanStock: PLN                                                                 = bankAgg.consumerLoans
     lazy val nbfiLoanStock: PLN                                                                     = ledgerFinancialState.funds.nbfi.nbfiLoanStock
+    lazy val eclStage1: PLN                                                                         = banks.map(b => b.eclStaging.stage1).sumPln
+    lazy val eclStage2: PLN                                                                         = banks.map(b => b.eclStaging.stage2).sumPln
+    lazy val eclStage3: PLN                                                                         = banks.map(b => b.eclStaging.stage3).sumPln
+    lazy val eclStageTotal: PLN                                                                     = eclStage1 + eclStage2 + eclStage3
     lazy val totalCreditStock: PLN                                                                  =
       bankFirmLoans + consumerLoanStock + ledgerHouseholdMortgageStock + nbfiLoanStock
     lazy val ledgerFirmBalancesById: Map[FirmId, LedgerFinancialState.FirmBalances]                 =
@@ -146,6 +151,9 @@ object McTimeseriesSchema:
 
     def flowToStockRate(flow: PLN, stock: PLN): Scalar =
       if stock > PLN.Zero then flow / stock else Scalar.Zero
+
+    def flowToFlowRatio(flow: PLN, denominator: PLN): Scalar =
+      if denominator != PLN.Zero then flow / denominator else Scalar.Zero
 
     def grossDefaultFromLoss(loss: PLN, recovery: Share): PLN =
       val lossRate = Share.One - recovery
@@ -544,9 +552,20 @@ object McTimeseriesSchema:
     ColumnDef.macroPln("BankAfsBonds", ctx => ctx.bankAgg.afsBonds),
     ColumnDef.macroPln("BankHtmBonds", ctx => ctx.bankAgg.htmBonds),
     // IFRS 9 ECL staging (aggregate across banks)
-    ColumnDef.macroPln("EclStage1", ctx => ctx.banks.map(b => b.eclStaging.stage1).sumPln),
-    ColumnDef.macroPln("EclStage2", ctx => ctx.banks.map(b => b.eclStaging.stage2).sumPln),
-    ColumnDef.macroPln("EclStage3", ctx => ctx.banks.map(b => b.eclStaging.stage3).sumPln),
+    ColumnDef.macroPln("EclStage1", ctx => ctx.eclStage1),
+    ColumnDef.macroPln("EclStage2", ctx => ctx.eclStage2),
+    ColumnDef.macroPln("EclStage3", ctx => ctx.eclStage3),
+    ColumnDef.macroPln("BankEcl_OpeningAllowance", ctx => ctx.bankEcl.openingAllowance),
+    ColumnDef.macroPln("BankEcl_ClosingAllowance", ctx => ctx.bankEcl.closingAllowance),
+    ColumnDef.macroPln("BankEcl_BaselineStage1Allowance", ctx => ctx.bankEcl.baselineStage1Allowance),
+    ColumnDef.macroPln("BankEcl_ExcessAllowance", ctx => ctx.bankEcl.excessAllowance),
+    ColumnDef("BankEcl_ExcessAllowanceShare", ctx => ctx.flowToStockRate(ctx.bankEcl.excessAllowance, ctx.bankEcl.closingAllowance)),
+    ColumnDef("BankEcl_ProvisionChangeToOpeningCapital", ctx => ctx.flowToStockRate(ctx.bankCapital.eclProvisionChange, ctx.bankCapital.openingCapital)),
+    ColumnDef("BankEcl_ProvisionChangeToRealizedLoss", ctx => ctx.flowToFlowRatio(ctx.bankCapital.eclProvisionChange, ctx.bankCapital.realizedCreditLoss)),
+    ColumnDef("BankEcl_Stage2Share", ctx => ctx.flowToStockRate(ctx.eclStage2, ctx.eclStageTotal)),
+    ColumnDef("BankEcl_Stage3Share", ctx => ctx.flowToStockRate(ctx.eclStage3, ctx.eclStageTotal)),
+    ColumnDef("BankEcl_MigrationRate", ctx => ctx.bankEcl.migrationRate),
+    ColumnDef("BankEcl_GdpGrowthMonthly", ctx => ctx.bankEcl.gdpGrowthMonthly),
     // KNF/BFG
     ColumnDef.macroPln("BfgLevyTotal", ctx => ctx.world.flows.bfgLevyTotal),
     ColumnDef.macroPln("BfgFundBalance", ctx => ctx.world.mechanisms.bfgFundBalance),

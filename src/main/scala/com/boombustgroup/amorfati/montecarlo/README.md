@@ -109,6 +109,38 @@ adoption means `Hybrid` or `Automated`. Size cohorts use `McFirmSizeClass`.
 Cash and debt quartiles sort living firms by closing ledger cash or firm-loan
 principal respectively; `Q1` is the lowest cash/debt quartile.
 
+## Bank ECL Diagnostics
+
+The seed timeseries includes IFRS 9 / ECL allowance attribution columns:
+
+```text
+EclStage1
+EclStage2
+EclStage3
+BankEcl_OpeningAllowance
+BankEcl_ClosingAllowance
+BankEcl_BaselineStage1Allowance
+BankEcl_ExcessAllowance
+BankEcl_ExcessAllowanceShare
+BankEcl_ProvisionChangeToOpeningCapital
+BankEcl_ProvisionChangeToRealizedLoss
+BankEcl_Stage2Share
+BankEcl_Stage3Share
+BankEcl_MigrationRate
+BankEcl_GdpGrowthMonthly
+```
+
+`EclStage1`, `EclStage2`, and `EclStage3` are aggregate staged exposure stocks.
+`BankEcl_OpeningAllowance` and `BankEcl_ClosingAllowance` are the accounting
+allowances implied by those staged stocks and configured ECL rates.
+`BankEcl_BaselineStage1Allowance` asks what the closing allowance would have
+been if the whole staged ECL book had stayed in Stage 1.
+`BankEcl_ExcessAllowance` is the part above that all-performing baseline.
+`BankEcl_ProvisionChange*`
+columns compare the monthly provision change with opening bank capital and
+realized credit losses, so provisioning can be separated from realized default
+losses in bank-failure months.
+
 ## Bank Capital Diagnostics
 
 The seed timeseries includes aggregate banking-sector capital waterfall columns
