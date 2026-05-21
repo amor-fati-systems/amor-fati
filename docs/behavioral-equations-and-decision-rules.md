@@ -66,7 +66,7 @@ runtime ledger flows and validates SFC identities.
 | Labor, wages, demographics, social funds | `engine/economics/LaborEconomics.scala`, `agents/SocialSecurity.scala`, `agents/EarmarkedFunds.scala` | `MarketWage`, `Unemployment`, `WorkingAgePop`, `NRetirees`, `MonthlyRetirements`, `ZusContributions`, `ZusPensionPayments`, `NfzContributions`, `NfzSpending`, `PpkContributions`, `FpContributions`, `FgspSpending` |
 | Demand allocation and fiscal constraint | `engine/economics/DemandEconomics.scala`, `engine/markets/FiscalRules.scala`, `engine/markets/FiscalBudget.scala` | `GovCurrentSpend`, `GovCapitalSpendDomestic`, `FiscalRuleBinding`, `GovSpendingCutRatio`, `DebtToGdp`, `DeficitToGdp`, `PublicCapitalStock` |
 | Firm production, investment, technology, financing, default, entry | `agents/Firm.scala`, `engine/economics/FirmEconomics.scala`, `engine/mechanisms/FirmEntry.scala` | `TotalAdoption`, `AutoRatio`, `HybridRatio`, `Automation_TechCapex`, `Automation_TechImports`, `Automation_TechLoans`, `Automation_UpgradeFailures`, `Automation_AiDebtTrap`, `Automation_NewFullAi`, `Automation_NewHybrid`, `Adoption_MicroShare`, `Adoption_SmallShare`, `Adoption_MediumShare`, `Adoption_LargeShare`, `Adoption_CashQ1`-`Q4`, `Adoption_DebtQ1`-`Q4`, sector `*_Auto`, sector `*_Sigma`, `GrossInvestment`, `AggCapitalStock`, `AggInventoryStock`, `InventoryChange`, `AggEnergyCost`, `GreenInvestment`, `FirmBirths`, `FirmDeaths`, `NetEntry`, `LivingFirmCount`, `CorpBondIssuance`, `EquityIssuanceTotal` |
-| Banking and monetary plumbing | `agents/Banking.scala`, `engine/economics/BankingEconomics.scala`, `agents/EclStaging.scala`, `agents/DepositMobility.scala`, `agents/InterbankContagion.scala` | `NPL`, `MinBankCAR`, `MaxBankNPL`, `MinBankLCR`, `MinBankNSFR`, `BankFailures`, `InterbankRate`, `WIBOR_1M`, `WIBOR_3M`, `WIBOR_6M`, `BfgLevyTotal`, `BailInLoss`, `M0`, `M1`, `M2`, `M3`, `CreditMultiplier` |
+| Banking and monetary plumbing | `agents/Banking.scala`, `engine/economics/BankingEconomics.scala`, `agents/EclStaging.scala`, `agents/DepositMobility.scala`, `agents/InterbankContagion.scala` | `NPL`, `MinBankCAR`, `MaxBankNPL`, `MinBankLCR`, `MinBankNSFR`, `BankFailures`, `BankFailure_*`, `InterbankRate`, `WIBOR_1M`, `WIBOR_3M`, `WIBOR_6M`, `BfgLevyTotal`, `BailInLoss`, `M0`, `M1`, `M2`, `M3`, `CreditMultiplier` |
 | Fiscal, NBP, bond market, external sector | `agents/Nbp.scala`, `engine/markets/OpenEconomy.scala`, `engine/economics/OpenEconEconomics.scala`, `engine/markets/CorporateBondMarket.scala`, `engine/markets/BondAuction.scala` | `RefRate`, `BondYield`, `WeightedCoupon`, `BondsOutstanding`, `NbpBondHoldings`, `ForeignBondHoldings`, `QeActive`, `FxReserves`, `FxInterventionAmt`, `CurrentAccount`, `CapitalAccount`, `TradeBalance_OE`, `Exports_OE`, `TotalImports_OE`, `NFA`, `FDI` |
 | Insurance, NBFI, quasi-fiscal, local government | `agents/Insurance.scala`, `agents/Nbfi.scala`, `agents/QuasiFiscal.scala`, `agents/Jst.scala` | `InsLifeReserves`, `InsNonLifeReserves`, `InsLifePremium`, `InsNonLifePremium`, `InsLifeClaims`, `InsNonLifeClaims`, `NbfiTfiAum`, `NbfiOrigination`, `NbfiDefaults`, `NbfiBankTightness`, `QfBondsOutstanding`, `QfIssuance`, `QfLoanPortfolio`, `Esa2010DebtToGdp`, `JstRevenue`, `JstSpending`, `JstDebt`, `JstDeposits` |
 
@@ -841,6 +841,20 @@ haircuts uninsured deposits of failed banks. Purchase-and-assumption resolution
 transfers deposits, government bonds, performing loans, consumer loans, and
 corporate-bond holdings to the healthiest surviving bank. Firms and households
 routed to failed banks are reassigned to the absorber.
+
+Failure-trigger diagnostics are emitted as `BankFailure_*` seed timeseries
+columns. `BankFailure_NewNegativeCapital`, `BankFailure_NewCarBreach`, and
+`BankFailure_NewLiquidityBreach` count newly failed banks by primary trigger; if
+multiple triggers are true, the priority is negative capital, then CAR breach,
+then LCR/liquidity breach. `BankFailure_FirstNewReasonCode` records the first
+new failure reason in bank-id order using `0 = none`, `1 = negative capital`,
+`2 = CAR breach`, `3 = LCR/liquidity breach`, `4 = all-failed fallback`, and
+`5 = invariant mismatch`. `BankFailure_AllFailedFallback` flags the current
+bridge-bank/resolution fallback where all banks have already failed and the
+absorber is selected from that failed set; this is the path #549 must decide
+whether to recapitalize or fail fast. `BankFailure_InvariantViolation` should
+remain zero and means the failure-event diagnostics do not reconcile to the
+new-failure count.
 
 ## Fiscal, Monetary, Bond-Market, And External Rules
 

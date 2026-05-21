@@ -75,6 +75,7 @@ object McTimeseriesSchema:
     lazy val bankAgg: Banking.Aggregate                                                             =
       Banking.aggregateFromBankStocks(banks, ledgerFinancialState.banks.map(LedgerFinancialState.projectBankFinancialStocks), bankCorpBondHoldings)
     lazy val bankCapital: BankCapitalDiagnostics                                                    = world.flows.bankCapital
+    lazy val bankFailure: BankFailureDiagnostics                                                    = world.flows.bankFailure
     lazy val ledgerBankStocksById: Map[BankId, Banking.BankFinancialStocks]                         =
       banks.zip(ledgerFinancialState.banks).map((bank, balances) => bank.id -> LedgerFinancialState.projectBankFinancialStocks(balances)).toMap
     lazy val aliveBankRows: Vector[(Banking.BankState, Banking.BankFinancialStocks)]                =
@@ -405,6 +406,13 @@ object McTimeseriesSchema:
       ctx => if ctx.aliveBankRows.isEmpty then Share.Zero else ctx.aliveBankRows.map((bank, stocks) => Banking.nplRatio(bank, stocks)).max,
     ),
     ColumnDef("BankFailures", ctx => ctx.banks.count(_.failed)),
+    ColumnDef("BankFailure_NewNegativeCapital", ctx => ctx.bankFailure.newNegativeCapital),
+    ColumnDef("BankFailure_NewCarBreach", ctx => ctx.bankFailure.newCarBreach),
+    ColumnDef("BankFailure_NewLiquidityBreach", ctx => ctx.bankFailure.newLiquidityBreach),
+    ColumnDef("BankFailure_AllFailedFallback", ctx => ctx.bankFailure.allFailedFallback),
+    ColumnDef("BankFailure_InvariantViolation", ctx => ctx.bankFailure.invariantViolation),
+    ColumnDef("BankFailure_FirstNewReasonCode", ctx => ctx.bankFailure.firstNewReasonCode),
+    ColumnDef("BankFailure_FirstNewBankId", ctx => ctx.bankFailure.firstNewBankId),
     // LCR/NSFR
     ColumnDef(
       "MinBankLCR",
@@ -892,6 +900,13 @@ object McTimeseriesSchema:
     val MinBankCAR: Col                               = lookup("MinBankCAR")
     val MaxBankNPL: Col                               = lookup("MaxBankNPL")
     val BankFailures: Col                             = lookup("BankFailures")
+    val BankFailureNewNegativeCapital: Col            = lookup("BankFailure_NewNegativeCapital")
+    val BankFailureNewCarBreach: Col                  = lookup("BankFailure_NewCarBreach")
+    val BankFailureNewLiquidityBreach: Col            = lookup("BankFailure_NewLiquidityBreach")
+    val BankFailureAllFailedFallback: Col             = lookup("BankFailure_AllFailedFallback")
+    val BankFailureInvariantViolation: Col            = lookup("BankFailure_InvariantViolation")
+    val BankFailureFirstNewReasonCode: Col            = lookup("BankFailure_FirstNewReasonCode")
+    val BankFailureFirstNewBankId: Col                = lookup("BankFailure_FirstNewBankId")
     val BankFirmLoans: Col                            = lookup("BankFirmLoans")
     val TotalCreditStock: Col                         = lookup("TotalCreditStock")
     val TotalCreditToGdp: Col                         = lookup("TotalCreditToGdp")

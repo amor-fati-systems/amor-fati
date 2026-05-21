@@ -63,6 +63,7 @@ object BankingEconomics:
       bailInLoss: PLN,                                   // bail-in deposit destruction (aggregate)
       multiCapDestruction: PLN,                          // capital wiped when banks fail
       bankCapitalDiagnostics: BankCapitalDiagnostics,    // aggregate monthly bank-capital waterfall diagnostics
+      bankFailureDiagnostics: BankFailureDiagnostics,    // monthly bank-failure trigger diagnostics
       monAgg: Option[Banking.MonetaryAggregates],        // M0/M1/M2/M3 (when credit diagnostics on)
       finalHhAgg: Household.Aggregates,                  // recomputed HH aggregates
       vat: PLN,                                          // gross VAT revenue
@@ -151,6 +152,7 @@ object BankingEconomics:
       newFailures: Int,                                  // banks newly marked failed during this month
       capitalReconciliationResidual: PLN,                // exactness correction applied to one per-bank capital row
       bankCapitalTerms: BankCapitalTerms,                // shared capital-waterfall terms used by reconciliation and diagnostics
+      bankFailureDiagnostics: BankFailureDiagnostics,    // failure trigger reason diagnostics for this month
       resolvedBank: Banking.Aggregate,                   // aggregate banking sector after resolution
       htmRealizedLoss: PLN,                              // realized loss from HTM forced reclassification
       // Bond waterfall outputs — single source of truth for buyer holdings
@@ -183,6 +185,8 @@ object BankingEconomics:
       bailInLossDelta: PLN,
       capitalDestructionDelta: PLN,
       newFailuresDelta: Int,
+      failureEvents: Vector[Banking.FailureEvent],
+      allFailedFallbackUsed: Boolean,
   )
 
   private case class BankCapitalTerms(
@@ -317,6 +321,7 @@ object BankingEconomics:
       bailInLoss = multi.bailInLoss,
       multiCapDestruction = multi.multiCapDestruction,
       bankCapitalDiagnostics = bankCapitalDiagnostics,
+      bankFailureDiagnostics = multi.bankFailureDiagnostics,
       monAgg = monAgg,
       finalHhAgg = finalHhAgg,
       vat = govJst.tax.vat,
@@ -966,6 +971,10 @@ object BankingEconomics:
     val totalBailInLoss       = bailInResult.totalLoss + reconciled.bailInLossDelta
     val totalCapDestruction   = multiCapDest + reconciled.capitalDestructionDelta
     val totalNewFailures      = newFailureCount + reconciled.newFailuresDelta
+    val failureEvents         = failResult.events ++ secondaryFail.events ++ reconciled.failureEvents
+    val invariantMismatches   = math.abs(totalNewFailures - failureEvents.length)
+    val failureDiagnostics    =
+      BankFailureDiagnostics.fromEvents(failureEvents, resolveResult.allFailedFallbackUsed || reconciled.allFailedFallbackUsed, invariantMismatches)
     val anyFailureForMobility = anyFailed || reconciled.newFailuresDelta > 0
 
     // Repair stale failed-bank routing every month; mobility validates survivor bankIds.
@@ -1009,6 +1018,7 @@ object BankingEconomics:
       newFailures = totalNewFailures,
       capitalReconciliationResidual = reconciled.capitalResidual,
       bankCapitalTerms = bankCapitalTerms,
+      bankFailureDiagnostics = failureDiagnostics,
       resolvedBank = Banking.aggregateFromBankStocks(finalFailureBanks, finalFailureStocks, finalCorpBondLookup),
       htmRealizedLoss = htmResult.totalRealizedLoss,
       finalNbp = finalNbp,
@@ -1080,7 +1090,8 @@ object BankingEconomics:
       htmRealizedLoss: PLN,
       bankCapitalTerms: BankCapitalTerms,
   )(using p: SimParams): AggregateReconciliationResult =
-    if banks.isEmpty then AggregateReconciliationResult(banks, financialStocks, bankCorpBondHoldings, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, 0)
+    if banks.isEmpty then
+      AggregateReconciliationResult(banks, financialStocks, bankCorpBondHoldings, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, 0, Vector.empty, false)
     else
       val target         = aggregateReconciliationTarget(
         prevBankAgg = prevBankAgg,
@@ -1099,7 +1110,7 @@ object BankingEconomics:
       val depResidual    = target.depositsResidual - actualDeposits
       val capResidual    = target.capitalResidual - actualCapital
       if depResidual == PLN.Zero && capResidual == PLN.Zero then
-        AggregateReconciliationResult(banks, financialStocks, bankCorpBondHoldings, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, 0)
+        AggregateReconciliationResult(banks, financialStocks, bankCorpBondHoldings, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, 0, Vector.empty, false)
       else
         val targetIdx  = banks.lastIndexWhere(!_.failed) match
           case -1 => banks.indices.last
@@ -1108,13 +1119,13 @@ object BankingEconomics:
         val nextBanks  = banks.updated(targetIdx, reconciled._1)
         val nextStocks = financialStocks.updated(targetIdx, reconciled._2)
         if capResidual == PLN.Zero || nextBanks(targetIdx).failed then
-          AggregateReconciliationResult(nextBanks, nextStocks, bankCorpBondHoldings, depResidual, capResidual, PLN.Zero, PLN.Zero, 0)
+          AggregateReconciliationResult(nextBanks, nextStocks, bankCorpBondHoldings, depResidual, capResidual, PLN.Zero, PLN.Zero, 0, Vector.empty, false)
         else
           val targetCorpBonds = (bankId: BankId) => bankCorpBondHoldings.lift(bankId.toInt).getOrElse(PLN.Zero)
           val failCheck       =
             Banking.checkFailures(Vector(nextBanks(targetIdx)), Vector(nextStocks(targetIdx)), in.s1.m, true, in.s7.newMacropru.ccyb, targetCorpBonds)
           if !failCheck.anyFailed then
-            AggregateReconciliationResult(nextBanks, nextStocks, bankCorpBondHoldings, depResidual, capResidual, PLN.Zero, PLN.Zero, 0)
+            AggregateReconciliationResult(nextBanks, nextStocks, bankCorpBondHoldings, depResidual, capResidual, PLN.Zero, PLN.Zero, 0, Vector.empty, false)
           else
             val failedBank = failCheck.banks.head
             val bailIn     = Banking.applyBailIn(nextBanks.updated(targetIdx, failedBank), nextStocks)
@@ -1128,6 +1139,8 @@ object BankingEconomics:
               bailIn.totalLoss,
               nextBanks(targetIdx).capital,
               1,
+              failCheck.events,
+              resolved.allFailedFallbackUsed,
             )
 
   private def aggregateReconciliationTarget(

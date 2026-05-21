@@ -298,37 +298,69 @@ case class BankCapitalDiagnostics(
 object BankCapitalDiagnostics:
   val zero: BankCapitalDiagnostics = BankCapitalDiagnostics()
 
+/** Monthly bank-failure trigger diagnostics.
+  *
+  * Reason-code mapping for `firstNewReasonCode`: 0 = none, 1 = negative
+  * capital, 2 = CAR breach, 3 = LCR/liquidity breach, 4 = all-failed resolution
+  * fallback, 5 = invariant mismatch.
+  */
+case class BankFailureDiagnostics(
+    newNegativeCapital: Int = 0, // newly failed banks whose primary trigger was negative capital
+    newCarBreach: Int = 0,       // newly failed banks whose primary trigger was the consecutive low-CAR rule
+    newLiquidityBreach: Int = 0, // newly failed banks whose primary trigger was the LCR liquidity rule
+    allFailedFallback: Int = 0,  // 1 when resolution had to choose an absorber from an all-failed bank set
+    invariantViolation: Int = 0, // failure-event accounting mismatch, should remain zero
+    firstNewReasonCode: Int = 0, // reason code for first new failure event in bank-id order, or 0 when none
+    firstNewBankId: Int = -1,    // bank id for first new failure event, or -1 when none
+)
+
+object BankFailureDiagnostics:
+  val zero: BankFailureDiagnostics = BankFailureDiagnostics()
+
+  def fromEvents(events: Vector[Banking.FailureEvent], allFailedFallbackUsed: Boolean, invariantViolation: Int): BankFailureDiagnostics =
+    val firstEvent = events.headOption
+    BankFailureDiagnostics(
+      newNegativeCapital = events.count(_.reason == Banking.BankFailureReason.NegativeCapital),
+      newCarBreach = events.count(_.reason == Banking.BankFailureReason.CarBreach),
+      newLiquidityBreach = events.count(_.reason == Banking.BankFailureReason.LiquidityBreach),
+      allFailedFallback = if allFailedFallbackUsed then 1 else 0,
+      invariantViolation = invariantViolation,
+      firstNewReasonCode = firstEvent.map(_.reason.code).getOrElse(if allFailedFallbackUsed then Banking.BankFailureReason.AllFailedFallback.code else 0),
+      firstNewBankId = firstEvent.map(_.bankId.toInt).getOrElse(-1),
+    )
+
 /** Single-step derived flow outputs — recomputed each step, zero at init. Feed
   * into SFC identities and output columns.
   */
 case class FlowState(
-    monthlyGdpProxy: PLN = PLN.Zero,                                  // cached monthly GDP proxy for diagnostics / output ratios
-    sectorOutputs: Vector[PLN] = Vector.empty,                        // nominal monthly output by schema sector
-    ioFlows: PLN = PLN.Zero,                                          // I-O intermediate payments between sectors
-    fdiProfitShifting: PLN = PLN.Zero,                                // intangible imports booked abroad (profit shifting)
-    fdiRepatriation: PLN = PLN.Zero,                                  // dividend repatriation by foreign-owned firms
-    fdiCitLoss: PLN = PLN.Zero,                                       // CIT lost to profit shifting
-    diasporaRemittanceInflow: PLN = PLN.Zero,                         // diaspora remittance inflow
-    tourismExport: PLN = PLN.Zero,                                    // inbound tourism services export
-    tourismImport: PLN = PLN.Zero,                                    // outbound tourism services import
-    aggInventoryStock: PLN = PLN.Zero,                                // aggregate firm inventory stock
-    aggInventoryChange: PLN = PLN.Zero,                               // ΔInventories (enters GDP)
-    aggEnergyCost: PLN = PLN.Zero,                                    // aggregate energy + CO₂ costs
-    automationTechCapex: PLN = PLN.Zero,                              // technology CAPEX for automation/hybrid upgrades
-    automationTechImports: PLN = PLN.Zero,                            // import content of technology CAPEX
-    automationTechLoans: PLN = PLN.Zero,                              // bank-credit component of technology financing
-    automationUpgradeFailures: Int = 0,                               // implementation failures causing firm bankruptcy
-    automationAiDebtTrap: Int = 0,                                    // AI debt-trap bankruptcies
-    automationNewFullAi: Int = 0,                                     // new full-AI adopters
-    automationNewHybrid: Int = 0,                                     // new hybrid adopters
-    firmBirths: Int = 0,                                              // new firms (recycled + net new)
-    firmDeaths: Int = 0,                                              // firms bankrupt this step
-    netFirmBirths: Int = 0,                                           // net new firms appended to vector
-    taxEvasionLoss: PLN = PLN.Zero,                                   // tax lost to 4-channel evasion (CIT+VAT+PIT+excise)
-    realizedTaxShadowShare: Share = Share.Zero,                       // current-period realized aggregate tax-side shadow share
-    bailInLoss: PLN = PLN.Zero,                                       // bail-in deposit haircut imposed on bank creditors
-    bfgLevyTotal: PLN = PLN.Zero,                                     // BFG resolution levy from all banks
+    monthlyGdpProxy: PLN = PLN.Zero,                                   // cached monthly GDP proxy for diagnostics / output ratios
+    sectorOutputs: Vector[PLN] = Vector.empty,                         // nominal monthly output by schema sector
+    ioFlows: PLN = PLN.Zero,                                           // I-O intermediate payments between sectors
+    fdiProfitShifting: PLN = PLN.Zero,                                 // intangible imports booked abroad (profit shifting)
+    fdiRepatriation: PLN = PLN.Zero,                                   // dividend repatriation by foreign-owned firms
+    fdiCitLoss: PLN = PLN.Zero,                                        // CIT lost to profit shifting
+    diasporaRemittanceInflow: PLN = PLN.Zero,                          // diaspora remittance inflow
+    tourismExport: PLN = PLN.Zero,                                     // inbound tourism services export
+    tourismImport: PLN = PLN.Zero,                                     // outbound tourism services import
+    aggInventoryStock: PLN = PLN.Zero,                                 // aggregate firm inventory stock
+    aggInventoryChange: PLN = PLN.Zero,                                // ΔInventories (enters GDP)
+    aggEnergyCost: PLN = PLN.Zero,                                     // aggregate energy + CO₂ costs
+    automationTechCapex: PLN = PLN.Zero,                               // technology CAPEX for automation/hybrid upgrades
+    automationTechImports: PLN = PLN.Zero,                             // import content of technology CAPEX
+    automationTechLoans: PLN = PLN.Zero,                               // bank-credit component of technology financing
+    automationUpgradeFailures: Int = 0,                                // implementation failures causing firm bankruptcy
+    automationAiDebtTrap: Int = 0,                                     // AI debt-trap bankruptcies
+    automationNewFullAi: Int = 0,                                      // new full-AI adopters
+    automationNewHybrid: Int = 0,                                      // new hybrid adopters
+    firmBirths: Int = 0,                                               // new firms (recycled + net new)
+    firmDeaths: Int = 0,                                               // firms bankrupt this step
+    netFirmBirths: Int = 0,                                            // net new firms appended to vector
+    taxEvasionLoss: PLN = PLN.Zero,                                    // tax lost to 4-channel evasion (CIT+VAT+PIT+excise)
+    realizedTaxShadowShare: Share = Share.Zero,                        // current-period realized aggregate tax-side shadow share
+    bailInLoss: PLN = PLN.Zero,                                        // bail-in deposit haircut imposed on bank creditors
+    bfgLevyTotal: PLN = PLN.Zero,                                      // BFG resolution levy from all banks
     bankCapital: BankCapitalDiagnostics = BankCapitalDiagnostics.zero, // monthly bank-capital waterfall diagnostics
+    bankFailure: BankFailureDiagnostics = BankFailureDiagnostics.zero, // monthly bank-failure trigger diagnostics
 )
 object FlowState:
   val zero: FlowState = FlowState()
