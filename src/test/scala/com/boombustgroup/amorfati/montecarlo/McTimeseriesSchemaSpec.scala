@@ -717,6 +717,26 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     valueAt(row, "BankEcl_GdpGrowthMonthly") shouldBe MetricValue.fromRaw(Coefficient.decimal(-1, 2).toLong)
   }
 
+  it should "emit zero-safe bank ECL ratio diagnostics when denominators are zero" in {
+    val banks = init.banks.map(_.copy(eclStaging = EclStaging.State.zero))
+    val ecl   = BankEclDiagnostics(
+      closingAllowance = PLN.Zero,
+      excessAllowance = PLN(15),
+    )
+    val world = init.world.copy(
+      flows = init.world.flows.copy(
+        sectorOutputs = Vector.fill(summon[SimParams].sectorDefs.length)(PLN.Zero),
+        bankCapital = BankCapitalDiagnostics(openingCapital = PLN.Zero, eclProvisionChange = PLN(4), firmNplLoss = PLN.Zero),
+        bankEcl = ecl,
+      ),
+    )
+    val row   = computeRow(world, banks = banks)
+
+    valueAt(row, "BankEcl_ExcessAllowanceShare") shouldBe MetricValue.fromRaw(0)
+    valueAt(row, "BankEcl_ProvisionChangeToOpeningCapital") shouldBe MetricValue.fromRaw(0)
+    valueAt(row, "BankEcl_ProvisionChangeToRealizedLoss") shouldBe MetricValue.fromRaw(0)
+  }
+
   it should "emit household bankruptcy validation fields alongside firm and bank failures" in {
     val row = computeRow(init.world)
 
