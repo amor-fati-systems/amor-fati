@@ -200,6 +200,14 @@ class BankingSectorSpec extends AnyFlatSpec with Matchers:
     result.events.map(_.reason) shouldBe Vector(BankFailureReason.NegativeCapital)
   }
 
+  it should "classify failure reasons without mutating bank state" in {
+    val insolvent = mkBankRow(capital = PLN(-1))
+    val original  = insolvent.bank
+
+    Banking.failureReason(insolvent.bank, insolvent.stocks, Multiplier.Zero) shouldBe Some(BankFailureReason.NegativeCapital)
+    insolvent.bank shouldBe original
+  }
+
   it should "report LCR breaches as liquidity failure reasons" in {
     val illiquid = mkBankRow(capital = PLN(500000), demandDeposits = PLN(1000000), reservesAtNbp = PLN.Zero, govBondHoldings = PLN.Zero)
     val result   = Banking.checkFailures(Vector(illiquid.bank), Vector(illiquid.stocks), ExecutionMonth(30), enabled = true, Multiplier.Zero)

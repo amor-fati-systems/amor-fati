@@ -587,6 +587,24 @@ object Banking:
     * same month, diagnostics report the primary reason in this priority order:
     * negative capital, CAR breach, liquidity breach.
     */
+  def failureReason(
+      bank: BankState,
+      financialStocks: BankFinancialStocks,
+      ccyb: Multiplier,
+      bankCorpBondHoldings: BankCorpBondHoldings = noBankCorpBondHoldings,
+  )(using p: SimParams): Option[BankFailureReason] =
+    if bank.failed then None
+    else
+      val minCar    = Macroprudential.effectiveMinCar(bank.id.toInt, ccyb)
+      val lowCar    = car(bank, financialStocks, bankCorpBondHoldings(bank.id)) < minCar
+      val lcrBreach = lcr(financialStocks) < p.banking.lcrMin * Share.decimal(5, 1)
+      val newConsec = if lowCar then bank.consecutiveLowCar + 1 else 0
+      val insolvent = bank.capital < PLN.Zero
+      if insolvent then Some(BankFailureReason.NegativeCapital)
+      else if newConsec >= 3 then Some(BankFailureReason.CarBreach)
+      else if lcrBreach then Some(BankFailureReason.LiquidityBreach)
+      else None
+
   def checkFailures(
       banks: Vector[BankState],
       financialStocks: Vector[BankFinancialStocks],
@@ -614,17 +632,10 @@ object Banking:
         .map: (b, stocks) =>
           if b.failed then (b, None)
           else
-            val consec    = b.consecutiveLowCar
             val minCar    = Macroprudential.effectiveMinCar(b.id.toInt, ccyb)
             val lowCar    = car(b, stocks, bankCorpBondHoldings(b.id)) < minCar
-            val lcrBreach = lcr(stocks) < p.banking.lcrMin * Share.decimal(5, 1)
-            val newConsec = if lowCar then consec + 1 else 0
-            val insolvent = b.capital < PLN.Zero
-            val reason    =
-              if insolvent then Some(BankFailureReason.NegativeCapital)
-              else if newConsec >= 3 then Some(BankFailureReason.CarBreach)
-              else if lcrBreach then Some(BankFailureReason.LiquidityBreach)
-              else None
+            val newConsec = if lowCar then b.consecutiveLowCar + 1 else 0
+            val reason    = failureReason(b, stocks, ccyb, bankCorpBondHoldings)
             reason match
               case Some(r) => (b.copy(status = BankStatus.Failed(month), capital = PLN.Zero), Some(FailureEvent(b.id, month, r)))
               case None    => (b.copy(status = BankStatus.Active(newConsec)), None)

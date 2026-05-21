@@ -329,38 +329,89 @@ object BankFailureDiagnostics:
       firstNewBankId = firstEvent.map(_.bankId.toInt).getOrElse(-1),
     )
 
+/** Diagnostics for the aggregate-exactness patch applied to one bank row.
+  *
+  * `capitalResidual` has the same sign as the patch: positive adds bank
+  * capital, negative removes it. The materiality flag marks residuals whose
+  * absolute size is at least 1 bp of the target bank's pre-patch capital.
+  */
+case class BankReconciliationDiagnostics(
+    targetBankId: Int = -1,                        // bank id receiving the exactness patch, or -1 when no patch was applied
+    capitalResidual: PLN = PLN.Zero,               // capital exactness patch applied to the target bank
+    targetCapitalBefore: PLN = PLN.Zero,           // target-bank capital before the patch
+    targetCapitalAfter: PLN = PLN.Zero,            // target-bank capital after the patch
+    targetCarBefore: Multiplier = Multiplier.Zero, // target-bank CAR before the patch
+    targetCarAfter: Multiplier = Multiplier.Zero,  // target-bank CAR after the patch
+    residualToTargetCapital: Scalar = Scalar.Zero, // |capitalResidual| / max(|targetCapitalBefore|, PLN 1)
+    materialResidual: Int = 0,                     // 1 when residualToTargetCapital is at least 1 bp
+    crossedFailureThreshold: Int = 0,              // 1 when the patch alone moves the target bank into a failure trigger
+    postResidualReasonCode: Int = 0,               // failure reason after the patch, or 0 when none
+)
+
+object BankReconciliationDiagnostics:
+  private val MaterialResidualRatio: Scalar = Scalar.decimal(1, 4)
+
+  val zero: BankReconciliationDiagnostics = BankReconciliationDiagnostics()
+
+  def fromPatch(
+      targetBankId: BankId,
+      capitalResidual: PLN,
+      targetCapitalBefore: PLN,
+      targetCapitalAfter: PLN,
+      targetCarBefore: Multiplier,
+      targetCarAfter: Multiplier,
+      reasonBefore: Option[Banking.BankFailureReason],
+      reasonAfter: Option[Banking.BankFailureReason],
+  ): BankReconciliationDiagnostics =
+    val ratio    = capitalResidual.abs.ratioTo(targetCapitalBefore.abs.max(PLN(1)))
+    val crossed  = reasonBefore.isEmpty && reasonAfter.nonEmpty
+    val material = ratio >= MaterialResidualRatio
+    BankReconciliationDiagnostics(
+      targetBankId = targetBankId.toInt,
+      capitalResidual = capitalResidual,
+      targetCapitalBefore = targetCapitalBefore,
+      targetCapitalAfter = targetCapitalAfter,
+      targetCarBefore = targetCarBefore,
+      targetCarAfter = targetCarAfter,
+      residualToTargetCapital = ratio,
+      materialResidual = if material then 1 else 0,
+      crossedFailureThreshold = if crossed then 1 else 0,
+      postResidualReasonCode = reasonAfter.map(_.code).getOrElse(0),
+    )
+
 /** Single-step derived flow outputs — recomputed each step, zero at init. Feed
   * into SFC identities and output columns.
   */
 case class FlowState(
-    monthlyGdpProxy: PLN = PLN.Zero,                                   // cached monthly GDP proxy for diagnostics / output ratios
-    sectorOutputs: Vector[PLN] = Vector.empty,                         // nominal monthly output by schema sector
-    ioFlows: PLN = PLN.Zero,                                           // I-O intermediate payments between sectors
-    fdiProfitShifting: PLN = PLN.Zero,                                 // intangible imports booked abroad (profit shifting)
-    fdiRepatriation: PLN = PLN.Zero,                                   // dividend repatriation by foreign-owned firms
-    fdiCitLoss: PLN = PLN.Zero,                                        // CIT lost to profit shifting
-    diasporaRemittanceInflow: PLN = PLN.Zero,                          // diaspora remittance inflow
-    tourismExport: PLN = PLN.Zero,                                     // inbound tourism services export
-    tourismImport: PLN = PLN.Zero,                                     // outbound tourism services import
-    aggInventoryStock: PLN = PLN.Zero,                                 // aggregate firm inventory stock
-    aggInventoryChange: PLN = PLN.Zero,                                // ΔInventories (enters GDP)
-    aggEnergyCost: PLN = PLN.Zero,                                     // aggregate energy + CO₂ costs
-    automationTechCapex: PLN = PLN.Zero,                               // technology CAPEX for automation/hybrid upgrades
-    automationTechImports: PLN = PLN.Zero,                             // import content of technology CAPEX
-    automationTechLoans: PLN = PLN.Zero,                               // bank-credit component of technology financing
-    automationUpgradeFailures: Int = 0,                                // implementation failures causing firm bankruptcy
-    automationAiDebtTrap: Int = 0,                                     // AI debt-trap bankruptcies
-    automationNewFullAi: Int = 0,                                      // new full-AI adopters
-    automationNewHybrid: Int = 0,                                      // new hybrid adopters
-    firmBirths: Int = 0,                                               // new firms (recycled + net new)
-    firmDeaths: Int = 0,                                               // firms bankrupt this step
-    netFirmBirths: Int = 0,                                            // net new firms appended to vector
-    taxEvasionLoss: PLN = PLN.Zero,                                    // tax lost to 4-channel evasion (CIT+VAT+PIT+excise)
-    realizedTaxShadowShare: Share = Share.Zero,                        // current-period realized aggregate tax-side shadow share
-    bailInLoss: PLN = PLN.Zero,                                        // bail-in deposit haircut imposed on bank creditors
-    bfgLevyTotal: PLN = PLN.Zero,                                      // BFG resolution levy from all banks
-    bankCapital: BankCapitalDiagnostics = BankCapitalDiagnostics.zero, // monthly bank-capital waterfall diagnostics
-    bankFailure: BankFailureDiagnostics = BankFailureDiagnostics.zero, // monthly bank-failure trigger diagnostics
+    monthlyGdpProxy: PLN = PLN.Zero,                                                       // cached monthly GDP proxy for diagnostics / output ratios
+    sectorOutputs: Vector[PLN] = Vector.empty,                                             // nominal monthly output by schema sector
+    ioFlows: PLN = PLN.Zero,                                                               // I-O intermediate payments between sectors
+    fdiProfitShifting: PLN = PLN.Zero,                                                     // intangible imports booked abroad (profit shifting)
+    fdiRepatriation: PLN = PLN.Zero,                                                       // dividend repatriation by foreign-owned firms
+    fdiCitLoss: PLN = PLN.Zero,                                                            // CIT lost to profit shifting
+    diasporaRemittanceInflow: PLN = PLN.Zero,                                              // diaspora remittance inflow
+    tourismExport: PLN = PLN.Zero,                                                         // inbound tourism services export
+    tourismImport: PLN = PLN.Zero,                                                         // outbound tourism services import
+    aggInventoryStock: PLN = PLN.Zero,                                                     // aggregate firm inventory stock
+    aggInventoryChange: PLN = PLN.Zero,                                                    // ΔInventories (enters GDP)
+    aggEnergyCost: PLN = PLN.Zero,                                                         // aggregate energy + CO₂ costs
+    automationTechCapex: PLN = PLN.Zero,                                                   // technology CAPEX for automation/hybrid upgrades
+    automationTechImports: PLN = PLN.Zero,                                                 // import content of technology CAPEX
+    automationTechLoans: PLN = PLN.Zero,                                                   // bank-credit component of technology financing
+    automationUpgradeFailures: Int = 0,                                                    // implementation failures causing firm bankruptcy
+    automationAiDebtTrap: Int = 0,                                                         // AI debt-trap bankruptcies
+    automationNewFullAi: Int = 0,                                                          // new full-AI adopters
+    automationNewHybrid: Int = 0,                                                          // new hybrid adopters
+    firmBirths: Int = 0,                                                                   // new firms (recycled + net new)
+    firmDeaths: Int = 0,                                                                   // firms bankrupt this step
+    netFirmBirths: Int = 0,                                                                // net new firms appended to vector
+    taxEvasionLoss: PLN = PLN.Zero,                                                        // tax lost to 4-channel evasion (CIT+VAT+PIT+excise)
+    realizedTaxShadowShare: Share = Share.Zero,                                            // current-period realized aggregate tax-side shadow share
+    bailInLoss: PLN = PLN.Zero,                                                            // bail-in deposit haircut imposed on bank creditors
+    bfgLevyTotal: PLN = PLN.Zero,                                                          // BFG resolution levy from all banks
+    bankCapital: BankCapitalDiagnostics = BankCapitalDiagnostics.zero,                     // monthly bank-capital waterfall diagnostics
+    bankFailure: BankFailureDiagnostics = BankFailureDiagnostics.zero,                     // monthly bank-failure trigger diagnostics
+    bankReconciliation: BankReconciliationDiagnostics = BankReconciliationDiagnostics.zero, // exactness-patch impact on target bank capital/CAR
 )
 object FlowState:
   val zero: FlowState = FlowState()
