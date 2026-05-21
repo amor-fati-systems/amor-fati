@@ -353,6 +353,19 @@ output directory is
 Poland-relevant guardrail bands are documented in
 [household-credit-stress-calibration.md](household-credit-stress-calibration.md).
 
+Initial bank balance-sheet benchmark:
+
+```bash
+sbt "bankBalanceSheetBenchmark --seeds 10 --out target/bank-balance-sheet-benchmark --run-id bank-balance-sheet-benchmark"
+```
+
+This writes opening bank balance-sheet ratios, per-bank rows, target bands, and
+a summary report under `<out>/<run-id>/`. With the command above, the concrete
+output directory is
+`target/bank-balance-sheet-benchmark/bank-balance-sheet-benchmark/`. The
+semantics and Poland-relevant guardrail bands are documented in
+[bank-balance-sheet-benchmark.md](bank-balance-sheet-benchmark.md).
+
 For scratch and committed-snapshot SFC matrix exports, see
 [sfc-matrix-evidence.md](sfc-matrix-evidence.md).
 
@@ -417,6 +430,7 @@ Generated local outputs normally belong in ignored paths:
 | `target/scenarios/` | Scenario registry runs | No |
 | `target/robustness*` | Robustness reports | No |
 | `<out>/<run-id>/`, for example `target/household-credit-stress/household-credit-stress/` | Household credit-stress calibration | No |
+| `<out>/<run-id>/`, for example `target/bank-balance-sheet-benchmark/bank-balance-sheet-benchmark/` | Initial bank balance-sheet benchmark | No |
 | `docs/sfc-matrix-artifacts/` | Intentional committed matrix snapshots | Yes, only when refreshed intentionally |
 | `docs/empirical-validation/` | Empirical-validation snapshot bundle | Yes, only when refreshed intentionally |
 
