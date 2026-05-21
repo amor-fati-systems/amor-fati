@@ -4,7 +4,7 @@ import com.boombustgroup.amorfati.FixedPointSpecSupport.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import com.boombustgroup.amorfati.Generators
-import com.boombustgroup.amorfati.agents.Banking.BankStatus
+import com.boombustgroup.amorfati.agents.Banking.{BankFailureReason, BankStatus}
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.SimulationMonth.ExecutionMonth
 import com.boombustgroup.amorfati.types.*
@@ -180,6 +180,7 @@ class BankingSectorSpec extends AnyFlatSpec with Matchers:
     failed.anyFailed shouldBe true
     failed.banks.head.failed shouldBe true
     failed.banks.head.capital shouldBe PLN.Zero
+    failed.events.map(_.reason) shouldBe Vector(BankFailureReason.CarBreach)
 
     val recovered = mkBankRow(status = BankStatus.Active(2))
     Banking
@@ -196,6 +197,15 @@ class BankingSectorSpec extends AnyFlatSpec with Matchers:
     result.anyFailed shouldBe true
     result.banks.head.failed shouldBe true
     result.banks.head.capital shouldBe PLN.Zero
+    result.events.map(_.reason) shouldBe Vector(BankFailureReason.NegativeCapital)
+  }
+
+  it should "report LCR breaches as liquidity failure reasons" in {
+    val illiquid = mkBankRow(capital = PLN(500000), demandDeposits = PLN(1000000), reservesAtNbp = PLN.Zero, govBondHoldings = PLN.Zero)
+    val result   = Banking.checkFailures(Vector(illiquid.bank), Vector(illiquid.stocks), ExecutionMonth(30), enabled = true, Multiplier.Zero)
+
+    result.anyFailed shouldBe true
+    result.events.map(_.reason) shouldBe Vector(BankFailureReason.LiquidityBreach)
   }
 
   "Banking.resolveFailures" should "move failed-bank stocks to the healthiest survivor" in {

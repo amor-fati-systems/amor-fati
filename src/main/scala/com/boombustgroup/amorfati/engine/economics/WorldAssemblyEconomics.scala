@@ -407,6 +407,7 @@ object WorldAssemblyEconomics:
       bailInLoss = in.s9.bailInLoss,
       bfgLevyTotal = in.s9.bfgLevy,
       bankCapital = in.s9.bankCapitalDiagnostics,
+      bankFailure = in.s9.bankFailureDiagnostics,
     )
 
   /** FDI M&A: monthly stochastic conversion of domestic firms to foreign

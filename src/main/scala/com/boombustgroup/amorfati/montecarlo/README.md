@@ -155,6 +155,33 @@ channel.
 the bank-capital diagnostic block; it is a resolution-adjacent depositor haircut
 and is not included in the equity-capital waterfall identity.
 
+## Bank Failure Diagnostics
+
+The seed timeseries also includes monthly failure-trigger diagnostics:
+
+```text
+BankFailure_NewNegativeCapital
+BankFailure_NewCarBreach
+BankFailure_NewLiquidityBreach
+BankFailure_AllFailedFallback
+BankFailure_InvariantViolation
+BankFailure_FirstNewReasonCode
+BankFailure_FirstNewBankId
+```
+
+`BankFailure_NewNegativeCapital`, `BankFailure_NewCarBreach`, and
+`BankFailure_NewLiquidityBreach` count newly failed banks by primary trigger.
+If several triggers are true in the same month, the primary reason priority is
+negative capital, then CAR breach, then LCR/liquidity breach.
+`BankFailure_AllFailedFallback` is `1` when purchase-and-assumption resolution
+had to choose an absorber from an all-failed bank set. This is a bridge-bank /
+resolution-semantics warning, not an ordinary failure trigger.
+`BankFailure_InvariantViolation` should stay zero; a non-zero value means the
+failure-event diagnostics no longer reconcile to the new-failure count and the
+run should be treated as an invalid model state. `BankFailure_FirstNewReasonCode`
+uses stable codes: `0` none, `1` negative capital, `2` CAR breach,
+`3` LCR/liquidity breach, `4` all-failed fallback, `5` invariant mismatch.
+
 ## Household Liquidity Diagnostics
 
 The timeseries schema and terminal `_hh.csv` summary include generic household

@@ -172,6 +172,7 @@ class KnfBfgSpec extends AnyFlatSpec with Matchers:
 
     after shouldBe before +- BigDecimal("1.0")
     result.banks.exists(!_.failed) shouldBe true
+    result.allFailedFallbackUsed shouldBe true
   }
 
   "Banking.healthiestBankId" should "return bank with highest capital when all fail" in {

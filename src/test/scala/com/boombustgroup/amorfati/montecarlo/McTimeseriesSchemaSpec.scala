@@ -4,7 +4,7 @@ import com.boombustgroup.amorfati.FixedPointSpecSupport.*
 import com.boombustgroup.amorfati.agents.{Firm, Household, TechState}
 import com.boombustgroup.amorfati.config.{HousingConfig, SimParams}
 import com.boombustgroup.amorfati.engine.SimulationMonth.ExecutionMonth
-import com.boombustgroup.amorfati.engine.World
+import com.boombustgroup.amorfati.engine.{BankFailureDiagnostics, World}
 import com.boombustgroup.amorfati.engine.flows.FlowSimulation
 import com.boombustgroup.amorfati.engine.ledger.LedgerFinancialState
 import com.boombustgroup.amorfati.init.{InitRandomness, WorldInit}
@@ -157,6 +157,13 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     "MinBankCAR",
     "MaxBankNPL",
     "BankFailures",
+    "BankFailure_NewNegativeCapital",
+    "BankFailure_NewCarBreach",
+    "BankFailure_NewLiquidityBreach",
+    "BankFailure_AllFailedFallback",
+    "BankFailure_InvariantViolation",
+    "BankFailure_FirstNewReasonCode",
+    "BankFailure_FirstNewBankId",
     "MinBankLCR",
     "MinBankNSFR",
     "AvgTermDepositFrac",
@@ -402,7 +409,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     MetricValue.fromRaw(Share.fraction(numerator, denominator).toLong)
 
   "McTimeseriesSchema" should "expose the stable schema contract" in {
-    McTimeseriesSchema.nCols shouldBe 348
+    McTimeseriesSchema.nCols shouldBe 355
     McTimeseriesSchema.colNames.toVector shouldBe expectedColNames
   }
 
@@ -619,6 +626,33 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     valueAt(row, "HouseholdDistress_Current") shouldBe MetricValue.fromInt(init.householdAggregates.distressCurrent)
     valueAt(row, "HouseholdDistress_ActiveShare") shouldBe MetricValue.fromRaw(init.householdAggregates.distressActiveShare(init.households.length).toLong)
     valueAt(row, "BankFailures") shouldBe MetricValue.fromInt(init.banks.count(_.failed))
+  }
+
+  it should "emit bank failure trigger diagnostics" in {
+    val diagnostics = BankFailureDiagnostics(
+      newNegativeCapital = 1,
+      newCarBreach = 2,
+      newLiquidityBreach = 3,
+      allFailedFallback = 1,
+      invariantViolation = 0,
+      firstNewReasonCode = 3,
+      firstNewBankId = 4,
+    )
+    val world       = init.world.copy(
+      flows = init.world.flows.copy(
+        sectorOutputs = Vector.fill(summon[SimParams].sectorDefs.length)(PLN.Zero),
+        bankFailure = diagnostics,
+      ),
+    )
+    val row         = computeRow(world)
+
+    valueAt(row, "BankFailure_NewNegativeCapital") shouldBe MetricValue.fromInt(1)
+    valueAt(row, "BankFailure_NewCarBreach") shouldBe MetricValue.fromInt(2)
+    valueAt(row, "BankFailure_NewLiquidityBreach") shouldBe MetricValue.fromInt(3)
+    valueAt(row, "BankFailure_AllFailedFallback") shouldBe MetricValue.fromInt(1)
+    valueAt(row, "BankFailure_InvariantViolation") shouldBe MetricValue.Zero
+    valueAt(row, "BankFailure_FirstNewReasonCode") shouldBe MetricValue.fromInt(3)
+    valueAt(row, "BankFailure_FirstNewBankId") shouldBe MetricValue.fromInt(4)
   }
 
   it should "emit annualized deficit-to-GDP consistently with fiscal rules" in {

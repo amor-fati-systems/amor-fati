@@ -220,11 +220,13 @@ as a CSV column; it remains a model-computation boundary. Agent-level prices,
 wages, indexes, rates, shares, and counts remain in their native units.
 
 The seed time-series files also include always-on aggregate diagnostic blocks
-for household liquidity, firm automation/adoption, and bank capital. The bank
-capital block uses `BankCapital_*` columns to reconcile opening capital,
-retained income, realized credit losses, provisions, valuation losses,
-failure-related capital destruction, reconciliation residuals, and closing
-capital. No extra flag is needed for these aggregate diagnostics.
+for household liquidity, firm automation/adoption, bank capital, and bank
+failure triggers. The bank capital block uses `BankCapital_*` columns to
+reconcile opening capital, retained income, realized credit losses, provisions,
+valuation losses, failure-related capital destruction, reconciliation residuals,
+and closing capital. The `BankFailure_*` block identifies the monthly primary
+trigger for newly failed banks. No extra flag is needed for these aggregate
+diagnostics.
 
 Firm-level micro snapshots are optional and off by default. Enable them with
 `--firm-snapshots terminal`, `--firm-snapshots every:12`, or

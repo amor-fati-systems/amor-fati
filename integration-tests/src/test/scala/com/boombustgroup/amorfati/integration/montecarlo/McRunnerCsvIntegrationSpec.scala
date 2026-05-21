@@ -111,6 +111,13 @@ class McRunnerCsvIntegrationSpec extends AnyFlatSpec with Matchers:
     val bailInIdx        = columnIndex(header, "BailInLoss")
     val bankBailInIdx    = columnIndex(header, "BankCapital_DepositBailInLoss")
     val newFailuresIdx   = columnIndex(header, "BankCapital_NewFailures")
+    val negCapitalIdx    = columnIndex(header, "BankFailure_NewNegativeCapital")
+    val carBreachIdx     = columnIndex(header, "BankFailure_NewCarBreach")
+    val liquidityIdx     = columnIndex(header, "BankFailure_NewLiquidityBreach")
+    val fallbackIdx      = columnIndex(header, "BankFailure_AllFailedFallback")
+    val invariantIdx     = columnIndex(header, "BankFailure_InvariantViolation")
+    val firstReasonIdx   = columnIndex(header, "BankFailure_FirstNewReasonCode")
+    val firstBankIdx     = columnIndex(header, "BankFailure_FirstNewBankId")
     val realizedCredit   =
       row(firmLossIdx) + row(mortgageLossIdx) + row(consumerLossIdx) + row(corpBondLossIdx)
     val expectedDelta    =
@@ -124,6 +131,13 @@ class McRunnerCsvIntegrationSpec extends AnyFlatSpec with Matchers:
     row(residualIdx) shouldBe expectedResidual +- BigDecimal("0.05")
     row(bankBailInIdx) shouldBe row(bailInIdx) +- BigDecimal("0.05")
     row(newFailuresIdx) should be >= BigDecimal(0)
+    row(negCapitalIdx) should be >= BigDecimal(0)
+    row(carBreachIdx) should be >= BigDecimal(0)
+    row(liquidityIdx) should be >= BigDecimal(0)
+    row(fallbackIdx) should (be >= BigDecimal(0) and be <= BigDecimal(1))
+    row(invariantIdx) should be >= BigDecimal(0)
+    row(firstReasonIdx) should (be >= BigDecimal(0) and be <= BigDecimal(5))
+    row(firstBankIdx) should be >= BigDecimal(-1)
 
   private def expectedRun(seed: Long): RunResult =
     McRunner.runSingle(seed, DurationMonths).fold(err => fail(err.toString), identity)

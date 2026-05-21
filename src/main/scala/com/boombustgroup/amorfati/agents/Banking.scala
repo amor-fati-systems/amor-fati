@@ -81,6 +81,17 @@ object Banking:
     case Active(consecutiveLowCar: Int)
     case Failed(month: ExecutionMonth)
 
+  /** Primary reason for a bank newly entering failure/resolution state.
+    *
+    * Codes are stable CSV diagnostics: 0 is reserved for "none".
+    */
+  enum BankFailureReason(val code: Int):
+    case NegativeCapital    extends BankFailureReason(1)
+    case CarBreach          extends BankFailureReason(2)
+    case LiquidityBreach    extends BankFailureReason(3)
+    case AllFailedFallback  extends BankFailureReason(4)
+    case InvariantViolation extends BankFailureReason(5)
+
   // ---------------------------------------------------------------------------
   // Aggregate balance sheet (sum over all per-bank BankStates)
   // ---------------------------------------------------------------------------
@@ -192,8 +203,11 @@ object Banking:
   /** Pair of operational bank state and ledger-owned bank financial stocks. */
   case class BankStockState(banks: Vector[BankState], financialStocks: Vector[BankFinancialStocks])
 
+  /** Single newly failed bank with its primary trigger reason. */
+  case class FailureEvent(bankId: BankId, month: ExecutionMonth, reason: BankFailureReason)
+
   /** Result of monthly failure check. */
-  case class FailureCheckResult(banks: Vector[BankState], anyFailed: Boolean)
+  case class FailureCheckResult(banks: Vector[BankState], anyFailed: Boolean, events: Vector[FailureEvent] = Vector.empty)
 
   /** Result of BRRD bail-in on newly failed banks. */
   case class BailInResult(banks: Vector[BankState], financialStocks: Vector[BankFinancialStocks], totalLoss: PLN)
@@ -204,6 +218,7 @@ object Banking:
       financialStocks: Vector[BankFinancialStocks],
       absorberId: BankId,
       bankCorpBondHoldings: Vector[PLN] = Vector.empty,
+      allFailedFallbackUsed: Boolean = false,
   )
 
   /** Auditable result of a firm-credit approval check. `approvalRoll` is
@@ -568,7 +583,9 @@ object Banking:
 
   /** Check for bank failures: negative capital immediately, CAR <
     * effectiveMinCar for 3 consecutive months, or LCR breach at 50% of minimum.
-    * Already-failed banks pass through.
+    * Already-failed banks pass through. If several triggers are true in the
+    * same month, diagnostics report the primary reason in this priority order:
+    * negative capital, CAR breach, liquidity breach.
     */
   def checkFailures(
       banks: Vector[BankState],
@@ -592,10 +609,10 @@ object Banking:
         anyFailed = false,
       )
     else
-      val updated    = banks
+      val checked = banks
         .zip(financialStocks)
         .map: (b, stocks) =>
-          if b.failed then b
+          if b.failed then (b, None)
           else
             val consec    = b.consecutiveLowCar
             val minCar    = Macroprudential.effectiveMinCar(b.id.toInt, ccyb)
@@ -603,10 +620,17 @@ object Banking:
             val lcrBreach = lcr(stocks) < p.banking.lcrMin * Share.decimal(5, 1)
             val newConsec = if lowCar then consec + 1 else 0
             val insolvent = b.capital < PLN.Zero
-            if insolvent || newConsec >= 3 || lcrBreach then b.copy(status = BankStatus.Failed(month), capital = PLN.Zero)
-            else b.copy(status = BankStatus.Active(newConsec))
-      val prevFailed = banks.filter(_.failed).map(_.id).toSet
-      FailureCheckResult(updated, updated.exists(b => b.failed && !prevFailed.contains(b.id)))
+            val reason    =
+              if insolvent then Some(BankFailureReason.NegativeCapital)
+              else if newConsec >= 3 then Some(BankFailureReason.CarBreach)
+              else if lcrBreach then Some(BankFailureReason.LiquidityBreach)
+              else None
+            reason match
+              case Some(r) => (b.copy(status = BankStatus.Failed(month), capital = PLN.Zero), Some(FailureEvent(b.id, month, r)))
+              case None    => (b.copy(status = BankStatus.Active(newConsec)), None)
+      val updated = checked.map(_._1)
+      val events  = checked.flatMap(_._2)
+      FailureCheckResult(updated, events.nonEmpty, events)
 
   /** Compute monthly BFG levy for all banks.
     *
@@ -659,18 +683,19 @@ object Banking:
     val newlyFailed    = banks.zip(financialStocks).filter((b, stocks) => b.failed && stocks.totalDeposits > PLN.Zero)
     if newlyFailed.isEmpty then ResolutionResult(banks, financialStocks, BankId.NoBank, holderBalances)
     else
-      val absorberId = healthiestBankId(banks, financialStocks, bankCorpBondHoldingsFromVector(holderBalances))
-      val toAbsorb   = newlyFailed.filter((bank, _) => bank.id != absorberId)
+      val allFailedFallbackUsed = banks.forall(_.failed)
+      val absorberId            = healthiestBankId(banks, financialStocks, bankCorpBondHoldingsFromVector(holderBalances))
+      val toAbsorb              = newlyFailed.filter((bank, _) => bank.id != absorberId)
       // Single-pass PLN aggregation of all flows from failed banks (exact Long addition)
-      val addDep     = toAbsorb.map(_._2.totalDeposits).sumPln
-      val addLoans   = toAbsorb.map((bank, stocks) => stocks.firmLoan - bank.nplAmount).sumPln
-      val addAfs     = toAbsorb.map(_._2.govBondAfs).sumPln
-      val addHtm     = toAbsorb.map(_._2.govBondHtm).sumPln
-      val addCorpB   = toAbsorb.flatMap((bank, _) => holderBalances.lift(bank.id.toInt)).sumPln
-      val addCC      = toAbsorb.map(_._2.consumerLoan).sumPln
-      val addIB      = toAbsorb.map(_._2.interbankLoan).sumPln
+      val addDep                = toAbsorb.map(_._2.totalDeposits).sumPln
+      val addLoans              = toAbsorb.map((bank, stocks) => stocks.firmLoan - bank.nplAmount).sumPln
+      val addAfs                = toAbsorb.map(_._2.govBondAfs).sumPln
+      val addHtm                = toAbsorb.map(_._2.govBondHtm).sumPln
+      val addCorpB              = toAbsorb.flatMap((bank, _) => holderBalances.lift(bank.id.toInt)).sumPln
+      val addCC                 = toAbsorb.map(_._2.consumerLoan).sumPln
+      val addIB                 = toAbsorb.map(_._2.interbankLoan).sumPln
       // Weighted yield: Σ(htmBonds × htmBookYield) — PLN × Rate → PLN
-      val htmYieldWt = toAbsorb.map((bank, stocks) => stocks.govBondHtm * bank.htmBookYield).sumPln
+      val htmYieldWt            = toAbsorb.map((bank, stocks) => stocks.govBondHtm * bank.htmBookYield).sumPln
 
       val resolvedRows      = banks
         .zip(financialStocks)
@@ -712,7 +737,7 @@ object Banking:
         else if bank.failed && stocks.totalDeposits == PLN.Zero then PLN.Zero
         else holderBalances(index)
       }
-      ResolutionResult(resolved, resolvedStocks, absorberId, resolvedCorpBonds)
+      ResolutionResult(resolved, resolvedStocks, absorberId, resolvedCorpBonds, allFailedFallbackUsed)
 
   /** Find the healthiest surviving bank.
     *
