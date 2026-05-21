@@ -36,6 +36,13 @@ object EclStaging:
   object State:
     val zero: State = State(PLN.Zero, PLN.Zero, PLN.Zero)
 
+    /** Opening all-performing book used until a calibrated Stage 2/3 split is
+      * introduced.
+      */
+    def allStage1(coveredLoans: PLN): State =
+      require(coveredLoans >= PLN.Zero, s"ECL opening covered loans must be non-negative, got $coveredLoans")
+      State(coveredLoans, PLN.Zero, PLN.Zero)
+
   /** ECL staging result: updated stages + total provision change. */
   case class StepResult(
       newStaging: State,

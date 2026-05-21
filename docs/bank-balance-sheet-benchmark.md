@@ -69,6 +69,9 @@ February 2026 total-capital-ratio bridge already recorded in calibration
 provenance. `ConsumerLoansToGdp` and `MortgageLoansToGdp` reuse the household
 credit-stress calibration ranges. ECL bands are model-semantics checks: they ask
 whether the opening loan book is already staged and provisioned before monthly
-ECL dynamics begin. Deposit split, reserves, and liquidity ratios are especially
-important because they determine whether LCR, NSFR and monetary aggregates are
-measuring an economically meaningful opening bank balance sheet.
+ECL dynamics begin. The current opening ECL bridge assigns the covered firm and
+consumer loan book to Stage 1; calibrated opening Stage 2/3 shares remain a
+separate banking-risk calibration step. Deposit split, reserves, and liquidity
+ratios are especially important because they determine whether LCR, NSFR and
+monetary aggregates are measuring an economically meaningful opening bank
+balance sheet.

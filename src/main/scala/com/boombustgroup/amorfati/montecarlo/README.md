@@ -131,6 +131,8 @@ BankEcl_GdpGrowthMonthly
 ```
 
 `EclStage1`, `EclStage2`, and `EclStage3` are aggregate staged exposure stocks.
+At model start the ECL-covered firm and consumer loan book is seeded as
+all-performing Stage 1; calibrated opening Stage 2/3 shares are not modeled yet.
 `BankEcl_OpeningAllowance` and `BankEcl_ClosingAllowance` are the accounting
 allowances implied by those staged stocks and configured ECL rates.
 `BankEcl_BaselineStage1Allowance` asks what the closing allowance would have

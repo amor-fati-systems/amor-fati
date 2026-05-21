@@ -1,7 +1,7 @@
 package com.boombustgroup.amorfati.init
 
 import com.boombustgroup.amorfati.FixedPointSpecSupport.*
-import com.boombustgroup.amorfati.agents.Banking
+import com.boombustgroup.amorfati.agents.{Banking, EclStaging}
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.ledger.LedgerFinancialState
 import com.boombustgroup.amorfati.fp.FixedPointBase
@@ -53,6 +53,26 @@ class WorldInitSpec extends AnyFlatSpec with Matchers:
 
     householdLoans shouldBe p.banking.initConsumerLoans
     bankConsumerBook shouldBe p.banking.initConsumerLoans
+  }
+
+  it should "seed bank ECL staging from the opening covered loan book" in {
+    val init         = WorldInit.initialize(InitRandomness.Contract.fromSeed(42L))
+    val bankBalances = init.ledgerFinancialState.banks
+    val allowance    = init.banks.map(bank => EclStaging.allowance(bank.eclStaging)).sumPln
+
+    allowance should be > PLN.Zero
+    init.banks.size shouldBe bankBalances.size
+    init.banks.map(_.id.toInt).distinct.size shouldBe init.banks.size
+    val balancesByBankId = bankBalances.zipWithIndex.map { case (balances, bankId) => bankId -> balances }.toMap
+    init.banks.foreach { bank =>
+      val balances     = balancesByBankId(bank.id.toInt)
+      val coveredLoans = balances.firmLoan + balances.consumerLoan
+
+      bank.eclStaging.stage1 shouldBe coveredLoans
+      bank.eclStaging.stage2 shouldBe PLN.Zero
+      bank.eclStaging.stage3 shouldBe PLN.Zero
+      EclStaging.allowance(bank.eclStaging) shouldBe coveredLoans * p.banking.eclRate1
+    }
   }
 
   it should "honor the housing mortgage opening stock" in {

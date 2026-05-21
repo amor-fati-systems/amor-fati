@@ -48,15 +48,16 @@ object BankInit:
     val rows = Banking.DefaultConfigs
       .zip(bondAlloc)
       .map { case (cfg, bankBondRaw) =>
-        val bId            = cfg.id.toInt
-        val corpLoans      = perBankCorpLoans.getOrElse(bId, PLN.Zero)
-        val consLoans      = perBankConsLoans.getOrElse(bId, PLN.Zero)
-        val firmDeposits   = perBankCash.getOrElse(bId, PLN.Zero)
-        val hhDeposits     = perBankHhDeposits.getOrElse(bId, PLN.Zero)
-        val bankBonds      = PLN.fromRaw(bankBondRaw)
-        val deposits       = firmDeposits + hhDeposits
-        val termDeposits   = deposits * p.banking.termDepositFrac
-        val demandDeposits = deposits - termDeposits
+        val bId             = cfg.id.toInt
+        val corpLoans       = perBankCorpLoans.getOrElse(bId, PLN.Zero)
+        val consLoans       = perBankConsLoans.getOrElse(bId, PLN.Zero)
+        val firmDeposits    = perBankCash.getOrElse(bId, PLN.Zero)
+        val hhDeposits      = perBankHhDeposits.getOrElse(bId, PLN.Zero)
+        val bankBonds       = PLN.fromRaw(bankBondRaw)
+        val deposits        = firmDeposits + hhDeposits
+        val termDeposits    = deposits * p.banking.termDepositFrac
+        val demandDeposits  = deposits - termDeposits
+        val eclCoveredLoans = corpLoans + consLoans
         (
           Banking.BankState(
             id = cfg.id,
@@ -68,6 +69,7 @@ object BankInit:
             loansMedium = PLN.Zero,
             loansLong = PLN.Zero,
             consumerNpl = PLN.Zero,
+            eclStaging = EclStaging.State.allStage1(eclCoveredLoans),
           ),
           Banking.BankFinancialStocks(
             totalDeposits = deposits,
