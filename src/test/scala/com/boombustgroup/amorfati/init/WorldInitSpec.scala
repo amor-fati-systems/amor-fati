@@ -1,6 +1,7 @@
 package com.boombustgroup.amorfati.init
 
 import com.boombustgroup.amorfati.FixedPointSpecSupport.*
+import com.boombustgroup.amorfati.agents.Banking
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.ledger.LedgerFinancialState
 import com.boombustgroup.amorfati.fp.FixedPointBase
@@ -62,4 +63,24 @@ class WorldInitSpec extends AnyFlatSpec with Matchers:
     householdMortgage shouldBe p.housing.initMortgage
     bankMortgageBook shouldBe p.housing.initMortgage
     init.world.real.housing.mortgageStock shouldBe p.housing.initMortgage
+  }
+
+  it should "seed bank deposit buckets and NBP reserve liabilities from opening deposits" in {
+    val init         = WorldInit.initialize(InitRandomness.Contract.fromSeed(42L))
+    val bankBalances = init.ledgerFinancialState.banks
+    val deposits     = bankBalances.map(_.totalDeposits).sumPln
+    val reserves     = bankBalances.map(_.reserve).sumPln
+
+    deposits should be > PLN.Zero
+    bankBalances.foreach { bank =>
+      val expectedTermDeposit = bank.totalDeposits * p.banking.termDepositFrac
+      val expectedReserve     = bank.totalDeposits * p.banking.reserveReq
+      val stocks              = LedgerFinancialState.projectBankFinancialStocks(bank)
+
+      bank.demandDeposit + bank.termDeposit shouldBe bank.totalDeposits
+      bank.termDeposit shouldBe expectedTermDeposit
+      bank.reserve shouldBe expectedReserve
+      Banking.netCashOutflows(stocks) should be > PLN.Zero
+    }
+    init.ledgerFinancialState.nbp.reserveLiability shouldBe reserves
   }

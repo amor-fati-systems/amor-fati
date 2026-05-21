@@ -48,12 +48,15 @@ object BankInit:
     val rows = Banking.DefaultConfigs
       .zip(bondAlloc)
       .map { case (cfg, bankBondRaw) =>
-        val bId          = cfg.id.toInt
-        val corpLoans    = perBankCorpLoans.getOrElse(bId, PLN.Zero)
-        val consLoans    = perBankConsLoans.getOrElse(bId, PLN.Zero)
-        val firmDeposits = perBankCash.getOrElse(bId, PLN.Zero)
-        val hhDeposits   = perBankHhDeposits.getOrElse(bId, PLN.Zero)
-        val bankBonds    = PLN.fromRaw(bankBondRaw)
+        val bId            = cfg.id.toInt
+        val corpLoans      = perBankCorpLoans.getOrElse(bId, PLN.Zero)
+        val consLoans      = perBankConsLoans.getOrElse(bId, PLN.Zero)
+        val firmDeposits   = perBankCash.getOrElse(bId, PLN.Zero)
+        val hhDeposits     = perBankHhDeposits.getOrElse(bId, PLN.Zero)
+        val bankBonds      = PLN.fromRaw(bankBondRaw)
+        val deposits       = firmDeposits + hhDeposits
+        val termDeposits   = deposits * p.banking.termDepositFrac
+        val demandDeposits = deposits - termDeposits
         (
           Banking.BankState(
             id = cfg.id,
@@ -67,14 +70,14 @@ object BankInit:
             consumerNpl = PLN.Zero,
           ),
           Banking.BankFinancialStocks(
-            totalDeposits = firmDeposits + hhDeposits,
+            totalDeposits = deposits,
             firmLoan = corpLoans,
             govBondAfs = bankBonds * (Share.One - p.banking.htmShare),
             govBondHtm = bankBonds * p.banking.htmShare,
-            reserve = PLN.Zero,
+            reserve = deposits * p.banking.reserveReq,
             interbankLoan = PLN.Zero,
-            demandDeposit = PLN.Zero,
-            termDeposit = PLN.Zero,
+            demandDeposit = demandDeposits,
+            termDeposit = termDeposits,
             consumerLoan = consLoans,
           ),
         )
