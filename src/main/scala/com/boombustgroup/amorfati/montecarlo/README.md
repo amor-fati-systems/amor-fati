@@ -285,6 +285,7 @@ ConsumerOrigination
 ConsumerApprovedOrigination
 ConsumerCreditDemand
 ConsumerRejectedOrigination
+ConsumerBankRejectedOrigination
 ConsumerDebtService
 ConsumerDefault
 ConsumerLoanDefault
@@ -351,7 +352,10 @@ as ordinary household consumer-loan stock and does not bypass DTI underwriting.
 flow, while `ConsumerApprovedOrigination` is the underwritten credit channel.
 `ConsumerCreditDemand` records stressed households' DTI-based requested
 principal before eligibility denial, and `ConsumerRejectedOrigination` records
-the requested principal not approved by the consumer-credit rule.
+the requested principal not approved by borrower-side or bank-side rules.
+`ConsumerBankRejectedOrigination` is the subset rejected after household
+eligibility because the household's routed bank fails the bank-side supply gate
+or is already failed.
 `ConsumerLoanDefault` reports only default of ordinary outstanding consumer-loan
 principal; `LiquidityBridgeChargeOff` reports the same-month bridge write-off.
 For the bridge component, the stock effect is zero because

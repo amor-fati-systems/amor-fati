@@ -62,7 +62,7 @@ runtime ledger flows and validates SFC identities.
 
 | Rule group | Main implementation anchors | Representative output columns |
 | --- | --- | --- |
-| Household income, consumption, savings, credit | `agents/Household.scala`, `engine/economics/HouseholdIncomeEconomics.scala`, `engine/economics/HouseholdFinancialEconomics.scala` | `MarketWage`, `Unemployment`, `EffectivePitRate`, `ConsumerLoans`, `ConsumerOrigination`, `ConsumerApprovedOrigination`, `ConsumerCreditDemand`, `ConsumerRejectedOrigination`, `ConsumerDebtService`, `ConsumerDefault`, `ConsumerLoanDefault`, `LiquidityBridgeChargeOff`, `HouseholdDistress_Current`, `HouseholdDistress_LiquidityStress`, `HouseholdDistress_Arrears`, `HouseholdDistress_Restructuring`, `HouseholdDistress_Defaulted`, `HouseholdDistress_Bankruptcy`, `HouseholdDistress_ActiveShare`, `HouseholdLiquidity_ShortfallFinancing`, `HouseholdLiquidity_NetDemandDeposit`, `HouseholdLiquidity_PositiveDemandDeposits`, `HouseholdLiquidity_ImplicitOverdraft`, `HouseholdLiquidity_NegativeDepositShare`, `HouseholdLiquidity_DepositP01`-`P99`, `SectorMobilityRate`, `VoluntaryQuits`, `DiasporaRemittanceInflow`, `RemittanceOutflow`, `TourismExport`, `TourismImport` |
+| Household income, consumption, savings, credit | `agents/Household.scala`, `engine/economics/HouseholdIncomeEconomics.scala`, `engine/economics/HouseholdFinancialEconomics.scala` | `MarketWage`, `Unemployment`, `EffectivePitRate`, `ConsumerLoans`, `ConsumerOrigination`, `ConsumerApprovedOrigination`, `ConsumerCreditDemand`, `ConsumerRejectedOrigination`, `ConsumerBankRejectedOrigination`, `ConsumerDebtService`, `ConsumerDefault`, `ConsumerLoanDefault`, `LiquidityBridgeChargeOff`, `HouseholdDistress_Current`, `HouseholdDistress_LiquidityStress`, `HouseholdDistress_Arrears`, `HouseholdDistress_Restructuring`, `HouseholdDistress_Defaulted`, `HouseholdDistress_Bankruptcy`, `HouseholdDistress_ActiveShare`, `HouseholdLiquidity_ShortfallFinancing`, `HouseholdLiquidity_NetDemandDeposit`, `HouseholdLiquidity_PositiveDemandDeposits`, `HouseholdLiquidity_ImplicitOverdraft`, `HouseholdLiquidity_NegativeDepositShare`, `HouseholdLiquidity_DepositP01`-`P99`, `SectorMobilityRate`, `VoluntaryQuits`, `DiasporaRemittanceInflow`, `RemittanceOutflow`, `TourismExport`, `TourismImport` |
 | Labor, wages, demographics, social funds | `engine/economics/LaborEconomics.scala`, `agents/SocialSecurity.scala`, `agents/EarmarkedFunds.scala` | `MarketWage`, `Unemployment`, `WorkingAgePop`, `NRetirees`, `MonthlyRetirements`, `ZusContributions`, `ZusPensionPayments`, `NfzContributions`, `NfzSpending`, `PpkContributions`, `FpContributions`, `FgspSpending` |
 | Demand allocation and fiscal constraint | `engine/economics/DemandEconomics.scala`, `engine/markets/FiscalRules.scala`, `engine/markets/FiscalBudget.scala` | `GovCurrentSpend`, `GovCapitalSpendDomestic`, `FiscalRuleBinding`, `GovSpendingCutRatio`, `DebtToGdp`, `DeficitToGdp`, `PublicCapitalStock` |
 | Firm production, investment, technology, financing, default, entry | `agents/Firm.scala`, `engine/economics/FirmEconomics.scala`, `engine/mechanisms/FirmEntry.scala` | `TotalAdoption`, `AutoRatio`, `HybridRatio`, `Automation_TechCapex`, `Automation_TechImports`, `Automation_TechLoans`, `Automation_UpgradeFailures`, `Automation_AiDebtTrap`, `Automation_NewFullAi`, `Automation_NewHybrid`, `Adoption_MicroShare`, `Adoption_SmallShare`, `Adoption_MediumShare`, `Adoption_LargeShare`, `Adoption_CashQ1`-`Q4`, `Adoption_DebtQ1`-`Q4`, sector `*_Auto`, sector `*_Sigma`, `GrossInvestment`, `AggCapitalStock`, `AggInventoryStock`, `InventoryChange`, `AggEnergyCost`, `GreenInvestment`, `FirmBirths`, `FirmDeaths`, `NetEntry`, `LivingFirmCount`, `CorpBondIssuance`, `EquityIssuanceTotal` |
@@ -256,13 +256,15 @@ but still keeps a protected buffer floor.
 
 ### Consumer Credit
 
-Underwritten consumer credit is available only to employed households. A
-household is eligible when disposable income is stressed relative to wage, the
+Underwritten consumer credit is available only to employed households and must
+pass both household-side affordability and bank-side supply. A household is
+eligible when disposable income is stressed relative to wage, the
 financial-distress state still permits new credit, a stochastic eligibility draw
 succeeds, and the resulting debt-service-to-income ratio has room below
 `ccMaxDti`. The DTI headroom is a monthly payment-capacity constraint, so the
-approved principal is computed by dividing monthly payment headroom by the
-monthly consumer-credit payment factor:
+requested principal is computed by dividing monthly payment headroom by the
+monthly consumer-credit payment factor. The household's bank then applies the
+same CAR/LCR/NSFR supply gate used for bank credit approval:
 
 ```text
 stressed_h = disposablePreCredit_h < wage_h * DisposableWageThreshold
@@ -271,14 +273,19 @@ paymentFactor_h = ccAmortRate + consumerCreditRate_h.monthly
 principalCapacity_h = min(paymentHeadroom_h / paymentFactor_h, ccMaxLoan)
 liquidityNeed_h = max(disposable-stress gap, essential-consumption gap)
 consumerCreditDemand_h = min(liquidityNeed_h, principalCapacity_h)
-approvedConsumerLoan_h = consumerCreditDemand_h if eligible else 0
+bankSupplyOk_b = creditApproval(bank_b, consumerCreditDemand_h).approved
+approvedConsumerLoan_h = consumerCreditDemand_h if eligible and bankSupplyOk_b else 0
 rejectedConsumerCreditDemand_h = consumerCreditDemand_h - approvedConsumerLoan_h
+bankRejectedConsumerCreditDemand_h = consumerCreditDemand_h if eligible and not bankSupplyOk_b else 0
 ```
 
 `Current` and first-month `LiquidityStress` households can still pass the normal
 underwriting rule. `Arrears`, `Restructuring`, `Defaulted`, and `Bankruptcy`
 households report credit demand where relevant, but new underwritten
-consumer-credit approval is blocked.
+consumer-credit approval is blocked before the bank supply gate. Failed or
+prudentially constrained banks reject otherwise eligible consumer-credit demand;
+that rejected subset is reported separately as
+`ConsumerBankRejectedOrigination`.
 
 Liquidity-shortfall financing is not a discretionary credit decision and does
 not expand the consumption budget. It is a settlement leg booked after monthly

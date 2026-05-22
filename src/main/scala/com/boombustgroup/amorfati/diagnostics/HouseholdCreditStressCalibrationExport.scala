@@ -333,7 +333,8 @@ object HouseholdCreditStressCalibrationExport:
       lower = Some(BigDecimal("0.00")),
       upper = None,
       sourceNote = "Issue #534 diagnostic over stressed households with positive DTI-based consumer-credit demand.",
-      interpretation = "Shows whether normal credit origination is suppressed by access/underwriting denial rather than by lack of borrower demand.",
+      interpretation =
+        "Shows whether normal credit origination is suppressed by borrower-side denial or bank-side supply rejection rather than by lack of borrower demand.",
     ),
     TargetBand(
       id = "RejectedConsumerCreditDemandToShortfall",

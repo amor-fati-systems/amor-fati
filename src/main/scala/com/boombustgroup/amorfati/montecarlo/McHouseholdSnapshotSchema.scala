@@ -52,6 +52,7 @@ private[montecarlo] object McHouseholdSnapshotSchema:
     "ConsumerApprovedOrigination"         -> (row => row.monthlyFlow.consumerApprovedOrigination.format(2)),
     "ConsumerCreditDemand"                -> (row => row.monthlyFlow.consumerCreditDemand.format(2)),
     "ConsumerRejectedOrigination"         -> (row => row.monthlyFlow.consumerRejectedOrigination.format(2)),
+    "ConsumerBankRejectedOrigination"     -> (row => row.monthlyFlow.consumerBankRejectedOrigination.format(2)),
     "LiquidityShortfallFinancing"         -> (row => row.monthlyFlow.liquidityShortfallFinancing.format(2)),
     "ConsumptionShortfall"                -> (row => row.monthlyFlow.consumptionShortfall.format(2)),
     "RentArrears"                         -> (row => row.monthlyFlow.rentArrears.format(2)),

@@ -172,6 +172,7 @@ class ConsumerCreditSpec extends AnyFlatSpec with Matchers:
     agg.totalConsumerApprovedOrigination shouldBe PLN.Zero
     agg.totalConsumerCreditDemand shouldBe PLN.Zero
     agg.totalConsumerRejectedOrigination shouldBe PLN.Zero
+    agg.totalConsumerBankRejectedOrigination shouldBe PLN.Zero
     agg.totalLiquidityShortfallFinancing shouldBe PLN.Zero
     agg.totalConsumptionShortfall shouldBe PLN.Zero
     agg.totalRentArrears shouldBe PLN.Zero

@@ -187,6 +187,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     "ConsumerApprovedOrigination",
     "ConsumerCreditDemand",
     "ConsumerRejectedOrigination",
+    "ConsumerBankRejectedOrigination",
     "ConsumerDebtService",
     "ConsumerDefault",
     "ConsumerLoanDefault",
@@ -441,7 +442,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     MetricValue.fromRaw(Share.fraction(numerator, denominator).toLong)
 
   "McTimeseriesSchema" should "expose the stable schema contract" in {
-    McTimeseriesSchema.nCols shouldBe 386
+    McTimeseriesSchema.nCols shouldBe 387
     McTimeseriesSchema.colNames.toVector shouldBe expectedColNames
   }
 

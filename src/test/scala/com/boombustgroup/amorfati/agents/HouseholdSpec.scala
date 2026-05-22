@@ -46,6 +46,7 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
       equityIndexReturn: Rate = Rate.Zero,
       sectorWages: Option[Vector[PLN]] = None,
       sectorVacancies: Option[Vector[Int]] = None,
+      consumerCreditGate: Option[Household.ConsumerCreditGate] = None,
   ): Household.StepResult =
     val result = Household.step(
       households,
@@ -60,6 +61,7 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
       equityIndexReturn,
       sectorWages,
       sectorVacancies,
+      consumerCreditGate,
     )
     result.households.zip(result.financialStocks).foreach((hh, stocks) => financialById.update(hh.id.toInt, stocks))
     result
@@ -425,7 +427,32 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
     flow.consumerApprovedOrigination shouldBe flow.consumerCreditDemand
     flow.consumerApprovedOrigination should be <= creditP.household.ccMaxLoan
     flow.consumerRejectedOrigination shouldBe PLN.Zero
+    flow.consumerBankRejectedOrigination shouldBe PLN.Zero
     result.aggregates.totalConsumerCreditDemand shouldBe flow.consumerCreditDemand
+  }
+
+  it should "reject underwritten consumer credit when the bank supply gate rejects" in {
+    val creditP = SimParamsTestOverrides.consumerCreditEligibility(Share.One)
+    val rng     = RandomStream.seeded(42)
+    val hh      = mkHousehold(0, HhStatus.Employed(FirmId(0), SectorIdx(0), PLN(8000)), savings = PLN.Zero, rent = PLN(7500))
+
+    val result = Household.step(
+      Vector(hh),
+      Vector(TestHouseholdState.financial(savings = PLN.Zero, debt = PLN.Zero, consumerDebt = PLN.Zero, equityWealth = PLN.Zero)),
+      mkWorld(),
+      PLN(8000),
+      PLN(4666),
+      Share.decimal(4, 1),
+      rng,
+      consumerCreditGate = Some((_, _, _) => false),
+    )(using creditP)
+    val flow   = result.monthlyFlows.head
+
+    flow.consumerCreditDemand should be > PLN.Zero
+    flow.consumerApprovedOrigination shouldBe PLN.Zero
+    flow.consumerRejectedOrigination shouldBe flow.consumerCreditDemand
+    flow.consumerBankRejectedOrigination shouldBe flow.consumerCreditDemand
+    result.aggregates.totalConsumerBankRejectedOrigination shouldBe flow.consumerBankRejectedOrigination
   }
 
   it should "expose rejected consumer-credit demand when access eligibility fails" in {
@@ -447,6 +474,7 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
     flow.consumerCreditDemand should be > PLN.Zero
     flow.consumerApprovedOrigination shouldBe PLN.Zero
     flow.consumerRejectedOrigination shouldBe flow.consumerCreditDemand
+    flow.consumerBankRejectedOrigination shouldBe PLN.Zero
     result.aggregates.totalConsumerRejectedOrigination shouldBe flow.consumerRejectedOrigination
   }
 
@@ -470,6 +498,7 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
     flow.consumerCreditDemand should be > PLN.Zero
     flow.consumerApprovedOrigination shouldBe PLN.Zero
     flow.consumerRejectedOrigination shouldBe flow.consumerCreditDemand
+    flow.consumerBankRejectedOrigination shouldBe PLN.Zero
   }
 
   it should "use remaining underwritten consumer-credit capacity before liquidity shortfall financing" in {
