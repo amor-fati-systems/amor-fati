@@ -60,7 +60,7 @@ outside the reference band is still reported as `WARN`, but the warning means
 | `DiscretionaryConsumptionCompressionToIncome` | `EXPLORATORY_DIAGNOSTIC` | `2026-04-30 model-start baseline` | `0.00` to n/a | ratio | Discretionary consumption pressure absorbed before creating bridge charge-offs. |
 | `ShortfallToIncome` | `SOFT_CALIBRATION_WARNING` | `2026-04-30 model-start baseline` | `0.00` to `0.05` | ratio | Shortfall financing should be a stress channel, not a large routine substitute for income. |
 | `ShortfallToApprovedOrigination` | `SOFT_CALIBRATION_WARNING` | `2026-04-30 model-start baseline` | `0.00` to `2.00` | ratio | The non-underwritten liquidity bridge should not structurally dominate normal approved consumer credit. |
-| `RejectedConsumerCreditDemandToApprovedOrigination` | `EXPLORATORY_DIAGNOSTIC` | `2026-04-30 model-start baseline` | `0.00` to n/a | ratio | Shows whether approved credit is suppressed by access/underwriting denial rather than by lack of borrower demand. |
+| `RejectedConsumerCreditDemandToApprovedOrigination` | `EXPLORATORY_DIAGNOSTIC` | `2026-04-30 model-start baseline` | `0.00` to n/a | ratio | Shows whether approved credit is suppressed by borrower-side denial or bank-side supply rejection rather than by lack of borrower demand. |
 | `RejectedConsumerCreditDemandToShortfall` | `EXPLORATORY_DIAGNOSTIC` | `2026-04-30 model-start baseline` | `0.00` to n/a | ratio | Compares denied normal-credit demand with residual emergency bridge/write-off flow. |
 
 ## Source Status
