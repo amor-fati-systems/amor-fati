@@ -135,6 +135,7 @@ object BankingEconomics:
       ccPrincipal: PLN,      // consumer credit principal repaid to this bank
       ccOrigination: PLN,    // total consumer-loan stock origination at this bank
       ccDefault: PLN,        // consumer credit defaults at this bank
+      ccLoanDefault: PLN,    // ordinary consumer-loan defaults at this bank, excluding bridge charge-offs
   )
 
   private case class SingleBankUpdate(
@@ -572,6 +573,7 @@ object BankingEconomics:
           ccPrincipal = f.consumerPrincipal,
           ccOrigination = f.consumerOrigination,
           ccDefault = f.consumerDefault,
+          ccLoanDefault = f.consumerLoanDefault,
         )
       case None      =>
         val ws = if totalWorkers > 0 then Share.fraction(perBankWorkers(bId), totalWorkers) else Share.Zero
@@ -584,6 +586,7 @@ object BankingEconomics:
           ccPrincipal = in.s6.consumerPrincipal * ws,
           ccOrigination = in.s6.consumerOrigination * ws,
           ccDefault = in.s6.consumerDefaultAmt * ws,
+          ccLoanDefault = in.s6.consumerLoanDefaultAmt * ws,
         )
 
   private def allocateBankCorpBondIssuance(issuance: PLN, perBankWorkers: Vector[Int]): Vector[PLN] =
@@ -663,7 +666,7 @@ object BankingEconomics:
 
     val bankMortgageIntIncome     = hhFlows.mortgageInterest
     val bankMortgageNplLoss       = mortgageFlows.defaultLoss * workerShare
-    val bankCcNplLoss             = hhFlows.ccDefault * (Share.One - p.household.ccNplRecovery)
+    val bankCcNplLoss             = hhFlows.ccLoanDefault * (Share.One - p.household.ccNplRecovery)
     val bankCcStockReduction: PLN = in.s3.perBankHhFlowsOpt match
       case Some(pbf) => pbf(bId).consumerPrincipal
       case _         => hhFlows.ccPrincipal
@@ -712,7 +715,7 @@ object BankingEconomics:
         loansShort = newLoansTotal * ShortLoanFrac,
         loansMedium = newLoansTotal * MediumLoanFrac,
         loansLong = newLoansTotal * LongLoanFrac,
-        consumerNpl = (b.consumerNpl + hhFlows.ccDefault - b.consumerNpl * NplMonthlyWriteOff).max(PLN.Zero),
+        consumerNpl = (b.consumerNpl + hhFlows.ccLoanDefault - b.consumerNpl * NplMonthlyWriteOff).max(PLN.Zero),
       ),
       financialStocks = stocks.copy(
         firmLoan = newLoansTotal,

@@ -50,7 +50,8 @@ object HouseholdFinancialEconomics:
       consumerApprovedOrigination: PLN, // underwritten consumer credit originated by the DTI rule
       liquidityShortfallFinancing: PLN, // same-month bridge/write-off preventing negative demand deposits
       consumerDefaultAmt: PLN,          // combined SFC default: loan defaults plus bridge charge-offs
-      consumerNplLoss: PLN,             // combined consumer-credit loss net of recovery
+      consumerLoanDefaultAmt: PLN,      // ordinary consumer-loan default, excluding same-month bridge charge-offs
+      consumerNplLoss: PLN,             // ordinary consumer-loan NPL loss net of recovery
       consumerPrincipal: PLN,           // consumer loan principal repayment
   )
 
@@ -100,7 +101,8 @@ object HouseholdFinancialEconomics:
     val consumerApprovedOrigination = hhAgg.totalConsumerApprovedOrigination
     val liquidityShortfallFinancing = hhAgg.totalLiquidityShortfallFinancing
     val consumerDefaultAmt          = hhAgg.totalConsumerDefault
-    val consumerNplLoss             = consumerDefaultAmt * (Share.One - p.household.ccNplRecovery)
+    val consumerLoanDefaultAmt      = hhAgg.totalConsumerLoanDefault
+    val consumerNplLoss             = consumerLoanDefaultAmt * (Share.One - p.household.ccNplRecovery)
     val consumerPrincipal           = hhAgg.totalConsumerPrincipal
 
     Output(
@@ -114,6 +116,7 @@ object HouseholdFinancialEconomics:
       consumerApprovedOrigination,
       liquidityShortfallFinancing,
       consumerDefaultAmt,
+      consumerLoanDefaultAmt,
       consumerNplLoss,
       consumerPrincipal,
     )

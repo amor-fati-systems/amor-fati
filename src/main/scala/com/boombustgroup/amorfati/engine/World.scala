@@ -269,7 +269,7 @@ case class BankCapitalDiagnostics(
     retainedIncome: PLN = PLN.Zero,         // retained ordinary bank income after profit-retention rule
     firmNplLoss: PLN = PLN.Zero,            // realized firm-loan credit loss net of recovery
     mortgageNplLoss: PLN = PLN.Zero,        // realized mortgage credit loss net of recovery
-    consumerNplLoss: PLN = PLN.Zero,        // realized consumer-credit loss net of recovery
+    consumerNplLoss: PLN = PLN.Zero,        // realized ordinary consumer-loan loss net of recovery
     corpBondDefaultLoss: PLN = PLN.Zero,    // bank-held corporate-bond default loss
     bfgLevy: PLN = PLN.Zero,                // monthly BFG levy paid by active banks
     unrealizedBondLoss: PLN = PLN.Zero,     // AFS government-bond mark-to-market capital hit
