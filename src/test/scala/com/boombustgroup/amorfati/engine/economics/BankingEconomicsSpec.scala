@@ -112,6 +112,51 @@ class BankingEconomicsSpec extends AnyFlatSpec with Matchers:
     result.reassignedHouseholds.exists(_.bankId == BankId(0)) shouldBe false
   }
 
+  it should "not run ordinary monthly updates for already failed bank shells" in {
+    val prepared             = preparedBankingStep()
+    val failedBank           = prepared.banks.head.copy(
+      status = Banking.BankStatus.Failed(ExecutionMonth.First),
+      capital = PLN(123456789L),
+      nplAmount = PLN(111111L),
+      loansShort = PLN(222222L),
+      loansMedium = PLN(333333L),
+      loansLong = PLN(444444L),
+      consumerNpl = PLN(555555L),
+      eclStaging = EclStaging.State(PLN(666666L), PLN(777777L), PLN(888888L)),
+    )
+    val shellStocks          = LedgerFinancialState
+      .projectBankFinancialStocks(prepared.ledgerFinancialState.banks.head)
+      .copy(
+        totalDeposits = PLN.Zero,
+        demandDeposit = PLN.Zero,
+        termDeposit = PLN.Zero,
+        firmLoan = PLN(900000L),
+        consumerLoan = PLN(800000L),
+        govBondAfs = PLN.Zero,
+        govBondHtm = PLN.Zero,
+        reserve = PLN.Zero,
+        interbankLoan = PLN.Zero,
+      )
+    val shellLedger          = prepared.ledgerFinancialState.copy(
+      banks = prepared.ledgerFinancialState.banks.updated(0, LedgerFinancialState.bankBalances(shellStocks, corpBond = PLN.Zero, mortgageLoan = PLN.Zero)),
+    )
+    val alignedOpeningStocks = BankingEconomics
+      .alignConsumerLoanBookToHouseholdRouting(
+        prepared.s5.households,
+        prepared.s5.ledgerFinancialState.households,
+        shellLedger.banks.map(LedgerFinancialState.projectBankFinancialStocks),
+      )
+      .head
+
+    val result = prepared.run(
+      ledgerFinancialStateOverride = shellLedger,
+      banksOverride = prepared.banks.updated(0, failedBank),
+    )
+
+    result.banks.head shouldBe failedBank
+    LedgerFinancialState.projectBankFinancialStocks(result.ledgerFinancialState.banks.head) shouldBe alignedOpeningStocks
+  }
+
   it should "realign consumer-loan book distribution to household bank routing without changing the aggregate stock" in {
     val households        = Vector(
       TestHouseholdState(id = HhId(0), skill = Share.decimal(7, 1), mpc = Share.decimal(8, 1), status = HhStatus.Unemployed(0), bankId = BankId(0)),

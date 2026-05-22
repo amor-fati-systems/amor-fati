@@ -636,6 +636,10 @@ object BankingEconomics:
       quasiFiscalDepositChange: PLN,
       in: StepInput,
   )(using p: SimParams): SingleBankUpdate =
+    if b.failed then
+      // Failed rows are inert shells; resolution/reconciliation owns any explicit shell changes.
+      return SingleBankUpdate(bank = b, financialStocks = stocks)
+
     val bId           = b.id.toInt
     val bankNplNew    = in.s5.perBankNplDebt(bId)
     val bankNplLoss   = bankNplNew * (Share.One - p.banking.loanRecovery)
