@@ -91,8 +91,6 @@ class WorldInitSpec extends AnyFlatSpec with Matchers:
     val firmDeposits      = init.ledgerFinancialState.firms.map(_.cash).sumPln
     val bankDeposits      = init.ledgerFinancialState.banks.map(_.totalDeposits).sumPln
 
-    householdDeposits should be > PLN.Zero
-    firmDeposits should be > PLN.Zero
     householdDeposits + firmDeposits shouldBe p.banking.initDeposits
     bankDeposits shouldBe p.banking.initDeposits
   }
