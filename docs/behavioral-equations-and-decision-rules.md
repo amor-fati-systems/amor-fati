@@ -878,6 +878,9 @@ haircuts uninsured deposits of failed banks. Purchase-and-assumption resolution
 transfers deposits, government bonds, performing loans, consumer loans, and
 corporate-bond holdings to the healthiest surviving bank. Firms and households
 routed to failed banks are reassigned to the absorber.
+In later months, a failed-bank row is an inert shell: ordinary lending, P&L,
+ECL migration, NPL write-off, and deposit-flow updates are skipped unless an
+explicit resolution or reconciliation mechanism changes the row.
 
 Failure-trigger diagnostics are emitted as `BankFailure_*` seed timeseries
 columns. `BankFailure_NewNegativeCapital`, `BankFailure_NewCarBreach`, and
