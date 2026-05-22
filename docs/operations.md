@@ -366,6 +366,19 @@ output directory is
 semantics and Poland-relevant guardrail bands are documented in
 [bank-balance-sheet-benchmark.md](bank-balance-sheet-benchmark.md).
 
+Bank failure ablation diagnostics:
+
+```bash
+sbt "bankFailureAblations --seeds 2 --months 24 --out target/bank-failure-ablations --run-id bank-failure-ablations"
+```
+
+This writes baseline-versus-ablation seed rows, scenario definitions, and a
+summary report under `<out>/<run-id>/`. With the command above, the concrete
+output directory is `target/bank-failure-ablations/bank-failure-ablations/`.
+The semantics and scenario set are documented in
+[bank-failure-ablations.md](bank-failure-ablations.md). Use larger
+`--seeds`/`--months` values for heavier research runs.
+
 For scratch and committed-snapshot SFC matrix exports, see
 [sfc-matrix-evidence.md](sfc-matrix-evidence.md).
 

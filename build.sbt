@@ -9,6 +9,7 @@ lazy val empiricalValidation = inputKey[Unit]("Generate empirical validation bas
 lazy val calibrationRegister = inputKey[Unit]("Generate calibration register docs from typed provenance registry")
 lazy val householdCreditStressCalibration = inputKey[Unit]("Generate household liquidity and credit-stress calibration artifacts")
 lazy val bankBalanceSheetBenchmark = inputKey[Unit]("Generate initial bank balance-sheet benchmark artifacts")
+lazy val bankFailureAblations = inputKey[Unit]("Run controlled bank-failure ablation diagnostics")
 
 lazy val baseScalacOptions = Seq(
   "-Werror",
@@ -104,6 +105,13 @@ lazy val root = project
         val parsedArgs = spaceDelimited("<bank balance-sheet benchmark args>").parsed
         (Compile / runMain)
           .toTask(" com.boombustgroup.amorfati.diagnostics.BankBalanceSheetBenchmarkExport " + parsedArgs.mkString(" "))
+      }
+      .evaluated,
+    bankFailureAblations := Def
+      .inputTaskDyn {
+        val parsedArgs = spaceDelimited("<bank failure ablation args>").parsed
+        (Compile / runMain)
+          .toTask(" com.boombustgroup.amorfati.diagnostics.BankFailureAblationExport " + parsedArgs.mkString(" "))
       }
       .evaluated,
     Test / testOptions ++= {
