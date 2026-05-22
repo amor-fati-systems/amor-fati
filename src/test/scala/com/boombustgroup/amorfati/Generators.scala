@@ -11,8 +11,9 @@ import com.boombustgroup.amorfati.FixedPointSpecSupport.*
 
 object Generators:
 
-  given SimParams          = SimParams.defaults
-  private val p: SimParams = summon[SimParams]
+  given SimParams              = SimParams.defaults
+  private val p: SimParams     = summon[SimParams]
+  private val DefaultBankIdMax = Banking.DefaultConfigs.length - 1
 
   /** Test helper: create banking sector by splitting aggregates across banks by
     * market share.
@@ -221,7 +222,7 @@ object Generators:
     innov  <- genDecimal("0.5", "2.0")
     digiR  <- genDecimal("0.02", "0.98")
     sector <- Gen.choose(0, 5)
-    bankId <- Gen.choose(0, 6)
+    bankId <- Gen.choose(0, DefaultBankIdMax)
     eqR    <- genDecimal("0.0", "1000000.0")
     iSize  <- Gen.choose(1, 500)
   yield TestFirmState(
@@ -253,7 +254,7 @@ object Generators:
     innov  <- genDecimal("0.5", "2.0")
     digiR  <- genDecimal("0.02", "0.98")
     sector <- Gen.choose(0, 5)
-    bankId <- Gen.choose(0, 6)
+    bankId <- Gen.choose(0, DefaultBankIdMax)
     eqR    <- genDecimal("0.0", "1000000.0")
     iSize  <- Gen.choose(1, 500)
   yield TestFirmState(
@@ -382,7 +383,7 @@ object Generators:
     health  <- genDecimal("0.0", "0.5")
     mpc     <- genDecimal("0.5", "0.98")
     status  <- genHhStatus
-    bankId  <- Gen.choose(0, 6)
+    bankId  <- Gen.choose(0, DefaultBankIdMax)
     eqW     <- genDecimal("0.0", "100000.0")
     lastSec <- Gen.choose(-1, 5)
   yield TestHouseholdState(
@@ -703,7 +704,7 @@ object Generators:
     )
 
     val Config: Gen[Banking.Config] = for
-      id     <- Gen.choose(0, 6)
+      id     <- Gen.choose(0, DefaultBankIdMax)
       share  <- genDecimal("0.01", "0.50")
       cet1   <- genDecimal("0.10", "0.25")
       spread <- genDecimal("-0.005", "0.005")
@@ -711,7 +712,7 @@ object Generators:
     yield Banking.Config(BankId(id), s"Bank$id", shareBD(share), shareBD(cet1), rateBD(spread), aff.map(shareBD(_)))
 
     val BankRow: Gen[(Banking.BankState, Banking.BankFinancialStocks)] = for
-      id       <- Gen.choose(0, 6)
+      id       <- Gen.choose(0, DefaultBankIdMax)
       deposits <- genDecimal("1000000.0", "10000000000.0")
       loans    <- genDecimal("0.0", "10000000000.0")
       capital  <- genDecimal("100000.0", "1000000000.0")

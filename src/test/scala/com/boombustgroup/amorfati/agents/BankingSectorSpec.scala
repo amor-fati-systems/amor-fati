@@ -73,10 +73,16 @@ class BankingSectorSpec extends AnyFlatSpec with Matchers:
   private def govBonds(stocks: Banking.BankFinancialStocks): PLN =
     Banking.govBondHoldings(stocks)
 
-  "Generators.testBankingSector" should "create 7 bank rows with explicit financial stocks preserving totals" in {
+  "Banking.DefaultConfigs" should "split opening credit concentration across default rows" in {
+    configs.map(_.id.toInt) shouldBe configs.indices.toVector
+    configs.map(_.initMarketShare).sumShare shouldBe Share.One
+    configs.map(_.initMarketShare).max should be <= summon[SimParams].banking.concentrationLimit
+  }
+
+  "Generators.testBankingSector" should "create default bank rows with explicit financial stocks preserving totals" in {
     val bs = Generators.testBankingSector(totalDeposits = PLN(1000000), totalCapital = PLN(100000), totalLoans = PLN.Zero, configs = configs)
 
-    bs.banks.length shouldBe 7
+    bs.banks.length shouldBe configs.length
     bs.financialStocks.map(s => decimal(s.totalDeposits)).sum shouldBe BigDecimal("1000000.0") +- BigDecimal("0.01")
     bs.banks.map(b => decimal(b.capital)).sum shouldBe BigDecimal("100000.0") +- BigDecimal("0.01")
     decimal(bs.financialStocks(0).totalDeposits) shouldBe (BigDecimal("1000000.0") * BigDecimal("0.175")) +- BigDecimal("0.01")
@@ -89,7 +95,7 @@ class BankingSectorSpec extends AnyFlatSpec with Matchers:
     for _ <- 0 until 100 do
       val bId = Banking.assignBank(SectorIdx(0), configs, rng)
       bId.toInt should be >= 0
-      bId.toInt should be < 7
+      bId.toInt should be < configs.length
   }
 
   it should "favor BPS/Coop for agriculture firms" in {

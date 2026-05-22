@@ -1154,7 +1154,7 @@ research hypotheses or calibration targets:
   structural life-cycle model.
 - Firm technology adoption and entry include network, risk, and readiness
   effects, but their coefficients still need systematic sensitivity analysis.
-- Banks are seven named agents with rich balance-sheet rules, but deposit
+- Banks are ten banking-sector rows with rich balance-sheet rules, but deposit
   insurance and depositor decisions are not modeled at the individual account
   contract level.
 - Government, NBP, JST, insurance, NBFI, and rest-of-world sectors are

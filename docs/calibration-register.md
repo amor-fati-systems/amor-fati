@@ -356,11 +356,11 @@ a concrete diagnostic artifact path.
 | `banking.firmLoanAmortRate` | `1/60` | monthly rate | Code note bridge: NBP bridge prior maturity | Five-year average loan maturity | Direct | `BankingConfig` | `CODE_NOTE_EMPIRICAL` |
 | `banking.reserveReq` | `0.035` | share | Code note bridge: NBP bridge prior | Required reserve ratio | Direct | `BankingConfig` | `EMPIRICAL` |
 | `banking.lcrMin`, `nsfrMin` | `1.0, 1.0` | multiplier | Basel III | Minimum LCR/NSFR | Direct | `BankingConfig` | `EMPIRICAL` |
-| `banking.p2rAddons` | `[0.015, 0.010, 0.030, 0.015, 0.020, 0.025, 0.020]` | multiplier by bank | Code note bridge: KNF bridge prior | SREP/P2R add-ons | Direct | `BankingConfig` | `CODE_NOTE_EMPIRICAL` |
+| `banking.p2rAddons` | `[0.015, 0.010, 0.030, 0.015, 0.020, 0.025, 0.020, 0.020, 0.025, 0.020]` | multiplier by bank | Code note bridge: KNF bridge prior | SREP/P2R add-ons | Direct | `BankingConfig` | `CODE_NOTE_EMPIRICAL` |
 | `banking.bfgLevyRate` | `0.0024` | annual rate | Code note bridge: BFG bridge prior | Resolution levy | .monthly in use | `BankingConfig` | `CODE_NOTE_EMPIRICAL` |
 | `banking.bfgDepositGuarantee` | `425370` | PLN/depositor | BFG EUR 100,000 guarantee converted at model-start PLN/EUR 4.2537 | Deposit guarantee threshold | Direct | `BankingConfig` | `EMPIRICAL_TRANSFORMED` |
 | `banking.ccybMax` | `0.025` | multiplier | Code note bridge: KNF bridge prior | Max CCyB | Direct | `BankingConfig` | `CODE_NOTE_EMPIRICAL` |
-| `banking.osiiBuffers` | `[0.020, 0.010, 0.005, 0.010, 0.015, 0.0025, 0.0025]` | multiplier by bank | KNF O-SII decisions announced November 2025 | O-SII buffers for default bank archetypes | Direct | `BankingConfig`, `Macroprudential` | `EMPIRICAL_TRANSFORMED` |
+| `banking.osiiBuffers` | `[0.020, 0.010, 0.005, 0.010, 0.015, 0.0025, 0.005, 0.0025, 0.000, 0.0025]` | multiplier by bank | KNF O-SII decisions announced November 2025 | O-SII buffers for default bank archetypes | Direct | `BankingConfig`, `Macroprudential` | `EMPIRICAL_TRANSFORMED` |
 | `banking.htmShare` | `0.60` | share | Code note bridge: NBP bridge prior | HTM share of gov bond portfolio | Direct | `BankingConfig` | `CODE_NOTE_EMPIRICAL` |
 | `banking.depositPanicRate` | `0.03` | monthly share | Code note bridge: Diamond-Dybvig mechanism | Panic switching after failure | Direct | `BankingConfig` | `TUNED_NEEDS_VALIDATION` |
 | `banking.eclRate1`, `eclRate2`, `eclRate3` | `0.01, 0.08, 0.50` | share | Code note bridge: KNF IFRS 9 | ECL provision rates | Direct | `BankingConfig` | `CODE_NOTE_EMPIRICAL` |

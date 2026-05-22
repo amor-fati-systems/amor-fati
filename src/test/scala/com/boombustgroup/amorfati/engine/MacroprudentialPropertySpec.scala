@@ -13,6 +13,7 @@ class MacroprudentialPropertySpec extends AnyFlatSpec with Matchers with ScalaCh
   import com.boombustgroup.amorfati.config.SimParams
   given SimParams                                                         = SimParams.defaults
   private val p: SimParams                                                = summon[SimParams]
+  private val maxBankIndex                                                = p.banking.p2rAddons.length - 1
   override implicit val generatorDrivenConfig: PropertyCheckConfiguration =
     PropertyCheckConfiguration(minSuccessful = 200)
 
@@ -31,13 +32,13 @@ class MacroprudentialPropertySpec extends AnyFlatSpec with Matchers with ScalaCh
     }
 
   "effectiveMinCarImpl" should "be >= base MinCar for all banks" in
-    forAll(Gen.choose(0, 6), genDecimal("0.0", "0.025")) { (bankId, ccyb) =>
+    forAll(Gen.choose(0, maxBankIndex), genDecimal("0.0", "0.025")) { (bankId, ccyb) =>
       val eff = Macroprudential.effectiveMinCarImpl(bankId, multiplierBD(ccyb))
       eff should be >= p.banking.minCar
     }
 
   it should "be monotonically increasing in CCyB" in
-    forAll(Gen.choose(0, 6), genDecimal("0.0", "0.01"), genDecimal("0.005", "0.025")) { (bankId, ccyb1, delta) =>
+    forAll(Gen.choose(0, maxBankIndex), genDecimal("0.0", "0.01"), genDecimal("0.005", "0.025")) { (bankId, ccyb1, delta) =>
       val ccyb2 = ccyb1 + delta
       val eff1  = Macroprudential.effectiveMinCarImpl(bankId, multiplierBD(ccyb1))
       val eff2  = Macroprudential.effectiveMinCarImpl(bankId, multiplierBD(ccyb2))
