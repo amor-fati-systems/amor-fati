@@ -753,8 +753,12 @@ Realized credit-loss rates are emitted as `BankCreditLoss_*`. They use closing
 exposure stocks as denominators, so the columns can be joined directly with
 monthly `BankFailure_*` rows. The block separates firm-loan, mortgage,
 consumer-loan, liquidity-bridge charge-off, and bank-held corporate-bond
-channels. `BankCapital_EclProvisionChange` remains a separate accounting
-provision term and is not included in these realized-loss rates.
+channels. `BankCapital_ConsumerNplLoss` is the capital loss on ordinary
+consumer-loan defaults only; same-month liquidity bridge charge-offs stay
+visible as a separate gross stress/write-off diagnostic instead of being folded
+into ordinary consumer-credit NPL loss. `BankCapital_EclProvisionChange` remains
+a separate accounting provision term and is not included in these realized-loss
+rates.
 
 Liquidity ratios are:
 
@@ -834,7 +838,7 @@ Bank capital changes by losses plus retained income:
 losses_b =
   corporateNplLoss_b
   + mortgageNplLoss_b
-  + consumerNplLoss_b
+  + ordinaryConsumerLoanNplLoss_b
   + corporateBondDefaultLoss_b
   + BFGLevy_b
   + unrealizedAfsBondLoss_b

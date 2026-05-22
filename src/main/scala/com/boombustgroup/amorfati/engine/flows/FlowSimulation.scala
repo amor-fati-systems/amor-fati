@@ -324,7 +324,7 @@ object FlowSimulation:
           firmInterestIncome = c.firmInterestIncome,
           firmNplLoss = c.firmNplLoss,
           mortgageNplLoss = c.mortgageDefault * (Share.One - p.housing.mortgageRecovery),
-          consumerNplLoss = c.totalCcDefault * (Share.One - p.household.ccNplRecovery),
+          consumerNplLoss = (c.totalCcDefault - c.liquidityShortfallFinancing).max(PLN.Zero) * (Share.One - p.household.ccNplRecovery),
           govBondIncome = c.bankGovBondIncome,
           reserveInterest = c.bankReserveInterest,
           standingFacilityIncome = c.bankStandingFacility,

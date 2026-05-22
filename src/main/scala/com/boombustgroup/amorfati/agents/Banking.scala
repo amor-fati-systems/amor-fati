@@ -993,7 +993,7 @@ object Banking:
       prevCapital: PLN,            // previous period capital
       nplLoss: PLN,                // corporate NPL loss (after recovery)
       mortgageNplLoss: PLN,        // mortgage default loss (bank share)
-      consumerNplLoss: PLN,        // consumer credit NPL loss (after recovery)
+      consumerNplLoss: PLN,        // ordinary consumer-loan NPL loss (after recovery)
       corpBondDefaultLoss: PLN,    // corporate bond default loss (bank share)
       bfgLevy: PLN,                // BFG resolution fund levy
       unrealizedBondLoss: PLN,     // mark-to-market loss on gov bond portfolio (interest rate risk channel)

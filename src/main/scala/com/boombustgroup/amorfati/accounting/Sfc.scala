@@ -167,7 +167,7 @@ object Sfc:
       remittanceOutflow: PLN,                   // immigrant remittances → deposit outflow
       fofResidual: PLN,                         // flow-of-funds residual (Σ firmRevenue - Σ sectorDemand)
       consumerDebtService: PLN,                 // consumer credit: monthly instalment burden (principal + interest)
-      consumerNplLoss: PLN,                     // consumer credit: NPL loss (after recovery)
+      consumerNplLoss: PLN,                     // ordinary consumer-loan NPL loss (after recovery)
       consumerOrigination: PLN,                 // consumer credit: total new loan origination
       consumerLiquidityShortfallFinancing: PLN, // consumer credit: residual shortfall settlement
       consumerPrincipalRepaid: PLN,             // consumer credit: principal portion of debt service

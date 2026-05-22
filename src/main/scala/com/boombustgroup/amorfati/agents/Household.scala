@@ -47,11 +47,13 @@ case class PerBankFlow(
     consumerApprovedOrigination: PLN, // underwritten consumer credit originated by the DTI rule
     liquidityShortfallFinancing: PLN, // same-month bridge/write-off preventing negative deposits
     consumerDefault: PLN,             // consumer defaults plus same-month bridge charge-offs
+    consumerLoanDefault: PLN,         // default of ordinary outstanding consumer-loan principal
     consumerPrincipal: PLN,           // consumer loan principal repaid
 )
 
 object PerBankFlow:
-  val zero: PerBankFlow = PerBankFlow(PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero)
+  val zero: PerBankFlow =
+    PerBankFlow(PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero)
 
 object Household:
   def isEmployed(hh: State): Boolean =
@@ -700,6 +702,7 @@ object Household:
         consumerApprovedOrigination = cur.consumerApprovedOrigination + r.credit.newLoan,
         liquidityShortfallFinancing = cur.liquidityShortfallFinancing + r.credit.liquidityShortfallFinancing,
         consumerDefault = cur.consumerDefault + r.credit.defaultAmt,
+        consumerLoanDefault = cur.consumerLoanDefault + r.credit.consumerLoanDefault,
         consumerPrincipal = cur.consumerPrincipal + r.credit.principal,
       )
     acc.toVector

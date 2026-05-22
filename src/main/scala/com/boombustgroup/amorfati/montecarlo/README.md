@@ -206,7 +206,7 @@ the total realized credit-loss hit against opening bank capital. Firm and
 corporate-bond default rates reverse the configured recovery rate to estimate
 gross default flow from net loss. Consumer diagnostics separate ordinary
 consumer-loan default from liquidity-bridge charge-off; `ConsumerLossRate`
-keeps the combined capital-loss view used by the bank waterfall.
+tracks the ordinary consumer-loan capital loss used by the bank waterfall.
 
 ## Bank Failure Diagnostics
 
