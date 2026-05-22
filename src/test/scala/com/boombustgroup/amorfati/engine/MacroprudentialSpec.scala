@@ -36,16 +36,15 @@ class MacroprudentialSpec extends AnyFlatSpec with Matchers:
     decimal(Macroprudential.osiiBufferImpl(1)) shouldBe BigDecimal("0.01") +- BigDecimal("1e-10")
   }
 
-  it should "return current O-SII buffers for the remaining default banks" in {
-    decimal(Macroprudential.osiiBufferImpl(2)) shouldBe BigDecimal("0.005") +- BigDecimal("1e-10")
-    decimal(Macroprudential.osiiBufferImpl(3)) shouldBe BigDecimal("0.01") +- BigDecimal("1e-10")
-    decimal(Macroprudential.osiiBufferImpl(4)) shouldBe BigDecimal("0.015") +- BigDecimal("1e-10")
-    decimal(Macroprudential.osiiBufferImpl(5)) shouldBe BigDecimal("0.0025") +- BigDecimal("1e-10")
-    decimal(Macroprudential.osiiBufferImpl(6)) shouldBe BigDecimal("0.0025") +- BigDecimal("1e-10")
-  }
+  it should "return current O-SII buffers for the remaining default banks" in
+    p.banking.osiiBuffers.zipWithIndex
+      .drop(2)
+      .foreach: (expected, bankId) =>
+        Macroprudential.osiiBufferImpl(bankId) shouldBe expected
 
   it should "return 0% outside the default bank vector" in {
-    Macroprudential.osiiBufferImpl(7) shouldBe Multiplier.Zero
+    Macroprudential.osiiBufferImpl(-1) shouldBe Multiplier.Zero
+    Macroprudential.osiiBufferImpl(p.banking.osiiBuffers.length) shouldBe Multiplier.Zero
   }
 
   // ==========================================================================
