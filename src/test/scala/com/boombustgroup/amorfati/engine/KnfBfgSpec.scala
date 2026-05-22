@@ -61,7 +61,7 @@ class KnfBfgSpec extends AnyFlatSpec with Matchers:
     rows.map(_.stocks)
 
   "KNF banking params" should "expose calibrated P2R, BFG levy, bail-in, and guarantee defaults" in {
-    p.banking.p2rAddons.length shouldBe 7
+    p.banking.p2rAddons.length shouldBe Banking.DefaultConfigs.length
     p.banking.p2rAddons(0) shouldBe Multiplier.decimal(15, 3)
     p.banking.p2rAddons(2) shouldBe Multiplier.decimal(30, 3)
     p.banking.bfgLevyRate shouldBe Rate.decimal(24, 4)
@@ -72,7 +72,7 @@ class KnfBfgSpec extends AnyFlatSpec with Matchers:
   "Macroprudential P2R" should "return per-bank add-ons and affect effective minimum CAR" in {
     Macroprudential.p2rAddon(0) shouldBe Multiplier.decimal(15, 3)
     Macroprudential.p2rAddon(2) shouldBe Multiplier.decimal(30, 3)
-    Macroprudential.p2rAddon(7) shouldBe p.banking.p2rAddons.last
+    Macroprudential.p2rAddon(p.banking.p2rAddons.length) shouldBe p.banking.p2rAddons.last
 
     val ccyb        = Multiplier.decimal(1, 2)
     val expectedPko = decimal(p.banking.minCar) + decimal(ccyb) + decimal(p.banking.osiiBuffers(0)) + decimal(p.banking.p2rAddons(0))

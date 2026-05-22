@@ -404,7 +404,7 @@ object BankBalanceSheetBenchmarkExport:
       lower = Some(BigDecimal("0.00")),
       upper = Some(BigDecimal("0.20")),
       sourceNote = "Herfindahl-Hirschman index over opening bank credit shares.",
-      interpretation = "A compact concentration diagnostic for the seven-row banking sector.",
+      interpretation = "A compact concentration diagnostic for the default banking-sector rows.",
     ),
   )
 

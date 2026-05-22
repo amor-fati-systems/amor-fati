@@ -59,7 +59,7 @@ These ratios guide follow-up calibration and source-bridge work.
 | `EclStagedShareOfCoveredLoans` | `SOFT_CALIBRATION_WARNING` | `2026-04-30 model-start baseline` | `0.95` to `1.05` | share | The ECL-covered firm and consumer loan book should already be assigned to stages. |
 | `AggregateNplRatio` | `EXPLORATORY_DIAGNOSTIC` | `2026-04-30 model-start baseline` | `0.00` to `0.06` | ratio | Opening credit quality should not by itself explain early capital pressure. |
 | `LargestBankCreditShare` | `SOFT_CALIBRATION_WARNING` | `2026-04-30 model-start baseline` | `0.00` to `0.25` | share | No single bank row should dominate the opening credit book. |
-| `BankCreditHhi` | `EXPLORATORY_DIAGNOSTIC` | `2026-04-30 model-start baseline` | `0.00` to `0.20` | index | Compact concentration diagnostic for the seven-row banking sector. |
+| `BankCreditHhi` | `EXPLORATORY_DIAGNOSTIC` | `2026-04-30 model-start baseline` | `0.00` to `0.20` | index | Compact concentration diagnostic for the default banking-sector rows. |
 
 ## Source Status
 
@@ -78,3 +78,7 @@ deposit liabilities from those holder-side balances. Deposit split, reserves,
 and liquidity ratios are especially important because they determine whether
 LCR, NSFR and monetary aggregates are measuring an economically meaningful
 opening bank balance sheet.
+
+The old aggregate `Others` banking row has been split into BNP Paribas,
+Millennium, Alior, and residual Other banks so that concentration diagnostics do
+not treat the remaining sector as one large failing-or-surviving bank.

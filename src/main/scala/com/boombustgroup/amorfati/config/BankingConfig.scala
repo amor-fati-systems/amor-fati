@@ -5,13 +5,13 @@ import com.boombustgroup.amorfati.types.*
 /** Commercial banking system: balance sheets, credit risk, LCR/NSFR,
   * macroprudential, and KNF/BFG supervision.
   *
-  * Models a multi-bank system with seven banking-sector rows by default: six
-  * named bank archetypes and one aggregate `Others` bucket for the remaining
-  * sector, calibrated to the Poland 2026-04-30 production baseline. Rows have
-  * heterogeneous balance sheets, credit spreads, NPL dynamics, capital adequacy
-  * (Basel III CRR), liquidity coverage (LCR/NSFR), macroprudential buffers
-  * (CCyB, O-SII), KNF BION/SREP P2R add-ons, BFG resolution levy and bail-in,
-  * and interbank market.
+  * Models a multi-bank system with ten banking-sector rows by default: named
+  * bank archetypes plus a residual `Other banks` bucket, calibrated to the
+  * Poland 2026-04-30 production baseline. Rows have heterogeneous balance
+  * sheets, credit spreads, NPL dynamics, capital adequacy (Basel III CRR),
+  * liquidity coverage (LCR/NSFR), macroprudential buffers (CCyB, O-SII), KNF
+  * BION/SREP P2R add-ons, BFG resolution levy and bail-in, and interbank
+  * market.
   *
   * Stock values (`initCapital`, `initDeposits`, etc.) are in raw PLN — scaled
   * by `gdpRatio` in `SimParams.defaults`.
@@ -56,8 +56,8 @@ import com.boombustgroup.amorfati.types.*
   * @param termDepositFrac
   *   fraction of deposits that are term (stable for NSFR purposes)
   * @param p2rAddons
-  *   per-row BION/SREP P2R capital add-ons (KNF bridge prior, six named bank
-  *   archetypes plus aggregate Others)
+  *   per-row BION/SREP P2R capital add-ons (KNF bridge prior, named bank
+  *   archetypes plus residual Other banks)
   * @param bfgLevyRate
   *   annual BFG resolution fund levy as fraction of deposits (BFG bridge prior)
   * @param bailInDepositHaircut
@@ -153,6 +153,9 @@ case class BankingConfig(
       Multiplier.decimal(20, 3),
       Multiplier.decimal(25, 3),
       Multiplier.decimal(20, 3),
+      Multiplier.decimal(20, 3),
+      Multiplier.decimal(25, 3),
+      Multiplier.decimal(20, 3),
     ),
     bfgLevyRate: Rate = Rate.decimal(24, 4),
     bailInDepositHaircut: Share = Share.decimal(8, 2),
@@ -168,7 +171,10 @@ case class BankingConfig(
       Multiplier.decimal(1, 2),  // ING BSK: 1.00%
       Multiplier.decimal(15, 3), // Santander: 1.50%
       Multiplier.decimal(25, 4), // BPS/Coop: 0.25%
-      Multiplier.decimal(25, 4), // Other O-SII banks aggregated into Others: 0.25%
+      Multiplier.decimal(5, 3),  // BNP Paribas: 0.50%
+      Multiplier.decimal(25, 4), // Millennium: 0.25%
+      Multiplier.Zero,           // Alior: no O-SII buffer in this bridge
+      Multiplier.decimal(25, 4), // residual Other banks: 0.25%
     ),
     concentrationLimit: Share = Share.decimal(25, 2),
     // AFS/HTM bond portfolio split (interest rate risk channel)

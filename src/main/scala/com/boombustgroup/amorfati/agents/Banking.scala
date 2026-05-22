@@ -96,8 +96,7 @@ object Banking:
   // Aggregate balance sheet (sum over all per-bank BankStates)
   // ---------------------------------------------------------------------------
 
-  /** Aggregate banking-sector balance sheet — sum over all seven banking-sector
-    * rows (six named bank archetypes plus aggregate Others).
+  /** Aggregate banking-sector balance sheet — sum over all banking-sector rows.
     *
     * Pure DTO recomputed from bank operational state plus explicit financial
     * stock rows. Read-only snapshot consumed by output columns, SFC identities,
@@ -237,7 +236,7 @@ object Banking:
 
   /** Configuration for a single bank in the multi-bank system. */
   case class Config(
-      id: BankId,                   // unique bank identifier (0–6)
+      id: BankId,                   // unique bank identifier (index into DefaultConfigs)
       name: String,                 // human-readable label (KNF registry)
       initMarketShare: Share,       // deposit-weighted share at t = 0
       initCet1: Share,              // archetype CET1 prior
@@ -337,7 +336,7 @@ object Banking:
   )
 
   // ---------------------------------------------------------------------------
-  // Default configs: six named Polish bank archetypes plus aggregate Others,
+  // Default configs: Poland-facing bank archetypes plus residual Other banks,
   // Poland 2026-04-30 baseline.
   // ---------------------------------------------------------------------------
 
@@ -394,8 +393,32 @@ object Banking:
     ),
     Config(
       BankId(6),
-      "Others",
-      Share.decimal(425, 3),
+      "BNP Paribas",
+      Share.decimal(85, 3),
+      Share.decimal(165, 3),
+      Rate(0),
+      affinity(Share.decimal(15, 2), Share.decimal(20, 2), Share.decimal(20, 2), Share.decimal(15, 2), Share.decimal(15, 2), Share.decimal(15, 2)),
+    ),
+    Config(
+      BankId(7),
+      "Millennium",
+      Share.decimal(70, 3),
+      Share.decimal(160, 3),
+      Rate.decimal(1, 3),
+      affinity(Share.decimal(15, 2), Share.decimal(10, 2), Share.decimal(25, 2), Share.decimal(15, 2), Share.decimal(15, 2), Share.decimal(20, 2)),
+    ),
+    Config(
+      BankId(8),
+      "Alior",
+      Share.decimal(55, 3),
+      Share.decimal(150, 3),
+      Rate.decimal(2, 3),
+      affinity(Share.decimal(15, 2), Share.decimal(15, 2), Share.decimal(25, 2), Share.decimal(10, 2), Share.decimal(10, 2), Share.decimal(25, 2)),
+    ),
+    Config(
+      BankId(9),
+      "Other banks",
+      Share.decimal(215, 3),
       Share.decimal(165, 3),
       Rate.decimal(1, 3),
       affinity(Share.decimal(15, 2), Share.decimal(17, 2), Share.decimal(17, 2), Share.decimal(17, 2), Share.decimal(17, 2), Share.decimal(17, 2)),

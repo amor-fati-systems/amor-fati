@@ -32,11 +32,11 @@ adaptation in households, firms, banks, and policy institutions.
 Amor Fati is designed to support executable counterfactual analysis of a
 monetary production economy under strict stock-flow consistency. The immediate
 domain is the Polish economy with heterogeneous households, heterogeneous firms,
-seven banking-sector rows, public-sector institutions, financial markets,
+ten banking-sector rows, public-sector institutions, financial markets,
 non-bank financial institutions, insurance, and a rest-of-world sector. The
-banking rows are not seven separate commercial-bank case studies: they consist
-of six named bank archetypes plus an aggregate `Others` bucket for the remaining
-banking sector.
+banking rows are not individual commercial-bank case studies: they consist of
+named bank archetypes plus a residual Other banks row for the remaining banking
+sector.
 
 The model is intended to answer questions of the following kind:
 
@@ -83,7 +83,7 @@ Empirical validation of these patterns is structured in
 | --- | --- | --- | --- |
 | Households | Individual agents | employment/activity status, wage, skill, health penalty, MPC, rent, social neighbors, bank assignment, region, education, contract type, household financial stocks projected from the ledger | `agents/Household.scala` |
 | Firms | Individual agents | sector, technology regime, workers, productivity/capacity, capital stock, inventory, cash/debt/equity projections, digital readiness, network position, bankruptcy state | `agents/Firm.scala` |
-| Banks | Seven banking-sector rows: six named bank archetypes plus `Others` | operational status, capital diagnostics, NPLs, risk buckets, regulatory ratios, per-row rates, resolution state; financial stocks projected from ledger rows | `agents/Banking.scala` |
+| Banks | Ten banking-sector rows: named bank archetypes plus residual Other banks | operational status, capital diagnostics, NPLs, risk buckets, regulatory ratios, per-row rates, resolution state; financial stocks projected from ledger rows | `agents/Banking.scala` |
 | Government | Aggregate institution | spending, tax revenue, debt, fiscal rules, bond issuance, benefits, transfers, capital investment | `engine/markets/FiscalBudget.scala`, `engine/flows/GovBudgetFlows.scala` |
 | NBP | Central bank institution | reference rate, QE policy, FX operations, reserve/standing-facility plumbing, government-bond and foreign-asset stocks | `agents/Nbp.scala`, `engine/flows/BankingFlows.scala` |
 | Social funds | Aggregate public-fund agents | ZUS/FUS, NFZ, PPK, FP, PFRON, FGSP balances and monthly contribution/spending flows | `agents/SocialSecurity.scala`, `agents/EarmarkedFunds.scala` |
@@ -127,8 +127,9 @@ The default scale is:
 - firms: 10,000 default firm agents;
 - households: default total population equals `firmsCount * workersPerFirm`,
   currently 100,000 household agents under default parameters;
-- banks: seven banking-sector rows: PKO BP, Pekao, mBank, ING BSK,
-  Santander, BPS/Coop, and aggregate `Others`;
+- banks: ten banking-sector rows: PKO BP, Pekao, mBank, ING BSK,
+  Santander, BPS/Coop, BNP Paribas, Millennium, Alior, and residual Other
+  banks;
 - production sectors: BPO/SSC, Manufacturing, Retail/Services, Healthcare,
   Public, Agriculture;
 - regions: six NUTS-1 macroregions used for regional labor and housing
@@ -317,11 +318,11 @@ and Monte Carlo seeds. Randomness is not hidden in global mutable state.
 ### Collectives
 
 Some entities are true individual agents: households and firms. The banking
-sector is represented by seven bank rows/archetypes, including one aggregate
-`Others` bucket, which behave as bank decision units but should not be read as
-seven individual commercial banks. Other entities are collective or
-institutional sectors represented at aggregate resolution: government, NBP,
-social funds, insurance, NBFI/funds, quasi-fiscal bodies, and rest of world.
+sector is represented by ten bank rows/archetypes, including one residual Other
+banks row, which behave as bank decision units but should not be read as ten
+individual commercial banks. Other entities are collective or institutional
+sectors represented at aggregate resolution: government, NBP, social funds,
+insurance, NBFI/funds, quasi-fiscal bodies, and rest of world.
 This is intentional: the model allocates agent detail where it is expected to
 affect macro dynamics or distributional outcomes.
 
@@ -350,7 +351,7 @@ surfaces. Detailed mathematical rules are documented in
 | --- | --- | --- | --- | --- |
 | Households | consume, save/draw buffers, pay rent/debt, use consumer credit, enter or recover from financial distress, retrain, change sector, enter personal-insolvency write-off | wage, employment status, bank rates, debt service, deposits, financial-distress state, social-neighbor distress, region, education, sector signals | income, deposits, debt, credit terms, distress persistence, unemployment duration, retraining cost and success probability | skill, health, MPC, education, region, contract type, immigrant status, social network |
 | Firms | produce, hire/fire, price/markup, invest, adopt hybrid/AI technology, borrow, issue equity/bonds, enter or exit | demand pressure, capacity, wages, costs, credit rates, cash, debt, sector, network effects, digital readiness | cash, working capital, labor availability, bank lending, profitability thresholds, technology failure risk | sector, size, technology regime, readiness, productivity, bank relation, network position |
-| Banks | price loans/deposits, approve credit, manage liquidity, absorb losses, provision, resolve failures, participate in interbank and bond markets | deposits, loans, reserves, capital, NPLs, bond yields, regulatory buffers, failed-bank state | CAR, LCR/NSFR inputs, reserve requirement, BFG/bail-in rules, failed-bank exclusion | seven bank rows: six named archetypes plus aggregate `Others`, with row-specific buffers, spreads, capital, and balance sheets |
+| Banks | price loans/deposits, approve credit, manage liquidity, absorb losses, provision, resolve failures, participate in interbank and bond markets | deposits, loans, reserves, capital, NPLs, bond yields, regulatory buffers, failed-bank state | CAR, LCR/NSFR inputs, reserve requirement, BFG/bail-in rules, failed-bank exclusion | ten bank rows: named archetypes plus residual Other banks, with row-specific buffers, spreads, capital, and balance sheets |
 | Government | tax, spend, transfer, invest, issue debt, service debt, respond to fiscal rules | fiscal balance, debt, unemployment, tax bases, bond demand, social fund balances | fiscal-rule severity, debt brake, spending cuts, financing needs | aggregate institution with policy parameters |
 | NBP | set rate channel inputs, provide reserve interest and standing facilities, QE/FX operations | inflation, output, forex, reserves, bond market, interbank state | policy corridor, reserves, QE pace, FX reserve stock | aggregate institution |
 | Funds and insurance | collect contributions/premiums, pay claims/benefits, allocate holdings, issue/absorb quasi-fiscal instruments | payroll, unemployment, bankruptcies, AUM, reserves, bond/equity returns | statutory contribution/spending rules, portfolio shares, reserve/liability constraints | aggregate institution by fund family |
@@ -368,8 +369,8 @@ The initialized state is produced by `WorldInit.initialize`, using
 - builds firm and household populations from `PopulationConfig`, `FirmConfig`,
   `HouseholdConfig`, sector definitions, firm-size distribution, networks, and
   region/education/skill draws;
-- builds seven banking-sector rows and their initial financial-stock DTOs:
-  six named archetypes plus aggregate `Others`;
+- builds ten banking-sector rows and their initial financial-stock DTOs:
+  named archetypes plus residual Other banks;
 - initializes government, NBP, social funds, insurance, NBFI, quasi-fiscal,
   housing, GVC, expectations, immigration, and demographics state;
 - assembles initial `LedgerFinancialState` as the source of truth for
