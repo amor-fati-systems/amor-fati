@@ -379,6 +379,18 @@ The semantics and scenario set are documented in
 [bank-failure-ablations.md](bank-failure-ablations.md). Use larger
 `--seeds`/`--months` values for heavier research runs.
 
+HH-to-bank lead-lag diagnostics:
+
+```bash
+sbt "hhBankLeadLagDiagnostics --seeds 2 --months 24 --lag-max 6 --out target/hh-bank-lead-lag --run-id hh-bank-lead-lag"
+```
+
+This writes per-bank/month household-stress routing rows, lead-lag correlation
+tables, consumer-credit counterfactual rows, and a summary report under
+`<out>/<run-id>/`. With the command above, the concrete output directory is
+`target/hh-bank-lead-lag/hh-bank-lead-lag/`. The export is documented in
+[hh-bank-lead-lag-diagnostics.md](hh-bank-lead-lag-diagnostics.md).
+
 For scratch and committed-snapshot SFC matrix exports, see
 [sfc-matrix-evidence.md](sfc-matrix-evidence.md).
 
