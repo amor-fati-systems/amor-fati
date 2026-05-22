@@ -78,7 +78,3 @@ deposit liabilities from those holder-side balances. Deposit split, reserves,
 and liquidity ratios are especially important because they determine whether
 LCR, NSFR and monetary aggregates are measuring an economically meaningful
 opening bank balance sheet.
-
-The old aggregate `Others` banking row has been split into BNP Paribas,
-Millennium, Alior, and residual Other banks so that concentration diagnostics do
-not treat the remaining sector as one large failing-or-surviving bank.
