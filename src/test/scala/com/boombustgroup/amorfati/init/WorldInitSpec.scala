@@ -85,6 +85,18 @@ class WorldInitSpec extends AnyFlatSpec with Matchers:
     init.world.real.housing.mortgageStock shouldBe p.housing.initMortgage
   }
 
+  it should "normalize opening customer deposits to the banking deposit stock" in {
+    val init              = WorldInit.initialize(InitRandomness.Contract.fromSeed(42L))
+    val householdDeposits = init.ledgerFinancialState.households.map(_.demandDeposit).sumPln
+    val firmDeposits      = init.ledgerFinancialState.firms.map(_.cash).sumPln
+    val bankDeposits      = init.ledgerFinancialState.banks.map(_.totalDeposits).sumPln
+
+    householdDeposits should be > PLN.Zero
+    firmDeposits should be > PLN.Zero
+    householdDeposits + firmDeposits shouldBe p.banking.initDeposits
+    bankDeposits shouldBe p.banking.initDeposits
+  }
+
   it should "seed bank deposit buckets and NBP reserve liabilities from opening deposits" in {
     val init         = WorldInit.initialize(InitRandomness.Contract.fromSeed(42L))
     val bankBalances = init.ledgerFinancialState.banks
@@ -92,6 +104,7 @@ class WorldInitSpec extends AnyFlatSpec with Matchers:
     val reserves     = bankBalances.map(_.reserve).sumPln
 
     deposits should be > PLN.Zero
+    deposits shouldBe p.banking.initDeposits
     bankBalances.foreach { bank =>
       val expectedTermDeposit = bank.totalDeposits * p.banking.termDepositFrac
       val expectedReserve     = bank.totalDeposits * p.banking.reserveReq

@@ -28,7 +28,8 @@ object WorldInit:
     val households0     = Household.Init.create(randomness.households.newStreams(), firms)
     val householdPop    = ImmigrantInit.create(randomness.immigration.newStreams(), households0)
     val households      = householdPop.households
-    val householdStocks = householdPop.financialStocks
+    // Household deposits absorb the residual after the firm split, preserving holder-side assets.
+    val householdStocks = normalizeHouseholdOpeningDeposits(householdPop.financialStocks, firmStocks)
     val totalPop        = households.length
     val initEmployed    = households.count(_.status.isInstanceOf[HhStatus.Employed])
     val initUnemployed  = totalPop - initEmployed
@@ -239,6 +240,37 @@ object WorldInit:
     )
 
     InitResult(world, firms, households, initBankingSector.banks, initHhAgg, ledgerFinancialState)
+
+  private def normalizeHouseholdOpeningDeposits(
+      householdStocks: Vector[Household.FinancialStocks],
+      firmStocks: Vector[Firm.FinancialStocks],
+  )(using p: SimParams): Vector[Household.FinancialStocks] =
+    val firmDeposits            = firmStocks.iterator.map(_.cash).sumPln
+    val targetHouseholdDeposits = p.banking.initDeposits - firmDeposits
+    require(
+      targetHouseholdDeposits >= PLN.Zero,
+      s"Opening firm deposits exceed banking.initDeposits: firmDeposits=$firmDeposits initDeposits=${p.banking.initDeposits}",
+    )
+    require(
+      householdStocks.forall(_.demandDeposit >= PLN.Zero),
+      "Opening household demand deposits must be non-negative before normalization",
+    )
+    if householdStocks.isEmpty then
+      require(
+        targetHouseholdDeposits == PLN.Zero,
+        s"Cannot allocate positive opening household deposits without households: $targetHouseholdDeposits",
+      )
+      householdStocks
+    else
+      val currentHouseholdDeposits = householdStocks.iterator.map(_.demandDeposit).sumPln
+      val weights                  =
+        if currentHouseholdDeposits > PLN.Zero then householdStocks.map(_.demandDeposit.distributeRaw).toArray
+        else Array.fill(householdStocks.length)(1L)
+      val allocated                =
+        com.boombustgroup.ledger.Distribute.distribute(targetHouseholdDeposits.distributeRaw, weights)
+      householdStocks.zip(allocated).map { case (stocks, raw) =>
+        stocks.copy(demandDeposit = PLN.fromRaw(raw))
+      }
 
   case class InitResult(
       world: World,

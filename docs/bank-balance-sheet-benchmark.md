@@ -71,7 +71,10 @@ credit-stress calibration ranges. ECL bands are model-semantics checks: they ask
 whether the opening loan book is already staged and provisioned before monthly
 ECL dynamics begin. The current opening ECL bridge assigns the covered firm and
 consumer loan book to Stage 1; calibrated opening Stage 2/3 shares remain a
-separate banking-risk calibration step. Deposit split, reserves, and liquidity
-ratios are especially important because they determine whether LCR, NSFR and
-monetary aggregates are measuring an economically meaningful opening bank
-balance sheet.
+separate banking-risk calibration step. `banking.initDeposits` is the aggregate
+opening customer-deposit stock: firm cash receives the corporate split, household
+demand deposits are normalized to the residual, and `BankInit` derives bank
+deposit liabilities from those holder-side balances. Deposit split, reserves,
+and liquidity ratios are especially important because they determine whether
+LCR, NSFR and monetary aggregates are measuring an economically meaningful
+opening bank balance sheet.
