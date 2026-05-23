@@ -162,6 +162,14 @@ object LoanOriginationQualityExport:
       bankruptcyReason: Option[BankruptReason],
   )
 
+  private final case class FirmCreditLeg(
+      decisionType: String,
+      creditPurpose: String,
+      bankApproval: Option[Boolean],
+      observedCreditNeed: PLN,
+      approvedPrincipal: PLN,
+  )
+
   private final case class SeedRawRows(
       householdRows: Vector[HhOriginationRow],
       firmRows: Vector[FirmOriginationRow],
@@ -254,11 +262,14 @@ object LoanOriginationQualityExport:
 
   def main(args: Array[String]): Unit =
     parseArgs(args.toVector) match
-      case Left(err)     =>
+      case Left(_) if args.contains("--help") =>
+        Console.out.println(usage)
+        sys.exit(0)
+      case Left(err)                          =>
         Console.err.println(err)
         Console.err.println(usage)
         sys.exit(2)
-      case Right(config) =>
+      case Right(config)                      =>
         run(config) match
           case Left(err)     =>
             Console.err.println(err)
@@ -387,7 +398,7 @@ object LoanOriginationQualityExport:
           consumerDebtArrears = flow.consumerDebtArrears,
           mortgageArrears = flow.mortgageArrears,
           financialDistressState = closing.financialDistressState,
-          bankrupt = closing.status == HhStatus.Bankrupt,
+          bankrupt = closing.financialDistressState == HhFinancialDistressState.Bankruptcy,
         )
         outcomes += outcome
 
@@ -470,9 +481,9 @@ object LoanOriginationQualityExport:
     val openingById = openingFirms.iterator.map(firm => firm.id -> firm).toMap
     val balanceById = openingFirms.zip(openingBalances).map((firm, balances) => firm.id -> balances).toMap
 
-    output.firmDecisionTraces
-      .filter(firmCreditObserved)
-      .foreach: trace =>
+    output.firmDecisionTraces.foreach: trace =>
+      val creditLegs = firmCreditLegs(trace)
+      if creditLegs.nonEmpty then
         val opening            = openingById.getOrElse(trace.firmId, throw IllegalStateException(s"Missing opening firm ${trace.firmId.toInt}"))
         val balances           = balanceById.getOrElse(trace.firmId, throw IllegalStateException(s"Missing opening firm balances ${trace.firmId.toInt}"))
         val bankId             = trace.bankId.toInt
@@ -480,51 +491,51 @@ object LoanOriginationQualityExport:
         val bank               = output.stateIn.banks(bankId)
         val stocks             = bankStocks(bankId)
         val corpBondHoldings   = CorporateBondOwnership.bankHolderFor(output.stateIn.ledgerFinancialState, bank.id)
-        val approvals          = firmApprovals(trace)
-        val approved           = trace.newLoan > PLN.Zero || approvals.exists(identity)
-        val rejected           = approvals.contains(false) || observedCreditNeed(trace) > trace.newLoan
         val monthlyDebtService = trace.principalRepaid + trace.firmLoanBefore * trace.lendingRate.monthly
-        rows += (
-          FirmOriginationRow(
-            runId = config.runId,
-            seed = seed,
-            originationMonth = month,
-            firmId = trace.firmId.toInt,
-            bankId = bankId,
-            sector = sectorName(opening),
-            sizeClass = firmSizeClass(trace.workersBefore),
-            techState = techState(trace.openingTech),
-            decisionType = trace.decisionType.csvValue,
-            creditPurpose = creditPurpose(trace),
-            bankApprovalObserved = approvals.nonEmpty,
-            bankApproved = approved,
-            bankRejected = rejected,
-            observedCreditNeed = observedCreditNeed(trace),
-            approvedPrincipal = trace.newLoan.max(PLN.Zero),
-            cashBefore = balances.cash,
-            firmLoanBefore = balances.firmLoan,
-            realizedPostTaxProfit = trace.realizedPostTaxProfit,
-            grossInvestment = trace.grossInvestment,
-            principalRepaid = trace.principalRepaid,
-            monthlyDebtServiceProxy = monthlyDebtService,
-            debtToCash = ratio(balances.firmLoan, balances.cash.max(PLN(1))),
-            dscrProxy = ratio(trace.realizedPostTaxProfit, monthlyDebtService),
-            workersBefore = trace.workersBefore,
-            workersAfter = trace.workersAfter,
-            foreignOwned = trace.foreignOwned,
-            stateOwned = trace.stateOwned,
-            bankCar = fixed(Banking.car(bank, stocks, corpBondHoldings)),
-            bankLcr = fixed(Banking.lcr(stocks)),
-            bankNsfr = fixed(Banking.nsfr(bank, stocks, corpBondHoldings)),
-            sameMonthBankrupt = trace.closingTech match
-              case _: TechState.Bankrupt => true
-              case _                     => false,
-            futureBankruptWithinWindow = false,
-            firstFutureBankruptcyMonth = None,
-            observedFutureMonths = 0,
-            bankruptcyReason = trace.bankruptcyReason.map(bankruptcyReasonName).getOrElse(""),
-          ) -> month
-        )
+        creditLegs.foreach: leg =>
+          val approved = leg.bankApproval.contains(true) || leg.approvedPrincipal > PLN.Zero
+          val rejected = leg.bankApproval.contains(false)
+          rows += (
+            FirmOriginationRow(
+              runId = config.runId,
+              seed = seed,
+              originationMonth = month,
+              firmId = trace.firmId.toInt,
+              bankId = bankId,
+              sector = sectorName(opening),
+              sizeClass = firmSizeClass(trace.workersBefore),
+              techState = techState(trace.openingTech),
+              decisionType = leg.decisionType,
+              creditPurpose = leg.creditPurpose,
+              bankApprovalObserved = leg.bankApproval.isDefined,
+              bankApproved = approved,
+              bankRejected = rejected,
+              observedCreditNeed = leg.observedCreditNeed,
+              approvedPrincipal = leg.approvedPrincipal.max(PLN.Zero),
+              cashBefore = balances.cash,
+              firmLoanBefore = balances.firmLoan,
+              realizedPostTaxProfit = trace.signedRealizedPostTaxProfit,
+              grossInvestment = trace.grossInvestment,
+              principalRepaid = trace.principalRepaid,
+              monthlyDebtServiceProxy = monthlyDebtService,
+              debtToCash = ratio(balances.firmLoan, balances.cash.max(PLN(1))),
+              dscrProxy = ratio(trace.signedRealizedPostTaxProfit, monthlyDebtService),
+              workersBefore = trace.workersBefore,
+              workersAfter = trace.workersAfter,
+              foreignOwned = trace.foreignOwned,
+              stateOwned = trace.stateOwned,
+              bankCar = fixed(Banking.car(bank, stocks, corpBondHoldings)),
+              bankLcr = fixed(Banking.lcr(stocks)),
+              bankNsfr = fixed(Banking.nsfr(bank, stocks, corpBondHoldings)),
+              sameMonthBankrupt = trace.closingTech match
+                case _: TechState.Bankrupt => true
+                case _                     => false,
+              futureBankruptWithinWindow = false,
+              firstFutureBankruptcyMonth = None,
+              observedFutureMonths = 0,
+              bankruptcyReason = trace.bankruptcyReason.map(bankruptcyReasonName).getOrElse(""),
+            ) -> month
+          )
 
   private def enrichHouseholdOutcome(
       config: Config,
@@ -815,26 +826,45 @@ object LoanOriginationQualityExport:
       flow.consumerRejectedOrigination > PLN.Zero ||
       flow.consumerBankRejectedOrigination > PLN.Zero
 
-  private def firmCreditObserved(trace: Firm.DecisionTrace): Boolean =
-    trace.newLoan > PLN.Zero ||
-      trace.investmentCreditNeed.exists(_ > PLN.Zero) ||
-      firmApprovals(trace).nonEmpty
+  private def firmCreditLegs(trace: Firm.DecisionTrace): Vector[FirmCreditLeg] =
+    Vector(techCreditLeg(trace), investmentCreditLeg(trace)).flatten
 
-  private def firmApprovals(trace: Firm.DecisionTrace): Vector[Boolean] =
-    Vector(trace.selectedBankApproval, trace.fullAiBankApproval, trace.hybridBankApproval, trace.investmentBankApproval).flatten
-
-  private def observedCreditNeed(trace: Firm.DecisionTrace): PLN =
-    val investmentNeed = trace.investmentCreditNeed.getOrElse(PLN.Zero)
-    investmentNeed.max(trace.newLoan)
-
-  private def creditPurpose(trace: Firm.DecisionTrace): String =
-    if trace.investmentCreditNeed.exists(_ > PLN.Zero) then "physical-investment"
+  private def techCreditLeg(trace: Firm.DecisionTrace): Option[FirmCreditLeg] =
+    val need      = trace.techCreditNeed.max(trace.techCreditAmount)
+    val principal = trace.techCreditAmount.max(PLN.Zero)
+    if need <= PLN.Zero && principal <= PLN.Zero && trace.selectedBankApproval.isEmpty then None
     else
-      trace.decisionType match
-        case Firm.DecisionTrace.DecisionType.FullAiUpgrade => "full-ai-upgrade"
-        case Firm.DecisionTrace.DecisionType.HybridUpgrade => "hybrid-upgrade"
-        case Firm.DecisionTrace.DecisionType.UpgradeFailed => "failed-tech-upgrade"
-        case _                                             => "firm-credit-decision"
+      Some(
+        FirmCreditLeg(
+          decisionType = trace.decisionType.csvValue,
+          creditPurpose = techCreditPurpose(trace.decisionType),
+          bankApproval = trace.selectedBankApproval,
+          observedCreditNeed = need,
+          approvedPrincipal = principal,
+        ),
+      )
+
+  private def investmentCreditLeg(trace: Firm.DecisionTrace): Option[FirmCreditLeg] =
+    val need      = trace.investmentCreditNeed.getOrElse(PLN.Zero)
+    val principal = trace.investmentCreditAmount.getOrElse(PLN.Zero).max(PLN.Zero)
+    if need <= PLN.Zero && principal <= PLN.Zero && trace.investmentBankApproval.isEmpty then None
+    else
+      Some(
+        FirmCreditLeg(
+          decisionType = trace.decisionType.csvValue,
+          creditPurpose = "physical-investment",
+          bankApproval = trace.investmentBankApproval,
+          observedCreditNeed = need.max(principal),
+          approvedPrincipal = principal,
+        ),
+      )
+
+  private def techCreditPurpose(decisionType: Firm.DecisionTrace.DecisionType): String =
+    decisionType match
+      case Firm.DecisionTrace.DecisionType.FullAiUpgrade => "full-ai-upgrade"
+      case Firm.DecisionTrace.DecisionType.HybridUpgrade => "hybrid-upgrade"
+      case Firm.DecisionTrace.DecisionType.UpgradeFailed => "failed-tech-upgrade"
+      case _                                             => "firm-credit-decision"
 
   private def incomeDecileByHousehold(flows: Vector[Household.MonthlyFlow]): Map[Int, String] =
     if flows.isEmpty then Map.empty

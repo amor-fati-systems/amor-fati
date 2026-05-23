@@ -63,10 +63,20 @@ class LoanOriginationQualityExportSpec extends AnyFlatSpec with Matchers with Ei
     hhD01.futureBadRows shouldBe 1
     hhD01.futureBadRate.value shouldBe BigDecimal("1.000000")
 
+    val hhD10 = summary.find(row => row.borrowerType == "Household" && row.cohortType == "IncomeDecile" && row.cohortValue == "D10").value
+    hhD10.rows shouldBe 1
+    hhD10.futureBadRows shouldBe 0
+    hhD10.futureBadRate.value shouldBe BigDecimal("0.000000")
+
     val firmMicro = summary.find(row => row.borrowerType == "Firm" && row.cohortType == "SizeClass" && row.cohortValue == "Micro").value
     firmMicro.rows shouldBe 1
     firmMicro.futureBadRows shouldBe 1
     firmMicro.futureBadRate.value shouldBe BigDecimal("1.000000")
+
+    val firmLarge = summary.find(row => row.borrowerType == "Firm" && row.cohortType == "SizeClass" && row.cohortValue == "Large").value
+    firmLarge.rows shouldBe 1
+    firmLarge.futureBadRows shouldBe 0
+    firmLarge.futureBadRate.value shouldBe BigDecimal("0.000000")
   }
 
   private def hhRow(incomeDecile: String, futureDefault: Boolean): LoanOriginationQualityExport.HhOriginationRow =

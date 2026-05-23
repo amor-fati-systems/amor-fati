@@ -195,6 +195,7 @@ object Firm:
       financialStocks: FinancialStocks,           // Closing ledger-contracted financial stocks
       taxPaid: PLN,                               // CIT actually paid (after informal evasion)
       realizedPostTaxProfit: PLN,                 // realized monthly profit after tax, floored at zero for payout logic
+      signedRealizedPostTaxProfit: PLN,           // signed net-after-tax profit before payout floor, for diagnostics
       capexSpent: PLN,                            // Technology upgrade CAPEX (AI or hybrid)
       techImports: PLN,                           // Import content of CAPEX (forex demand)
       newLoan: PLN,                               // New bank loan requested before financing-channel split
@@ -233,6 +234,7 @@ object Firm:
         PLN.Zero,
         PLN.Zero,
         PLN.Zero,
+        PLN.Zero,
       )
 
   /** Auditable per-firm decision record. It is computed from values already
@@ -252,6 +254,7 @@ object Firm:
       firmLoanBefore: PLN,
       firmLoanAfter: PLN,
       realizedPostTaxProfit: PLN,
+      signedRealizedPostTaxProfit: PLN,
       grossInvestment: PLN,
       principalRepaid: PLN,
       digitalReadinessBefore: Share,
@@ -260,6 +263,8 @@ object Firm:
       workersAfter: Int,
       capex: PLN,
       newLoan: PLN,
+      techCreditNeed: PLN,
+      techCreditAmount: PLN,
       downPayment: Option[PLN],
       bankId: BankId,
       lendingRate: Rate,
@@ -1314,6 +1319,7 @@ object Firm:
       firmLoanBefore = openingStocks.firmLoan,
       firmLoanAfter = result.financialStocks.firmLoan,
       realizedPostTaxProfit = result.realizedPostTaxProfit,
+      signedRealizedPostTaxProfit = result.signedRealizedPostTaxProfit,
       grossInvestment = result.grossInvestment,
       principalRepaid = result.principalRepaid,
       digitalReadinessBefore = openingFirm.digitalReadiness,
@@ -1322,6 +1328,8 @@ object Firm:
       workersAfter = workerCount(result.firm),
       capex = result.capexSpent,
       newLoan = result.newLoan,
+      techCreditNeed = decisionCreditNeed(d),
+      techCreditAmount = result.techNewLoan,
       downPayment = downPayment(d),
       bankId = openingFirm.bankId,
       lendingRate = lendingRate,
@@ -1360,12 +1368,14 @@ object Firm:
       cashAfter = result.financialStocks.cash,
       firmLoanAfter = result.financialStocks.firmLoan,
       realizedPostTaxProfit = result.realizedPostTaxProfit,
+      signedRealizedPostTaxProfit = result.signedRealizedPostTaxProfit,
       grossInvestment = result.grossInvestment,
       principalRepaid = result.principalRepaid,
       digitalReadinessAfter = result.firm.digitalReadiness,
       workersAfter = workerCount(result.firm),
       capex = result.capexSpent,
       newLoan = result.newLoan,
+      techCreditAmount = result.techNewLoan,
     )
 
   private def decisionType(decision: Decision): DecisionTrace.DecisionType =
@@ -1399,6 +1409,12 @@ object Firm:
       case Decision.Upgrade(_, _, _, _, downPayment, _) => Some(downPayment)
       case Decision.UpgradeFailed(_, _, _, _, down)     => Some(down)
       case _                                            => None
+
+  private def decisionCreditNeed(decision: Decision): PLN =
+    decision match
+      case Decision.Upgrade(_, _, _, loan, _, _)    => loan
+      case Decision.UpgradeFailed(_, _, _, loan, _) => loan
+      case _                                        => PLN.Zero
 
   // ---- Execute (pure dispatch, zero RandomStream calls) ----
 
@@ -1479,6 +1495,7 @@ object Firm:
       financialStocks = financialStocks,
       taxPaid = pnl.tax,
       realizedPostTaxProfit = pnl.netAfterTax.max(PLN.Zero),
+      signedRealizedPostTaxProfit = pnl.netAfterTax,
       capexSpent = capex,
       techImports = techImports,
       newLoan = newLoan,

@@ -388,14 +388,15 @@ object FirmEconomics:
         val fin            = splitFinancing(r)
         val trace          =
           if traceDecisions then
+            val baseTrace = r.decisionTrace.getOrElse:
+              throw IllegalStateException(s"Firm.process did not return a decision trace for firm ${f.id.toInt}")
             Some(
-              r.decisionTrace
-                .getOrElse:
-                  throw IllegalStateException(s"Firm.process did not return a decision trace for firm ${f.id.toInt}")
-                .copy(
-                  firmLoanAfter = fin.financialStocks.firmLoan,
-                  newLoan = fin.bankLoan,
-                ),
+              baseTrace.copy(
+                firmLoanAfter = fin.financialStocks.firmLoan,
+                newLoan = fin.bankLoan,
+                techCreditAmount = fin.techBankLoan,
+                investmentCreditAmount = baseTrace.investmentCreditAmount.map(amount => (fin.bankLoan - fin.techBankLoan).max(PLN.Zero).min(amount)),
+              ),
             )
           else None
 
