@@ -341,6 +341,8 @@ object Household:
       consumerCreditDemand: PLN,                           // underwritten consumer-credit demand before eligibility denial
       consumerRejectedOrigination: PLN,                    // consumer-credit demand rejected by borrower or bank rules
       consumerBankRejectedOrigination: PLN,                // consumer-credit demand rejected by bank supply
+      consumerCreditCapacity: PLN = PLN.Zero,              // principal capacity implied by payment-factor underwriting
+      consumerCreditAccessEligible: Boolean = false,       // whether stochastic access allowed underwritten credit
       liquidityShortfallFinancing: PLN,                    // same-month bridge/write-off preventing negative closing deposits
       consumerDebtService: PLN,                            // monthly unsecured consumer-credit debt service
       consumerDefault: PLN,                                // gross consumer default plus bridge charge-off this month
@@ -371,6 +373,8 @@ object Household:
         consumerCreditDemand = PLN.Zero,
         consumerRejectedOrigination = PLN.Zero,
         consumerBankRejectedOrigination = PLN.Zero,
+        consumerCreditCapacity = PLN.Zero,
+        consumerCreditAccessEligible = false,
         liquidityShortfallFinancing = PLN.Zero,
         consumerDebtService = PLN.Zero,
         consumerDefault = PLN.Zero,
@@ -1394,6 +1398,8 @@ object Household:
             consumerCreditDemand = result.credit.creditDemand,
             consumerRejectedOrigination = result.credit.rejectedCreditDemand,
             consumerBankRejectedOrigination = result.credit.bankRejectedCreditDemand,
+            consumerCreditCapacity = result.credit.creditCapacity,
+            consumerCreditAccessEligible = result.credit.creditAccessEligible,
             liquidityShortfallFinancing = result.credit.liquidityShortfallFinancing,
             consumerDebtService = result.credit.debtService,
             consumerDefault = result.credit.defaultAmt,
