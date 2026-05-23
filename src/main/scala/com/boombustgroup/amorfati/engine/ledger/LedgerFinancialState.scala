@@ -326,6 +326,7 @@ object LedgerFinancialState:
       interbankLoan = stocks.interbankLoan,
       corpBond = corpBond,
       mortgageLoan = mortgageLoan,
+      bailedInDeposits = stocks.bailedInDeposits,
     )
 
   /** Project ledger-owned bank balances into the banking execution DTO.
@@ -344,6 +345,7 @@ object LedgerFinancialState:
       govBondHtm = balances.govBondHtm,
       reserve = balances.reserve,
       interbankLoan = balances.interbankLoan,
+      bailedInDeposits = balances.bailedInDeposits,
     )
 
   def insuranceOpeningBalances(ledgerFinancialState: LedgerFinancialState): Insurance.OpeningBalances =
@@ -502,6 +504,8 @@ object LedgerFinancialState:
         * BSM evidence.
         */
       mortgageLoan: PLN = PLN.Zero,
+      /** Deposit liabilities already processed through event-based bail-in. */
+      bailedInDeposits: PLN = PLN.Zero,
   )
 
   /** Ledger-backed financial balances issued by central government. */

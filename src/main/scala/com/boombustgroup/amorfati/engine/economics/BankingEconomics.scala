@@ -925,9 +925,10 @@ object BankingEconomics:
     val afterFailCheck  = secondaryFail.banks
     val afterFailStocks = tfiSale.financialStocks
     val anyFailed       = failResult.anyFailed || secondaryFail.anyFailed
+    val bailInBankIds   = (failResult.events ++ secondaryFail.events).map(_.bankId).toSet
 
     val bailInResult          =
-      if anyFailed then Banking.applyBailIn(afterFailCheck, afterFailStocks)
+      if bailInBankIds.nonEmpty then Banking.applyBailIn(afterFailCheck, afterFailStocks, bailInBankIds)
       else Banking.BailInResult(afterFailCheck, afterFailStocks, PLN.Zero)
     val resolveResult         =
       if anyFailed then Banking.resolveFailures(bailInResult.banks, bailInResult.financialStocks, settledBankCorpBonds)
@@ -1234,7 +1235,7 @@ object BankingEconomics:
             )
           else
             val failedBank = failCheck.banks.head
-            val bailIn     = Banking.applyBailIn(nextBanks.updated(targetIdx, failedBank), nextStocks)
+            val bailIn     = Banking.applyBailIn(nextBanks.updated(targetIdx, failedBank), nextStocks, failCheck.events.map(_.bankId).toSet)
             val resolved   = Banking.resolveFailures(bailIn.banks, bailIn.financialStocks, bankCorpBondHoldings)
             AggregateReconciliationResult(
               resolved.banks,

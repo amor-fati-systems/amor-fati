@@ -197,7 +197,8 @@ diagnostic for per-bank allocation artifacts, not a standalone economic loss
 channel.
 `BankCapital_DepositBailInLoss` mirrors the existing `BailInLoss` column inside
 the bank-capital diagnostic block; it is a resolution-adjacent depositor haircut
-and is not included in the equity-capital waterfall identity.
+on newly processed deposits and is not included in the equity-capital waterfall
+identity.
 
 `BankCreditLoss_*` columns normalize realized credit losses and gross
 default/write-off flows by the relevant closing exposure stock, so bank-failure
