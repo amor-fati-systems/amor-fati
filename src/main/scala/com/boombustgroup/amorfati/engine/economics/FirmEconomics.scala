@@ -117,6 +117,8 @@ object FirmEconomics:
       traceDecisions: Boolean,           // whether per-firm decision traces were requested for this step
   )
 
+  private case class TraceLoanComponents(techCreditAmount: PLN, investmentCreditAmount: Option[PLN])
+
   /** Result of bond absorption (phase 3). */
   private case class BondAbsorptionResult(
       firms: Vector[Firm.State],                     // firms after bond reversion (unsold → bank loans)
@@ -388,14 +390,16 @@ object FirmEconomics:
         val fin            = splitFinancing(r)
         val trace          =
           if traceDecisions then
+            val baseTrace  = r.decisionTrace.getOrElse:
+              throw IllegalStateException(s"Firm.process did not return a decision trace for firm ${f.id.toInt}")
+            val components = traceLoanComponents(baseTrace, finalLoan = fin.bankLoan, finalTechCreditAmount = fin.techBankLoan)
             Some(
-              r.decisionTrace
-                .getOrElse:
-                  throw IllegalStateException(s"Firm.process did not return a decision trace for firm ${f.id.toInt}")
-                .copy(
-                  firmLoanAfter = fin.financialStocks.firmLoan,
-                  newLoan = fin.bankLoan,
-                ),
+              baseTrace.copy(
+                firmLoanAfter = fin.financialStocks.firmLoan,
+                newLoan = fin.bankLoan,
+                techCreditAmount = components.techCreditAmount,
+                investmentCreditAmount = components.investmentCreditAmount,
+              ),
             )
           else None
 
@@ -910,6 +914,17 @@ object FirmEconomics:
   private[amorfati] def automationTechLoanAmount(techBankLoan: PLN, techBondAmt: PLN, bondAmt: PLN, revertedBond: PLN): PLN =
     techBankLoan + proratedPln(revertedBond, techBondAmt, bondAmt)
 
+  private def traceLoanComponents(trace: Firm.DecisionTrace, finalLoan: PLN, finalTechCreditAmount: PLN): TraceLoanComponents =
+    val techCap        = trace.techCreditNeed.max(finalTechCreditAmount)
+    val techAmount     = finalTechCreditAmount.max(PLN.Zero).min(finalLoan.max(PLN.Zero)).min(techCap)
+    val investmentBase = (finalLoan - techAmount).max(PLN.Zero)
+    val hasInvestment  = trace.investmentCreditNeed.exists(_ > PLN.Zero) || trace.investmentCreditAmount.exists(_ > PLN.Zero) || investmentBase > PLN.Zero
+    val investmentCap  = trace.investmentCreditNeed.orElse(trace.investmentCreditAmount).getOrElse(investmentBase)
+    TraceLoanComponents(
+      techCreditAmount = techAmount,
+      investmentCreditAmount = Option.when(hasInvestment)(investmentBase.min(investmentCap.max(PLN.Zero))),
+    )
+
   private def finalizedDecisionTraces(
       fp: FirmProcessingResult,
       bonded: BondAbsorptionResult,
@@ -937,12 +952,22 @@ object FirmEconomics:
       val revertedLoan  = bonded.bondReversionByFirm.getOrElse(firmId, PLN.Zero)
       val trace         = outcome.decisionTrace.getOrElse:
         throw IllegalStateException(s"FirmEconomics.finalizedDecisionTraces missing decision trace for firm ${firmId.toInt}")
+      val finalLoan     = outcome.finalLoan + revertedLoan
+      val finalTechLoan = automationTechLoanAmount(
+        techBankLoan = outcome.techBankLoan,
+        techBondAmt = outcome.techBondAmt,
+        bondAmt = outcome.bondAmt,
+        revertedBond = revertedLoan,
+      )
+      val components    = traceLoanComponents(trace, finalLoan = finalLoan, finalTechCreditAmount = finalTechLoan)
       trace.copy(
         closingTech = closingFirm.tech,
         cashAfter = closingStocks.cash,
         firmLoanAfter = closingStocks.firmLoan,
         digitalReadinessAfter = closingFirm.digitalReadiness,
         workersAfter = Firm.workerCount(closingFirm),
-        newLoan = outcome.finalLoan + revertedLoan,
+        newLoan = finalLoan,
+        techCreditAmount = components.techCreditAmount,
+        investmentCreditAmount = components.investmentCreditAmount,
       )
     }

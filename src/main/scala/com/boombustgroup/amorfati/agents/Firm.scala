@@ -195,6 +195,7 @@ object Firm:
       financialStocks: FinancialStocks,           // Closing ledger-contracted financial stocks
       taxPaid: PLN,                               // CIT actually paid (after informal evasion)
       realizedPostTaxProfit: PLN,                 // realized monthly profit after tax, floored at zero for payout logic
+      signedRealizedPostTaxProfit: PLN,           // signed net-after-tax profit before payout floor, for diagnostics
       capexSpent: PLN,                            // Technology upgrade CAPEX (AI or hybrid)
       techImports: PLN,                           // Import content of CAPEX (forex demand)
       newLoan: PLN,                               // New bank loan requested before financing-channel split
@@ -233,6 +234,7 @@ object Firm:
         PLN.Zero,
         PLN.Zero,
         PLN.Zero,
+        PLN.Zero,
       )
 
   /** Auditable per-firm decision record. It is computed from values already
@@ -244,16 +246,26 @@ object Firm:
       closingTech: TechState,
       decisionType: DecisionTrace.DecisionType,
       bankruptcyReason: Option[BankruptReason],
+      sector: SectorIdx,
+      foreignOwned: Boolean,
+      stateOwned: Boolean,
       cashBefore: PLN,
       cashAfter: PLN,
       firmLoanBefore: PLN,
       firmLoanAfter: PLN,
+      realizedPostTaxProfit: PLN,
+      signedRealizedPostTaxProfit: PLN,
+      grossInvestment: PLN,
+      principalRepaid: PLN,
       digitalReadinessBefore: Share,
       digitalReadinessAfter: Share,
       workersBefore: Int,
       workersAfter: Int,
       capex: PLN,
       newLoan: PLN,
+      techCreditDecisionType: Option[DecisionTrace.DecisionType],
+      techCreditNeed: PLN,
+      techCreditAmount: PLN,
       downPayment: Option[PLN],
       bankId: BankId,
       lendingRate: Rate,
@@ -347,6 +359,8 @@ object Firm:
       hybridBankApproval: Option[Boolean] = None,
       hybridBankApprovalProbability: Option[Share] = None,
       hybridBankApprovalRoll: Option[Share] = None,
+      techCreditDecisionType: Option[DecisionTrace.DecisionType] = None,
+      techCreditNeed: Option[PLN] = None,
       implementationFailureProbability: Option[Share] = None,
       implementationRoll: Option[Share] = None,
       upgradeEfficiencyDraw: Option[Scalar] = None,
@@ -372,6 +386,8 @@ object Firm:
         hybridBankApproval = next.hybridBankApproval.orElse(hybridBankApproval),
         hybridBankApprovalProbability = next.hybridBankApprovalProbability.orElse(hybridBankApprovalProbability),
         hybridBankApprovalRoll = next.hybridBankApprovalRoll.orElse(hybridBankApprovalRoll),
+        techCreditDecisionType = next.techCreditDecisionType.orElse(techCreditDecisionType),
+        techCreditNeed = next.techCreditNeed.orElse(techCreditNeed),
         implementationFailureProbability = next.implementationFailureProbability.orElse(implementationFailureProbability),
         implementationRoll = next.implementationRoll.orElse(implementationRoll),
         upgradeEfficiencyDraw = next.upgradeEfficiencyDraw.orElse(upgradeEfficiencyDraw),
@@ -396,6 +412,17 @@ object Firm:
       selectedBankApprovalProbability = credit.approvalProbability,
       selectedBankApprovalRoll = credit.approvalRoll,
     )
+
+  private def selectedTechBankAudit(credit: CreditDecision, need: PLN, decisionType: DecisionTrace.DecisionType): DecisionAudit =
+    selectedBankAudit(credit).copy(
+      techCreditDecisionType = Some(decisionType),
+      techCreditNeed = Some(need),
+    )
+
+  private def bankRejectedTechDemandAudit(candidate: UpgradeCandidate, decisionType: DecisionTrace.DecisionType): DecisionAudit =
+    if !candidate.bankOk && candidate.profitable && candidate.canPay && candidate.ready then
+      selectedTechBankAudit(candidate.credit, candidate.loan, decisionType)
+    else DecisionAudit()
 
   private def fullAiBankAudit(credit: CreditDecision): DecisionAudit =
     DecisionAudit(
@@ -926,6 +953,10 @@ object Firm:
       fullAiFeasible = Some(profitable && canPay && ready && bankOk),
       fullAiAdoptionProbability = Some(prob.min(Share.One)),
     ).merge(fullAiBankAudit(bankCredit))
+      .merge(
+        if !bankOk && profitable && canPay && ready then selectedTechBankAudit(bankCredit, upLoan, DecisionTrace.DecisionType.FullAiUpgrade)
+        else DecisionAudit(),
+      )
     val roll        = Share.random(rng)
 
     if roll < prob then
@@ -934,7 +965,7 @@ object Firm:
       DecisionWithAudit(
         Decision.Upgrade(pnl, TechState.Automated(eff), upCapex, upLoan, upDown, drUpdate = Some(ready2)),
         audit
-          .merge(selectedBankAudit(bankCredit))
+          .merge(selectedTechBankAudit(bankCredit, upLoan, DecisionTrace.DecisionType.FullAiUpgrade))
           .copy(adoptionRoll = Some(roll), upgradeEfficiencyDraw = Some(effDraw), upgradeEfficiencyMultiplier = Some(eff)),
       )
     else
@@ -1274,14 +1305,23 @@ object Firm:
       fullAiAdoptionProbability = Some(pFull),
       hybridAdoptionProbability = Some(pHyb),
       adoptionRoll = Some(roll),
-    ).merge(fullAiBankAudit(ai.credit)).merge(hybridBankAudit(hyb.credit))
+    ).merge(fullAiBankAudit(ai.credit))
+      .merge(hybridBankAudit(hyb.credit))
+      .merge(bankRejectedTechDemandAudit(ai, DecisionTrace.DecisionType.FullAiUpgrade))
+      .merge(bankRejectedTechDemandAudit(hyb, DecisionTrace.DecisionType.HybridUpgrade))
 
     if roll < pFull then
       val upgrade = rollFullAiUpgrade(firm, pnl, ai, rng)
-      DecisionWithAudit(upgrade.decision, baseAudit.merge(selectedBankAudit(ai.credit)).merge(upgrade.audit))
+      DecisionWithAudit(
+        upgrade.decision,
+        baseAudit.merge(selectedTechBankAudit(ai.credit, ai.loan, DecisionTrace.DecisionType.FullAiUpgrade)).merge(upgrade.audit),
+      )
     else if roll < pFull + pHyb then
       val upgrade = rollHybridUpgrade(firm, pnl, hyb, hWkrs, rng)
-      DecisionWithAudit(upgrade.decision, baseAudit.merge(selectedBankAudit(hyb.credit)).merge(upgrade.audit))
+      DecisionWithAudit(
+        upgrade.decision,
+        baseAudit.merge(selectedTechBankAudit(hyb.credit, hyb.loan, DecisionTrace.DecisionType.HybridUpgrade)).merge(upgrade.audit),
+      )
     else
       val fallback = fallbackDecision(firm, financialStocks, pnl, w, operationalSignals, workers, rng, nextTech = TechState.Traditional(_))
       DecisionWithAudit(fallback.decision, baseAudit.merge(fallback.audit))
@@ -1300,16 +1340,26 @@ object Firm:
       closingTech = result.firm.tech,
       decisionType = decisionType(d),
       bankruptcyReason = bankruptcyReason(d).orElse(bankruptcyReason(result.firm.tech)),
+      sector = openingFirm.sector,
+      foreignOwned = openingFirm.foreignOwned,
+      stateOwned = openingFirm.stateOwned,
       cashBefore = openingStocks.cash,
       cashAfter = result.financialStocks.cash,
       firmLoanBefore = openingStocks.firmLoan,
       firmLoanAfter = result.financialStocks.firmLoan,
+      realizedPostTaxProfit = result.realizedPostTaxProfit,
+      signedRealizedPostTaxProfit = result.signedRealizedPostTaxProfit,
+      grossInvestment = result.grossInvestment,
+      principalRepaid = result.principalRepaid,
       digitalReadinessBefore = openingFirm.digitalReadiness,
       digitalReadinessAfter = result.firm.digitalReadiness,
       workersBefore = workerCount(openingFirm),
       workersAfter = workerCount(result.firm),
       capex = result.capexSpent,
       newLoan = result.newLoan,
+      techCreditDecisionType = decision.audit.techCreditDecisionType,
+      techCreditNeed = decision.audit.techCreditNeed.getOrElse(decisionCreditNeed(d)),
+      techCreditAmount = result.techNewLoan,
       downPayment = downPayment(d),
       bankId = openingFirm.bankId,
       lendingRate = lendingRate,
@@ -1347,10 +1397,15 @@ object Firm:
       closingTech = result.firm.tech,
       cashAfter = result.financialStocks.cash,
       firmLoanAfter = result.financialStocks.firmLoan,
+      realizedPostTaxProfit = result.realizedPostTaxProfit,
+      signedRealizedPostTaxProfit = result.signedRealizedPostTaxProfit,
+      grossInvestment = result.grossInvestment,
+      principalRepaid = result.principalRepaid,
       digitalReadinessAfter = result.firm.digitalReadiness,
       workersAfter = workerCount(result.firm),
       capex = result.capexSpent,
       newLoan = result.newLoan,
+      techCreditAmount = result.techNewLoan,
     )
 
   private def decisionType(decision: Decision): DecisionTrace.DecisionType =
@@ -1384,6 +1439,12 @@ object Firm:
       case Decision.Upgrade(_, _, _, _, downPayment, _) => Some(downPayment)
       case Decision.UpgradeFailed(_, _, _, _, down)     => Some(down)
       case _                                            => None
+
+  private def decisionCreditNeed(decision: Decision): PLN =
+    decision match
+      case Decision.Upgrade(_, _, _, loan, _, _)    => loan
+      case Decision.UpgradeFailed(_, _, _, loan, _) => loan
+      case _                                        => PLN.Zero
 
   // ---- Execute (pure dispatch, zero RandomStream calls) ----
 
@@ -1464,6 +1525,7 @@ object Firm:
       financialStocks = financialStocks,
       taxPaid = pnl.tax,
       realizedPostTaxProfit = pnl.netAfterTax.max(PLN.Zero),
+      signedRealizedPostTaxProfit = pnl.netAfterTax,
       capexSpent = capex,
       techImports = techImports,
       newLoan = newLoan,

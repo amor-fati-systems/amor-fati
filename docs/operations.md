@@ -391,6 +391,19 @@ tables, consumer-credit counterfactual rows, and a summary report under
 `target/hh-bank-lead-lag/hh-bank-lead-lag/`. The export is documented in
 [hh-bank-lead-lag-diagnostics.md](hh-bank-lead-lag-diagnostics.md).
 
+Loan-origination quality diagnostics:
+
+```bash
+sbt "loanOriginationQuality --seeds 2 --months 24 --outcome-window 12 --out target/loan-origination-quality --run-id loan-origination-quality"
+```
+
+This writes household and firm credit-decision rows, cohort summaries, and a
+summary report under `<out>/<run-id>/`. With the command above, the concrete
+output directory is
+`target/loan-origination-quality/loan-origination-quality/`. The export is
+documented in
+[loan-origination-quality-diagnostics.md](loan-origination-quality-diagnostics.md).
+
 For scratch and committed-snapshot SFC matrix exports, see
 [sfc-matrix-evidence.md](sfc-matrix-evidence.md).
 
@@ -456,6 +469,7 @@ Generated local outputs normally belong in ignored paths:
 | `target/robustness*` | Robustness reports | No |
 | `<out>/<run-id>/`, for example `target/household-credit-stress/household-credit-stress/` | Household credit-stress calibration | No |
 | `<out>/<run-id>/`, for example `target/bank-balance-sheet-benchmark/bank-balance-sheet-benchmark/` | Initial bank balance-sheet benchmark | No |
+| `<out>/<run-id>/`, for example `target/loan-origination-quality/loan-origination-quality/` | Loan-origination quality diagnostics | No |
 | `docs/sfc-matrix-artifacts/` | Intentional committed matrix snapshots | Yes, only when refreshed intentionally |
 | `docs/empirical-validation/` | Empirical-validation snapshot bundle | Yes, only when refreshed intentionally |
 
