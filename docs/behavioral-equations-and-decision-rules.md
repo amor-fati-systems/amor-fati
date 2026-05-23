@@ -874,7 +874,8 @@ provision build-up from realized credit losses reported in `BankCreditLoss_*`.
 
 Failure is triggered by negative capital, three consecutive months below
 effective minimum CAR, or an LCR breach below half of the minimum. BFG bail-in
-haircuts uninsured deposits of failed banks. Purchase-and-assumption resolution
+is event-based: it haircuts only the unprocessed uninsured deposit stock of
+banks entering resolution in the current failure event set. P&A resolution then
 transfers deposits, government bonds, performing loans, consumer loans, and
 corporate-bond holdings to the healthiest surviving bank. Firms and households
 routed to failed banks are reassigned to the absorber.

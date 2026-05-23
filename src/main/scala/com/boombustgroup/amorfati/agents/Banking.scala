@@ -250,15 +250,16 @@ object Banking:
 
   /** Ledger-contracted bank financial stocks owned by LedgerFinancialState. */
   case class BankFinancialStocks(
-      totalDeposits: PLN, // total customer deposits (HH + firms)
-      firmLoan: PLN,      // outstanding corporate loan book
-      govBondAfs: PLN,    // Available-for-Sale gov bonds
-      govBondHtm: PLN,    // Held-to-Maturity gov bonds
-      reserve: PLN,       // reserves held at NBP
-      interbankLoan: PLN, // net interbank position (positive = lender)
-      demandDeposit: PLN, // demand deposits
-      termDeposit: PLN,   // term deposits
-      consumerLoan: PLN,  // outstanding unsecured household credit
+      totalDeposits: PLN,              // total customer deposits (HH + firms)
+      firmLoan: PLN,                   // outstanding corporate loan book
+      govBondAfs: PLN,                 // Available-for-Sale gov bonds
+      govBondHtm: PLN,                 // Held-to-Maturity gov bonds
+      reserve: PLN,                    // reserves held at NBP
+      interbankLoan: PLN,              // net interbank position (positive = lender)
+      demandDeposit: PLN,              // demand deposits
+      termDeposit: PLN,                // term deposits
+      consumerLoan: PLN,               // outstanding unsecured household credit
+      bailedInDeposits: PLN = PLN.Zero, // deposits already processed by resolution bail-in
   )
 
   /** Operational state of an individual bank.
@@ -682,10 +683,13 @@ object Banking:
         else stocks.totalDeposits * p.banking.bfgLevyRate.monthly
     PerBankAmounts(perBank, perBank.sumPln)
 
-  /** Bail-in: haircut uninsured deposits on failed banks. Deposits below
-    * bfgDepositGuarantee are protected.
+  /** Bail-in: haircut uninsured deposits only for banks that entered resolution
+    * in the current event set. Deposits below bfgDepositGuarantee are
+    * protected.
     */
-  def applyBailIn(banks: Vector[BankState], financialStocks: Vector[BankFinancialStocks])(using p: SimParams): BailInResult =
+  def applyBailIn(banks: Vector[BankState], financialStocks: Vector[BankFinancialStocks], eligibleBankIds: Set[BankId])(using
+      p: SimParams,
+  ): BailInResult =
     require(
       banks.length == financialStocks.length,
       s"Banking.applyBailIn requires aligned banks and financial stocks, got ${banks.length} banks and ${financialStocks.length} stock rows",
@@ -693,11 +697,14 @@ object Banking:
     val withHaircut = banks
       .zip(financialStocks)
       .map: (b, stocks) =>
-        if b.failed && stocks.totalDeposits > PLN.Zero then
-          val guaranteed = stocks.totalDeposits.min(p.banking.bfgDepositGuarantee)
-          val uninsured  = stocks.totalDeposits - guaranteed
-          val haircut    = uninsured * p.banking.bailInDepositHaircut
-          (stocks.copy(totalDeposits = stocks.totalDeposits - haircut), haircut)
+        val unprocessedDeposits = (stocks.totalDeposits - stocks.bailedInDeposits).max(PLN.Zero)
+        if b.failed && eligibleBankIds.contains(b.id) && unprocessedDeposits > PLN.Zero then
+          val guaranteed        = unprocessedDeposits.min(p.banking.bfgDepositGuarantee)
+          val uninsured         = unprocessedDeposits - guaranteed
+          val haircut           = uninsured * p.banking.bailInDepositHaircut
+          val closingDeposits   = stocks.totalDeposits - haircut
+          val processedDeposits = (stocks.bailedInDeposits + unprocessedDeposits - haircut).min(closingDeposits).max(PLN.Zero)
+          (stocks.copy(totalDeposits = closingDeposits, bailedInDeposits = processedDeposits), haircut)
         else (stocks, PLN.Zero)
     BailInResult(banks, withHaircut.map(_._1), withHaircut.map(_._2).sumPln)
 
@@ -728,6 +735,7 @@ object Banking:
       val addCorpB              = toAbsorb.flatMap((bank, _) => holderBalances.lift(bank.id.toInt)).sumPln
       val addCC                 = toAbsorb.map(_._2.consumerLoan).sumPln
       val addIB                 = toAbsorb.map(_._2.interbankLoan).sumPln
+      val addBailedInDep        = toAbsorb.map(_._2.bailedInDeposits).sumPln
       // Weighted yield: Σ(htmBonds × htmBookYield) — PLN × Rate → PLN
       val htmYieldWt            = toAbsorb.map((bank, stocks) => stocks.govBondHtm * bank.htmBookYield).sumPln
 
@@ -748,6 +756,7 @@ object Banking:
                 govBondHtm = combinedHtm,
                 consumerLoan = stocks.consumerLoan + addCC,
                 interbankLoan = stocks.interbankLoan + addIB,
+                bailedInDeposits = (stocks.bailedInDeposits + addBailedInDep).min(stocks.totalDeposits + addDep).max(PLN.Zero),
               ),
             )
           else if b.failed && stocks.totalDeposits > PLN.Zero then
@@ -761,6 +770,7 @@ object Banking:
                 reserve = PLN.Zero,
                 interbankLoan = PLN.Zero,
                 consumerLoan = PLN.Zero,
+                bailedInDeposits = PLN.Zero,
               ),
             )
           else (b, stocks)

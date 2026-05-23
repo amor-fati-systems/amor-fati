@@ -28,6 +28,7 @@ class KnfBfgSpec extends AnyFlatSpec with Matchers:
       govBondHoldings: PLN = PLN.Zero,
       interbankNet: PLN = PLN.Zero,
       status: BankStatus = BankStatus.Active(0),
+      bailedInDeposits: PLN = PLN.Zero,
   ): BankRow =
     BankRow(
       Banking.BankState(
@@ -51,6 +52,7 @@ class KnfBfgSpec extends AnyFlatSpec with Matchers:
         demandDeposit = PLN.Zero,
         termDeposit = PLN.Zero,
         consumerLoan = PLN.Zero,
+        bailedInDeposits = bailedInDeposits,
       ),
     )
 
@@ -97,20 +99,38 @@ class KnfBfgSpec extends AnyFlatSpec with Matchers:
 
   "Banking.applyBailIn" should "haircut only failed-bank uninsured deposit stocks" in {
     val safe       = Vector(mkBankRow(deposits = PLN(500000), loans = PLN(100000), capital = PLN(50000)))
-    val safeResult = Banking.applyBailIn(banks(safe), stocks(safe))
+    val safeResult = Banking.applyBailIn(banks(safe), stocks(safe), Set(BankId(0)))
     safeResult.financialStocks.head.totalDeposits shouldBe PLN(500000)
     safeResult.totalLoss shouldBe PLN.Zero
 
     val guaranteed       = Vector(mkBankRow(deposits = PLN(300000), capital = PLN.Zero, status = BankStatus.Failed(ExecutionMonth(5))))
-    val guaranteedResult = Banking.applyBailIn(banks(guaranteed), stocks(guaranteed))
+    val guaranteedResult = Banking.applyBailIn(banks(guaranteed), stocks(guaranteed), Set(BankId(0)))
     guaranteedResult.financialStocks.head.totalDeposits shouldBe PLN(300000)
     guaranteedResult.totalLoss shouldBe PLN.Zero
 
     val failed       = Vector(mkBankRow(deposits = PLN(1000000), capital = PLN.Zero, status = BankStatus.Failed(ExecutionMonth(5))))
-    val failedResult = Banking.applyBailIn(banks(failed), stocks(failed))
+    val failedResult = Banking.applyBailIn(banks(failed), stocks(failed), Set(BankId(0)))
     val haircut      = (PLN(1000000) - p.banking.bfgDepositGuarantee) * p.banking.bailInDepositHaircut
     failedResult.financialStocks.head.totalDeposits shouldBe PLN(1000000) - haircut
     failedResult.totalLoss shouldBe haircut
+  }
+
+  it should "skip already-failed banks outside the current bail-in event set" in {
+    val rows    = Vector(
+      mkBankRow(id = 0, deposits = PLN(1000000), capital = PLN.Zero, status = BankStatus.Failed(ExecutionMonth(5))),
+      mkBankRow(id = 1, deposits = PLN(1000000), capital = PLN.Zero, status = BankStatus.Failed(ExecutionMonth(6))),
+    )
+    val result  = Banking.applyBailIn(banks(rows), stocks(rows), Set(BankId(1)))
+    val haircut = (PLN(1000000) - p.banking.bfgDepositGuarantee) * p.banking.bailInDepositHaircut
+
+    result.financialStocks(0).totalDeposits shouldBe PLN(1000000)
+    result.financialStocks(1).totalDeposits shouldBe PLN(1000000) - haircut
+    result.financialStocks(1).bailedInDeposits shouldBe PLN(1000000) - haircut
+    result.totalLoss shouldBe haircut
+
+    val repeated = Banking.applyBailIn(result.banks, result.financialStocks, Set(BankId(1)))
+    repeated.financialStocks shouldBe result.financialStocks
+    repeated.totalLoss shouldBe PLN.Zero
   }
 
   "Banking.resolveFailures" should "transfer failed-bank deposits, bonds, and interbank stock to the survivor" in {
@@ -124,6 +144,7 @@ class KnfBfgSpec extends AnyFlatSpec with Matchers:
         govBondHoldings = PLN(10000000000L),
         interbankNet = PLN(1000),
         status = BankStatus.Failed(ExecutionMonth(3)),
+        bailedInDeposits = PLN(450000),
       ),
       mkBankRow(id = 1, deposits = PLN(2000000), loans = PLN(200000), capital = PLN(200000), govBondHoldings = PLN(5000000000L), interbankNet = PLN(-1000)),
     )
@@ -132,6 +153,7 @@ class KnfBfgSpec extends AnyFlatSpec with Matchers:
     result.financialStocks(0).totalDeposits shouldBe PLN.Zero
     result.financialStocks(0).firmLoan shouldBe PLN.Zero
     result.financialStocks(0).interbankLoan shouldBe PLN.Zero
+    result.financialStocks(1).bailedInDeposits shouldBe PLN(450000)
     decimal(Banking.govBondHoldings(result.financialStocks(1))) shouldBe BigDecimal("15e9") +- BigDecimal("1.0")
     decimal(result.financialStocks.map(_.interbankLoan).sumPln) shouldBe BigDecimal("0.0") +- BigDecimal("1e-6")
   }
