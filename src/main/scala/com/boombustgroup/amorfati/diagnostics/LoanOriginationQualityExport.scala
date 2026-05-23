@@ -398,7 +398,7 @@ object LoanOriginationQualityExport:
           consumerDebtArrears = flow.consumerDebtArrears,
           mortgageArrears = flow.mortgageArrears,
           financialDistressState = closing.financialDistressState,
-          bankrupt = closing.financialDistressState == HhFinancialDistressState.Bankruptcy,
+          bankrupt = closing.financialDistressState == HhFinancialDistressState.Bankruptcy || closing.status == HhStatus.Bankrupt,
         )
         outcomes += outcome
 
@@ -836,8 +836,8 @@ object LoanOriginationQualityExport:
     else
       Some(
         FirmCreditLeg(
-          decisionType = trace.decisionType.csvValue,
-          creditPurpose = techCreditPurpose(trace.decisionType),
+          decisionType = trace.techCreditDecisionType.getOrElse(trace.decisionType).csvValue,
+          creditPurpose = techCreditPurpose(trace.techCreditDecisionType.getOrElse(trace.decisionType)),
           bankApproval = trace.selectedBankApproval,
           observedCreditNeed = need,
           approvedPrincipal = principal,
