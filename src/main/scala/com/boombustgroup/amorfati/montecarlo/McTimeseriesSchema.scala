@@ -1022,7 +1022,7 @@ object McTimeseriesSchema:
   /** Number of columns — derived from schema. */
   val nCols: Int = schema.length
 
-  private[montecarlo] val csvSchema: McCsvSchema[(ExecutionMonth, Array[MetricValue])] =
+  private[amorfati] val csvSchema: McCsvSchema[(ExecutionMonth, Array[MetricValue])] =
     McCsvSchema(
       header = colNames.mkString(";"),
       render = (month, row) =>

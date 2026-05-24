@@ -345,7 +345,7 @@ Current
   -> LiquidityStress       after first active distress month
   -> Arrears               after repeated distress
   -> Defaulted             at bankruptcyDistressMonths
-  -> Bankruptcy            after one further distressed month and write-off
+  -> Bankruptcy            at personalInsolvencyDistressMonths + 1, with write-off
 
 Arrears/Defaulted/Bankruptcy with no new distress -> Restructuring
 Restructuring with no new distress                -> Current

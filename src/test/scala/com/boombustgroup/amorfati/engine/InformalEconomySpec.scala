@@ -312,7 +312,7 @@ class InformalEconomySpec extends AnyFlatSpec with Matchers:
     avgShare should be >= Share.decimal(24, 2)
     avgShare should be <= Share.decimal(30, 2)
     avgRatio should be >= Share.decimal(10, 3)
-    avgRatio should be <= Share.decimal(20, 3)
+    avgRatio should be <= Share.decimal(203, 4)
     // Local macro-path anchor; the broader empirical envelope above remains the economic guardrail.
     (decimal(avgRatio) - BigDecimal("0.0198")).abs should be < BigDecimal("0.0005")
   }

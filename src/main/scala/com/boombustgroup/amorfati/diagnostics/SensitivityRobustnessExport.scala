@@ -2,11 +2,11 @@ package com.boombustgroup.amorfati.diagnostics
 
 import com.boombustgroup.amorfati.config.RobustnessScenarios
 import com.boombustgroup.amorfati.config.RobustnessScenarios.{Scenario, ScenarioSet}
-import com.boombustgroup.amorfati.config.SimParams
-import com.boombustgroup.amorfati.montecarlo.{McRunner, McTimeseriesSchema, MetricValue}
+import com.boombustgroup.amorfati.montecarlo.{McCsvFile, McCsvSchema, McDiagnosticRunner, McSeedMonth, McTimeseriesSchema, MetricValue}
+import zio.ZIO
+import zio.stream.ZStream
 
-import java.nio.charset.StandardCharsets
-import java.nio.file.{Files, Path}
+import java.nio.file.Path
 import scala.util.Try
 
 object SensitivityRobustnessExport:
@@ -69,22 +69,26 @@ object SensitivityRobustnessExport:
             result.paths.foreach(path => println(path.toString))
 
   def run(config: Config): Either[String, ExportResult] =
-    validate(config).flatMap: validConfig =>
-      val scenarios = RobustnessScenarios.scenarios(validConfig.scenarioSet)
-      val attempts  =
-        for
-          scenario <- scenarios
-          seed     <- validConfig.seedRange
-        yield runSeed(scenario, seed, validConfig.months)
+    DiagnosticIo.unsafeRun(runZIO(config))
 
-      attempts.collectFirst { case Left(err) => err } match
-        case Some(err) => Left(err)
-        case None      =>
-          val seedMetrics        = attempts.collect { case Right(metrics) => metrics }.flatten
-          val envelopeMetrics    = summarizeEnvelope(seedMetrics)
-          val sensitivityMetrics = summarizeSensitivity(envelopeMetrics)
-          val paths              = writeArtifacts(validConfig, scenarios, seedMetrics, envelopeMetrics, sensitivityMetrics)
-          Right(ExportResult(paths))
+  def runZIO(config: Config): ZIO[Any, String, ExportResult] =
+    for
+      validConfig       <- ZIO.fromEither(validate(config))
+      scenarios          = RobustnessScenarios.scenarios(validConfig.scenarioSet)
+      seedMetrics       <- McCsvFile
+        .writeFold(
+          validConfig.out.resolve("seed-metrics.csv"),
+          McDiagnosticRunner
+            .runScenarioSeeds(scenarios, validConfig.seedRange, validConfig.months, _.id, _.params)(runSeed)
+            .flatMap(rows => ZStream.fromIterable(rows)),
+          SeedMetricsCsvSchema,
+          Vector.newBuilder[SeedMetric],
+        )((builder, row) => builder += row)(DiagnosticIo.outputFailure)
+        .map(_.result())
+      envelopeMetrics    = summarizeEnvelope(seedMetrics)
+      sensitivityMetrics = summarizeSensitivity(envelopeMetrics)
+      paths             <- writeArtifactsZIO(validConfig, scenarios, envelopeMetrics, sensitivityMetrics)
+    yield ExportResult(paths)
 
   def parseArgs(args: Vector[String]): Either[String, Config] =
     def missingValue(flag: String): Left[String, Config] = Left(s"Missing value for $flag")
@@ -118,24 +122,57 @@ object SensitivityRobustnessExport:
       .cond(config.seeds > 0, config, "--seeds must be a positive integer")
       .flatMap(valid => Either.cond(valid.months > 0, valid, "--months must be a positive integer"))
 
-  private def runSeed(scenario: Scenario, seed: Long, months: Int): Either[String, Vector[SeedMetric]] =
-    given SimParams = scenario.params
-    McRunner
-      .runSingle(seed, months)
-      .left
-      .map(err => s"Scenario ${scenario.id}, seed $seed failed: $err")
-      .map: result =>
-        Metrics.map: metric =>
-          val values = result.timeSeries.map(row => row(metric.ordinal))
+  private final case class MetricAccumulator(
+      terminal: Option[MetricValue],
+      pathMin: Option[MetricValue],
+      pathMax: Option[MetricValue],
+      pathSum: MetricValue,
+      observations: Int,
+  ):
+    def observe(value: MetricValue): MetricAccumulator =
+      MetricAccumulator(
+        terminal = Some(value),
+        pathMin = Some(pathMin.fold(value)(current => if value < current then value else current)),
+        pathMax = Some(pathMax.fold(value)(current => if value > current then value else current)),
+        pathSum = pathSum + value,
+        observations = observations + 1,
+      )
+
+    def toSeedMetric(scenarioId: String, seed: Long, metric: MetricDef): Either[String, SeedMetric] =
+      terminal
+        .toRight(s"metric ${metric.id} has no observations")
+        .map: terminalValue =>
           SeedMetric(
-            scenario.id,
+            scenarioId,
             seed,
             metric,
-            terminal = values.last,
-            pathMin = values.min,
-            pathMax = values.max,
-            pathMean = sumMetricValues(values) / values.length,
+            terminal = terminalValue,
+            pathMin = pathMin.getOrElse(terminalValue),
+            pathMax = pathMax.getOrElse(terminalValue),
+            pathMean = pathSum / observations,
           )
+
+  private object MetricAccumulator:
+    val Empty: MetricAccumulator =
+      MetricAccumulator(None, None, None, MetricValue.Zero, 0)
+
+  private def runSeed(scenario: Scenario, seed: Long, months: ZStream[Any, String, McSeedMonth]): ZIO[Any, String, Vector[SeedMetric]] =
+    months
+      .runFold(Vector.fill(Metrics.length)(MetricAccumulator.Empty)): (acc, month) =>
+        acc
+          .zip(Metrics)
+          .map: (metricAcc, metric) =>
+            metricAcc.observe(month.row(metric.ordinal))
+      .flatMap: metricAccumulators =>
+        ZIO.fromEither:
+          metricAccumulators
+            .zip(Metrics)
+            .foldLeft[Either[String, Vector[SeedMetric]]](Right(Vector.empty)): (acc, item) =>
+              val (metricAcc, metric) = item
+              for
+                rows <- acc
+                row  <- metricAcc.toSeedMetric(scenario.id, seed, metric)
+              yield rows :+ row
 
   private def summarizeEnvelope(seedMetrics: Vector[SeedMetric]): Vector[EnvelopeMetric] =
     seedMetrics
@@ -175,59 +212,59 @@ object SensitivityRobustnessExport:
               deltaPct = if base.terminalMean.toLong != 0L then Some(delta.ratioTo(base.terminalMean.abs)) else None,
             )
 
-  private def writeArtifacts(
+  private def writeArtifactsZIO(
       config: Config,
       scenarios: Vector[Scenario],
-      seedMetrics: Vector[SeedMetric],
       envelopeMetrics: Vector[EnvelopeMetric],
       sensitivityMetrics: Vector[SensitivityMetric],
-  ): Vector[Path] =
-    Files.createDirectories(config.out)
+  ): ZIO[Any, String, Vector[Path]] =
     val seedMetricsPath = config.out.resolve("seed-metrics.csv")
     val envelopePath    = config.out.resolve("envelope-summary.csv")
     val sensitivityPath = config.out.resolve("sensitivity-summary.csv")
     val reportPath      = config.out.resolve("robustness-report.md")
 
-    Files.writeString(seedMetricsPath, renderSeedMetrics(seedMetrics), StandardCharsets.UTF_8)
-    Files.writeString(envelopePath, renderEnvelopeMetrics(envelopeMetrics), StandardCharsets.UTF_8)
-    Files.writeString(sensitivityPath, renderSensitivityMetrics(sensitivityMetrics), StandardCharsets.UTF_8)
-    Files.writeString(reportPath, renderReport(config, scenarios, envelopeMetrics, sensitivityMetrics), StandardCharsets.UTF_8)
+    for
+      _ <- McCsvFile.writeAll(envelopePath, envelopeMetrics, EnvelopeCsvSchema)(DiagnosticIo.outputFailure)
+      _ <- McCsvFile.writeAll(sensitivityPath, sensitivityMetrics, SensitivityCsvSchema)(DiagnosticIo.outputFailure)
+      _ <- DiagnosticIo.writeText(reportPath, renderReport(config, scenarios, envelopeMetrics, sensitivityMetrics))
+    yield Vector(seedMetricsPath, envelopePath, sensitivityPath, reportPath)
 
-    Vector(seedMetricsPath, envelopePath, sensitivityPath, reportPath)
+  private val SeedMetricsCsvSchema: McCsvSchema[SeedMetric] =
+    McCsvSchema(
+      header = "Scenario;Seed;Metric;Terminal;PathMin;PathMax;PathMean",
+      render =
+        row => Vector(row.scenarioId, row.seed.toString, row.metric.id, fmt(row.terminal), fmt(row.pathMin), fmt(row.pathMax), fmt(row.pathMean)).mkString(";"),
+    )
 
-  private def renderSeedMetrics(seedMetrics: Vector[SeedMetric]): String =
-    val header = "Scenario;Seed;Metric;Terminal;PathMin;PathMax;PathMean"
-    val rows   = seedMetrics.map: row =>
-      Vector(row.scenarioId, row.seed.toString, row.metric.id, fmt(row.terminal), fmt(row.pathMin), fmt(row.pathMax), fmt(row.pathMean)).mkString(";")
-    (header +: rows).mkString("\n") + "\n"
+  private val EnvelopeCsvSchema: McCsvSchema[EnvelopeMetric] =
+    McCsvSchema(
+      header = "Scenario;Metric;TerminalMean;TerminalMin;TerminalMax;PathMin;PathMax;PathMean",
+      render = row =>
+        Vector(
+          row.scenarioId,
+          row.metric.id,
+          fmt(row.terminalMean),
+          fmt(row.terminalMin),
+          fmt(row.terminalMax),
+          fmt(row.pathMin),
+          fmt(row.pathMax),
+          fmt(row.pathMean),
+        ).mkString(";"),
+    )
 
-  private def renderEnvelopeMetrics(envelopeMetrics: Vector[EnvelopeMetric]): String =
-    val header = "Scenario;Metric;TerminalMean;TerminalMin;TerminalMax;PathMin;PathMax;PathMean"
-    val rows   = envelopeMetrics.map: row =>
-      Vector(
-        row.scenarioId,
-        row.metric.id,
-        fmt(row.terminalMean),
-        fmt(row.terminalMin),
-        fmt(row.terminalMax),
-        fmt(row.pathMin),
-        fmt(row.pathMax),
-        fmt(row.pathMean),
-      ).mkString(";")
-    (header +: rows).mkString("\n") + "\n"
-
-  private def renderSensitivityMetrics(sensitivityMetrics: Vector[SensitivityMetric]): String =
-    val header = "Scenario;Metric;BaselineTerminalMean;ScenarioTerminalMean;Delta;DeltaPct"
-    val rows   = sensitivityMetrics.map: row =>
-      Vector(
-        row.scenarioId,
-        row.metric.id,
-        fmt(row.baselineMean),
-        fmt(row.scenarioMean),
-        fmt(row.delta),
-        row.deltaPct.map(fmt).getOrElse("NA"),
-      ).mkString(";")
-    (header +: rows).mkString("\n") + "\n"
+  private val SensitivityCsvSchema: McCsvSchema[SensitivityMetric] =
+    McCsvSchema(
+      header = "Scenario;Metric;BaselineTerminalMean;ScenarioTerminalMean;Delta;DeltaPct",
+      render = row =>
+        Vector(
+          row.scenarioId,
+          row.metric.id,
+          fmt(row.baselineMean),
+          fmt(row.scenarioMean),
+          fmt(row.delta),
+          row.deltaPct.map(fmt).getOrElse("NA"),
+        ).mkString(";"),
+    )
 
   private def renderReport(
       config: Config,

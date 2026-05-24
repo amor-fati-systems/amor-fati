@@ -914,8 +914,8 @@ object Household:
       case HhFinancialDistressState.Current | HhFinancialDistressState.LiquidityStress | HhFinancialDistressState.Restructuring =>
         HhFinancialDistressState.Current
 
-  // The threshold month becomes Defaulted; personalInsolvency is the separate
-  // write-off branch that moves the household to Bankruptcy.
+  // The default threshold and legal write-off threshold are separate: arrears
+  // can enter Defaulted before consumer debt is fully written off.
   private def advanceFinancialDistressState(
       previous: HhFinancialDistressState,
       status: HhStatus,
@@ -1182,8 +1182,7 @@ object Household:
     val f              = computeMonthlyFlows(hh, financialStocks, world, rng, bankRates, equityIndexReturn, distressedIds, consumerCreditGate)
     val distressMonths =
       if financialDistressTriggered(f) then hh.financialDistressMonths + 1 else 0
-    // One full month in Defaulted is observable before personal-insolvency write-off.
-    if distressMonths > p.household.bankruptcyDistressMonths then resolveBankruptcy(f, distressMonths)
+    if distressMonths > p.household.personalInsolvencyDistressMonths then resolveBankruptcy(f, distressMonths)
     else resolveSurvival(f, sectorWages, sectorVacancies, rng, distressMonths)
 
   /** Diagnostic-only attribution: outflows consume available cash in a stable

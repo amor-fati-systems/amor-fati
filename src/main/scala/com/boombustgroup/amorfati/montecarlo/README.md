@@ -10,6 +10,8 @@ pipeline has no dependency on this package.
 | File | Object | Role |
 |------|--------|------|
 | `McRunner.scala` | `McRunner` | Orchestrates the Monte Carlo run: initializes seeds, streams monthly snapshots, writes per-seed CSVs, collects terminal summaries and optional firm micro exports |
+| `McSeedMonth.scala` | `McSeedMonth` | Canonical monthly seed snapshot shared with diagnostics: execution month, timeseries row, opening/closing state, and lightweight monthly tap payloads |
+| `McDiagnosticRunner.scala` | `McDiagnosticRunner` | Shared scenario/seed diagnostic runner using the same seed-stream path and bounded `mapZIOPar` parallelism as production runs |
 | `McRunConfig.scala` | `McRunConfig` | Runtime config from CLI args: `nSeeds`, `outputPrefix`, `runDurationMonths`, `runId`, `firmSnapshotSchedule`, `householdSnapshotSchedule`, `householdSnapshotSelection`, `firmDecisionTraceSelection` |
 | `McFirmSnapshotSchedule.scala` | `McFirmSnapshotSchedule` | Disabled/terminal/cadence/explicit-month firm microdata export schedule |
 | `McFirmSnapshotSchema.scala` | `McFirmSnapshotSchema` | Generic per-firm snapshot CSV header and row rendering |
@@ -26,7 +28,8 @@ pipeline has no dependency on this package.
 | `McFirmSizeClass.scala` | `McFirmSizeClass` | Shared worker-count size-class boundary used by terminal counts and firm snapshots |
 | `McHouseholdLiquidityDiagnostics.scala` | `McHouseholdLiquidityDiagnostics` | Shared household demand-deposit distribution diagnostics for timeseries and terminal summaries |
 | `McTimeseriesSchema.scala` | `McTimeseriesSchema` | Timeseries schema with typed `Col` definitions, `compute`, and shared `csvSchema` |
-| `McTimeseriesCsv.scala` | `McTimeseriesCsv` | Streaming per-seed timeseries CSV sink with temp-file finalization |
+| `McCsvFile.scala` | `McCsvFile` | Generic streaming CSV sink with parent-dir creation, temp-file finalization, and fold support for diagnostics |
+| `McTimeseriesCsv.scala` | `McTimeseriesCsv` | Production per-seed timeseries CSV sink backed by `McCsvFile` |
 | `McTerminalSummarySchema.scala` | `McTerminalSummarySchema` | Household/bank/firm terminal summary schemas and terminal-state row extraction; bank stock columns read `LedgerFinancialState` |
 | `McTerminalSummaryCsv.scala` | `McTerminalSummaryCsv` | Writes aggregate household/bank/firm terminal summary CSVs |
 | `McCsvSchema.scala` | `McCsvSchema` | Shared CSV header/render contract used by output schemas |
@@ -68,6 +71,13 @@ Main ──→ McRunner.runZIO(rc)
 uses the same initialization/runtime path but materializes the whole
 run in memory and returns a pure `Either[SimError, RunResult]` for
 tests and local callers.
+
+Diagnostics that need Monte Carlo seed execution should use
+`McDiagnosticRunner` and `McRunner.seedMonths`, not `runSingle`. That keeps
+scenario/seed sweeps on the same initialization and monthly runtime path as
+`Main`, preserves bounded seed parallelism through `mapZIOPar`, and lets
+diagnostic CSVs stream rows through `McCsvFile` while retaining only the small
+fold state needed for summaries.
 
 `runDurationMonths` is a Monte Carlo/runtime concern. It controls how
 many monthly snapshots the runner materializes, but it is not part of

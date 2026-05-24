@@ -22,6 +22,7 @@ object McRunner:
   /** Single month snapshot emitted by [[seedStream]]. */
   private case class MonthSnapshot(
       executionMonth: ExecutionMonth,
+      openingState: FlowSimulation.SimState,
       state: FlowSimulation.SimState,
       monthData: Array[MetricValue],
       firmDecisionTraces: Vector[Firm.DecisionTrace],
@@ -68,6 +69,20 @@ object McRunner:
   private def seedStream(seed: Long, durationMonths: Int, traceFirmDecisions: Boolean)(using SimParams) =
     ZStream.unwrap(ZIO.fromEither(initSeed(seed)).map(simulateMonths(seed, _, durationMonths, traceFirmDecisions)))
 
+  /** Canonical monthly seed stream for diagnostics. This is the same runtime
+    * path used by [[runZIO]], without production-only CSV/snapshot taps.
+    */
+  private[amorfati] def seedMonths(seed: Long, durationMonths: Int)(using SimParams): ZStream[Any, SimError, McSeedMonth] =
+    seedStream(seed, durationMonths, traceFirmDecisions = false).map: snapshot =>
+      McSeedMonth(
+        snapshot.executionMonth,
+        snapshot.monthData,
+        snapshot.openingState,
+        snapshot.state,
+        snapshot.householdSnapshotState,
+        snapshot.householdMonthlyFlows,
+      )
+
   private def simulateMonths(seed: Long, initState: FlowSimulation.SimState, durationMonths: Int, traceFirmDecisions: Boolean)(using p: SimParams) =
     val steps = runtimeSteps(seed, initState, traceFirmDecisions).take(durationMonths)
     ZStream
@@ -111,6 +126,7 @@ object McRunner:
         Right(
           MonthSnapshot(
             result.executionMonth,
+            result.stateIn,
             result.nextState,
             monthData,
             result.firmDecisionTraces,

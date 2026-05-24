@@ -1,17 +1,15 @@
 package com.boombustgroup.amorfati.diagnostics
 
-import com.boombustgroup.amorfati.accounting.{InitCheck, Sfc}
 import com.boombustgroup.amorfati.agents.Banking
 import com.boombustgroup.amorfati.config.{HhBankLeadLagScenarios, SimParams}
-import com.boombustgroup.amorfati.engine.flows.FlowSimulation
 import com.boombustgroup.amorfati.engine.ledger.{CorporateBondOwnership, LedgerFinancialState}
-import com.boombustgroup.amorfati.engine.{MonthDriver, MonthRandomness}
 import com.boombustgroup.amorfati.fp.FixedPointBase
-import com.boombustgroup.amorfati.init.{InitRandomness, WorldInit}
+import com.boombustgroup.amorfati.montecarlo.{McCsvFile, McCsvSchema, McDiagnosticRunner, McSeedMonth}
 import com.boombustgroup.amorfati.types.*
+import zio.ZIO
+import zio.stream.ZStream
 
-import java.nio.charset.StandardCharsets
-import java.nio.file.{Files, Path}
+import java.nio.file.Path
 import scala.math.BigDecimal.RoundingMode
 
 /** HH-to-bank lead-lag diagnostics for #584.
@@ -163,21 +161,31 @@ object HhBankLeadLagDiagnosticsExport:
             result.paths.foreach(path => println(path.toString))
 
   def run(config: Config): Either[String, ExportResult] =
-    validate(config).flatMap: validConfig =>
-      val attempts =
-        for
-          scenario <- Scenarios
-          seed     <- validConfig.seedRange
-        yield runScenarioSeed(validConfig, scenario, seed)
+    DiagnosticIo.unsafeRun(runZIO(config))
 
-      attempts.collectFirst { case Left(err) => err } match
-        case Some(err) => Left(err)
-        case None      =>
-          val bankRows        = attempts.collect { case Right(rows) => rows }.flatten
-          val correlations    = computeCorrelations(validConfig, bankRows)
-          val counterfactuals = summarizeCounterfactuals(validConfig, bankRows)
-          val paths           = writeArtifacts(validConfig, bankRows, correlations, counterfactuals)
-          Right(ExportResult(paths, bankRows, correlations, counterfactuals))
+  def runZIO(config: Config): ZIO[Any, String, ExportResult] =
+    for
+      validConfig    <- ZIO.fromEither(validate(config))
+      bankRows       <- McCsvFile
+        .writeFold(
+          validConfig.runRoot.resolve("hh-bank-lead-lag-bank-months.csv"),
+          McDiagnosticRunner
+            .runScenarioSeeds(
+              Scenarios,
+              validConfig.seedRange,
+              validConfig.months,
+              _.id,
+              _.params,
+            )((scenario, seed, months) => computeBankRows(validConfig, scenario, seed, months))
+            .flatMap(rows => ZStream.fromIterable(rows)),
+          BankMonthCsvSchema,
+          Vector.newBuilder[BankMonthRow],
+        )((builder, row) => builder += row)(DiagnosticIo.outputFailure)
+        .map(_.result())
+      correlations    = computeCorrelations(validConfig, bankRows)
+      counterfactuals = summarizeCounterfactuals(validConfig, bankRows)
+      paths          <- writeArtifactsZIO(validConfig, correlations, counterfactuals)
+    yield ExportResult(paths, bankRows, correlations, counterfactuals)
 
   def parseArgs(args: Vector[String]): Either[String, Config] =
     def missingValue(flag: String): Left[String, Config] = Left(s"Missing value for $flag")
@@ -215,57 +223,45 @@ object HhBankLeadLagDiagnosticsExport:
       .flatMap(valid => Either.cond(valid.lagMax >= 0, valid, "--lag-max must be >= 0"))
       .flatMap(valid => Either.cond(valid.runId.trim.nonEmpty, valid, "--run-id must be non-empty"))
 
-  private def runScenarioSeed(config: Config, scenario: HhBankLeadLagScenarios.Spec, seed: Long): Either[String, Vector[BankMonthRow]] =
-    given SimParams = scenario.params
-    val init        = WorldInit.initialize(InitRandomness.Contract.fromSeed(seed))
-    val initState   = FlowSimulation.SimState.fromInit(init)
-    val runtime     = Sfc.RuntimeState(initState.world, initState.firms, initState.households, initState.banks, initState.ledgerFinancialState)
-    val initErrors  = InitCheck.validate(runtime)
-    if initErrors.nonEmpty then Left(s"Scenario ${scenario.id} seed $seed failed init checks: ${initErrors.mkString("; ")}")
-    else
-      val rows                    = Vector.newBuilder[BankMonthRow]
-      val steps                   = MonthDriver
-        .unfoldSteps(initState): state =>
-          Some(MonthRandomness.Contract.fromSeed(runtimeRootSeed(seed, state)))
-        .take(config.months)
-      var previousFailedByBank    = initState.banks.map(_.failed)
-      var failure: Option[String] = None
-      while steps.hasNext && failure.isEmpty do
-        val output = steps.next()
-        output.sfcResult match
-          case Left(errors) =>
-            failure = Some(s"Scenario ${scenario.id} seed $seed failed SFC at month ${output.executionMonth.toInt}: ${errors.mkString("; ")}")
-          case Right(())    =>
-            rows ++= bankMonthRows(config, scenario, seed, output, previousFailedByBank)
-            previousFailedByBank = output.nextState.banks.map(_.failed)
-      failure match
-        case Some(err) => Left(err)
-        case None      => Right(rows.result())
+  private[diagnostics] def computeBankRows(
+      config: Config,
+      scenario: HhBankLeadLagScenarios.Spec,
+      seed: Long,
+      months: ZStream[Any, String, McSeedMonth],
+  ): ZIO[Any, String, Vector[BankMonthRow]] =
+    months
+      .mapZIO: month =>
+        ZIO
+          .attempt(bankMonthRows(config, scenario, seed, month)(using scenario.params))
+          .mapError(err =>
+            s"Scenario ${scenario.id} seed $seed failed HH-bank row construction at month ${month.executionMonth.toInt}: ${Option(err.getMessage).getOrElse(err.getClass.getSimpleName)}",
+          )
+      .runCollect
+      .map(_.flatten.toVector)
 
   private def bankMonthRows(
       config: Config,
       scenario: HhBankLeadLagScenarios.Spec,
       seed: Long,
-      output: FlowSimulation.StepOutput,
-      previousFailedByBank: Vector[Boolean],
+      seedMonth: McSeedMonth,
   )(using p: SimParams): Vector[BankMonthRow] =
-    val nBanks = output.nextState.banks.length
+    val nBanks = seedMonth.state.banks.length
     require(
-      output.householdSnapshotState.households.length == output.householdMonthlyFlows.length,
-      s"HH-bank diagnostics require aligned household rows and flow rows, got ${output.householdSnapshotState.households.length} households and ${output.householdMonthlyFlows.length} flows",
+      seedMonth.householdSnapshotState.households.length == seedMonth.householdMonthlyFlows.length,
+      s"HH-bank diagnostics require aligned household rows and flow rows, got ${seedMonth.householdSnapshotState.households.length} households and ${seedMonth.householdMonthlyFlows.length} flows",
     )
     require(
-      output.nextState.ledgerFinancialState.banks.length == nBanks,
-      s"HH-bank diagnostics require aligned bank rows and ledger rows, got $nBanks banks and ${output.nextState.ledgerFinancialState.banks.length} ledger rows",
+      seedMonth.state.ledgerFinancialState.banks.length == nBanks,
+      s"HH-bank diagnostics require aligned bank rows and ledger rows, got $nBanks banks and ${seedMonth.state.ledgerFinancialState.banks.length} ledger rows",
     )
     require(
-      previousFailedByBank.length == nBanks,
-      s"HH-bank diagnostics require aligned previous failure flags and bank rows, got ${previousFailedByBank.length} flags and $nBanks banks",
+      seedMonth.openingState.banks.length == nBanks,
+      s"HH-bank diagnostics require aligned opening and closing bank rows, got ${seedMonth.openingState.banks.length} opening banks and $nBanks closing banks",
     )
 
     val hhTotals = Array.tabulate(nBanks)(_ => HhBankTotals())
-    output.householdSnapshotState.households
-      .zip(output.householdMonthlyFlows)
+    seedMonth.householdSnapshotState.households
+      .zip(seedMonth.householdMonthlyFlows)
       .foreach: (household, flow) =>
         require(
           household.id == flow.householdId,
@@ -275,19 +271,19 @@ object HhBankLeadLagDiagnosticsExport:
         require(bankId >= 0 && bankId < nBanks, s"Household ${household.id.toInt} references invalid bank id $bankId for $nBanks banks")
         hhTotals(bankId).add(flow)
 
-    val bankStocks        = output.nextState.ledgerFinancialState.banks.map(LedgerFinancialState.projectBankFinancialStocks)
-    val failureDiagnostic = output.nextState.world.flows.bankFailure
-    val unemployment      = fixed(output.nextState.world.unemploymentRate(output.nextState.householdAggregates.employed).toLong)
-    val inflation         = fixed(output.nextState.world.inflation.toLong)
-    val monthlyGdp        = pln(output.nextState.world.cachedMonthlyGdpProxy)
+    val bankStocks        = seedMonth.state.ledgerFinancialState.banks.map(LedgerFinancialState.projectBankFinancialStocks)
+    val failureDiagnostic = seedMonth.state.world.flows.bankFailure
+    val unemployment      = fixed(seedMonth.state.world.unemploymentRate(seedMonth.state.householdAggregates.employed).toLong)
+    val inflation         = fixed(seedMonth.state.world.inflation.toLong)
+    val monthlyGdp        = pln(seedMonth.state.world.cachedMonthlyGdpProxy)
 
-    output.nextState.banks.zipWithIndex.map: (bank, idx) =>
+    seedMonth.state.banks.zipWithIndex.map: (bank, idx) =>
       val stocks            = bankStocks(idx)
-      val openingCapital    = output.stateIn.banks(idx).capital
-      val corpBondHoldings  = CorporateBondOwnership.bankHolderFor(output.nextState.ledgerFinancialState, bank.id)
+      val openingBank       = seedMonth.openingState.banks(idx)
+      val corpBondHoldings  = CorporateBondOwnership.bankHolderFor(seedMonth.state.ledgerFinancialState, bank.id)
       val totals            = hhTotals(idx)
       val consumerNplLoss   = totals.consumerLoanDefault * (Share.One - p.household.ccNplRecovery)
-      val newFailure        = if !previousFailedByBank(idx) && bank.failed then 1 else 0
+      val newFailure        = if !openingBank.failed && bank.failed then 1 else 0
       val failureReasonCode =
         if newFailure == 1 && failureDiagnostic.firstNewBankId == bank.id.toInt then failureDiagnostic.firstNewReasonCode
         else 0
@@ -296,7 +292,7 @@ object HhBankLeadLagDiagnosticsExport:
         scenarioId = scenario.id,
         scenarioLabel = scenario.label,
         seed = seed,
-        month = output.executionMonth.toInt,
+        month = seedMonth.executionMonth.toInt,
         bankId = bank.id.toInt,
         bankName = bankName(idx),
         householdCount = totals.householdCount,
@@ -314,7 +310,7 @@ object HhBankLeadLagDiagnosticsExport:
         bankConsumerNplStock = pln(bank.consumerNpl),
         bankConsumerNplLoss = pln(consumerNplLoss),
         bankCapital = pln(bank.capital),
-        bankCapitalDelta = pln(bank.capital - openingCapital),
+        bankCapitalDelta = pln(bank.capital - openingBank.capital),
         bankCar = fixed(Banking.car(bank, stocks, corpBondHoldings).toLong),
         bankLcr = fixed(Banking.lcr(stocks).toLong),
         bankFailed = if bank.failed then 1 else 0,
@@ -398,98 +394,101 @@ object HhBankLeadLagDiagnosticsExport:
       if sx == 0.0 || sy == 0.0 then None
       else Some(BigDecimal((dx zip dy).map((x, y) => x * y).sum / (sx * sy)).setScale(6, RoundingMode.HALF_UP))
 
-  private def writeArtifacts(
+  private def writeArtifactsZIO(
       config: Config,
-      bankRows: Vector[BankMonthRow],
       correlations: Vector[CorrelationResult],
       counterfactuals: Vector[CounterfactualResult],
-  ): Vector[Path] =
-    Files.createDirectories(config.runRoot)
+  ): ZIO[Any, String, Vector[Path]] =
     val bankRowsPath        = config.runRoot.resolve("hh-bank-lead-lag-bank-months.csv")
     val correlationsPath    = config.runRoot.resolve("hh-bank-lead-lag-correlations.csv")
     val counterfactualsPath = config.runRoot.resolve("hh-bank-lead-lag-counterfactuals.csv")
     val reportPath          = config.runRoot.resolve("hh-bank-lead-lag-report.md")
-    Files.writeString(bankRowsPath, renderBankRows(bankRows), StandardCharsets.UTF_8)
-    Files.writeString(correlationsPath, renderCorrelations(correlations), StandardCharsets.UTF_8)
-    Files.writeString(counterfactualsPath, renderCounterfactuals(counterfactuals), StandardCharsets.UTF_8)
-    Files.writeString(reportPath, renderReport(config, correlations, counterfactuals), StandardCharsets.UTF_8)
-    Vector(bankRowsPath, correlationsPath, counterfactualsPath, reportPath)
+    for
+      _ <- McCsvFile.writeAll(correlationsPath, correlations, CorrelationCsvSchema)(DiagnosticIo.outputFailure)
+      _ <- McCsvFile.writeAll(counterfactualsPath, counterfactuals, CounterfactualCsvSchema)(DiagnosticIo.outputFailure)
+      _ <- DiagnosticIo.writeText(reportPath, renderReport(config, correlations, counterfactuals))
+    yield Vector(bankRowsPath, correlationsPath, counterfactualsPath, reportPath)
 
-  private def renderBankRows(rows: Vector[BankMonthRow]): String =
+  private val BankMonthCsvSchema: McCsvSchema[BankMonthRow] =
     val header =
       "RunId;ScenarioId;ScenarioLabel;Seed;Month;BankId;BankName;HouseholdCount;HhMonthlyIncome;HhConsumerLoanDefault;HhLiquidityBridgeChargeOff;HhLiquidityShortfallFinancing;HhConsumerDefault;HhConsumerDebtService;HhConsumerApprovedOrigination;HhConsumerRejectedOrigination;HhConsumerDebtArrears;HhMortgageArrears;BankConsumerLoanStock;BankConsumerNplStock;BankConsumerNplLoss;BankCapital;BankCapitalDelta;BankCar;BankLcr;BankFailed;BankNewFailure;BankFailureReasonCode;Unemployment;Inflation;MonthlyGdpProxy"
-    val body   = rows.map: row =>
-      Vector(
-        row.runId,
-        row.scenarioId,
-        row.scenarioLabel,
-        row.seed.toString,
-        row.month.toString,
-        row.bankId.toString,
-        row.bankName,
-        row.householdCount.toString,
-        renderDecimal(row.hhMonthlyIncome),
-        renderDecimal(row.hhConsumerLoanDefault),
-        renderDecimal(row.hhLiquidityBridgeChargeOff),
-        renderDecimal(row.hhLiquidityShortfallFinancing),
-        renderDecimal(row.hhConsumerDefault),
-        renderDecimal(row.hhConsumerDebtService),
-        renderDecimal(row.hhConsumerApprovedOrigination),
-        renderDecimal(row.hhConsumerRejectedOrigination),
-        renderDecimal(row.hhConsumerDebtArrears),
-        renderDecimal(row.hhMortgageArrears),
-        renderDecimal(row.bankConsumerLoanStock),
-        renderDecimal(row.bankConsumerNplStock),
-        renderDecimal(row.bankConsumerNplLoss),
-        renderDecimal(row.bankCapital),
-        renderDecimal(row.bankCapitalDelta),
-        renderDecimal(row.bankCar),
-        renderDecimal(row.bankLcr),
-        row.bankFailed.toString,
-        row.bankNewFailure.toString,
-        row.bankFailureReasonCode.toString,
-        renderDecimal(row.unemployment),
-        renderDecimal(row.inflation),
-        renderDecimal(row.monthlyGdpProxy),
-      ).mkString(";")
-    (header +: body).mkString("", "\n", "\n")
+    McCsvSchema(header, renderBankMonthRow)
 
-  private def renderCorrelations(rows: Vector[CorrelationResult]): String =
+  private val CorrelationCsvSchema: McCsvSchema[CorrelationResult] =
     val header = "RunId;ScenarioId;ScenarioLabel;LagMonths;HhMetric;BankMetric;Observations;Correlation;Interpretation"
-    val body   = rows.map: row =>
-      Vector(
-        row.runId,
-        row.scenarioId,
-        row.scenarioLabel,
-        row.lagMonths.toString,
-        row.hhMetric,
-        row.bankMetric,
-        row.observations.toString,
-        row.correlation.map(renderDecimal).getOrElse("NA"),
-        row.interpretation,
-      ).mkString(";")
-    (header +: body).mkString("", "\n", "\n")
+    McCsvSchema(
+      header,
+      row =>
+        Vector(
+          row.runId,
+          row.scenarioId,
+          row.scenarioLabel,
+          row.lagMonths.toString,
+          row.hhMetric,
+          row.bankMetric,
+          row.observations.toString,
+          row.correlation.map(renderDecimal).getOrElse("NA"),
+          row.interpretation,
+        ).map(csv).mkString(";"),
+    )
 
-  private def renderCounterfactuals(rows: Vector[CounterfactualResult]): String =
+  private val CounterfactualCsvSchema: McCsvSchema[CounterfactualResult] =
     val header =
       "RunId;ScenarioId;ScenarioLabel;Seeds;Months;FailedSeeds;FirstFailureMonthMean;TerminalFailuresMean;CumulativeNewFailuresMean;CumulativeConsumerNplLossMean;CumulativeHhConsumerLoanDefaultMean;CumulativeLiquidityBridgeChargeOffMean;Interpretation"
-    val body   = rows.map: row =>
-      Vector(
-        row.runId,
-        row.scenarioId,
-        row.scenarioLabel,
-        row.seeds.toString,
-        row.months.toString,
-        row.failedSeeds.toString,
-        row.firstFailureMonthMean.map(renderDecimal).getOrElse("NA"),
-        renderDecimal(row.terminalFailuresMean),
-        renderDecimal(row.cumulativeNewFailuresMean),
-        renderDecimal(row.cumulativeConsumerNplLossMean),
-        renderDecimal(row.cumulativeHhConsumerLoanDefaultMean),
-        renderDecimal(row.cumulativeLiquidityBridgeChargeOffMean),
-        row.interpretation,
-      ).mkString(";")
-    (header +: body).mkString("", "\n", "\n")
+    McCsvSchema(
+      header,
+      row =>
+        Vector(
+          row.runId,
+          row.scenarioId,
+          row.scenarioLabel,
+          row.seeds.toString,
+          row.months.toString,
+          row.failedSeeds.toString,
+          row.firstFailureMonthMean.map(renderDecimal).getOrElse("NA"),
+          renderDecimal(row.terminalFailuresMean),
+          renderDecimal(row.cumulativeNewFailuresMean),
+          renderDecimal(row.cumulativeConsumerNplLossMean),
+          renderDecimal(row.cumulativeHhConsumerLoanDefaultMean),
+          renderDecimal(row.cumulativeLiquidityBridgeChargeOffMean),
+          row.interpretation,
+        ).map(csv).mkString(";"),
+    )
+
+  private def renderBankMonthRow(row: BankMonthRow): String =
+    Vector(
+      row.runId,
+      row.scenarioId,
+      row.scenarioLabel,
+      row.seed.toString,
+      row.month.toString,
+      row.bankId.toString,
+      row.bankName,
+      row.householdCount.toString,
+      renderDecimal(row.hhMonthlyIncome),
+      renderDecimal(row.hhConsumerLoanDefault),
+      renderDecimal(row.hhLiquidityBridgeChargeOff),
+      renderDecimal(row.hhLiquidityShortfallFinancing),
+      renderDecimal(row.hhConsumerDefault),
+      renderDecimal(row.hhConsumerDebtService),
+      renderDecimal(row.hhConsumerApprovedOrigination),
+      renderDecimal(row.hhConsumerRejectedOrigination),
+      renderDecimal(row.hhConsumerDebtArrears),
+      renderDecimal(row.hhMortgageArrears),
+      renderDecimal(row.bankConsumerLoanStock),
+      renderDecimal(row.bankConsumerNplStock),
+      renderDecimal(row.bankConsumerNplLoss),
+      renderDecimal(row.bankCapital),
+      renderDecimal(row.bankCapitalDelta),
+      renderDecimal(row.bankCar),
+      renderDecimal(row.bankLcr),
+      row.bankFailed.toString,
+      row.bankNewFailure.toString,
+      row.bankFailureReasonCode.toString,
+      renderDecimal(row.unemployment),
+      renderDecimal(row.inflation),
+      renderDecimal(row.monthlyGdpProxy),
+    ).map(csv).mkString(";")
 
   private def renderReport(config: Config, correlations: Vector[CorrelationResult], counterfactuals: Vector[CounterfactualResult]): String =
     val baseline = counterfactuals.find(_.scenarioId == "baseline")
@@ -567,6 +566,11 @@ object HhBankLeadLagDiagnosticsExport:
   private def renderDecimal(value: BigDecimal): String =
     value.setScale(6, RoundingMode.HALF_UP).bigDecimal.stripTrailingZeros.toPlainString
 
+  private def csv(value: String): String =
+    val escaped = value.replace("\"", "\"\"")
+    if escaped.exists(ch => ch == ';' || ch == '"' || ch == '\n' || ch == '\r') then s""""$escaped""""
+    else escaped
+
   private def mean(values: Vector[BigDecimal]): Option[BigDecimal] =
     if values.isEmpty then None else Some(values.sum / BigDecimal(values.length))
 
@@ -575,9 +579,6 @@ object HhBankLeadLagDiagnosticsExport:
 
   private def bankName(index: Int): String =
     Banking.DefaultConfigs.lift(index).map(_.name).getOrElse(s"Bank-$index")
-
-  private def runtimeRootSeed(seed: Long, state: FlowSimulation.SimState): Long =
-    seed * 10000L + state.completedMonth.toLong
 
   private def knownFlag(flag: String): Boolean =
     Set("--seed-start", "--seeds", "--months", "--lag-max", "--run-id", "--out").contains(flag)
