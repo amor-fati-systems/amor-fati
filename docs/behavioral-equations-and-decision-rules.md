@@ -756,6 +756,13 @@ post-patch reason code uses the same `0..5` reason-code mapping as
 `BankCapital_DepositBailInLoss` is also reported for resolution analysis, but it
 is a depositor haircut rather than an equity-capital P&L term.
 
+Every production writer of `BankState.capital` is classified in
+`BankCapitalSemantics.writeSites`. The guardrail test fails when a new writer
+appears without an SFC category and absorber statement. `BankCapital_ReconciliationResidual`
+is the only named residual writer; all other capital changes must be assigned
+to an opening calibration, ordinary P&L, provision, valuation, contagion,
+or failure-destruction category.
+
 Realized credit-loss rates are emitted as `BankCreditLoss_*`. They use closing
 exposure stocks as denominators, so the columns can be joined directly with
 monthly `BankFailure_*` rows. The block separates firm-loan, mortgage,
