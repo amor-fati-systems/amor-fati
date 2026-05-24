@@ -408,6 +408,7 @@ object WorldAssemblyEconomics:
       bfgLevyTotal = in.s9.bfgLevy,
       bankCapital = in.s9.bankCapitalDiagnostics,
       bankFailure = in.s9.bankFailureDiagnostics,
+      bankResolution = in.s9.bankResolutionDiagnostics,
       bankReconciliation = in.s9.bankReconciliationDiagnostics,
       bankEcl = in.s9.bankEclDiagnostics,
     )

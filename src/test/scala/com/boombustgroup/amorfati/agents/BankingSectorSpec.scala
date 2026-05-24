@@ -239,6 +239,7 @@ class BankingSectorSpec extends AnyFlatSpec with Matchers:
     decimal(result.financialStocks(0).totalDeposits) shouldBe BigDecimal("800000.0") +- BigDecimal("0.01")
     result.financialStocks(1).totalDeposits shouldBe PLN.Zero
     result.bankCorpBondHoldings shouldBe Vector(PLN(1250), PLN.Zero)
+    result.resolvedBankCount shouldBe 1
   }
 
   "Banking.allocateBondIssuance" should "distribute new bonds by deposits and update HTM yield" in {

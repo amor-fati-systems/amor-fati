@@ -168,6 +168,11 @@ class BankingEconomicsSpec extends AnyFlatSpec with Matchers:
     result.banks.exists(bank => bank.id.toInt == result.bankReconciliationDiagnostics.targetBankId && bank.failed) shouldBe true
     result.banks.filterNot(_.failed).foreach(_.capital should be >= PLN.Zero)
     result.bankFailureDiagnostics.newNegativeCapital should be >= 1
+    result.bankResolutionDiagnostics.activeBanks + result.bankResolutionDiagnostics.failedBanks shouldBe result.banks.size
+    result.bankResolutionDiagnostics.newFailures shouldBe result.bankCapitalDiagnostics.newFailures
+    result.bankResolutionDiagnostics.bailInEvents shouldBe result.bankResolutionDiagnostics.newFailures
+    result.bankResolutionDiagnostics.resolvedBanks should be >= 1
+    result.bankResolutionDiagnostics.invalidActiveBankInvariant shouldBe 0
   }
 
   it should "realign consumer-loan book distribution to household bank routing without changing the aggregate stock" in {

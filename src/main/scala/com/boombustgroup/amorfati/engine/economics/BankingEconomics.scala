@@ -65,6 +65,7 @@ object BankingEconomics:
       interbankContagionLoss: PLN,                                  // counterparty losses from failed-bank interbank exposures
       bankCapitalDiagnostics: BankCapitalDiagnostics,               // aggregate monthly bank-capital waterfall diagnostics
       bankFailureDiagnostics: BankFailureDiagnostics,               // monthly bank-failure trigger diagnostics
+      bankResolutionDiagnostics: BankResolutionDiagnostics,         // monthly bank-resolution count diagnostics
       bankReconciliationDiagnostics: BankReconciliationDiagnostics, // exactness-patch impact on target bank capital/CAR
       bankEclDiagnostics: BankEclDiagnostics,                       // IFRS 9 ECL allowance and migration diagnostics
       monAgg: Option[Banking.MonetaryAggregates],                   // M0/M1/M2/M3 (when credit diagnostics on)
@@ -158,6 +159,7 @@ object BankingEconomics:
       capitalReconciliationResidual: PLN,                           // exactness correction applied to one per-bank capital row
       bankCapitalTerms: BankCapitalTerms,                           // shared capital-waterfall terms used by reconciliation and diagnostics
       bankFailureDiagnostics: BankFailureDiagnostics,               // failure trigger reason diagnostics for this month
+      bankResolutionDiagnostics: BankResolutionDiagnostics,         // resolution count diagnostics for this month
       bankReconciliationDiagnostics: BankReconciliationDiagnostics, // exactness-patch impact on target bank capital/CAR
       bankEclDiagnostics: BankEclDiagnostics,                       // IFRS 9 ECL allowance and migration diagnostics
       resolvedBank: Banking.Aggregate,                              // aggregate banking sector after resolution
@@ -195,6 +197,7 @@ object BankingEconomics:
       failureEvents: Vector[Banking.FailureEvent],
       allFailedFallbackUsed: Boolean,
       bankReconciliationDiagnostics: BankReconciliationDiagnostics,
+      resolvedBanksDelta: Int = 0,
   )
 
   private case class BankCapitalTerms(
@@ -332,6 +335,7 @@ object BankingEconomics:
       interbankContagionLoss = multi.interbankContagionLoss,
       bankCapitalDiagnostics = bankCapitalDiagnostics,
       bankFailureDiagnostics = multi.bankFailureDiagnostics,
+      bankResolutionDiagnostics = multi.bankResolutionDiagnostics,
       bankReconciliationDiagnostics = multi.bankReconciliationDiagnostics,
       bankEclDiagnostics = multi.bankEclDiagnostics,
       monAgg = monAgg,
@@ -1000,6 +1004,14 @@ object BankingEconomics:
     val invariantMismatches   = math.abs(totalNewFailures - failureEvents.length)
     val failureDiagnostics    =
       BankFailureDiagnostics.fromEvents(failureEvents, resolveResult.allFailedFallbackUsed || reconciled.allFailedFallbackUsed, invariantMismatches)
+    val resolutionDiagnostics =
+      BankResolutionDiagnostics.fromState(
+        banks = finalFailureBanks,
+        newFailures = totalNewFailures,
+        bailInEvents = failureEvents.map(_.bankId).distinct.size,
+        resolvedBanks = resolveResult.resolvedBankCount + reconciled.resolvedBanksDelta,
+        allFailedFallbackUsed = resolveResult.allFailedFallbackUsed || reconciled.allFailedFallbackUsed,
+      )
     val anyFailureForMobility = anyFailed || reconciled.newFailuresDelta > 0
     val eclGdpGrowthMonthly   = eclGdpGrowth(in)
     val eclMigrationRate      = EclStaging.migrationRate(in.w.unemploymentRate(in.s2.employed), eclReferenceUnemployment(in), eclGdpGrowthMonthly)
@@ -1048,6 +1060,7 @@ object BankingEconomics:
       capitalReconciliationResidual = reconciled.capitalResidual,
       bankCapitalTerms = bankCapitalTerms,
       bankFailureDiagnostics = failureDiagnostics,
+      bankResolutionDiagnostics = resolutionDiagnostics,
       bankReconciliationDiagnostics = reconciled.bankReconciliationDiagnostics,
       bankEclDiagnostics = eclDiagnostics,
       resolvedBank = Banking.aggregateFromBankStocks(finalFailureBanks, finalFailureStocks, finalCorpBondLookup),
@@ -1268,6 +1281,7 @@ object BankingEconomics:
               failCheck.events,
               resolved.allFailedFallbackUsed,
               reconciliationDiagnostics,
+              resolvedBanksDelta = resolved.resolvedBankCount,
             )
 
   private def aggregateReconciliationTarget(

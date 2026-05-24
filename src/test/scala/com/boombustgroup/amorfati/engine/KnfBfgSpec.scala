@@ -156,6 +156,7 @@ class KnfBfgSpec extends AnyFlatSpec with Matchers:
     result.financialStocks(1).bailedInDeposits shouldBe PLN(450000)
     decimal(Banking.govBondHoldings(result.financialStocks(1))) shouldBe BigDecimal("15e9") +- BigDecimal("1.0")
     decimal(result.financialStocks.map(_.interbankLoan).sumPln) shouldBe BigDecimal("0.0") +- BigDecimal("1e-6")
+    result.resolvedBankCount shouldBe 1
   }
 
   it should "fail fast when all banks fail instead of creating an implicit bridge bank" in {

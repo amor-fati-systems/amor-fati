@@ -76,6 +76,7 @@ object McTimeseriesSchema:
       Banking.aggregateFromBankStocks(banks, ledgerFinancialState.banks.map(LedgerFinancialState.projectBankFinancialStocks), bankCorpBondHoldings)
     lazy val bankCapital: BankCapitalDiagnostics                                                    = world.flows.bankCapital
     lazy val bankFailure: BankFailureDiagnostics                                                    = world.flows.bankFailure
+    lazy val bankResolution: BankResolutionDiagnostics                                              = world.flows.bankResolution
     lazy val bankReconciliation: BankReconciliationDiagnostics                                      = world.flows.bankReconciliation
     lazy val bankEcl: BankEclDiagnostics                                                            = world.flows.bankEcl
     lazy val ledgerBankStocksById: Map[BankId, Banking.BankFinancialStocks]                         =
@@ -422,6 +423,14 @@ object McTimeseriesSchema:
       ctx => if ctx.aliveBankRows.isEmpty then Share.Zero else ctx.aliveBankRows.map((bank, stocks) => Banking.nplRatio(bank, stocks)).max,
     ),
     ColumnDef("BankFailures", ctx => ctx.banks.count(_.failed)),
+    ColumnDef("BankResolution_ActiveBanks", ctx => ctx.banks.count(bank => !bank.failed)),
+    ColumnDef("BankResolution_FailedBanks", ctx => ctx.banks.count(_.failed)),
+    ColumnDef("BankResolution_NewFailures", ctx => ctx.bankResolution.newFailures),
+    ColumnDef("BankResolution_BailInEvents", ctx => ctx.bankResolution.bailInEvents),
+    ColumnDef("BankResolution_ResolvedBanks", ctx => ctx.bankResolution.resolvedBanks),
+    ColumnDef("BankResolution_AllFailedFallback", ctx => ctx.bankResolution.allFailedFallback),
+    ColumnDef.macroPln("BankResolution_BridgeRecapitalization", ctx => ctx.bankResolution.bridgeRecapitalization),
+    ColumnDef("BankResolution_InvalidActiveBankInvariant", ctx => ctx.bankResolution.invalidActiveBankInvariant),
     ColumnDef("BankFailure_NewNegativeCapital", ctx => ctx.bankFailure.newNegativeCapital),
     ColumnDef("BankFailure_NewCarBreach", ctx => ctx.bankFailure.newCarBreach),
     ColumnDef("BankFailure_NewLiquidityBreach", ctx => ctx.bankFailure.newLiquidityBreach),
@@ -955,6 +964,14 @@ object McTimeseriesSchema:
     val MinBankCAR: Col                                = lookup("MinBankCAR")
     val MaxBankNPL: Col                                = lookup("MaxBankNPL")
     val BankFailures: Col                              = lookup("BankFailures")
+    val BankResolutionActiveBanks: Col                 = lookup("BankResolution_ActiveBanks")
+    val BankResolutionFailedBanks: Col                 = lookup("BankResolution_FailedBanks")
+    val BankResolutionNewFailures: Col                 = lookup("BankResolution_NewFailures")
+    val BankResolutionBailInEvents: Col                = lookup("BankResolution_BailInEvents")
+    val BankResolutionResolvedBanks: Col               = lookup("BankResolution_ResolvedBanks")
+    val BankResolutionAllFailedFallback: Col           = lookup("BankResolution_AllFailedFallback")
+    val BankResolutionBridgeRecapitalization: Col      = lookup("BankResolution_BridgeRecapitalization")
+    val BankResolutionInvalidActiveBankInvariant: Col  = lookup("BankResolution_InvalidActiveBankInvariant")
     val BankFailureNewNegativeCapital: Col             = lookup("BankFailure_NewNegativeCapital")
     val BankFailureNewCarBreach: Col                   = lookup("BankFailure_NewCarBreach")
     val BankFailureNewLiquidityBreach: Col             = lookup("BankFailure_NewLiquidityBreach")

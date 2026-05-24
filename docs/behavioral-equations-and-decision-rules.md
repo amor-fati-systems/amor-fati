@@ -919,6 +919,15 @@ In later months, a failed-bank row is an inert shell: ordinary lending, P&L,
 ECL migration, NPL write-off, and deposit-flow updates are skipped unless an
 explicit resolution or reconciliation mechanism changes the row.
 
+Resolution-count diagnostics are emitted as `BankResolution_*` seed timeseries
+columns. They report active bank rows, failed bank rows, newly failed banks,
+distinct event-based bail-in entries, P&A-resolved bank rows, the stable
+all-failed fallback flag, explicit bridge recapitalization amount, and an
+invalid-active-bank invariant flag. `BankResolution_BridgeRecapitalization`
+remains zero until a bridge or nationalization mechanism is implemented.
+`BankResolution_InvalidActiveBankInvariant` should remain zero and means an
+active bank ended the month with negative capital.
+
 Failure-trigger diagnostics are emitted as `BankFailure_*` seed timeseries
 columns. `BankFailure_NewNegativeCapital`, `BankFailure_NewCarBreach`, and
 `BankFailure_NewLiquidityBreach` count newly failed banks by primary trigger; if
