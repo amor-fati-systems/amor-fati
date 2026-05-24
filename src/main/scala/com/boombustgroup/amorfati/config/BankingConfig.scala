@@ -113,7 +113,8 @@ import com.boombustgroup.amorfati.types.*
   * @param eclRate3
   *   Stage 3 (default) ECL provision rate (1 − recovery, KNF: ~50%)
   * @param eclMigrationSensitivity
-  *   sensitivity of S1→S2 migration to unemployment excess above NAIRU
+  *   sensitivity of S1→S2 migration to unemployment deterioration over the
+  *   carried reference unemployment rate
   * @param eclGdpSensitivity
   *   sensitivity of S1→S2 migration to GDP contraction
   * @param eclMaxMigration

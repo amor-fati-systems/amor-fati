@@ -636,6 +636,7 @@ object CalibrationProvenance:
 | `banking.htmShare` | `0.60` | share | Code note bridge: NBP bridge prior | HTM share of gov bond portfolio | Direct | `BankingConfig` | `CODE_NOTE_EMPIRICAL` |
 | `banking.depositPanicRate` | `0.03` | monthly share | Code note bridge: Diamond-Dybvig mechanism | Panic switching after failure | Direct | `BankingConfig` | `TUNED_NEEDS_VALIDATION` |
 | `banking.eclRate1`, `eclRate2`, `eclRate3` | `0.01`, `0.08`, `0.50` | share | Code note bridge: KNF IFRS 9 | ECL provision rates | Direct | `BankingConfig` | `CODE_NOTE_EMPIRICAL` |
+| `banking.eclMigrationSensitivity`, `eclGdpSensitivity`, `eclMaxMigration` | `3.0`, `5.0`, `0.20` | coefficient/share | Code note bridge: IFRS 9 significant-increase-in-credit-risk stress rule | Stage 1 to Stage 2 migration under unemployment deterioration or GDP contraction | Applied to `max(0, unemployment_t - unemployment_ref)` and `max(0, -gdpGrowth_t)`; `unemployment_ref` is carried from the lagged pipeline and bootstrapped from the opening Poland baseline | `EclStaging`, `BankingEconomics` | `TUNED_NEEDS_VALIDATION` |
 | `forex.baseExRate` | `4.2537` | PLN/EUR | NBP table A, 2026-04-29 | Starting exchange rate | Direct | `ForexConfig` | `EMPIRICAL` |
 | `forex.foreignRate` | `0.0215` | annual rate | ECB main refinancing rate | Foreign reference rate | Direct | `ForexConfig` | `EMPIRICAL` |
 | `forex.importPropensity` | `0.22` | GDP share | GUS/NBP imports-to-GDP bridge, 2026-04-30 | Aggregate import-to-GDP ratio | Direct | `ForexConfig` | `EMPIRICAL_TRANSFORMED` |

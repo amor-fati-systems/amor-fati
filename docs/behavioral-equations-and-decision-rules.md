@@ -714,7 +714,22 @@ ratio floor.
 Opening IFRS 9 ECL staging is seeded from the bank-owned firm and consumer loan
 book as all-performing Stage 1 exposure. The opening allowance is therefore a
 pre-existing baseline allowance, while `BankCapital_EclProvisionChange` measures
-monthly movement in that allowance.
+monthly movement in that allowance. Stage 1 to Stage 2 migration is driven by
+stress deterioration, not by the absolute opening unemployment level. The
+unemployment trigger uses the increase over the carried reference unemployment
+rate, normally the previous month's pipeline value bootstrapped from the model
+start Poland baseline, plus any same-month GDP contraction:
+
+```text
+eclMigrationRate =
+  eclMigrationSensitivity * max(0, unemployment_t - unemployment_ref)
+  + eclGdpSensitivity * max(0, -gdpGrowth_t)
+```
+
+The result is clamped by `banking.eclMaxMigration`. A stable baseline can remain
+above NAIRU without mechanically migrating the loan book to Stage 2, while
+unemployment deterioration and GDP contraction still raise lifetime-ECL
+provisions.
 
 The monthly bank-capital diagnostic waterfall is:
 

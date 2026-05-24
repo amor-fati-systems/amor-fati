@@ -86,7 +86,11 @@ credit-stress calibration ranges. ECL bands are model-semantics checks: they ask
 whether the opening loan book is already staged and provisioned before monthly
 ECL dynamics begin. The current opening ECL bridge assigns the covered firm and
 consumer loan book to Stage 1; calibrated opening Stage 2/3 shares remain a
-separate banking-risk calibration step. `banking.initDeposits` is the aggregate
+separate banking-risk calibration step. Monthly Stage 1 to Stage 2 migration is
+keyed to deterioration over the carried reference unemployment rate, bootstrapped
+from the model-start Poland baseline, and to GDP contraction. The opening
+unemployment level can therefore sit above NAIRU without being treated as a
+recurring ECL stress shock. `banking.initDeposits` is the aggregate
 opening customer-deposit stock: firm cash receives the corporate split, household
 demand deposits are normalized to the residual, and `BankInit` derives bank
 deposit liabilities from those holder-side balances. Deposit split, reserves,
