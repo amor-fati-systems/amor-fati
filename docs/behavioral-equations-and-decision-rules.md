@@ -758,7 +758,11 @@ absolute size is at least 1 bp of target-bank pre-patch capital.
 `BankReconciliation_CrossedFailureThreshold` is `1` only when the patch moves
 the target bank from no failure trigger to a post-patch failure trigger; the
 post-patch reason code uses the same `0..5` reason-code mapping as
-`BankFailure_FirstNewReasonCode`.
+`BankFailure_FirstNewReasonCode`. When the patched active bank has a
+post-residual failure reason, the banking stage runs a final failure,
+bail-in, and P&A resolution pass before month close; an active bank must not
+finish the month with residual-induced negative capital or a valid failure
+trigger.
 `BankCapital_DepositBailInLoss` is also reported for resolution analysis, but it
 is a depositor haircut rather than an equity-capital P&L term.
 

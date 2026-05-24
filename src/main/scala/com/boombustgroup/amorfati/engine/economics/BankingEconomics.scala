@@ -1215,7 +1215,7 @@ object BankingEconomics:
           reasonBefore = reasonBefore,
           reasonAfter = reasonAfter,
         )
-        if reconciliationDiagnostics.crossedFailureThreshold == 0 || afterBank.failed then
+        if reasonAfter.isEmpty || afterBank.failed then
           AggregateReconciliationResult(
             nextBanks,
             nextStocks,
