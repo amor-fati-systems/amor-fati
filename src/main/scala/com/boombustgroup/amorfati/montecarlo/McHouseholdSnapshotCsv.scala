@@ -7,7 +7,7 @@ import zio.stream.ZStream
 import zio.{Scope, ZIO}
 
 import java.io.{BufferedWriter, File}
-import java.nio.file.{Files, StandardCopyOption}
+import java.nio.file.Files
 import scala.util.Using
 
 private[montecarlo] object McHouseholdSnapshotCsv:
@@ -37,24 +37,38 @@ private[montecarlo] object McHouseholdSnapshotCsv:
     else
       val outputFile = McOutputFiles.householdSnapshotFile(outputDir, rc)
       val tempFile   = new File(s"${outputFile.getPath}.tmp")
-      ZIO
-        .attemptBlocking:
-          Using.resource(Files.newBufferedWriter(tempFile.toPath)): writer =>
-            writer.write(McHouseholdSnapshotSchema.header)
-            writer.newLine()
-            for seed <- 1L to rc.nSeeds.toLong do
-              val partFile = seedPartFile(outputDir, seed, rc)
-              if Files.exists(partFile.toPath) then
-                Using.resource(Files.lines(partFile.toPath)): lines =>
-                  val it = lines.iterator()
-                  while it.hasNext do
-                    writer.write(it.next())
-                    writer.newLine()
-          Files.move(tempFile.toPath, outputFile.toPath, StandardCopyOption.REPLACE_EXISTING)
-          for seed <- 1L to rc.nSeeds.toLong do Files.deleteIfExists(seedPartFile(outputDir, seed, rc).toPath)
-        .unit
-        .mapError(outputFailure("combine household snapshot CSV", outputFile))
-        .onError(_ => deleteIfExists(tempFile).ignore)
+      (for
+        _ <- writeCombinedFile(tempFile, outputFile, rc, outputDir)
+        _ <- finalizeFile(tempFile, outputFile)
+        _ <- deleteSeedPartFiles(outputDir, rc)
+      yield ()).onError(_ => deleteIfExists(tempFile).ignore)
+
+  private def writeCombinedFile(tempFile: File, outputFile: File, rc: McRunConfig, outputDir: File): ZIO[Any, SimError, Unit] =
+    ZIO
+      .attemptBlocking:
+        Using.resource(Files.newBufferedWriter(tempFile.toPath)): writer =>
+          writer.write(McHouseholdSnapshotSchema.header)
+          writer.newLine()
+          for seed <- 1L to rc.nSeeds.toLong do
+            val partFile = seedPartFile(outputDir, seed, rc)
+            if Files.exists(partFile.toPath) then
+              Using.resource(Files.lines(partFile.toPath)): lines =>
+                val it = lines.iterator()
+                while it.hasNext do
+                  writer.write(it.next())
+                  writer.newLine()
+      .unit
+      .mapError(outputFailure("combine household snapshot CSV", outputFile))
+
+  private def deleteSeedPartFiles(outputDir: File, rc: McRunConfig): ZIO[Any, SimError, Unit] =
+    ZIO
+      .attemptBlocking:
+        for seed <- 1L to rc.nSeeds.toLong do Files.deleteIfExists(seedPartFile(outputDir, seed, rc).toPath)
+      .unit
+      .mapError(outputFailure(s"cleanup $operation seed part files", outputDir))
+
+  private def finalizeFile(tempFile: File, outputFile: File): ZIO[Any, SimError, Unit] =
+    McCsvFile.finalizeFile(tempFile.toPath, outputFile.toPath, (operation, path, err) => outputFailure(operation, path.toFile)(err))
 
   private def writeSnapshotRows(
       writer: BufferedWriter,

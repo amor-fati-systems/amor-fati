@@ -1,13 +1,13 @@
 package com.boombustgroup.amorfati.diagnostics
 
 import com.boombustgroup.amorfati.config.SimParams
-import com.boombustgroup.amorfati.montecarlo.{McRunner, McTimeseriesSchema, MetricValue, RunResult}
+import com.boombustgroup.amorfati.montecarlo.{McCsvFile, McCsvSchema, McDiagnosticRunner, McSeedMonth, McTimeseriesSchema, MetricValue}
 import com.boombustgroup.amorfati.montecarlo.MetricValue.*
-import com.boombustgroup.amorfati.montecarlo.TimeSeries.*
 import com.boombustgroup.amorfati.types.*
+import zio.ZIO
+import zio.stream.ZStream
 
-import java.nio.charset.StandardCharsets
-import java.nio.file.{Files, Path}
+import java.nio.file.Path
 import scala.math.BigDecimal.RoundingMode
 import scala.util.Try
 
@@ -80,9 +80,10 @@ object HouseholdCreditStressCalibrationExport:
 
   final case class ExportResult(paths: Vector[Path], seedMetrics: Vector[SeedMetric], summary: Vector[SummaryMetric])
 
-  private final case class SeedContext(result: RunResult):
-    val terminalRow: Array[MetricValue] = result.timeSeries.lastMonth
-    val householdCount: Int             = result.terminalState.households.size
+  private final case class SeedContext(terminal: McSeedMonth):
+    val terminalRow: Array[MetricValue] = terminal.row
+    val terminalState                   = terminal.state
+    val householdCount: Int             = terminalState.households.size
 
     def col(name: String): BigDecimal =
       decimal(McTimeseriesSchema.colNames.indexOf(name) match
@@ -353,16 +354,16 @@ object HouseholdCreditStressCalibrationExport:
     metric("ConsumerLoansToGdp")(ctx => ObservedValue.Finite(ctx.col("ConsumerLoansToGdp"))),
     metric("MortgageLoansToGdp")(ctx => ObservedValue.Finite(ctx.col("MortgageToGdp"))),
     metric("ConsumerDebtServiceToIncome")(ctx =>
-      ctx.householdRatio(ctx.result.terminalState.householdAggregates.totalConsumerDebtService, ctx.result.terminalState.householdAggregates.totalIncome),
+      ctx.householdRatio(ctx.terminalState.householdAggregates.totalConsumerDebtService, ctx.terminalState.householdAggregates.totalIncome),
     ),
     metric("MortgageDebtServiceToIncome")(ctx =>
-      ctx.householdRatio(ctx.result.terminalState.householdAggregates.totalDebtService, ctx.result.terminalState.householdAggregates.totalIncome),
+      ctx.householdRatio(ctx.terminalState.householdAggregates.totalDebtService, ctx.terminalState.householdAggregates.totalIncome),
     ),
     metric("MortgagePrincipalToIncome")(ctx =>
-      ctx.householdRatio(ctx.result.terminalState.householdAggregates.totalMortgagePrincipal, ctx.result.terminalState.householdAggregates.totalIncome),
+      ctx.householdRatio(ctx.terminalState.householdAggregates.totalMortgagePrincipal, ctx.terminalState.householdAggregates.totalIncome),
     ),
     metric("MortgageInterestToIncome")(ctx =>
-      ctx.householdRatio(ctx.result.terminalState.householdAggregates.totalMortgageInterest, ctx.result.terminalState.householdAggregates.totalIncome),
+      ctx.householdRatio(ctx.terminalState.householdAggregates.totalMortgageInterest, ctx.terminalState.householdAggregates.totalIncome),
     ),
     metric("ConsumerDefaultToConsumerLoans")(ctx => ctx.ratioColumn("ConsumerLoanDefault", "ConsumerLoans")),
     metric("LiquidityBridgeChargeOffToConsumerLoans")(ctx => ctx.ratioColumn("LiquidityBridgeChargeOff", "ConsumerLoans")),
@@ -370,45 +371,45 @@ object HouseholdCreditStressCalibrationExport:
     metric("MortgageDefaultToMortgageLoans")(ctx => ctx.ratioColumn("MortgageDefault", "MortgageStock")),
     metric("PositiveDepositsToMonthlyIncome")(ctx =>
       ctx.householdRatio(
-        ctx.result.terminalState.ledgerFinancialState.households.map(h => h.demandDeposit).sumPln,
-        ctx.result.terminalState.householdAggregates.totalIncome,
+        ctx.terminalState.ledgerFinancialState.households.map(h => h.demandDeposit).sumPln,
+        ctx.terminalState.householdAggregates.totalIncome,
       ),
     ),
     metric("MedianDepositToMeanMonthlyIncome")(ctx =>
-      val agg = ctx.result.terminalState.householdAggregates
+      val agg = ctx.terminalState.householdAggregates
       if ctx.householdCount <= 0 then ObservedValue.NotAvailable
       else ctx.householdRatio(agg.medianSavings, BigDecimal(agg.totalIncome.toLong) / BigDecimal(ctx.householdCount)),
     ),
     metric("NegativeDepositShare")(ctx => ObservedValue.Finite(ctx.col("HouseholdLiquidity_NegativeDepositShare"))),
     metric("DebtArrearsToShortfall")(ctx =>
-      val agg = ctx.result.terminalState.householdAggregates
+      val agg = ctx.terminalState.householdAggregates
       ctx.householdRatio(
         agg.totalRentArrears + agg.totalMortgageArrears + agg.totalConsumerDebtArrears,
         agg.totalLiquidityShortfallFinancing,
       ),
     ),
     metric("UnmetBasicConsumptionToIncome")(ctx =>
-      val agg = ctx.result.terminalState.householdAggregates
+      val agg = ctx.terminalState.householdAggregates
       ctx.householdRatio(agg.totalUnmetBasicConsumption, agg.totalIncome),
     ),
     metric("DiscretionaryConsumptionCompressionToIncome")(ctx =>
-      val agg = ctx.result.terminalState.householdAggregates
+      val agg = ctx.terminalState.householdAggregates
       ctx.householdRatio(agg.totalDiscretionaryConsumptionCompression, agg.totalIncome),
     ),
     metric("ShortfallToIncome")(ctx =>
-      val agg = ctx.result.terminalState.householdAggregates
+      val agg = ctx.terminalState.householdAggregates
       ctx.householdRatio(agg.totalLiquidityShortfallFinancing, agg.totalIncome),
     ),
     metric("ShortfallToApprovedOrigination")(ctx =>
-      val agg = ctx.result.terminalState.householdAggregates
+      val agg = ctx.terminalState.householdAggregates
       ctx.householdRatio(agg.totalLiquidityShortfallFinancing, agg.totalConsumerApprovedOrigination),
     ),
     metric("RejectedConsumerCreditDemandToApprovedOrigination")(ctx =>
-      val agg = ctx.result.terminalState.householdAggregates
+      val agg = ctx.terminalState.householdAggregates
       ctx.householdRatio(agg.totalConsumerRejectedOrigination, agg.totalConsumerApprovedOrigination),
     ),
     metric("RejectedConsumerCreditDemandToShortfall")(ctx =>
-      val agg = ctx.result.terminalState.householdAggregates
+      val agg = ctx.terminalState.householdAggregates
       ctx.householdRatio(agg.totalConsumerRejectedOrigination, agg.totalLiquidityShortfallFinancing),
     ),
   )
@@ -428,24 +429,24 @@ object HouseholdCreditStressCalibrationExport:
             result.paths.foreach(path => println(path.toString))
 
   def run(config: Config): Either[String, ExportResult] =
-    validate(config).flatMap: validConfig =>
-      given SimParams = SimParams.defaults
+    DiagnosticIo.unsafeRun(runZIO(config))
 
-      val attempts = validConfig.seedRange.map: seed =>
-        Try(McRunner.runSingle(seed, validConfig.months)).toEither.left
-          .map(ex => s"Seed $seed crashed: ${ex.getMessage}")
-          .flatMap:
-            _.left
-              .map(err => s"Seed $seed failed: $err")
-              .map(result => computeSeedMetrics(validConfig, seed, result))
-
-      attempts.collectFirst { case Left(err) => err } match
-        case Some(err) => Left(err)
-        case None      =>
-          val seedMetrics = attempts.collect { case Right(rows) => rows }.flatten
-          val summary     = summarize(validConfig, seedMetrics)
-          val paths       = writeArtifacts(validConfig, seedMetrics, summary)
-          Right(ExportResult(paths, seedMetrics, summary))
+  def runZIO(config: Config): ZIO[Any, String, ExportResult] =
+    for
+      validConfig <- ZIO.fromEither(validate(config))
+      seedMetrics <- McCsvFile
+        .writeFold(
+          validConfig.runRoot.resolve("household-credit-stress-seed-metrics.csv"),
+          McDiagnosticRunner
+            .runSeeds(validConfig.seedRange, validConfig.months, SimParams.defaults)((seed, months) => computeSeedMetricsZIO(validConfig, seed, months))
+            .flatMap(rows => ZStream.fromIterable(rows)),
+          SeedMetricsCsvSchema,
+          Vector.newBuilder[SeedMetric],
+        )((builder, row) => builder += row)(DiagnosticIo.outputFailure)
+        .map(_.result())
+      summary      = summarize(validConfig, seedMetrics)
+      paths       <- writeArtifactsZIO(validConfig, summary)
+    yield ExportResult(paths, seedMetrics, summary)
 
   def parseArgs(args: Vector[String]): Either[String, Config] =
     def missingValue(flag: String): Left[String, Config] = Left(s"Missing value for $flag")
@@ -503,8 +504,13 @@ object HouseholdCreditStressCalibrationExport:
           case GuardrailClass.SoftCalibrationWarning => Status.Warn
           case GuardrailClass.ExploratoryDiagnostic  => Status.Warn
 
-  private def computeSeedMetrics(config: Config, seed: Long, result: RunResult): Vector[SeedMetric] =
-    val context = SeedContext(result)
+  private def computeSeedMetricsZIO(config: Config, seed: Long, months: ZStream[Any, String, McSeedMonth]): ZIO[Any, String, Vector[SeedMetric]] =
+    months.runLast.flatMap:
+      case Some(terminal) => ZIO.succeed(computeSeedMetrics(config, seed, terminal))
+      case None           => ZIO.fail("household credit-stress run produced no monthly rows")
+
+  private def computeSeedMetrics(config: Config, seed: Long, terminal: McSeedMonth): Vector[SeedMetric] =
+    val context = SeedContext(terminal)
     Metrics.map: metric =>
       val value = metric.compute(context)
       SeedMetric(config.runId, seed, config.months, metric.target, value, evaluate(value, metric.target))
@@ -528,77 +534,91 @@ object HouseholdCreditStressCalibrationExport:
         status = evaluate(mean, target),
       )
 
-  private def writeArtifacts(config: Config, seedMetrics: Vector[SeedMetric], summary: Vector[SummaryMetric]): Vector[Path] =
-    Files.createDirectories(config.runRoot)
+  private def writeArtifactsZIO(config: Config, summary: Vector[SummaryMetric]): ZIO[Any, String, Vector[Path]] =
     val seedMetricsPath = config.runRoot.resolve("household-credit-stress-seed-metrics.csv")
     val summaryPath     = config.runRoot.resolve("household-credit-stress-summary.csv")
     val targetPath      = config.runRoot.resolve("household-credit-stress-targets.csv")
     val reportPath      = config.runRoot.resolve("household-credit-stress-report.md")
-    Files.writeString(seedMetricsPath, renderSeedMetricsCsv(seedMetrics), StandardCharsets.UTF_8)
-    Files.writeString(summaryPath, renderSummaryCsv(summary), StandardCharsets.UTF_8)
-    Files.writeString(targetPath, renderTargetsCsv(Targets), StandardCharsets.UTF_8)
-    Files.writeString(reportPath, renderReport(config, summary), StandardCharsets.UTF_8)
-    Vector(seedMetricsPath, summaryPath, targetPath, reportPath)
+    for
+      _ <- McCsvFile.writeAll(summaryPath, summary, SummaryCsvSchema)(DiagnosticIo.outputFailure)
+      _ <- McCsvFile.writeAll(targetPath, Targets, TargetsCsvSchema)(DiagnosticIo.outputFailure)
+      _ <- DiagnosticIo.writeText(reportPath, renderReport(config, summary))
+    yield Vector(seedMetricsPath, summaryPath, targetPath, reportPath)
 
   private[diagnostics] def renderSeedMetricsCsv(rows: Vector[SeedMetric]): String =
-    val header = "RunId;Seed;Months;Metric;Label;Value;Unit;GuardrailClass;Vintage;Lower;Upper;Status;SourceNote;Interpretation"
-    val body   = rows.map: row =>
-      Vector(
-        row.runId,
-        row.seed.toString,
-        row.months.toString,
-        row.target.id,
-        row.target.label,
-        renderValue(row.value),
-        row.target.unit,
-        row.target.guardrailClass.token,
-        row.target.vintage,
-        row.target.lower.map(renderDecimal).getOrElse(""),
-        row.target.upper.map(renderDecimal).getOrElse(""),
-        row.status.token,
-        row.target.sourceNote,
-        row.target.interpretation,
-      ).map(csv).mkString(";")
-    (header +: body).mkString("\n") + "\n"
+    renderCsv(SeedMetricsCsvSchema, rows)
 
   private[diagnostics] def renderSummaryCsv(rows: Vector[SummaryMetric]): String =
-    val header = "RunId;Months;Seeds;Metric;Label;Mean;Min;Max;Unit;GuardrailClass;Vintage;Lower;Upper;Status;SourceNote;Interpretation"
-    val body   = rows.map: row =>
-      Vector(
-        row.runId,
-        row.months.toString,
-        row.seeds.toString,
-        row.target.id,
-        row.target.label,
-        renderValue(row.mean),
-        row.min.map(renderDecimal).getOrElse(""),
-        row.max.map(renderDecimal).getOrElse(""),
-        row.target.unit,
-        row.target.guardrailClass.token,
-        row.target.vintage,
-        row.target.lower.map(renderDecimal).getOrElse(""),
-        row.target.upper.map(renderDecimal).getOrElse(""),
-        row.status.token,
-        row.target.sourceNote,
-        row.target.interpretation,
-      ).map(csv).mkString(";")
-    (header +: body).mkString("\n") + "\n"
+    renderCsv(SummaryCsvSchema, rows)
 
   private[diagnostics] def renderTargetsCsv(targets: Vector[TargetBand]): String =
-    val header = "Metric;Label;Unit;GuardrailClass;Vintage;Lower;Upper;SourceNote;Interpretation"
-    val body   = targets.map: target =>
-      Vector(
-        target.id,
-        target.label,
-        target.unit,
-        target.guardrailClass.token,
-        target.vintage,
-        target.lower.map(renderDecimal).getOrElse(""),
-        target.upper.map(renderDecimal).getOrElse(""),
-        target.sourceNote,
-        target.interpretation,
-      ).map(csv).mkString(";")
-    (header +: body).mkString("\n") + "\n"
+    renderCsv(TargetsCsvSchema, targets)
+
+  private val SeedMetricsCsvSchema: McCsvSchema[SeedMetric] =
+    McCsvSchema(
+      header = "RunId;Seed;Months;Metric;Label;Value;Unit;GuardrailClass;Vintage;Lower;Upper;Status;SourceNote;Interpretation",
+      render = row =>
+        Vector(
+          row.runId,
+          row.seed.toString,
+          row.months.toString,
+          row.target.id,
+          row.target.label,
+          renderValue(row.value),
+          row.target.unit,
+          row.target.guardrailClass.token,
+          row.target.vintage,
+          row.target.lower.map(renderDecimal).getOrElse(""),
+          row.target.upper.map(renderDecimal).getOrElse(""),
+          row.status.token,
+          row.target.sourceNote,
+          row.target.interpretation,
+        ).map(csv).mkString(";"),
+    )
+
+  private val SummaryCsvSchema: McCsvSchema[SummaryMetric] =
+    McCsvSchema(
+      header = "RunId;Months;Seeds;Metric;Label;Mean;Min;Max;Unit;GuardrailClass;Vintage;Lower;Upper;Status;SourceNote;Interpretation",
+      render = row =>
+        Vector(
+          row.runId,
+          row.months.toString,
+          row.seeds.toString,
+          row.target.id,
+          row.target.label,
+          renderValue(row.mean),
+          row.min.map(renderDecimal).getOrElse(""),
+          row.max.map(renderDecimal).getOrElse(""),
+          row.target.unit,
+          row.target.guardrailClass.token,
+          row.target.vintage,
+          row.target.lower.map(renderDecimal).getOrElse(""),
+          row.target.upper.map(renderDecimal).getOrElse(""),
+          row.status.token,
+          row.target.sourceNote,
+          row.target.interpretation,
+        ).map(csv).mkString(";"),
+    )
+
+  private val TargetsCsvSchema: McCsvSchema[TargetBand] =
+    McCsvSchema(
+      header = "Metric;Label;Unit;GuardrailClass;Vintage;Lower;Upper;SourceNote;Interpretation",
+      render = target =>
+        Vector(
+          target.id,
+          target.label,
+          target.unit,
+          target.guardrailClass.token,
+          target.vintage,
+          target.lower.map(renderDecimal).getOrElse(""),
+          target.upper.map(renderDecimal).getOrElse(""),
+          target.sourceNote,
+          target.interpretation,
+        ).map(csv).mkString(";"),
+    )
+
+  private def renderCsv[A](schema: McCsvSchema[A], rows: Vector[A]): String =
+    (schema.header +: rows.map(schema.render)).mkString("\n") + "\n"
 
   private[diagnostics] def renderReport(config: Config, summary: Vector[SummaryMetric]): String =
     val command     =

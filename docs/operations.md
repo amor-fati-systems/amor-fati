@@ -389,7 +389,9 @@ This writes per-bank/month household-stress routing rows, lead-lag correlation
 tables, consumer-credit counterfactual rows, and a summary report under
 `<out>/<run-id>/`. With the command above, the concrete output directory is
 `target/hh-bank-lead-lag/hh-bank-lead-lag/`. The export is documented in
-[hh-bank-lead-lag-diagnostics.md](hh-bank-lead-lag-diagnostics.md).
+[hh-bank-lead-lag-diagnostics.md](hh-bank-lead-lag-diagnostics.md). It uses
+the shared Monte Carlo diagnostic runner, so scenario/seed jobs run with the
+same bounded parallelism model as `Main`.
 
 Loan-origination quality diagnostics:
 

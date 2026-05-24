@@ -1,12 +1,11 @@
 package com.boombustgroup.amorfati.diagnostics
 
 import com.boombustgroup.amorfati.config.ScenarioRegistry
-import com.boombustgroup.amorfati.config.ScenarioRegistry.{DeltaProvenance, ScenarioSpec}
-import com.boombustgroup.amorfati.config.SimParams
-import com.boombustgroup.amorfati.montecarlo.{McRunner, McTimeseriesSchema, MetricValue}
+import com.boombustgroup.amorfati.config.ScenarioRegistry.{DeltaProvenance, ParameterDelta, ScenarioSpec}
+import com.boombustgroup.amorfati.montecarlo.{McCsvFile, McCsvSchema, McDiagnosticRunner, McSeedMonth, McTimeseriesSchema, MetricValue}
+import zio.ZIO
 
-import java.nio.charset.StandardCharsets
-import java.nio.file.{Files, Path}
+import java.nio.file.Path
 import scala.util.Try
 
 object ScenarioRunExport:
@@ -33,6 +32,10 @@ object ScenarioRunExport:
       value: MetricValue,
   )
 
+  private final case class ScenarioDeltaRow(scenarioId: String, delta: ParameterDelta)
+
+  private final case class SeedRunOutput(paths: Vector[Path], metrics: Vector[TerminalMetric])
+
   def main(args: Array[String]): Unit =
     parseArgs(args.toVector) match
       case Left(err)     =>
@@ -48,35 +51,28 @@ object ScenarioRunExport:
             result.paths.foreach(path => println(path.toString))
 
   def run(config: Config): Either[String, ExportResult] =
-    validate(config).flatMap: validConfig =>
-      Files.createDirectories(validConfig.runRoot)
+    DiagnosticIo.unsafeRun(runZIO(config))
 
-      val registryPath  = validConfig.runRoot.resolve("scenario-registry.md")
-      val deltasPath    = validConfig.runRoot.resolve("scenario-deltas.csv")
-      Files.writeString(registryPath, renderRegistry(validConfig.scenarios), StandardCharsets.UTF_8)
-      Files.writeString(deltasPath, renderDeltas(validConfig.scenarios), StandardCharsets.UTF_8)
-      val metadataPaths = validConfig.scenarios.map: scenario =>
-        val scenarioDir  = validConfig.runRoot.resolve(scenario.id)
-        val metadataPath = scenarioDir.resolve("metadata.md")
-        Files.createDirectories(scenarioDir)
-        Files.writeString(metadataPath, renderScenarioMetadata(validConfig, scenario), StandardCharsets.UTF_8)
-        metadataPath
-
-      val runAttempts =
-        for
-          scenario <- validConfig.scenarios
-          seed     <- validConfig.seedRange
-        yield runSeed(validConfig, scenario, seed)
-
-      runAttempts.collectFirst { case Left(err) => err } match
-        case Some(err) => Left(err)
-        case None      =>
-          val outputs = runAttempts.collect { case Right(paths, metrics) => paths -> metrics }
-          val paths   = Vector(registryPath, deltasPath) ++ metadataPaths ++ outputs.flatMap(_._1)
-          val metrics = outputs.flatMap(_._2)
-          val summary = validConfig.runRoot.resolve("run-summary.csv")
-          Files.writeString(summary, renderRunSummary(metrics), StandardCharsets.UTF_8)
-          Right(ExportResult(paths :+ summary))
+  def runZIO(config: Config): ZIO[Any, String, ExportResult] =
+    for
+      validConfig   <- ZIO.fromEither(validate(config))
+      registryPath  <- DiagnosticIo.writeText(validConfig.runRoot.resolve("scenario-registry.md"), renderRegistry(validConfig.scenarios))
+      deltasPath     = validConfig.runRoot.resolve("scenario-deltas.csv")
+      deltaRows      = validConfig.scenarios.flatMap(scenario => scenario.deltas.map(delta => ScenarioDeltaRow(scenario.id, delta)))
+      _             <- McCsvFile.writeAll(deltasPath, deltaRows, DeltasCsvSchema)(DiagnosticIo.outputFailure)
+      metadataPaths <- ZIO.foreach(validConfig.scenarios): scenario =>
+        DiagnosticIo.writeText(validConfig.runRoot.resolve(scenario.id).resolve("metadata.md"), renderScenarioMetadata(validConfig, scenario))
+      outputs       <- McDiagnosticRunner
+        .runScenarioSeeds(validConfig.scenarios, validConfig.seedRange, validConfig.months, _.id, _.params)((scenario, seed, months) =>
+          runSeed(validConfig, scenario, seed, months),
+        )
+        .runCollect
+        .map(_.toVector)
+      paths          = Vector(registryPath, deltasPath) ++ metadataPaths ++ outputs.flatMap(_.paths)
+      metrics        = outputs.flatMap(_.metrics)
+      summaryPath    = validConfig.runRoot.resolve("run-summary.csv")
+      _             <- McCsvFile.writeAll(summaryPath, metrics, RunSummaryCsvSchema)(DiagnosticIo.outputFailure)
+    yield ExportResult(paths :+ summaryPath)
 
   def parseArgs(args: Vector[String]): Either[String, Config] =
     def missingValue(flag: String): Left[String, Config] = Left(s"Missing value for $flag")
@@ -114,24 +110,23 @@ object ScenarioRunExport:
       .flatMap(valid => Either.cond(valid.months > 0, valid, "--months must be a positive integer"))
       .flatMap(valid => Either.cond(valid.runId.trim.nonEmpty, valid, "--run-id must be non-empty"))
 
-  private def runSeed(config: Config, scenario: ScenarioSpec, seed: Long): Either[String, (Vector[Path], Vector[TerminalMetric])] =
-    given SimParams = scenario.params
-
-    McRunner
-      .runSingle(seed, config.months)
-      .left
-      .map(err => s"Scenario ${scenario.id}, seed $seed failed: $err")
-      .map: result =>
-        val scenarioDir = config.runRoot.resolve(scenario.id)
-        Files.createDirectories(scenarioDir)
-
-        val csvPath = scenarioDir.resolve(f"${config.runId}_${scenario.id}_${config.months}m_seed$seed%03d.csv")
-        val rows    = result.timeSeries.map(row => row)
-        Files.writeString(csvPath, renderTimeSeriesCsv(rows), StandardCharsets.UTF_8)
-
-        val terminal = rows.last
-        val metrics  = Metrics.map(metric => TerminalMetric(scenario.id, seed, metric, terminal(metric.ordinal)))
-        Vector(csvPath) -> metrics
+  private def runSeed(
+      config: Config,
+      scenario: ScenarioSpec,
+      seed: Long,
+      months: zio.stream.ZStream[Any, String, McSeedMonth],
+  ): ZIO[Any, String, SeedRunOutput] =
+    val csvPath = config.runRoot.resolve(scenario.id).resolve(f"${config.runId}_${scenario.id}_${config.months}m_seed$seed%03d.csv")
+    McCsvFile
+      .writeStreaming(
+        csvPath,
+        months,
+        TimeSeriesCsvSchema,
+        s"Scenario ${scenario.id} seed $seed produced no monthly rows",
+      )(DiagnosticIo.outputFailure)
+      .map: terminal =>
+        val metrics = Metrics.map(metric => TerminalMetric(scenario.id, seed, metric, terminal.row(metric.ordinal)))
+        SeedRunOutput(Vector(csvPath), metrics)
 
   private[diagnostics] def renderRegistry(scenarios: Vector[ScenarioSpec]): String =
     val rows = scenarios.map: scenario =>
@@ -161,31 +156,8 @@ object ScenarioRunExport:
     lines.mkString("\n") + "\n"
 
   private[diagnostics] def renderDeltas(scenarios: Vector[ScenarioSpec]): String =
-    val header = "Scenario;Parameter;Baseline;ScenarioValue;Note;ProvenanceClassification;SourceProvider;Vintage;TransformationNotes"
-    val rows   =
-      for
-        scenario <- scenarios
-        delta    <- scenario.deltas
-      yield
-        val provenance = delta.provenance
-        Vector(
-          scenario.id,
-          delta.parameter,
-          delta.baseline,
-          delta.scenario,
-          delta.note,
-          provenance.classification.id,
-          provenance.sourceProvider.getOrElse(""),
-          provenance.vintage.getOrElse(""),
-          provenance.transformationNotes.getOrElse(""),
-        ).map(csv).mkString(";")
-    (header +: rows).mkString("\n") + "\n"
-
-  private def renderRunSummary(metrics: Vector[TerminalMetric]): String =
-    val header = "Scenario;Seed;Metric;TerminalValue"
-    val rows   = metrics.map: row =>
-      Vector(row.scenarioId, row.seed.toString, row.metric.id, fmt(row.value)).mkString(";")
-    (header +: rows).mkString("\n") + "\n"
+    val rows = scenarios.flatMap(scenario => scenario.deltas.map(delta => ScenarioDeltaRow(scenario.id, delta)))
+    renderCsv(DeltasCsvSchema, rows)
 
   private[diagnostics] def renderScenarioMetadata(config: Config, scenario: ScenarioSpec): String =
     val channelRows = scenario.expectedChannels.map(channel => s"- `$channel`")
@@ -231,15 +203,35 @@ object ScenarioRunExport:
 
     lines.mkString("\n") + "\n"
 
-  private def renderTimeSeriesCsv(rows: Vector[Array[MetricValue]]): String =
-    val header = McTimeseriesSchema.colNames.mkString(";")
-    val body   = rows.map: row =>
-      row.indices
-        .map: idx =>
-          if idx == 0 then row(idx).format(0)
-          else fmt(row(idx))
-        .mkString(";")
-    (header +: body).mkString("\n") + "\n"
+  private val DeltasCsvSchema: McCsvSchema[ScenarioDeltaRow] =
+    McCsvSchema(
+      header = "Scenario;Parameter;Baseline;ScenarioValue;Note;ProvenanceClassification;SourceProvider;Vintage;TransformationNotes",
+      render = row =>
+        val provenance = row.delta.provenance
+        Vector(
+          row.scenarioId,
+          row.delta.parameter,
+          row.delta.baseline,
+          row.delta.scenario,
+          row.delta.note,
+          provenance.classification.id,
+          provenance.sourceProvider.getOrElse(""),
+          provenance.vintage.getOrElse(""),
+          provenance.transformationNotes.getOrElse(""),
+        ).map(csv).mkString(";"),
+    )
+
+  private val RunSummaryCsvSchema: McCsvSchema[TerminalMetric] =
+    McCsvSchema(
+      header = "Scenario;Seed;Metric;TerminalValue",
+      render = row => Vector(row.scenarioId, row.seed.toString, row.metric.id, fmt(row.value)).mkString(";"),
+    )
+
+  private val TimeSeriesCsvSchema: McCsvSchema[McSeedMonth] =
+    McTimeseriesSchema.csvSchema.contramap(month => (month.executionMonth, month.row))
+
+  private def renderCsv[A](schema: McCsvSchema[A], rows: Vector[A]): String =
+    (schema.header +: rows.map(schema.render)).mkString("\n") + "\n"
 
   private def knownFlag(flag: String): Boolean =
     flag == "--scenario" || flag == "--scenarios" || flag == "--seed-start" || flag == "--seeds" || flag == "--months" || flag == "--run-id" || flag == "--out"

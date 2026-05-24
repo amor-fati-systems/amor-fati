@@ -1,7 +1,7 @@
 package com.boombustgroup.amorfati.montecarlo
 
 /** Shared CSV row contract used by Monte Carlo output schemas. */
-private[montecarlo] final case class McCsvSchema[-Row](
+private[amorfati] final case class McCsvSchema[-Row](
     header: String,
     render: Row => String,
 ):

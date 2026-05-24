@@ -70,8 +70,10 @@ import com.boombustgroup.amorfati.types.*
   *   savings threshold (in multiples of monthly obligations) below which a
   *   household accumulates financial distress
   * @param bankruptcyDistressMonths
-  *   consecutive distressed months before the household enters default; one
-  *   further distressed month triggers personal-insolvency write-off
+  *   consecutive distressed months before the household enters default
+  * @param personalInsolvencyDistressMonths
+  *   consecutive distressed months before legal personal-insolvency write-off
+  *   clears remaining unsecured consumer debt
   * @param socialK
   *   Watts-Strogatz degree for household social network
   * @param socialP
@@ -140,6 +142,7 @@ case class HouseholdConfig(
     // Bankruptcy
     bankruptcyThreshold: Coefficient = Coefficient(-3),
     bankruptcyDistressMonths: Int = 3,
+    personalInsolvencyDistressMonths: Int = 12,
     // Social network
     socialK: Int = 10,
     socialP: Share = Share.decimal(15, 2),
@@ -152,4 +155,9 @@ case class HouseholdConfig(
     ccAmortRate: Rate = Rate.decimal(25, 3),
     ccNplRecovery: Share = Share.decimal(15, 2),
     ccEligRate: Share = Share.decimal(85, 2),
-)
+):
+  require(bankruptcyDistressMonths > 0, s"bankruptcyDistressMonths must be positive: $bankruptcyDistressMonths")
+  require(
+    personalInsolvencyDistressMonths > bankruptcyDistressMonths,
+    s"personalInsolvencyDistressMonths must exceed bankruptcyDistressMonths: $personalInsolvencyDistressMonths <= $bankruptcyDistressMonths",
+  )

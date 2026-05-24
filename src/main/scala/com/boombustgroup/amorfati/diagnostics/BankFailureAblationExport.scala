@@ -1,15 +1,17 @@
 package com.boombustgroup.amorfati.diagnostics
 
-import com.boombustgroup.amorfati.config.{BankFailureAblationScenarios, SimParams}
-import com.boombustgroup.amorfati.montecarlo.McRunner
+import com.boombustgroup.amorfati.config.BankFailureAblationScenarios
+import com.boombustgroup.amorfati.montecarlo.McCsvFile
+import com.boombustgroup.amorfati.montecarlo.McCsvSchema
+import com.boombustgroup.amorfati.montecarlo.McDiagnosticRunner
+import com.boombustgroup.amorfati.montecarlo.McSeedMonth
 import com.boombustgroup.amorfati.montecarlo.McTimeseriesSchema
 import com.boombustgroup.amorfati.montecarlo.MetricValue
 import com.boombustgroup.amorfati.montecarlo.MetricValue.*
-import com.boombustgroup.amorfati.montecarlo.RunResult
-import com.boombustgroup.amorfati.montecarlo.TimeSeries.*
+import zio.ZIO
+import zio.stream.ZStream
 
-import java.nio.charset.StandardCharsets
-import java.nio.file.{Files, Path}
+import java.nio.file.Path
 import scala.math.BigDecimal.RoundingMode
 import scala.util.Try
 
@@ -135,27 +137,28 @@ object BankFailureAblationExport:
             result.paths.foreach(path => println(path.toString))
 
   def run(config: Config): Either[String, ExportResult] =
-    validate(config).flatMap: validConfig =>
-      val attempts =
-        for
-          scenario <- Scenarios
-          seed     <- validConfig.seedRange
-        yield
-          given SimParams = scenario.params
-          Try(McRunner.runSingle(seed, validConfig.months)).toEither.left
-            .map(ex => s"Scenario ${scenario.id} seed $seed crashed: ${ex.getMessage}")
-            .flatMap:
-              _.left
-                .map(err => s"Scenario ${scenario.id} seed $seed failed: $err")
-                .map(result => computeSeedResult(validConfig, scenario, seed, result))
+    DiagnosticIo.unsafeRun(runZIO(config))
 
-      attempts.collectFirst { case Left(err) => err } match
-        case Some(err) => Left(err)
-        case None      =>
-          val seedResults = attempts.collect { case Right(row) => row }
-          val summary     = summarize(validConfig, seedResults)
-          val paths       = writeArtifacts(validConfig, seedResults, summary)
-          Right(ExportResult(paths, seedResults, summary))
+  def runZIO(config: Config): ZIO[Any, String, ExportResult] =
+    for
+      validConfig <- ZIO.fromEither(validate(config))
+      seedResults <- McCsvFile
+        .writeFold(
+          validConfig.runRoot.resolve("bank-failure-ablation-seeds.csv"),
+          McDiagnosticRunner.runScenarioSeeds(
+            Scenarios,
+            validConfig.seedRange,
+            validConfig.months,
+            _.id,
+            _.params,
+          )((scenario, seed, months) => computeSeedResult(validConfig, scenario, seed, months)),
+          SeedCsvSchema,
+          Vector.newBuilder[SeedResult],
+        )((builder, row) => builder += row)(DiagnosticIo.outputFailure)
+        .map(_.result())
+      summary      = summarize(validConfig, seedResults)
+      paths       <- writeArtifactsZIO(validConfig, summary)
+    yield ExportResult(paths, seedResults, summary)
 
   def parseArgs(args: Vector[String]): Either[String, Config] =
     def missingValue(flag: String): Left[String, Config] = Left(s"Missing value for $flag")
@@ -192,41 +195,125 @@ object BankFailureAblationExport:
       .flatMap(valid => Either.cond(valid.runId.trim.nonEmpty, valid, "--run-id must be non-empty"))
       .flatMap(valid => Either.cond(missing.isEmpty, valid, s"Missing Monte Carlo columns: ${missing.toVector.sorted.mkString(", ")}"))
 
-  private[diagnostics] def computeSeedResult(config: Config, scenario: BankFailureAblationScenarios.Spec, seed: Long, result: RunResult): SeedResult =
-    val rows            = result.timeSeries.map(identity)
-    val firstFailureRow = rows.find(row => col(row, "BankCapital_NewFailures") > BigDecimal(0))
-    val terminalRow     = rows.lastOption.getOrElse(throw new IllegalArgumentException("Bank-failure ablation run produced no rows"))
+  private final case class FirstFailureSnapshot(
+      month: Int,
+      reasonCode: Int,
+      bankId: Int,
+      realizedCreditLoss: BigDecimal,
+      eclProvisionChange: BigDecimal,
+      consumerNplLoss: BigDecimal,
+      firmNplLoss: BigDecimal,
+      mortgageNplLoss: BigDecimal,
+      corpBondDefaultLoss: BigDecimal,
+      reconciliationResidual: BigDecimal,
+      depositBailInLoss: BigDecimal,
+  )
 
-    SeedResult(
-      runId = config.runId,
-      scenarioId = scenario.id,
-      scenarioLabel = scenario.label,
-      seed = seed,
-      months = config.months,
-      firstFailureMonth = firstFailureRow.map(row => colInt(row, "Month")),
-      firstFailureReasonCode = firstFailureRow.map(row => colInt(row, "BankFailure_FirstNewReasonCode")).getOrElse(0),
-      firstFailureBankId = firstFailureRow.map(row => colInt(row, "BankFailure_FirstNewBankId")).getOrElse(-1),
-      terminalFailures = colInt(terminalRow, "BankFailures"),
-      peakFailures = rows.map(row => colInt(row, "BankFailures")).maxOption.getOrElse(0),
-      cumulativeNewFailures = cumulative(rows, "BankCapital_NewFailures"),
-      cumulativeRealizedCreditLoss = cumulative(rows, "BankCapital_RealizedCreditLoss"),
-      cumulativeEclProvisionChange = cumulative(rows, "BankCapital_EclProvisionChange"),
-      cumulativeBailInLoss = cumulative(rows, "BankCapital_DepositBailInLoss"),
-      cumulativeCapitalDestruction = cumulative(rows, "BankCapital_CapitalDestruction"),
-      cumulativeReconciliationResidualAbs = rows.map(row => col(row, "BankCapital_ReconciliationResidual").abs).sum,
-      firstFailureRealizedCreditLoss = firstFailureRow.map(row => col(row, "BankCapital_RealizedCreditLoss")).getOrElse(BigDecimal(0)),
-      firstFailureEclProvisionChange = firstFailureRow.map(row => col(row, "BankCapital_EclProvisionChange")).getOrElse(BigDecimal(0)),
-      firstFailureConsumerNplLoss = firstFailureRow.map(row => col(row, "BankCapital_ConsumerNplLoss")).getOrElse(BigDecimal(0)),
-      firstFailureFirmNplLoss = firstFailureRow.map(row => col(row, "BankCapital_FirmNplLoss")).getOrElse(BigDecimal(0)),
-      firstFailureMortgageNplLoss = firstFailureRow.map(row => col(row, "BankCapital_MortgageNplLoss")).getOrElse(BigDecimal(0)),
-      firstFailureCorpBondDefaultLoss = firstFailureRow.map(row => col(row, "BankCapital_CorpBondDefaultLoss")).getOrElse(BigDecimal(0)),
-      firstFailureReconciliationResidual = firstFailureRow.map(row => col(row, "BankCapital_ReconciliationResidual")).getOrElse(BigDecimal(0)),
-      firstFailureDepositBailInLoss = firstFailureRow.map(row => col(row, "BankCapital_DepositBailInLoss")).getOrElse(BigDecimal(0)),
-      terminalTotalCreditToGdp = col(terminalRow, "TotalCreditToGdp"),
-      terminalUnemployment = col(terminalRow, "Unemployment"),
-      terminalInflation = col(terminalRow, "Inflation"),
-      interpretation = scenario.interpretation,
-    )
+  private object FirstFailureSnapshot:
+    def from(row: Array[MetricValue]): FirstFailureSnapshot =
+      FirstFailureSnapshot(
+        month = colInt(row, "Month"),
+        reasonCode = colInt(row, "BankFailure_FirstNewReasonCode"),
+        bankId = colInt(row, "BankFailure_FirstNewBankId"),
+        realizedCreditLoss = col(row, "BankCapital_RealizedCreditLoss"),
+        eclProvisionChange = col(row, "BankCapital_EclProvisionChange"),
+        consumerNplLoss = col(row, "BankCapital_ConsumerNplLoss"),
+        firmNplLoss = col(row, "BankCapital_FirmNplLoss"),
+        mortgageNplLoss = col(row, "BankCapital_MortgageNplLoss"),
+        corpBondDefaultLoss = col(row, "BankCapital_CorpBondDefaultLoss"),
+        reconciliationResidual = col(row, "BankCapital_ReconciliationResidual"),
+        depositBailInLoss = col(row, "BankCapital_DepositBailInLoss"),
+      )
+
+  private final case class SeedAccumulator(
+      observedMonths: Int,
+      firstFailure: Option[FirstFailureSnapshot],
+      terminalRow: Option[Array[MetricValue]],
+      peakFailures: Int,
+      cumulativeNewFailures: BigDecimal,
+      cumulativeRealizedCreditLoss: BigDecimal,
+      cumulativeEclProvisionChange: BigDecimal,
+      cumulativeBailInLoss: BigDecimal,
+      cumulativeCapitalDestruction: BigDecimal,
+      cumulativeReconciliationResidualAbs: BigDecimal,
+  ):
+    def observe(row: Array[MetricValue]): SeedAccumulator =
+      copy(
+        observedMonths = observedMonths + 1,
+        firstFailure = firstFailure.orElse(Option.when(col(row, "BankCapital_NewFailures") > BigDecimal(0))(FirstFailureSnapshot.from(row))),
+        terminalRow = Some(row),
+        peakFailures = scala.math.max(peakFailures, colInt(row, "BankFailures")),
+        cumulativeNewFailures = cumulativeNewFailures + col(row, "BankCapital_NewFailures"),
+        cumulativeRealizedCreditLoss = cumulativeRealizedCreditLoss + col(row, "BankCapital_RealizedCreditLoss"),
+        cumulativeEclProvisionChange = cumulativeEclProvisionChange + col(row, "BankCapital_EclProvisionChange"),
+        cumulativeBailInLoss = cumulativeBailInLoss + col(row, "BankCapital_DepositBailInLoss"),
+        cumulativeCapitalDestruction = cumulativeCapitalDestruction + col(row, "BankCapital_CapitalDestruction"),
+        cumulativeReconciliationResidualAbs = cumulativeReconciliationResidualAbs + col(row, "BankCapital_ReconciliationResidual").abs,
+      )
+
+    def toSeedResult(config: Config, scenario: BankFailureAblationScenarios.Spec, seed: Long): Either[String, SeedResult] =
+      for
+        _        <- Either.cond(
+          observedMonths == config.months,
+          (),
+          s"bank-failure ablation expected ${config.months} monthly rows for scenario ${scenario.id} seed $seed, observed $observedMonths",
+        )
+        terminal <- terminalRow.toRight("bank-failure ablation run produced no monthly rows")
+      yield SeedResult(
+        runId = config.runId,
+        scenarioId = scenario.id,
+        scenarioLabel = scenario.label,
+        seed = seed,
+        months = config.months,
+        firstFailureMonth = firstFailure.map(_.month),
+        firstFailureReasonCode = firstFailure.map(_.reasonCode).getOrElse(0),
+        firstFailureBankId = firstFailure.map(_.bankId).getOrElse(-1),
+        terminalFailures = colInt(terminal, "BankFailures"),
+        peakFailures = peakFailures,
+        cumulativeNewFailures = cumulativeNewFailures,
+        cumulativeRealizedCreditLoss = cumulativeRealizedCreditLoss,
+        cumulativeEclProvisionChange = cumulativeEclProvisionChange,
+        cumulativeBailInLoss = cumulativeBailInLoss,
+        cumulativeCapitalDestruction = cumulativeCapitalDestruction,
+        cumulativeReconciliationResidualAbs = cumulativeReconciliationResidualAbs,
+        firstFailureRealizedCreditLoss = firstFailure.map(_.realizedCreditLoss).getOrElse(BigDecimal(0)),
+        firstFailureEclProvisionChange = firstFailure.map(_.eclProvisionChange).getOrElse(BigDecimal(0)),
+        firstFailureConsumerNplLoss = firstFailure.map(_.consumerNplLoss).getOrElse(BigDecimal(0)),
+        firstFailureFirmNplLoss = firstFailure.map(_.firmNplLoss).getOrElse(BigDecimal(0)),
+        firstFailureMortgageNplLoss = firstFailure.map(_.mortgageNplLoss).getOrElse(BigDecimal(0)),
+        firstFailureCorpBondDefaultLoss = firstFailure.map(_.corpBondDefaultLoss).getOrElse(BigDecimal(0)),
+        firstFailureReconciliationResidual = firstFailure.map(_.reconciliationResidual).getOrElse(BigDecimal(0)),
+        firstFailureDepositBailInLoss = firstFailure.map(_.depositBailInLoss).getOrElse(BigDecimal(0)),
+        terminalTotalCreditToGdp = col(terminal, "TotalCreditToGdp"),
+        terminalUnemployment = col(terminal, "Unemployment"),
+        terminalInflation = col(terminal, "Inflation"),
+        interpretation = scenario.interpretation,
+      )
+
+  private object SeedAccumulator:
+    val Empty: SeedAccumulator =
+      SeedAccumulator(
+        observedMonths = 0,
+        firstFailure = None,
+        terminalRow = None,
+        peakFailures = 0,
+        cumulativeNewFailures = BigDecimal(0),
+        cumulativeRealizedCreditLoss = BigDecimal(0),
+        cumulativeEclProvisionChange = BigDecimal(0),
+        cumulativeBailInLoss = BigDecimal(0),
+        cumulativeCapitalDestruction = BigDecimal(0),
+        cumulativeReconciliationResidualAbs = BigDecimal(0),
+      )
+
+  private[diagnostics] def computeSeedResult(
+      config: Config,
+      scenario: BankFailureAblationScenarios.Spec,
+      seed: Long,
+      months: ZStream[Any, String, McSeedMonth],
+  ): ZIO[Any, String, SeedResult] =
+    months
+      .runFold(SeedAccumulator.Empty)((acc, month) => acc.observe(month.row))
+      .flatMap(acc => ZIO.fromEither(acc.toSeedResult(config, scenario, seed)))
 
   private[diagnostics] def summarize(config: Config, rows: Vector[SeedResult]): Vector[SummaryResult] =
     Scenarios.map: scenario =>
@@ -262,94 +349,107 @@ object BankFailureAblationExport:
         interpretation = scenario.interpretation,
       )
 
-  private def writeArtifacts(config: Config, seedResults: Vector[SeedResult], summary: Vector[SummaryResult]): Vector[Path] =
-    Files.createDirectories(config.runRoot)
+  private def writeArtifactsZIO(config: Config, summary: Vector[SummaryResult]): ZIO[Any, String, Vector[Path]] =
     val seedPath     = config.runRoot.resolve("bank-failure-ablation-seeds.csv")
     val summaryPath  = config.runRoot.resolve("bank-failure-ablation-summary.csv")
     val scenarioPath = config.runRoot.resolve("bank-failure-ablation-scenarios.csv")
     val reportPath   = config.runRoot.resolve("bank-failure-ablation-report.md")
-    Files.writeString(seedPath, renderSeedCsv(seedResults), StandardCharsets.UTF_8)
-    Files.writeString(summaryPath, renderSummaryCsv(summary), StandardCharsets.UTF_8)
-    Files.writeString(scenarioPath, renderScenarioCsv(Scenarios), StandardCharsets.UTF_8)
-    Files.writeString(reportPath, renderReport(config, summary), StandardCharsets.UTF_8)
-    Vector(seedPath, summaryPath, scenarioPath, reportPath)
+    for
+      _ <- McCsvFile.writeAll(summaryPath, summary, SummaryCsvSchema)(DiagnosticIo.outputFailure)
+      _ <- McCsvFile.writeAll(scenarioPath, Scenarios, ScenarioCsvSchema)(DiagnosticIo.outputFailure)
+      _ <- DiagnosticIo.writeText(reportPath, renderReport(config, summary))
+    yield Vector(seedPath, summaryPath, scenarioPath, reportPath)
 
   private[diagnostics] def renderSeedCsv(rows: Vector[SeedResult]): String =
-    val header =
-      "RunId;ScenarioId;ScenarioLabel;Seed;Months;FirstFailureMonth;FirstFailureReasonCode;FirstFailureBankId;TerminalFailures;PeakFailures;CumulativeNewFailures;CumulativeRealizedCreditLoss;CumulativeEclProvisionChange;CumulativeBailInLoss;CumulativeCapitalDestruction;CumulativeReconciliationResidualAbs;FirstFailureRealizedCreditLoss;FirstFailureEclProvisionChange;FirstFailureConsumerNplLoss;FirstFailureFirmNplLoss;FirstFailureMortgageNplLoss;FirstFailureCorpBondDefaultLoss;FirstFailureReconciliationResidual;FirstFailureDepositBailInLoss;TerminalTotalCreditToGdp;TerminalUnemployment;TerminalInflation;Interpretation"
-    val body   = rows.map: row =>
-      Vector(
-        row.runId,
-        row.scenarioId,
-        row.scenarioLabel,
-        row.seed.toString,
-        row.months.toString,
-        row.firstFailureMonth.map(_.toString).getOrElse(""),
-        row.firstFailureReasonCode.toString,
-        row.firstFailureBankId.toString,
-        row.terminalFailures.toString,
-        row.peakFailures.toString,
-        renderDecimal(row.cumulativeNewFailures),
-        renderDecimal(row.cumulativeRealizedCreditLoss),
-        renderDecimal(row.cumulativeEclProvisionChange),
-        renderDecimal(row.cumulativeBailInLoss),
-        renderDecimal(row.cumulativeCapitalDestruction),
-        renderDecimal(row.cumulativeReconciliationResidualAbs),
-        renderDecimal(row.firstFailureRealizedCreditLoss),
-        renderDecimal(row.firstFailureEclProvisionChange),
-        renderDecimal(row.firstFailureConsumerNplLoss),
-        renderDecimal(row.firstFailureFirmNplLoss),
-        renderDecimal(row.firstFailureMortgageNplLoss),
-        renderDecimal(row.firstFailureCorpBondDefaultLoss),
-        renderDecimal(row.firstFailureReconciliationResidual),
-        renderDecimal(row.firstFailureDepositBailInLoss),
-        renderDecimal(row.terminalTotalCreditToGdp),
-        renderDecimal(row.terminalUnemployment),
-        renderDecimal(row.terminalInflation),
-        row.interpretation,
-      ).map(csv).mkString(";")
-    (header +: body).mkString("\n") + "\n"
+    renderCsv(SeedCsvSchema, rows)
 
   private[diagnostics] def renderSummaryCsv(rows: Vector[SummaryResult]): String =
-    val header =
-      "RunId;ScenarioId;ScenarioLabel;Seeds;Months;FailedSeeds;FirstFailureMonthMean;FirstFailureMonthMin;FirstFailureMonthMax;TerminalFailuresMean;PeakFailuresMean;CumulativeNewFailuresMean;CumulativeRealizedCreditLossMean;CumulativeEclProvisionChangeMean;CumulativeBailInLossMean;CumulativeCapitalDestructionMean;CumulativeReconciliationResidualAbsMean;FirstFailureRealizedCreditLossMean;FirstFailureEclProvisionChangeMean;FirstFailureConsumerNplLossMean;FirstFailureFirmNplLossMean;FirstFailureMortgageNplLossMean;FirstFailureCorpBondDefaultLossMean;TerminalTotalCreditToGdpMean;TerminalUnemploymentMean;TerminalInflationMean;Interpretation"
-    val body   = rows.map: row =>
-      Vector(
-        row.runId,
-        row.scenarioId,
-        row.scenarioLabel,
-        row.seeds.toString,
-        row.months.toString,
-        row.failedSeeds.toString,
-        row.firstFailureMonthMean.map(renderDecimal).getOrElse(""),
-        row.firstFailureMonthMin.map(_.toString).getOrElse(""),
-        row.firstFailureMonthMax.map(_.toString).getOrElse(""),
-        renderDecimal(row.terminalFailuresMean),
-        renderDecimal(row.peakFailuresMean),
-        renderDecimal(row.cumulativeNewFailuresMean),
-        renderDecimal(row.cumulativeRealizedCreditLossMean),
-        renderDecimal(row.cumulativeEclProvisionChangeMean),
-        renderDecimal(row.cumulativeBailInLossMean),
-        renderDecimal(row.cumulativeCapitalDestructionMean),
-        renderDecimal(row.cumulativeReconciliationResidualAbsMean),
-        renderDecimal(row.firstFailureRealizedCreditLossMean),
-        renderDecimal(row.firstFailureEclProvisionChangeMean),
-        renderDecimal(row.firstFailureConsumerNplLossMean),
-        renderDecimal(row.firstFailureFirmNplLossMean),
-        renderDecimal(row.firstFailureMortgageNplLossMean),
-        renderDecimal(row.firstFailureCorpBondDefaultLossMean),
-        renderDecimal(row.terminalTotalCreditToGdpMean),
-        renderDecimal(row.terminalUnemploymentMean),
-        renderDecimal(row.terminalInflationMean),
-        row.interpretation,
-      ).map(csv).mkString(";")
-    (header +: body).mkString("\n") + "\n"
+    renderCsv(SummaryCsvSchema, rows)
 
   private[diagnostics] def renderScenarioCsv(scenarios: Vector[BankFailureAblationScenarios.Spec]): String =
-    val header = "ScenarioId;ScenarioLabel;Interpretation"
-    val body   = scenarios.map: scenario =>
-      Vector(scenario.id, scenario.label, scenario.interpretation).map(csv).mkString(";")
-    (header +: body).mkString("\n") + "\n"
+    renderCsv(ScenarioCsvSchema, scenarios)
+
+  private val SeedCsvSchema: McCsvSchema[SeedResult] =
+    val header =
+      "RunId;ScenarioId;ScenarioLabel;Seed;Months;FirstFailureMonth;FirstFailureReasonCode;FirstFailureBankId;TerminalFailures;PeakFailures;CumulativeNewFailures;CumulativeRealizedCreditLoss;CumulativeEclProvisionChange;CumulativeBailInLoss;CumulativeCapitalDestruction;CumulativeReconciliationResidualAbs;FirstFailureRealizedCreditLoss;FirstFailureEclProvisionChange;FirstFailureConsumerNplLoss;FirstFailureFirmNplLoss;FirstFailureMortgageNplLoss;FirstFailureCorpBondDefaultLoss;FirstFailureReconciliationResidual;FirstFailureDepositBailInLoss;TerminalTotalCreditToGdp;TerminalUnemployment;TerminalInflation;Interpretation"
+    McCsvSchema(header, renderSeedRow)
+
+  private val SummaryCsvSchema: McCsvSchema[SummaryResult] =
+    val header =
+      "RunId;ScenarioId;ScenarioLabel;Seeds;Months;FailedSeeds;FirstFailureMonthMean;FirstFailureMonthMin;FirstFailureMonthMax;TerminalFailuresMean;PeakFailuresMean;CumulativeNewFailuresMean;CumulativeRealizedCreditLossMean;CumulativeEclProvisionChangeMean;CumulativeBailInLossMean;CumulativeCapitalDestructionMean;CumulativeReconciliationResidualAbsMean;FirstFailureRealizedCreditLossMean;FirstFailureEclProvisionChangeMean;FirstFailureConsumerNplLossMean;FirstFailureFirmNplLossMean;FirstFailureMortgageNplLossMean;FirstFailureCorpBondDefaultLossMean;TerminalTotalCreditToGdpMean;TerminalUnemploymentMean;TerminalInflationMean;Interpretation"
+    McCsvSchema(header, renderSummaryRow)
+
+  private val ScenarioCsvSchema: McCsvSchema[BankFailureAblationScenarios.Spec] =
+    McCsvSchema(
+      header = "ScenarioId;ScenarioLabel;Interpretation",
+      render = scenario => Vector(scenario.id, scenario.label, scenario.interpretation).map(csv).mkString(";"),
+    )
+
+  private def renderSeedRow(row: SeedResult): String =
+    Vector(
+      row.runId,
+      row.scenarioId,
+      row.scenarioLabel,
+      row.seed.toString,
+      row.months.toString,
+      row.firstFailureMonth.map(_.toString).getOrElse(""),
+      row.firstFailureReasonCode.toString,
+      row.firstFailureBankId.toString,
+      row.terminalFailures.toString,
+      row.peakFailures.toString,
+      renderDecimal(row.cumulativeNewFailures),
+      renderDecimal(row.cumulativeRealizedCreditLoss),
+      renderDecimal(row.cumulativeEclProvisionChange),
+      renderDecimal(row.cumulativeBailInLoss),
+      renderDecimal(row.cumulativeCapitalDestruction),
+      renderDecimal(row.cumulativeReconciliationResidualAbs),
+      renderDecimal(row.firstFailureRealizedCreditLoss),
+      renderDecimal(row.firstFailureEclProvisionChange),
+      renderDecimal(row.firstFailureConsumerNplLoss),
+      renderDecimal(row.firstFailureFirmNplLoss),
+      renderDecimal(row.firstFailureMortgageNplLoss),
+      renderDecimal(row.firstFailureCorpBondDefaultLoss),
+      renderDecimal(row.firstFailureReconciliationResidual),
+      renderDecimal(row.firstFailureDepositBailInLoss),
+      renderDecimal(row.terminalTotalCreditToGdp),
+      renderDecimal(row.terminalUnemployment),
+      renderDecimal(row.terminalInflation),
+      row.interpretation,
+    ).map(csv).mkString(";")
+
+  private def renderSummaryRow(row: SummaryResult): String =
+    Vector(
+      row.runId,
+      row.scenarioId,
+      row.scenarioLabel,
+      row.seeds.toString,
+      row.months.toString,
+      row.failedSeeds.toString,
+      row.firstFailureMonthMean.map(renderDecimal).getOrElse(""),
+      row.firstFailureMonthMin.map(_.toString).getOrElse(""),
+      row.firstFailureMonthMax.map(_.toString).getOrElse(""),
+      renderDecimal(row.terminalFailuresMean),
+      renderDecimal(row.peakFailuresMean),
+      renderDecimal(row.cumulativeNewFailuresMean),
+      renderDecimal(row.cumulativeRealizedCreditLossMean),
+      renderDecimal(row.cumulativeEclProvisionChangeMean),
+      renderDecimal(row.cumulativeBailInLossMean),
+      renderDecimal(row.cumulativeCapitalDestructionMean),
+      renderDecimal(row.cumulativeReconciliationResidualAbsMean),
+      renderDecimal(row.firstFailureRealizedCreditLossMean),
+      renderDecimal(row.firstFailureEclProvisionChangeMean),
+      renderDecimal(row.firstFailureConsumerNplLossMean),
+      renderDecimal(row.firstFailureFirmNplLossMean),
+      renderDecimal(row.firstFailureMortgageNplLossMean),
+      renderDecimal(row.firstFailureCorpBondDefaultLossMean),
+      renderDecimal(row.terminalTotalCreditToGdpMean),
+      renderDecimal(row.terminalUnemploymentMean),
+      renderDecimal(row.terminalInflationMean),
+      row.interpretation,
+    ).map(csv).mkString(";")
+
+  private def renderCsv[A](schema: McCsvSchema[A], rows: Vector[A]): String =
+    (schema.header +: rows.map(schema.render)).mkString("\n") + "\n"
 
   private[diagnostics] def renderReport(config: Config, summary: Vector[SummaryResult]): String =
     val command        =
@@ -446,9 +546,6 @@ object BankFailureAblationExport:
 
   private def colInt(row: Array[MetricValue], name: String): Int =
     col(row, name).setScale(0, RoundingMode.HALF_UP).toInt
-
-  private def cumulative(rows: Vector[Array[MetricValue]], name: String): BigDecimal =
-    rows.map(row => col(row, name)).sum
 
   private def mean(values: Vector[BigDecimal]): BigDecimal =
     if values.isEmpty then BigDecimal(0) else values.sum / BigDecimal(values.length)

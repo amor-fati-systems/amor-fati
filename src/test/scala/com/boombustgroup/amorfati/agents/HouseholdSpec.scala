@@ -234,7 +234,7 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
     updated(0).financialDistressState shouldBe HhFinancialDistressState.Defaulted
   }
 
-  it should "resolve persistent deep distress without removing the household from the labor force" in {
+  it should "stay defaulted before the personal insolvency write-off threshold" in {
     val rng     = RandomStream.seeded(42)
     val hh      = mkHousehold(
       0,
@@ -242,6 +242,20 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
       savings = PLN.Zero,
       rent = PLN(10000),
     ).copy(financialDistressMonths = p.household.bankruptcyDistressMonths, financialDistressState = HhFinancialDistressState.Defaulted)
+    val updated = step(Vector(hh), mkLiquidityShockWorld(), PLN(8000), PLN(4666), Share.decimal(4, 1), rng).households
+    updated(0).status shouldBe HhStatus.Unemployed(2)
+    updated(0).financialDistressMonths shouldBe p.household.bankruptcyDistressMonths + 1
+    updated(0).financialDistressState shouldBe HhFinancialDistressState.Defaulted
+  }
+
+  it should "resolve persistent deep distress without removing the household from the labor force" in {
+    val rng     = RandomStream.seeded(42)
+    val hh      = mkHousehold(
+      0,
+      HhStatus.Unemployed(1),
+      savings = PLN.Zero,
+      rent = PLN(10000),
+    ).copy(financialDistressMonths = p.household.personalInsolvencyDistressMonths, financialDistressState = HhFinancialDistressState.Defaulted)
     val updated = step(Vector(hh), mkLiquidityShockWorld(), PLN(8000), PLN(4666), Share.decimal(4, 1), rng).households
     updated(0).status shouldBe HhStatus.Unemployed(2)
     updated(0).financialDistressMonths shouldBe 0
@@ -255,7 +269,7 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
       HhStatus.Employed(FirmId(0), SectorIdx(0), PLN(8000)),
       savings = PLN.Zero,
       rent = PLN(200000),
-    ).copy(financialDistressMonths = p.household.bankruptcyDistressMonths, financialDistressState = HhFinancialDistressState.Defaulted)
+    ).copy(financialDistressMonths = p.household.personalInsolvencyDistressMonths, financialDistressState = HhFinancialDistressState.Defaulted)
 
     val updated = step(Vector(hh), mkLiquidityShockWorld(), PLN(8000), PLN(4666), Share.decimal(4, 1), rng).households
 
@@ -273,7 +287,7 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
       HhStatus.Unemployed(1),
       savings = PLN.Zero,
       rent = PLN(10000),
-    ).copy(financialDistressMonths = p.household.bankruptcyDistressMonths, financialDistressState = HhFinancialDistressState.Defaulted)
+    ).copy(financialDistressMonths = p.household.personalInsolvencyDistressMonths, financialDistressState = HhFinancialDistressState.Defaulted)
     val totalRate           = p.household.ccAmortRate + (world.nbp.referenceRate + p.household.ccSpread).monthly
     val expectedDebtService = openingLoan * totalRate
     val expectedPrincipal   = openingLoan * p.household.ccAmortRate

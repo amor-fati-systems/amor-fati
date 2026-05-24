@@ -10,6 +10,10 @@ Run:
 sbt "hhBankLeadLagDiagnostics --seeds 2 --months 24 --lag-max 6 --out target/hh-bank-lead-lag --run-id hh-bank-lead-lag"
 ```
 
+The export uses the shared Monte Carlo diagnostic runner. Scenario/seed jobs
+run with bounded `mapZIOPar` parallelism on the same monthly seed stream as
+`Main`; months inside a seed remain sequential.
+
 The task writes:
 
 ```text

@@ -58,14 +58,15 @@ object HouseholdIncomeEconomics:
         Share.One,
       )
 
-    val afterSep                                         = LaborMarket.separations(households, firms, firms)
-    val afterWages                                       = LaborMarket.updateWages(afterSep, firms, newWage)
-    val bsec                                             = w.bankingSector
-    val nBanksHh                                         = banks.length
-    val bankStocks                                       = ledgerFinancialState.banks.map(LedgerFinancialState.projectBankFinancialStocks)
-    val ccyb                                             = w.mechanisms.macropru.ccyb
-    val bankCorpBonds                                    = (bankId: BankId) => CorporateBondOwnership.bankHolderFor(ledgerFinancialState, bankId)
-    val hhBankRates                                      = Some(
+    val afterSep           = LaborMarket.separations(households, firms, firms)
+    val afterWages         = LaborMarket.updateWages(afterSep, firms, newWage)
+    val bsec               = w.bankingSector
+    val nBanksHh           = banks.length
+    val bankStocks         = ledgerFinancialState.banks.map(LedgerFinancialState.projectBankFinancialStocks)
+    requireBankRateInputsAligned(banks, bankStocks, bsec.configs)
+    val ccyb               = w.mechanisms.macropru.ccyb
+    val bankCorpBonds      = (bankId: BankId) => CorporateBondOwnership.bankHolderFor(ledgerFinancialState, bankId)
+    val hhBankRates        = Some(
       BankRates(
         lendingRates = banks
           .zip(bankStocks)
@@ -76,15 +77,12 @@ object HouseholdIncomeEconomics:
         depositRates = banks.map(_ => Banking.hhDepositRate(w.nbp.referenceRate)),
       ),
     )
-    val consumerCreditGate: Household.ConsumerCreditGate = (bankId, amount, approvalRng) =>
-      val idx = bankId.toInt
-      idx >= 0 && idx < banks.length &&
-      Banking.creditApproval(banks(idx), bankStocks(idx), amount, approvalRng, ccyb, bankCorpBonds(bankId)).approved
-    val eqReturn                                         = w.financialMarkets.equity.monthlyReturn
-    val secWages                                         = Some(SectoralMobility.sectorWages(afterWages))
-    val secVacancies                                     = Some(SectoralMobility.sectorVacancies(afterWages, firms))
-    val openingStocks                                    = ledgerFinancialState.households.map(LedgerFinancialState.projectHouseholdFinancialStocks)
-    val householdStep                                    = Household.step(
+    val consumerCreditGate = capitalAwareConsumerCreditGate(banks, bankStocks, ccyb, bankCorpBonds)
+    val eqReturn           = w.financialMarkets.equity.monthlyReturn
+    val secWages           = Some(SectoralMobility.sectorWages(afterWages))
+    val secVacancies       = Some(SectoralMobility.sectorVacancies(afterWages, firms))
+    val openingStocks      = ledgerFinancialState.households.map(LedgerFinancialState.projectHouseholdFinancialStocks)
+    val householdStep      = Household.step(
       afterWages,
       openingStocks,
       w,
@@ -99,11 +97,11 @@ object HouseholdIncomeEconomics:
       secVacancies,
       Some(consumerCreditGate),
     )
-    val agg                                              = householdStep.aggregates
-    val pensionCons                                      = pensionIncome * p.household.mpc
-    val pensionImport                                    = pensionCons * importAdj
-    val pensionDomestic                                  = pensionCons - pensionImport
-    val aggWithPensions                                  =
+    val agg                = householdStep.aggregates
+    val pensionCons        = pensionIncome * p.household.mpc
+    val pensionImport      = pensionCons * importAdj
+    val pensionDomestic    = pensionCons - pensionImport
+    val aggWithPensions    =
       if pensionIncome > PLN.Zero then
         agg.copy(
           totalIncome = agg.totalIncome + pensionIncome,
@@ -127,3 +125,45 @@ object HouseholdIncomeEconomics:
       aggUnempBenefit = PLN.Zero,
       ledgerFinancialState = ledgerFinancialState.copy(households = householdStep.financialStocks.map(LedgerFinancialState.householdBalances)),
     )
+
+  private def requireBankRateInputsAligned(
+      banks: Vector[Banking.BankState],
+      bankStocks: Vector[Banking.BankFinancialStocks],
+      configs: Vector[Banking.Config],
+  ): Unit =
+    val bankIds   = banks.map(_.id.toInt)
+    val configIds = configs.map(_.id.toInt)
+    if banks.length != bankStocks.length || banks.length != configs.length || bankIds != configIds then
+      val configNames = configs.map(config => s"${config.id.toInt}:${config.name}")
+      throw new IllegalArgumentException(
+        "HouseholdIncomeEconomics.hhBankRates requires aligned bank rows, ledger bank stocks, and bank configs; " +
+          s"banks=${banks.length} ids=${bankIds.mkString("[", ",", "]")}, " +
+          s"ledgerBanks=${bankStocks.length}, " +
+          s"configs=${configs.length} ids=${configIds.mkString("[", ",", "]")} names=${configNames.mkString("[", ",", "]")}",
+      )
+
+  private[economics] def capitalAwareConsumerCreditGate(
+      banks: Vector[Banking.BankState],
+      bankStocks: Vector[Banking.BankFinancialStocks],
+      ccyb: Multiplier,
+      bankCorpBonds: BankId => PLN,
+  )(using p: SimParams): Household.ConsumerCreditGate =
+    require(
+      banks.length == bankStocks.length,
+      s"HouseholdIncomeEconomics consumer-credit gate requires aligned bank rows, got ${banks.length} banks and ${bankStocks.length} stock rows",
+    )
+    val approvedExposureByBank = Array.fill(banks.length)(PLN.Zero)
+
+    (bankId, amount, approvalRng) =>
+      val idx = bankId.toInt
+      if amount <= PLN.Zero || idx < 0 || idx >= banks.length then false
+      else
+        val projectedStocks = bankStocks(idx).copy(
+          consumerLoan = bankStocks(idx).consumerLoan + approvedExposureByBank(idx),
+        )
+        val approval        =
+          Banking.creditApproval(banks(idx), projectedStocks, amount, approvalRng, ccyb, bankCorpBonds(bankId))
+        if approval.approved then
+          approvedExposureByBank(idx) = approvedExposureByBank(idx) + amount
+          true
+        else false
