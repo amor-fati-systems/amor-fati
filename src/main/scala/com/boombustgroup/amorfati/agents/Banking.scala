@@ -710,6 +710,11 @@ object Banking:
 
   /** BFG P&A resolution: transfer deposits, bonds, performing loans, consumer
     * loans from failed banks to the healthiest surviving bank.
+    *
+    * An all-failed banking sector is deliberately fail-fast. Reviving one
+    * failed row as an active bridge bank would be a
+    * recapitalization/nationalization mechanism, and that must be modeled
+    * explicitly before it can enter the baseline resolution path.
     */
   def resolveFailures(
       banks: Vector[BankState],
@@ -724,20 +729,23 @@ object Banking:
     val newlyFailed    = banks.zip(financialStocks).filter((b, stocks) => b.failed && stocks.totalDeposits > PLN.Zero)
     if newlyFailed.isEmpty then ResolutionResult(banks, financialStocks, BankId.NoBank, holderBalances)
     else
-      val allFailedFallbackUsed = banks.forall(_.failed)
-      val absorberId            = healthiestBankId(banks, financialStocks, bankCorpBondHoldingsFromVector(holderBalances))
-      val toAbsorb              = newlyFailed.filter((bank, _) => bank.id != absorberId)
+      if banks.forall(_.failed) then
+        throw IllegalStateException(
+          "Banking.resolveFailures encountered an all-failed banking sector with unresolved deposits. Explicit bridge-bank recapitalization or all-failed shutdown semantics are required; refusing to resurrect a failed bank as Active(0).",
+        )
+      val absorberId     = healthiestBankId(banks, financialStocks, bankCorpBondHoldingsFromVector(holderBalances))
+      val toAbsorb       = newlyFailed.filter((bank, _) => bank.id != absorberId)
       // Single-pass PLN aggregation of all flows from failed banks (exact Long addition)
-      val addDep                = toAbsorb.map(_._2.totalDeposits).sumPln
-      val addLoans              = toAbsorb.map((bank, stocks) => stocks.firmLoan - bank.nplAmount).sumPln
-      val addAfs                = toAbsorb.map(_._2.govBondAfs).sumPln
-      val addHtm                = toAbsorb.map(_._2.govBondHtm).sumPln
-      val addCorpB              = toAbsorb.flatMap((bank, _) => holderBalances.lift(bank.id.toInt)).sumPln
-      val addCC                 = toAbsorb.map(_._2.consumerLoan).sumPln
-      val addIB                 = toAbsorb.map(_._2.interbankLoan).sumPln
-      val addBailedInDep        = toAbsorb.map(_._2.bailedInDeposits).sumPln
+      val addDep         = toAbsorb.map(_._2.totalDeposits).sumPln
+      val addLoans       = toAbsorb.map((bank, stocks) => stocks.firmLoan - bank.nplAmount).sumPln
+      val addAfs         = toAbsorb.map(_._2.govBondAfs).sumPln
+      val addHtm         = toAbsorb.map(_._2.govBondHtm).sumPln
+      val addCorpB       = toAbsorb.flatMap((bank, _) => holderBalances.lift(bank.id.toInt)).sumPln
+      val addCC          = toAbsorb.map(_._2.consumerLoan).sumPln
+      val addIB          = toAbsorb.map(_._2.interbankLoan).sumPln
+      val addBailedInDep = toAbsorb.map(_._2.bailedInDeposits).sumPln
       // Weighted yield: Σ(htmBonds × htmBookYield) — PLN × Rate → PLN
-      val htmYieldWt            = toAbsorb.map((bank, stocks) => stocks.govBondHtm * bank.htmBookYield).sumPln
+      val htmYieldWt     = toAbsorb.map((bank, stocks) => stocks.govBondHtm * bank.htmBookYield).sumPln
 
       val resolvedRows      = banks
         .zip(financialStocks)
@@ -781,16 +789,17 @@ object Banking:
         else if bank.failed && stocks.totalDeposits == PLN.Zero then PLN.Zero
         else holderBalances(index)
       }
-      ResolutionResult(resolved, resolvedStocks, absorberId, resolvedCorpBonds, allFailedFallbackUsed)
+      ResolutionResult(resolved, resolvedStocks, absorberId, resolvedCorpBonds)
 
   /** Find the healthiest surviving bank.
     *
     * Banks with no material risk-weighted assets get the CAR safe floor, so
     * they are excluded from CAR ranking while any risk-bearing survivor exists.
     * This prevents empty balance-sheet shells from attracting all
-    * flight-to-safety deposits or failure-resolution assets. Falls back to
-    * highest capital if all candidates have failed or all survivors are
-    * non-risk-bearing.
+    * flight-to-safety deposits or failure-resolution assets. If no active bank
+    * exists, callers must fail fast or invoke an explicit
+    * recapitalization/shutdown mechanism instead of silently selecting a failed
+    * row.
     */
   def healthiestBankId(
       banks: Vector[BankState],
@@ -802,7 +811,10 @@ object Banking:
       s"Banking.healthiestBankId requires aligned banks and financial stocks, got ${banks.length} banks and ${financialStocks.length} stock rows",
     )
     val alive = banks.zip(financialStocks).filterNot(_._1.failed)
-    if alive.isEmpty then banks.maxBy(_.capital.toLong).id
+    if alive.isEmpty then
+      throw IllegalStateException(
+        "Banking.healthiestBankId cannot select an absorber because every bank is failed. Explicit bridge-bank recapitalization or all-failed shutdown semantics are required.",
+      )
     else
       val riskBearingAlive = alive.filter: (bank, stocks) =>
         riskWeightedAssets(stocks.firmLoan, stocks.consumerLoan, bankCorpBondHoldings(bank.id)) > MinBalanceThreshold

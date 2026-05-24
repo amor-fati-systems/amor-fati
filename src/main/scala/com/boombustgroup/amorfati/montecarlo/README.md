@@ -249,9 +249,11 @@ BankReconciliation_PostResidualReasonCode
 `BankFailure_NewLiquidityBreach` count newly failed banks by primary trigger.
 If several triggers are true in the same month, the primary reason priority is
 negative capital, then CAR breach, then LCR/liquidity breach.
-`BankFailure_AllFailedFallback` is `1` when purchase-and-assumption resolution
-had to choose an absorber from an all-failed bank set. This is a bridge-bank /
-resolution-semantics warning, not an ordinary failure trigger.
+`BankFailure_AllFailedFallback` is retained as a stable diagnostic column and
+should remain zero under the current fail-fast all-failed semantics: if every
+bank has failed while deposits still need resolution, the run is invalid until
+an explicit bridge-bank recapitalization, nationalization, or shutdown
+mechanism is implemented.
 `BankFailure_InvariantViolation` should stay zero; a non-zero value means the
 failure-event diagnostics no longer reconcile to the new-failure count and the
 run should be treated as an invalid model state. `BankFailure_FirstNewReasonCode`

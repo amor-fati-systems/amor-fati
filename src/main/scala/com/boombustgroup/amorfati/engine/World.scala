@@ -303,13 +303,14 @@ object BankCapitalDiagnostics:
   *
   * Reason-code mapping for `firstNewReasonCode`: 0 = none, 1 = negative
   * capital, 2 = CAR breach, 3 = LCR/liquidity breach, 4 = all-failed resolution
-  * fallback, 5 = invariant mismatch.
+  * fallback (stable legacy diagnostic; current all-failed semantics fail fast),
+  * 5 = invariant mismatch.
   */
 case class BankFailureDiagnostics(
     newNegativeCapital: Int = 0, // newly failed banks whose primary trigger was negative capital
     newCarBreach: Int = 0,       // newly failed banks whose primary trigger was the consecutive low-CAR rule
     newLiquidityBreach: Int = 0, // newly failed banks whose primary trigger was the LCR liquidity rule
-    allFailedFallback: Int = 0,  // 1 when resolution had to choose an absorber from an all-failed bank set
+    allFailedFallback: Int = 0,  // stable legacy column; should stay 0 because all-failed resolution now fails fast
     invariantViolation: Int = 0, // failure-event accounting mismatch, should remain zero
     firstNewReasonCode: Int = 0, // reason code for first new failure event in bank-id order, or 0 when none
     firstNewBankId: Int = -1,    // bank id for first new failure event, or -1 when none
