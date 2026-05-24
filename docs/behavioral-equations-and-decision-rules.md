@@ -68,7 +68,7 @@ runtime ledger flows and validates SFC identities.
 | Firm production, investment, technology, financing, default, entry | `agents/Firm.scala`, `engine/economics/FirmEconomics.scala`, `engine/mechanisms/FirmEntry.scala` | `TotalAdoption`, `AutoRatio`, `HybridRatio`, `Automation_TechCapex`, `Automation_TechImports`, `Automation_TechLoans`, `Automation_UpgradeFailures`, `Automation_AiDebtTrap`, `Automation_NewFullAi`, `Automation_NewHybrid`, `Adoption_MicroShare`, `Adoption_SmallShare`, `Adoption_MediumShare`, `Adoption_LargeShare`, `Adoption_CashQ1`-`Q4`, `Adoption_DebtQ1`-`Q4`, sector `*_Auto`, sector `*_Sigma`, `GrossInvestment`, `FirmCredit_NewLoans`, `FirmCredit_PrincipalRepaid`, `FirmCredit_GrossDefault`, `FirmCredit_NetStockFlow`, `FirmCredit_CreditDemand`, `FirmCredit_BankRejected`, `AggCapitalStock`, `AggInventoryStock`, `InventoryChange`, `AggEnergyCost`, `GreenInvestment`, `FirmBirths`, `FirmDeaths`, `NetEntry`, `LivingFirmCount`, `CorpBondIssuance`, `EquityIssuanceTotal` |
 | Banking and monetary plumbing | `agents/Banking.scala`, `engine/economics/BankingEconomics.scala`, `agents/EclStaging.scala`, `agents/DepositMobility.scala`, `agents/InterbankContagion.scala` | `NPL`, `MinBankCAR`, `MaxBankNPL`, `MinBankLCR`, `MinBankNSFR`, `BankFailures`, `BankFailure_*`, `BankEcl_*`, `BankCreditLoss_*`, `BankReconciliation_*`, `InterbankRate`, `WIBOR_1M`, `WIBOR_3M`, `WIBOR_6M`, `BfgLevyTotal`, `BailInLoss`, `M0`, `M1`, `M2`, `M3`, `CreditMultiplier` |
 | Fiscal, NBP, bond market, external sector | `agents/Nbp.scala`, `engine/markets/OpenEconomy.scala`, `engine/economics/OpenEconEconomics.scala`, `engine/markets/CorporateBondMarket.scala`, `engine/markets/BondAuction.scala` | `RefRate`, `BondYield`, `WeightedCoupon`, `BondsOutstanding`, `NbpBondHoldings`, `ForeignBondHoldings`, `QeActive`, `FxReserves`, `FxInterventionAmt`, `CurrentAccount`, `CapitalAccount`, `TradeBalance_OE`, `Exports_OE`, `TotalImports_OE`, `NFA`, `FDI` |
-| Insurance, NBFI, quasi-fiscal, local government | `agents/Insurance.scala`, `agents/Nbfi.scala`, `agents/QuasiFiscal.scala`, `agents/Jst.scala` | `InsLifeReserves`, `InsNonLifeReserves`, `InsLifePremium`, `InsNonLifePremium`, `InsLifeClaims`, `InsNonLifeClaims`, `NbfiTfiAum`, `NbfiOrigination`, `NbfiDefaults`, `NbfiBankTightness`, `QfBondsOutstanding`, `QfIssuance`, `QfLoanPortfolio`, `Esa2010DebtToGdp`, `JstRevenue`, `JstSpending`, `JstDebt`, `JstDeposits` |
+| Insurance, NBFI, quasi-fiscal, local government | `agents/Insurance.scala`, `agents/Nbfi.scala`, `agents/QuasiFiscal.scala`, `agents/Jst.scala` | `InsLifeReserves`, `InsNonLifeReserves`, `InsLifePremium`, `InsNonLifePremium`, `InsLifeClaims`, `InsNonLifeClaims`, `NbfiTfiAum`, `NbfiLoanStock`, `NbfiOrigination`, `NbfiRepayment`, `NbfiDefaults`, `NbfiNetStockFlow`, `NbfiBankTightness`, `NbfiDepositDrainToAum`, `QfBondsOutstanding`, `QfIssuance`, `QfLoanPortfolio`, `Esa2010DebtToGdp`, `JstRevenue`, `JstSpending`, `JstDebt`, `JstDeposits` |
 
 ## Household Rules
 
@@ -1167,6 +1167,12 @@ defaults = loanStock * defaultBase
            * (1 + defaultUnempSensitivity * max(unemploymentRate - 0.05, 0))
 loanStock' = max(loanStock + origination - repayment - defaults, 0)
 ```
+
+The timeseries exposes `NbfiNetStockFlow` as `origination - repayment -
+defaults`, plus `NbfiOriginationToStock`, `NbfiRepaymentToStock`, and
+`NbfiDefaultsToStock` to attribute loan-book runoff. `NbfiDepositDrainToAum`
+diagnoses TFI fund-flow pressure relative to AUM; deposit drain is a banking
+deposit/AUM channel, not a direct term in the NBFI loan-stock identity.
 
 ### Quasi-Fiscal BGK/PFR
 

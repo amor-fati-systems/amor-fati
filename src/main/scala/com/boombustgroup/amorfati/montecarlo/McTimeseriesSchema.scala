@@ -102,6 +102,10 @@ object McTimeseriesSchema:
       (world.real.grossInvestment - world.flows.firmInvestmentCreditApproved).max(PLN.Zero)
     lazy val consumerLoanStock: PLN                                                                 = bankAgg.consumerLoans
     lazy val nbfiLoanStock: PLN                                                                     = ledgerFinancialState.funds.nbfi.nbfiLoanStock
+    lazy val nbfiOrigination: PLN                                                                   = world.financialMarkets.nbfi.lastNbfiOrigination
+    lazy val nbfiRepayment: PLN                                                                     = world.financialMarkets.nbfi.lastNbfiRepayment
+    lazy val nbfiDefaults: PLN                                                                      = world.financialMarkets.nbfi.lastNbfiDefaultAmount
+    lazy val nbfiNetStockFlow: PLN                                                                  = nbfiOrigination - nbfiRepayment - nbfiDefaults
     lazy val eclStage1: PLN                                                                         = banks.map(b => b.eclStaging.stage1).sumPln
     lazy val eclStage2: PLN                                                                         = banks.map(b => b.eclStaging.stage2).sumPln
     lazy val eclStage3: PLN                                                                         = banks.map(b => b.eclStaging.stage3).sumPln
@@ -592,8 +596,13 @@ object McTimeseriesSchema:
     ColumnDef.macroPln("NbfiTfiAum", ctx => ctx.ledgerFinancialState.funds.nbfi.tfiUnit),
     ColumnDef.macroPln("NbfiTfiGovBondHoldings", ctx => ctx.ledgerFinancialState.funds.nbfi.govBondHoldings),
     ColumnDef.macroPln("NbfiLoanStock", ctx => ctx.nbfiLoanStock),
-    ColumnDef.macroPln("NbfiOrigination", ctx => ctx.world.financialMarkets.nbfi.lastNbfiOrigination),
-    ColumnDef.macroPln("NbfiDefaults", ctx => ctx.world.financialMarkets.nbfi.lastNbfiDefaultAmount),
+    ColumnDef.macroPln("NbfiOrigination", ctx => ctx.nbfiOrigination),
+    ColumnDef.macroPln("NbfiRepayment", ctx => ctx.nbfiRepayment),
+    ColumnDef.macroPln("NbfiDefaults", ctx => ctx.nbfiDefaults),
+    ColumnDef.macroPln("NbfiNetStockFlow", ctx => ctx.nbfiNetStockFlow),
+    ColumnDef("NbfiOriginationToStock", ctx => ctx.flowToStockRate(ctx.nbfiOrigination, ctx.nbfiLoanStock)),
+    ColumnDef("NbfiRepaymentToStock", ctx => ctx.flowToStockRate(ctx.nbfiRepayment, ctx.nbfiLoanStock)),
+    ColumnDef("NbfiDefaultsToStock", ctx => ctx.flowToStockRate(ctx.nbfiDefaults, ctx.nbfiLoanStock)),
     ColumnDef("NbfiBankTightness", ctx => ctx.world.financialMarkets.nbfi.lastBankTightness),
     // Quasi-fiscal (BGK/PFR)
     ColumnDef.macroPln("QfBondsOutstanding", ctx => ctx.ledgerFinancialState.funds.quasiFiscal.bondsOutstanding),
@@ -609,6 +618,10 @@ object McTimeseriesSchema:
         else Scalar.Zero,
     ),
     ColumnDef.macroPln("NbfiDepositDrain", ctx => ctx.world.financialMarkets.nbfi.lastDepositDrain),
+    ColumnDef(
+      "NbfiDepositDrainToAum",
+      ctx => ctx.flowToStockRate(ctx.world.financialMarkets.nbfi.lastDepositDrain, ctx.ledgerFinancialState.funds.nbfi.tfiUnit),
+    ),
     // AFS/HTM bond portfolio split
     ColumnDef.macroPln("BankAfsBonds", ctx => ctx.bankAgg.afsBonds),
     ColumnDef.macroPln("BankHtmBonds", ctx => ctx.bankAgg.htmBonds),
@@ -1004,7 +1017,18 @@ object McTimeseriesSchema:
     val NbpBondHoldings: Col                           = lookup("NbpBondHoldings")
     val PpkBondHoldings: Col                           = lookup("PpkBondHoldings")
     val InsGovBondHoldings: Col                        = lookup("InsGovBondHoldings")
+    val NbfiTfiAum: Col                                = lookup("NbfiTfiAum")
     val NbfiTfiGovBondHoldings: Col                    = lookup("NbfiTfiGovBondHoldings")
+    val NbfiLoanStock: Col                             = lookup("NbfiLoanStock")
+    val NbfiOrigination: Col                           = lookup("NbfiOrigination")
+    val NbfiRepayment: Col                             = lookup("NbfiRepayment")
+    val NbfiDefaults: Col                              = lookup("NbfiDefaults")
+    val NbfiNetStockFlow: Col                          = lookup("NbfiNetStockFlow")
+    val NbfiOriginationToStock: Col                    = lookup("NbfiOriginationToStock")
+    val NbfiRepaymentToStock: Col                      = lookup("NbfiRepaymentToStock")
+    val NbfiDefaultsToStock: Col                       = lookup("NbfiDefaultsToStock")
+    val NbfiDepositDrain: Col                          = lookup("NbfiDepositDrain")
+    val NbfiDepositDrainToAum: Col                     = lookup("NbfiDepositDrainToAum")
     val QeActive: Col                                  = lookup("QeActive")
     val DebtService: Col                               = lookup("DebtService")
     val NbpRemittance: Col                             = lookup("NbpRemittance")

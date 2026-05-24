@@ -330,6 +330,34 @@ investment not financed by approved investment credit. The `Tech*` columns cover
 automation and hybrid upgrade credit demand, including otherwise feasible
 upgrades rejected by the relationship bank.
 
+## NBFI Credit Diagnostics
+
+The monthly timeseries NBFI block relevant to non-bank credit runoff is:
+
+```text
+NbfiLoanStock
+NbfiOrigination
+NbfiRepayment
+NbfiDefaults
+NbfiNetStockFlow
+NbfiOriginationToStock
+NbfiRepaymentToStock
+NbfiDefaultsToStock
+NbfiBankTightness
+NbfiDepositDrain
+NbfiDepositDrainToAum
+```
+
+`NbfiNetStockFlow` reports the expected monthly NBFI credit-book flow as
+origination minus repayment minus defaults. Comparing month-over-month
+`NbfiLoanStock` deltas to `NbfiNetStockFlow` isolates any residual stock
+movement. The three `*ToStock` rates identify whether runoff is driven by low
+origination, scheduled repayment, or default. `NbfiBankTightness` is the
+bank-NPL-driven counter-cyclical origination signal, while
+`NbfiDepositDrainToAum` shows whether TFI fund-flow pressure is material
+relative to TFI AUM. TFI deposit drain affects banking-system deposits and AUM;
+it is not a direct term in the NBFI loan-stock identity.
+
 ## Household Liquidity Diagnostics
 
 The timeseries schema and terminal `_hh.csv` summary include generic household
