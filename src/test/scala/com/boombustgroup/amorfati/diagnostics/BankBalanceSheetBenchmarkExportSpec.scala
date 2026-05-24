@@ -1,5 +1,10 @@
 package com.boombustgroup.amorfati.diagnostics
 
+import com.boombustgroup.amorfati.agents.Banking
+import com.boombustgroup.amorfati.config.SimParams
+import com.boombustgroup.amorfati.engine.ledger.LedgerFinancialState
+import com.boombustgroup.amorfati.fp.FixedPointBase
+import com.boombustgroup.amorfati.init.{InitRandomness, WorldInit}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -111,8 +116,31 @@ class BankBalanceSheetBenchmarkExportSpec extends AnyFlatSpec with Matchers:
     bankCsv should include("PKO BP")
     report should include("--seed-start 2")
     report should include("ReserveToDeposits")
-    report should include("regulatory/accounting bank-capital buffer")
-    report should include("not holder-resolved ledger-owned equity")
+    report should include(BankCapitalSourceStatement)
+    report should include("unsupported persisted diagnostic stock")
   }
+
+  it should "source benchmark capital only from BankState.capital" in {
+    given SimParams = SimParams.defaults
+
+    val init         = WorldInit.initialize(InitRandomness.Contract.fromSeed(1L))
+    val shiftedBanks = init.banks.zipWithIndex.map: (bank, idx) =>
+      bank.copy(capital = PLN(100000000L + idx.toLong * 1000000L))
+    val shiftedInit  = init.copy(banks = shiftedBanks)
+
+    val (metrics, bankRows) = computeSeed(Config(runId = "bank-spec", seeds = 1), 1L, shiftedInit)
+    val bankBalances        = shiftedInit.ledgerFinancialState.banks
+    val bankStocks          = bankBalances.map(LedgerFinancialState.projectBankFinancialStocks)
+    val corpBondHoldings    = Banking.bankCorpBondHoldingsFromVector(bankBalances.map(_.corpBond))
+    val aggregate           = Banking.aggregateFromBankStocks(shiftedBanks, bankStocks, corpBondHoldings)
+    val totalAssets         = bankRows.map(_.assets).sumPln
+
+    bankRows.map(_.capital) shouldBe shiftedBanks.map(_.capital)
+    metricValue(metrics, "CapitalToAssets") shouldBe ObservedValue.Finite(BigDecimal(aggregate.capital.toLong) / BigDecimal(totalAssets.toLong))
+    metricValue(metrics, "AggregateCar") shouldBe ObservedValue.Finite(BigDecimal(aggregate.car.toLong) / BigDecimal(FixedPointBase.Scale))
+  }
+
+  private def metricValue(rows: Vector[SeedMetric], id: String): ObservedValue =
+    rows.find(_.target.id == id).map(_.value).getOrElse(fail(s"Missing metric $id"))
 
 end BankBalanceSheetBenchmarkExportSpec
