@@ -320,9 +320,19 @@ ConsumerCreditDemand
 ConsumerRejectedOrigination
 ConsumerBankRejectedOrigination
 ConsumerDebtService
+ConsumerPrincipal
 ConsumerDefault
 ConsumerLoanDefault
 LiquidityBridgeChargeOff
+ConsumerCredit_NetStockFlow
+ConsumerCredit_UnderwrittenNetFlow
+ConsumerCredit_BridgeNetFlow
+ConsumerCredit_NplStock
+ConsumerCredit_NplRatioGross
+ConsumerCredit_ApprovedToDemand
+ConsumerCredit_RejectedToDemand
+ConsumerCredit_BankRejectedToDemand
+ConsumerCredit_ShortfallToApprovedOrigination
 ```
 
 The same mechanisms block exposes the household financial-distress state machine
@@ -351,8 +361,10 @@ older `HouseholdBankruptcies`, `HouseholdBankruptcyRate`, and terminal
 
 The timeseries also includes residual shortfall settlement and its component
 attribution. `ConsumerDefault` is the matching same-month default/write-off
-diagnostic for the combined consumer-credit stock identity; `ConsumerLoanDefault`
-and `LiquidityBridgeChargeOff` split that flow for interpretation:
+diagnostic for the combined consumer-credit stock identity. `ConsumerPrincipal`
+reports principal repayment and is not part of the default/write-off flow;
+`ConsumerLoanDefault` and `LiquidityBridgeChargeOff` split the write-off flow
+into ordinary consumer-loan default and same-month bridge charge-off:
 
 ```text
 HouseholdLiquidity_ShortfallFinancing
@@ -393,6 +405,17 @@ or is already failed.
 principal; `LiquidityBridgeChargeOff` reports the same-month bridge write-off.
 For the bridge component, the stock effect is zero because
 `HouseholdLiquidity_ShortfallFinancing` is offset by `ConsumerDefault`.
+`ConsumerCredit_NetStockFlow` reconciles the total monthly consumer-loan stock
+flow as origination minus principal repayment minus default. The
+`ConsumerCredit_UnderwrittenNetFlow` and `ConsumerCredit_BridgeNetFlow` columns
+split that identity into the approved-loan channel and same-month bridge
+channel. `ConsumerCredit_NplStock` reports the ordinary consumer-loan NPL stock.
+The legacy `ConsumerNplRatio` uses performing `ConsumerLoans` as denominator;
+`ConsumerCredit_NplRatioGross` uses `ConsumerLoans + ConsumerCredit_NplStock`
+for a gross-book denominator. The `ConsumerCredit_*ToDemand` columns separate
+borrower-side and bank-side rejection, while
+`ConsumerCredit_ShortfallToApprovedOrigination` compares residual liquidity
+bridge pressure to underwritten consumer-credit origination.
 
 The `HouseholdLiquidity_ConsumptionShortfall`, `RentArrears`,
 `MortgageArrears`, `ConsumerDebtArrears`, and `TemporaryOverdraft` columns split

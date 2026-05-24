@@ -489,9 +489,29 @@ object McTimeseriesSchema:
     ColumnDef.macroPln("ConsumerRejectedOrigination", ctx => ctx.hhAgg.totalConsumerRejectedOrigination),
     ColumnDef.macroPln("ConsumerBankRejectedOrigination", ctx => ctx.hhAgg.totalConsumerBankRejectedOrigination),
     ColumnDef.macroPln("ConsumerDebtService", ctx => ctx.hhAgg.totalConsumerDebtService),
+    ColumnDef.macroPln("ConsumerPrincipal", ctx => ctx.hhAgg.totalConsumerPrincipal),
     ColumnDef.macroPln("ConsumerDefault", ctx => ctx.hhAgg.totalConsumerDefault),
     ColumnDef.macroPln("ConsumerLoanDefault", ctx => ctx.hhAgg.totalConsumerLoanDefault),
     ColumnDef.macroPln("LiquidityBridgeChargeOff", ctx => ctx.hhAgg.totalLiquidityBridgeChargeOff),
+    ColumnDef
+      .macroPln("ConsumerCredit_NetStockFlow", ctx => ctx.hhAgg.totalConsumerOrigination - ctx.hhAgg.totalConsumerPrincipal - ctx.hhAgg.totalConsumerDefault),
+    ColumnDef.macroPln(
+      "ConsumerCredit_UnderwrittenNetFlow",
+      ctx => ctx.hhAgg.totalConsumerApprovedOrigination - ctx.hhAgg.totalConsumerPrincipal - ctx.hhAgg.totalConsumerLoanDefault,
+    ),
+    ColumnDef.macroPln("ConsumerCredit_BridgeNetFlow", ctx => ctx.hhAgg.totalLiquidityShortfallFinancing - ctx.hhAgg.totalLiquidityBridgeChargeOff),
+    ColumnDef.macroPln("ConsumerCredit_NplStock", ctx => ctx.bankAgg.consumerNpl),
+    ColumnDef("ConsumerCredit_NplRatioGross", ctx => ctx.flowToStockRate(ctx.bankAgg.consumerNpl, ctx.consumerLoanStock + ctx.bankAgg.consumerNpl)),
+    ColumnDef("ConsumerCredit_ApprovedToDemand", ctx => ctx.flowToFlowRatio(ctx.hhAgg.totalConsumerApprovedOrigination, ctx.hhAgg.totalConsumerCreditDemand)),
+    ColumnDef("ConsumerCredit_RejectedToDemand", ctx => ctx.flowToFlowRatio(ctx.hhAgg.totalConsumerRejectedOrigination, ctx.hhAgg.totalConsumerCreditDemand)),
+    ColumnDef(
+      "ConsumerCredit_BankRejectedToDemand",
+      ctx => ctx.flowToFlowRatio(ctx.hhAgg.totalConsumerBankRejectedOrigination, ctx.hhAgg.totalConsumerCreditDemand),
+    ),
+    ColumnDef(
+      "ConsumerCredit_ShortfallToApprovedOrigination",
+      ctx => ctx.flowToFlowRatio(ctx.hhAgg.totalLiquidityShortfallFinancing, ctx.hhAgg.totalConsumerApprovedOrigination),
+    ),
     ColumnDef.macroPln("TotalCreditStock", ctx => ctx.totalCreditStock),
     ColumnDef("BankFirmLoansToGdp", ctx => ctx.annualizedGdpRatio(ctx.bankFirmLoans)),
     ColumnDef("ConsumerLoansToGdp", ctx => ctx.annualizedGdpRatio(ctx.consumerLoanStock)),
@@ -990,6 +1010,16 @@ object McTimeseriesSchema:
     val BankReconciliationCrossedFailureThreshold: Col = lookup("BankReconciliation_CrossedFailureThreshold")
     val BankReconciliationPostResidualReasonCode: Col  = lookup("BankReconciliation_PostResidualReasonCode")
     val BankFirmLoans: Col                             = lookup("BankFirmLoans")
+    val ConsumerPrincipal: Col                         = lookup("ConsumerPrincipal")
+    val ConsumerCreditNetStockFlow: Col                = lookup("ConsumerCredit_NetStockFlow")
+    val ConsumerCreditUnderwrittenNetFlow: Col         = lookup("ConsumerCredit_UnderwrittenNetFlow")
+    val ConsumerCreditBridgeNetFlow: Col               = lookup("ConsumerCredit_BridgeNetFlow")
+    val ConsumerCreditNplStock: Col                    = lookup("ConsumerCredit_NplStock")
+    val ConsumerCreditNplRatioGross: Col               = lookup("ConsumerCredit_NplRatioGross")
+    val ConsumerCreditApprovedToDemand: Col            = lookup("ConsumerCredit_ApprovedToDemand")
+    val ConsumerCreditRejectedToDemand: Col            = lookup("ConsumerCredit_RejectedToDemand")
+    val ConsumerCreditBankRejectedToDemand: Col        = lookup("ConsumerCredit_BankRejectedToDemand")
+    val ConsumerCreditShortfallToApproved: Col         = lookup("ConsumerCredit_ShortfallToApprovedOrigination")
     val TotalCreditStock: Col                          = lookup("TotalCreditStock")
     val TotalCreditToGdp: Col                          = lookup("TotalCreditToGdp")
     val ReserveInterest: Col                           = lookup("ReserveInterest")
