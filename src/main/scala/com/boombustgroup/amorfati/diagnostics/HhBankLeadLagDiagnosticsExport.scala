@@ -170,14 +170,13 @@ object HhBankLeadLagDiagnosticsExport:
         .writeFold(
           validConfig.runRoot.resolve("hh-bank-lead-lag-bank-months.csv"),
           McDiagnosticRunner
-            .runScenarioSeeds(
+            .runScenarioSeedStreams(
               Scenarios,
               validConfig.seedRange,
               validConfig.months,
               _.id,
               _.params,
-            )((scenario, seed, months) => computeBankRows(validConfig, scenario, seed, months))
-            .flatMap(rows => ZStream.fromIterable(rows)),
+            )((scenario, seed, months) => computeBankRows(validConfig, scenario, seed, months)),
           BankMonthCsvSchema,
           Vector.newBuilder[BankMonthRow],
         )((builder, row) => builder += row)(DiagnosticIo.outputFailure)
@@ -228,7 +227,7 @@ object HhBankLeadLagDiagnosticsExport:
       scenario: HhBankLeadLagScenarios.Spec,
       seed: Long,
       months: ZStream[Any, String, McSeedMonth],
-  ): ZIO[Any, String, Vector[BankMonthRow]] =
+  ): ZStream[Any, String, BankMonthRow] =
     months
       .mapZIO: month =>
         ZIO
@@ -236,8 +235,7 @@ object HhBankLeadLagDiagnosticsExport:
           .mapError(err =>
             s"Scenario ${scenario.id} seed $seed failed HH-bank row construction at month ${month.executionMonth.toInt}: ${Option(err.getMessage).getOrElse(err.getClass.getSimpleName)}",
           )
-      .runCollect
-      .map(_.flatten.toVector)
+      .mapConcat(identity)
 
   private def bankMonthRows(
       config: Config,

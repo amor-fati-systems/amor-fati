@@ -226,6 +226,7 @@ object BankFailureAblationExport:
       )
 
   private final case class SeedAccumulator(
+      observedMonths: Int,
       firstFailure: Option[FirstFailureSnapshot],
       terminalRow: Option[Array[MetricValue]],
       peakFailures: Int,
@@ -238,6 +239,7 @@ object BankFailureAblationExport:
   ):
     def observe(row: Array[MetricValue]): SeedAccumulator =
       copy(
+        observedMonths = observedMonths + 1,
         firstFailure = firstFailure.orElse(Option.when(col(row, "BankCapital_NewFailures") > BigDecimal(0))(FirstFailureSnapshot.from(row))),
         terminalRow = Some(row),
         peakFailures = scala.math.max(peakFailures, colInt(row, "BankFailures")),
@@ -250,43 +252,48 @@ object BankFailureAblationExport:
       )
 
     def toSeedResult(config: Config, scenario: BankFailureAblationScenarios.Spec, seed: Long): Either[String, SeedResult] =
-      terminalRow
-        .toRight("bank-failure ablation run produced no monthly rows")
-        .map: terminal =>
-          SeedResult(
-            runId = config.runId,
-            scenarioId = scenario.id,
-            scenarioLabel = scenario.label,
-            seed = seed,
-            months = config.months,
-            firstFailureMonth = firstFailure.map(_.month),
-            firstFailureReasonCode = firstFailure.map(_.reasonCode).getOrElse(0),
-            firstFailureBankId = firstFailure.map(_.bankId).getOrElse(-1),
-            terminalFailures = colInt(terminal, "BankFailures"),
-            peakFailures = peakFailures,
-            cumulativeNewFailures = cumulativeNewFailures,
-            cumulativeRealizedCreditLoss = cumulativeRealizedCreditLoss,
-            cumulativeEclProvisionChange = cumulativeEclProvisionChange,
-            cumulativeBailInLoss = cumulativeBailInLoss,
-            cumulativeCapitalDestruction = cumulativeCapitalDestruction,
-            cumulativeReconciliationResidualAbs = cumulativeReconciliationResidualAbs,
-            firstFailureRealizedCreditLoss = firstFailure.map(_.realizedCreditLoss).getOrElse(BigDecimal(0)),
-            firstFailureEclProvisionChange = firstFailure.map(_.eclProvisionChange).getOrElse(BigDecimal(0)),
-            firstFailureConsumerNplLoss = firstFailure.map(_.consumerNplLoss).getOrElse(BigDecimal(0)),
-            firstFailureFirmNplLoss = firstFailure.map(_.firmNplLoss).getOrElse(BigDecimal(0)),
-            firstFailureMortgageNplLoss = firstFailure.map(_.mortgageNplLoss).getOrElse(BigDecimal(0)),
-            firstFailureCorpBondDefaultLoss = firstFailure.map(_.corpBondDefaultLoss).getOrElse(BigDecimal(0)),
-            firstFailureReconciliationResidual = firstFailure.map(_.reconciliationResidual).getOrElse(BigDecimal(0)),
-            firstFailureDepositBailInLoss = firstFailure.map(_.depositBailInLoss).getOrElse(BigDecimal(0)),
-            terminalTotalCreditToGdp = col(terminal, "TotalCreditToGdp"),
-            terminalUnemployment = col(terminal, "Unemployment"),
-            terminalInflation = col(terminal, "Inflation"),
-            interpretation = scenario.interpretation,
-          )
+      for
+        _        <- Either.cond(
+          observedMonths == config.months,
+          (),
+          s"bank-failure ablation expected ${config.months} monthly rows for scenario ${scenario.id} seed $seed, observed $observedMonths",
+        )
+        terminal <- terminalRow.toRight("bank-failure ablation run produced no monthly rows")
+      yield SeedResult(
+        runId = config.runId,
+        scenarioId = scenario.id,
+        scenarioLabel = scenario.label,
+        seed = seed,
+        months = config.months,
+        firstFailureMonth = firstFailure.map(_.month),
+        firstFailureReasonCode = firstFailure.map(_.reasonCode).getOrElse(0),
+        firstFailureBankId = firstFailure.map(_.bankId).getOrElse(-1),
+        terminalFailures = colInt(terminal, "BankFailures"),
+        peakFailures = peakFailures,
+        cumulativeNewFailures = cumulativeNewFailures,
+        cumulativeRealizedCreditLoss = cumulativeRealizedCreditLoss,
+        cumulativeEclProvisionChange = cumulativeEclProvisionChange,
+        cumulativeBailInLoss = cumulativeBailInLoss,
+        cumulativeCapitalDestruction = cumulativeCapitalDestruction,
+        cumulativeReconciliationResidualAbs = cumulativeReconciliationResidualAbs,
+        firstFailureRealizedCreditLoss = firstFailure.map(_.realizedCreditLoss).getOrElse(BigDecimal(0)),
+        firstFailureEclProvisionChange = firstFailure.map(_.eclProvisionChange).getOrElse(BigDecimal(0)),
+        firstFailureConsumerNplLoss = firstFailure.map(_.consumerNplLoss).getOrElse(BigDecimal(0)),
+        firstFailureFirmNplLoss = firstFailure.map(_.firmNplLoss).getOrElse(BigDecimal(0)),
+        firstFailureMortgageNplLoss = firstFailure.map(_.mortgageNplLoss).getOrElse(BigDecimal(0)),
+        firstFailureCorpBondDefaultLoss = firstFailure.map(_.corpBondDefaultLoss).getOrElse(BigDecimal(0)),
+        firstFailureReconciliationResidual = firstFailure.map(_.reconciliationResidual).getOrElse(BigDecimal(0)),
+        firstFailureDepositBailInLoss = firstFailure.map(_.depositBailInLoss).getOrElse(BigDecimal(0)),
+        terminalTotalCreditToGdp = col(terminal, "TotalCreditToGdp"),
+        terminalUnemployment = col(terminal, "Unemployment"),
+        terminalInflation = col(terminal, "Inflation"),
+        interpretation = scenario.interpretation,
+      )
 
   private object SeedAccumulator:
     val Empty: SeedAccumulator =
       SeedAccumulator(
+        observedMonths = 0,
         firstFailure = None,
         terminalRow = None,
         peakFailures = 0,

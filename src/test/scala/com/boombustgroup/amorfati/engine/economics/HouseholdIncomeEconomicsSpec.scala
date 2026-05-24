@@ -85,3 +85,24 @@ class HouseholdIncomeEconomicsSpec extends AnyFlatSpec with Matchers:
     gate(BankId(0), PLN(200), RandomStream.seeded(1)) shouldBe true
     gate(BankId(0), PLN(200), RandomStream.seeded(2)) shouldBe false
   }
+
+  it should "fail fast when bank configs do not align with bank rows" in {
+    val badWorld = w.copy(bankingSector = w.bankingSector.copy(configs = w.bankingSector.configs.dropRight(1)))
+
+    val err = intercept[IllegalArgumentException]:
+      HouseholdIncomeEconomics.compute(
+        badWorld,
+        init.firms,
+        init.households,
+        init.banks,
+        init.ledgerFinancialState,
+        s1.lendingBaseRate,
+        s1.resWage,
+        s2.newWage,
+        RandomStream.seeded(99),
+      )
+
+    err.getMessage should include("HouseholdIncomeEconomics.hhBankRates")
+    err.getMessage should include(s"banks=${init.banks.length}")
+    err.getMessage should include(s"configs=${w.bankingSector.configs.length - 1}")
+  }

@@ -3,6 +3,7 @@ package com.boombustgroup.amorfati.diagnostics
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.EitherValues.*
+import zio.stream.ZStream
 
 import java.nio.file.Path
 
@@ -54,6 +55,16 @@ class BankFailureAblationExportSpec extends AnyFlatSpec with Matchers:
     BankFailureAblationExport.validate(BankFailureAblationExport.Config(months = 0)).left.value should include("--months")
     BankFailureAblationExport.validate(BankFailureAblationExport.Config(runId = " ")).left.value should include("--run-id")
     BankFailureAblationExport.validate(BankFailureAblationExport.Config()).isRight shouldBe true
+  }
+
+  it should "fail when a seed stream emits fewer months than requested" in {
+    val config = BankFailureAblationExport.Config(seeds = 1, months = 2, runId = "test")
+
+    val result = DiagnosticIo.unsafeRun:
+      BankFailureAblationExport.computeSeedResult(config, BankFailureAblationExport.Scenarios.head, 1L, ZStream.empty)
+
+    result.left.value should include("expected 2 monthly rows")
+    result.left.value should include("observed 0")
   }
 
   private def seed(

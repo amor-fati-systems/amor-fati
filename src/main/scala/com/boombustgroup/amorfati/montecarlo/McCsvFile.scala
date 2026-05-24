@@ -5,7 +5,7 @@ import zio.{Scope, ZIO}
 
 import java.io.BufferedWriter
 import java.nio.charset.StandardCharsets
-import java.nio.file.{Files, Path, StandardCopyOption}
+import java.nio.file.{AtomicMoveNotSupportedException, Files, Path, StandardCopyOption}
 
 private[amorfati] object McCsvFile:
 
@@ -80,9 +80,11 @@ private[amorfati] object McCsvFile:
         writer.newLine()
       .mapError(err => outputFailure("write CSV row", outputFile, err))
 
-  private def finalizeFile[E](tempFile: Path, outputFile: Path, outputFailure: OutputFailure[E]): ZIO[Any, E, Unit] =
+  private[montecarlo] def finalizeFile[E](tempFile: Path, outputFile: Path, outputFailure: OutputFailure[E]): ZIO[Any, E, Unit] =
     ZIO
-      .attemptBlocking(Files.move(tempFile, outputFile, StandardCopyOption.REPLACE_EXISTING))
+      .attemptBlocking:
+        try Files.move(tempFile, outputFile, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+        catch case _: AtomicMoveNotSupportedException => Files.move(tempFile, outputFile, StandardCopyOption.REPLACE_EXISTING)
       .unit
       .mapError(err => outputFailure("finalize CSV file", outputFile, err))
 

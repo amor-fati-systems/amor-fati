@@ -63,6 +63,7 @@ object HouseholdIncomeEconomics:
     val bsec               = w.bankingSector
     val nBanksHh           = banks.length
     val bankStocks         = ledgerFinancialState.banks.map(LedgerFinancialState.projectBankFinancialStocks)
+    requireBankRateInputsAligned(banks, bankStocks, bsec.configs)
     val ccyb               = w.mechanisms.macropru.ccyb
     val bankCorpBonds      = (bankId: BankId) => CorporateBondOwnership.bankHolderFor(ledgerFinancialState, bankId)
     val hhBankRates        = Some(
@@ -124,6 +125,22 @@ object HouseholdIncomeEconomics:
       aggUnempBenefit = PLN.Zero,
       ledgerFinancialState = ledgerFinancialState.copy(households = householdStep.financialStocks.map(LedgerFinancialState.householdBalances)),
     )
+
+  private def requireBankRateInputsAligned(
+      banks: Vector[Banking.BankState],
+      bankStocks: Vector[Banking.BankFinancialStocks],
+      configs: Vector[Banking.Config],
+  ): Unit =
+    val bankIds   = banks.map(_.id.toInt)
+    val configIds = configs.map(_.id.toInt)
+    if banks.length != bankStocks.length || banks.length != configs.length || bankIds != configIds then
+      val configNames = configs.map(config => s"${config.id.toInt}:${config.name}")
+      throw new IllegalArgumentException(
+        "HouseholdIncomeEconomics.hhBankRates requires aligned bank rows, ledger bank stocks, and bank configs; " +
+          s"banks=${banks.length} ids=${bankIds.mkString("[", ",", "]")}, " +
+          s"ledgerBanks=${bankStocks.length}, " +
+          s"configs=${configs.length} ids=${configIds.mkString("[", ",", "]")} names=${configNames.mkString("[", ",", "]")}",
+      )
 
   private[economics] def capitalAwareConsumerCreditGate(
       banks: Vector[Banking.BankState],
