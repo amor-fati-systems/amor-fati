@@ -460,7 +460,7 @@ object SfcMatrixEvidence:
         case BankCapital                 =>
           rowMetadata(
             "Bank capital",
-            "Actual delta from bank capital stocks; expected delta from bank P&L, default/write-off, valuation, provision, and capital-destruction channels.",
+            "Actual delta from bank capital stocks; expected delta from bank P&L, default/write-off, interbank-contagion, valuation, provision, and capital-destruction channels.",
             Vector(AssetType.Capital),
             Vector(
               FlowMechanism.BankFirmInterest,
@@ -479,7 +479,7 @@ object SfcMatrixEvidence:
               FlowMechanism.BankBfgLevy,
               FlowMechanism.BankUnrealizedLoss,
             ),
-            "Bank capital is a persisted unsupported diagnostic stock, not a supported transferable ledger asset; this identity validates its exact P&L delta, including non-batch htmRealizedLoss, eclProvisionChange, and bankCapitalDestruction from BankingEconomics.",
+            "Bank capital is a persisted unsupported diagnostic stock, not a supported transferable ledger asset; this identity validates its exact P&L delta, including non-batch htmRealizedLoss, eclProvisionChange, interbankContagionLoss, and bankCapitalDestruction from BankingEconomics.",
           )
         case BankDeposits                =>
           rowMetadata(

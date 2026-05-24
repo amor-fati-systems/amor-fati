@@ -40,8 +40,9 @@ Monthly bank-capital movements are validated as a P&L and loss-recognition
 waterfall:
 
 - retained bank income increases the buffer;
-- credit losses, corporate-bond losses, bond valuation losses, BFG levy,
-  provision changes and failed-bank capital destruction reduce it;
+- credit losses, corporate-bond losses, interbank contagion losses, bond
+  valuation losses, BFG levy, provision changes and failed-bank capital
+  destruction reduce it;
 - bail-in is a depositor haircut and deposit-resolution channel, reported near
   bank-capital diagnostics but not treated as bank-equity ownership transfer.
 

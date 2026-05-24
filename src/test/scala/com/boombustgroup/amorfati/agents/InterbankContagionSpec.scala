@@ -110,10 +110,13 @@ class InterbankContagionSpec extends AnyFlatSpec with Matchers:
     val failedRows   =
       Vector(mkBankRow(0, BigDecimal("100.0"), capital = BigDecimal("1e9")), mkBankRow(1, -BigDecimal("100.0"), capital = -BigDecimal("1.0"), failed = true))
     val matrix       = InterbankContagion.buildExposureMatrix(banks(exposureRows), stocks(exposureRows))
-    val after        = InterbankContagion.applyContagionLosses(banks(failedRows), matrix)
+    val result       = InterbankContagion.applyContagionLosses(banks(failedRows), matrix)
+    val after        = result.banks
     // Lender loses exposure × (1 - recovery)
     val expectedLoss = BigDecimal("100.0") * (BigDecimal("1.0") - decimal(p.banking.interbankRecoveryRate))
     decimal(after(0).capital) shouldBe (BigDecimal("1e9") - expectedLoss) +- BigDecimal("0.01")
+    decimal(result.lossesByBank(0)) shouldBe expectedLoss +- BigDecimal("0.01")
+    decimal(result.totalLoss) shouldBe expectedLoss +- BigDecimal("0.01")
   }
 
   it should "not affect banks with no exposure to failed bank" in {
@@ -129,8 +132,10 @@ class InterbankContagionSpec extends AnyFlatSpec with Matchers:
         mkBankRow(2, BigDecimal("100.0"), capital = BigDecimal("1e9")),
       )
     val matrix       = InterbankContagion.buildExposureMatrix(banks(exposureRows), stocks(exposureRows))
-    val after        = InterbankContagion.applyContagionLosses(banks(failedRows), matrix)
+    val result       = InterbankContagion.applyContagionLosses(banks(failedRows), matrix)
+    val after        = result.banks
     decimal(after(0).capital) shouldBe BigDecimal("1e9") +- BigDecimal("0.01") // safe bank untouched
+    result.lossesByBank(0) shouldBe PLN.Zero
   }
 
   it should "make contagion insolvency visible to the same-month failure check" in {
@@ -138,11 +143,13 @@ class InterbankContagionSpec extends AnyFlatSpec with Matchers:
     val failedRows   =
       Vector(mkBankRow(0, BigDecimal("100.0"), capital = BigDecimal("1.0")), mkBankRow(1, -BigDecimal("100.0"), capital = -BigDecimal("1.0"), failed = true))
     val matrix       = InterbankContagion.buildExposureMatrix(banks(exposureRows), stocks(exposureRows))
-    val afterLosses  = InterbankContagion.applyContagionLosses(banks(failedRows), matrix)
+    val result       = InterbankContagion.applyContagionLosses(banks(failedRows), matrix)
+    val afterLosses  = result.banks
     val cleanStocks  = stocks(exposureRows).map(_.copy(demandDeposit = PLN.Zero, termDeposit = PLN.Zero))
     val checked      = Banking.checkFailures(afterLosses, cleanStocks, ExecutionMonth(30), enabled = true, Multiplier.Zero)
 
     afterLosses(0).capital should be < PLN.Zero
+    result.totalLoss should be > PLN.Zero
     checked.banks(0).failed shouldBe true
     checked.anyFailed shouldBe true
   }

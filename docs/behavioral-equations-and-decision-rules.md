@@ -726,6 +726,7 @@ deltaCapital =
   - unrealizedBondLoss
   - htmRealizedLoss
   - eclProvisionChange
+  - interbankContagionLoss
   - capitalDestruction
 
 waterfallResidual =
@@ -739,6 +740,11 @@ realizedCreditLoss =
   + consumerNplLoss
   + bankHeldCorporateBondDefaultLoss
 ```
+
+`BankCapital_InterbankContagionLoss` is reported as its own waterfall term:
+failed-bank interbank exposures reduce exposed counterparty bank capital before
+secondary failure checks. It is not routed through
+`BankCapital_ReconciliationResidual`.
 
 `BankCapital_ReconciliationResidual` is reported separately as an exactness
 correction to the per-bank allocation. `BankCapital_WaterfallResidual` is the

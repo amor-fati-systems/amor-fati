@@ -62,6 +62,7 @@ object BankingEconomics:
       bfgLevy: PLN,                                                 // BFG resolution fund levy (aggregate)
       bailInLoss: PLN,                                              // bail-in deposit destruction (aggregate)
       multiCapDestruction: PLN,                                     // capital wiped when banks fail
+      interbankContagionLoss: PLN,                                  // counterparty losses from failed-bank interbank exposures
       bankCapitalDiagnostics: BankCapitalDiagnostics,               // aggregate monthly bank-capital waterfall diagnostics
       bankFailureDiagnostics: BankFailureDiagnostics,               // monthly bank-failure trigger diagnostics
       bankReconciliationDiagnostics: BankReconciliationDiagnostics, // exactness-patch impact on target bank capital/CAR
@@ -152,6 +153,7 @@ object BankingEconomics:
       reassignedHouseholds: Vector[Household.State],                // households reassigned from failed banks to absorber bank
       bailInLoss: PLN,                                              // total bail-in losses imposed on depositors
       multiCapDestruction: PLN,                                     // capital destroyed by bank failures this month
+      interbankContagionLoss: PLN,                                  // counterparty losses from failed-bank interbank exposures
       newFailures: Int,                                             // banks newly marked failed during this month
       capitalReconciliationResidual: PLN,                           // exactness correction applied to one per-bank capital row
       bankCapitalTerms: BankCapitalTerms,                           // shared capital-waterfall terms used by reconciliation and diagnostics
@@ -303,6 +305,7 @@ object BankingEconomics:
       htmRealizedLoss = multi.htmRealizedLoss,
       eclProvisionChange = bankCapitalTerms.eclProvisionChange,
       capitalDestruction = multi.multiCapDestruction,
+      interbankContagionLoss = multi.interbankContagionLoss,
       reconciliationResidual = multi.capitalReconciliationResidual,
       depositBailInLoss = multi.bailInLoss,
       newFailures = multi.newFailures,
@@ -326,6 +329,7 @@ object BankingEconomics:
       bfgLevy = bfgLevy,
       bailInLoss = multi.bailInLoss,
       multiCapDestruction = multi.multiCapDestruction,
+      interbankContagionLoss = multi.interbankContagionLoss,
       bankCapitalDiagnostics = bankCapitalDiagnostics,
       bankFailureDiagnostics = multi.bankFailureDiagnostics,
       bankReconciliationDiagnostics = multi.bankReconciliationDiagnostics,
@@ -916,9 +920,10 @@ object BankingEconomics:
 
     // Interbank contagion: failed banks impose losses on counterparties
     val exposures       = InterbankContagion.buildExposureMatrix(tfiSale.banks, tfiSale.financialStocks)
-    val afterContagion  =
+    val contagionResult =
       if failResult.anyFailed then InterbankContagion.applyContagionLosses(failResult.banks, exposures)
-      else failResult.banks
+      else InterbankContagion.ContagionLossResult.unchanged(failResult.banks)
+    val afterContagion  = contagionResult.banks
     // Re-check for secondary failures triggered by contagion losses
     val secondaryFail   =
       Banking.checkFailures(afterContagion, tfiSale.financialStocks, in.s1.m, true, in.s7.newMacropru.ccyb, bankCorpBondHoldingsAfterSettlement)
@@ -938,13 +943,17 @@ object BankingEconomics:
     val afterResolveCorpBonds = resolveResult.bankCorpBondHoldings
     val newFailureCount       =
       if anyFailed then tfiSale.banks.zip(afterFailCheck).count { case (pre, post) => !pre.failed && post.failed } else 0
-    val multiCapDest: PLN     =
-      if anyFailed then
-        tfiSale.banks
-          .zip(afterFailCheck)
-          .collect { case (pre, post) if !pre.failed && post.failed => pre.capital }
-          .sumPln
-      else PLN.Zero
+    val primaryCapDest: PLN   =
+      tfiSale.banks
+        .zip(failResult.banks)
+        .collect { case (pre, post) if !pre.failed && post.failed => pre.capital }
+        .sumPln
+    val secondaryCapDest: PLN =
+      afterContagion
+        .zip(afterFailCheck)
+        .collect { case (pre, post) if !pre.failed && post.failed => pre.capital }
+        .sumPln
+    val multiCapDest: PLN     = if anyFailed then primaryCapDest + secondaryCapDest else PLN.Zero
     val curve                 =
       val exp = in.w.mechanisms.expectations
       Some(
@@ -974,6 +983,7 @@ object BankingEconomics:
       mortgageFlows = mortgageFlows,
       bailInLoss = bailInResult.totalLoss,
       multiCapDestruction = multiCapDest,
+      interbankContagionLoss = contagionResult.totalLoss,
       htmRealizedLoss = htmResult.totalRealizedLoss,
       bankCapitalTerms = bankCapitalTerms,
     )
@@ -1031,6 +1041,7 @@ object BankingEconomics:
       reassignedHouseholds = reassignedHouseholds,
       bailInLoss = totalBailInLoss,
       multiCapDestruction = totalCapDestruction,
+      interbankContagionLoss = contagionResult.totalLoss,
       newFailures = totalNewFailures,
       capitalReconciliationResidual = reconciled.capitalResidual,
       bankCapitalTerms = bankCapitalTerms,
@@ -1130,6 +1141,7 @@ object BankingEconomics:
       mortgageFlows: HousingMarket.MortgageFlows,
       bailInLoss: PLN,
       multiCapDestruction: PLN,
+      interbankContagionLoss: PLN,
       htmRealizedLoss: PLN,
       bankCapitalTerms: BankCapitalTerms,
   )(using p: SimParams): AggregateReconciliationResult =
@@ -1157,6 +1169,7 @@ object BankingEconomics:
         mortgageFlows = mortgageFlows,
         bailInLoss = bailInLoss,
         multiCapDestruction = multiCapDestruction,
+        interbankContagionLoss = interbankContagionLoss,
         htmRealizedLoss = htmRealizedLoss,
         bankCapitalTerms = bankCapitalTerms,
       )
@@ -1260,13 +1273,15 @@ object BankingEconomics:
       mortgageFlows: HousingMarket.MortgageFlows,
       bailInLoss: PLN,
       multiCapDestruction: PLN,
+      interbankContagionLoss: PLN,
       htmRealizedLoss: PLN,
       bankCapitalTerms: BankCapitalTerms,
   )(using p: SimParams): AggregateReconciliation =
     val capitalLosses  = in.s5.nplLoss + mortgageFlows.defaultLoss + in.s6.consumerNplLoss +
       in.s8.corpBonds.corpBondBankDefaultLoss +
       Banking.computeBfgLevy(in.banks, in.ledgerFinancialState.banks.map(LedgerFinancialState.projectBankFinancialStocks)).total +
-      bankCapitalTerms.unrealizedBondLoss + htmRealizedLoss + bankCapitalTerms.eclProvisionChange + multiCapDestruction
+      interbankContagionLoss + bankCapitalTerms.unrealizedBondLoss + htmRealizedLoss +
+      bankCapitalTerms.eclProvisionChange + multiCapDestruction
     val targetCapital  = prevBankAgg.capital - capitalLosses + bankCapitalTerms.retainedIncome
     val targetDeposits = prevBankAgg.deposits + in.s3.totalIncome - in.s3.consumption +
       investNetDepositFlow + jstDepositChange + quasiFiscalDepositChange + in.s7.netDomesticDividends -

@@ -37,6 +37,16 @@ object InterbankContagion:
     */
   type ExposureMatrix = Vector[Vector[PLN]]
 
+  final case class ContagionLossResult(
+      banks: Vector[Banking.BankState],
+      lossesByBank: Vector[PLN],
+      totalLoss: PLN,
+  )
+
+  object ContagionLossResult:
+    def unchanged(banks: Vector[Banking.BankState]): ContagionLossResult =
+      ContagionLossResult(banks, Vector.fill(banks.length)(PLN.Zero), PLN.Zero)
+
   /** Build bilateral exposure matrix from interbank surplus/deficit.
     *
     * Each lender i allocates lending proportionally to each borrower j's
@@ -86,17 +96,26 @@ object InterbankContagion:
   def applyContagionLosses(
       banks: Vector[Banking.BankState],
       exposures: ExposureMatrix,
-  )(using p: SimParams): Vector[Banking.BankState] =
+  )(using p: SimParams): ContagionLossResult =
+    require(
+      exposures.length == banks.length && exposures.forall(_.length == banks.length),
+      s"InterbankContagion.applyContagionLosses requires a square ${banks.length}x${banks.length} exposure matrix, got ${exposures.length} rows",
+    )
     val recovery = p.banking.interbankRecoveryRate
-    banks.zipWithIndex.map: (b, i) =>
-      if b.failed then b
+    val losses   = banks.zipWithIndex.map: (b, i) =>
+      if b.failed then PLN.Zero
       else
         val loss = banks.zipWithIndex.foldLeft(PLN.Zero):
           case (acc, (counterparty, j)) =>
             if counterparty.failed && i != j then acc + exposures(i)(j) * (Share.One - recovery)
             else acc
+        loss
+    val updated  = banks
+      .zip(losses)
+      .map: (b, loss) =>
         if loss > PLN.Zero then b.copy(capital = b.capital - loss)
         else b
+    ContagionLossResult(updated, losses, losses.sumPln)
 
   /** Compute liquidity hoarding factor: reduces interbank lending when system
     * NPL rises above threshold.

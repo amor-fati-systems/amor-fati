@@ -271,6 +271,7 @@ class SfcSpec extends AnyFlatSpec with Matchers:
     bfgLevy = PLN.Zero,
     bailInLoss = PLN.Zero,
     bankCapitalDestruction = PLN.Zero,
+    interbankContagionLoss = PLN.Zero,
     investNetDepositFlow = PLN.Zero,
     firmPrincipalRepaid = PLN.Zero,
     unrealizedBondLoss = PLN.Zero,
@@ -417,6 +418,15 @@ class SfcSpec extends AnyFlatSpec with Matchers:
     val result = Sfc.validateStockExactness(prev, curr, flows)
     result shouldBe a[Left[?, ?]]
     errorDelta(result, Sfc.SfcIdentity.BankCapital) shouldBe (BigDecimal("5000.0") +- BigDecimal("0.01")) // actual=0, expected=-5000
+  }
+
+  it should "include interbank contagion loss in bank capital" in {
+    val prev   =
+      zeroSnap.copy(firmCash = PLN(500000), bankCapital = PLN(200000), bankDeposits = PLN(1000000))
+    val curr   = prev.copy(bankCapital = prev.bankCapital - PLN(4500))
+    val flows  = zeroFlows.copy(interbankContagionLoss = PLN(4500))
+    val result = Sfc.validateStockExactness(prev, curr, flows)
+    result shouldBe Right(())
   }
 
   it should "detect error when interest income routing is wrong" in {

@@ -262,6 +262,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     "BankCapital_MortgageNplLoss",
     "BankCapital_ConsumerNplLoss",
     "BankCapital_CorpBondDefaultLoss",
+    "BankCapital_InterbankContagionLoss",
     "BankCapital_BfgLevy",
     "BankCapital_UnrealizedBondLoss",
     "BankCapital_HtmRealizedLoss",
@@ -442,7 +443,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     MetricValue.fromRaw(Share.fraction(numerator, denominator).toLong)
 
   "McTimeseriesSchema" should "expose the stable schema contract" in {
-    McTimeseriesSchema.nCols shouldBe 387
+    McTimeseriesSchema.nCols shouldBe 388
     McTimeseriesSchema.colNames.toVector shouldBe expectedColNames
   }
 
@@ -634,6 +635,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
       mortgageNplLoss = PLN(2),
       consumerNplLoss = PLN(5),
       corpBondDefaultLoss = PLN(3),
+      interbankContagionLoss = PLN(4),
     )
     val world         = init.world.copy(
       real = init.world.real.copy(housing = init.world.real.housing.copy(lastDefault = PLN(6))),
@@ -670,6 +672,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
       if lossRate > Share.Zero then bankCapital.corpBondDefaultLoss / lossRate else PLN.Zero
 
     valueAt(row, "BankCreditLoss_RealizedToOpeningCapital") shouldBe MetricValue.fromRaw((bankCapital.realizedCreditLoss / bankCapital.openingCapital).toLong)
+    valueAt(row, "BankCapital_InterbankContagionLoss") shouldBe polandScale(PLN(4))
     valueAt(row, "BankCreditLoss_FirmDefaultRate") shouldBe MetricValue.fromRaw((firmGrossDefault / bankFirmLoans).toLong)
     valueAt(row, "BankCreditLoss_FirmLossRate") shouldBe MetricValue.fromRaw((bankCapital.firmNplLoss / bankFirmLoans).toLong)
     valueAt(row, "BankCreditLoss_MortgageDefaultRate") shouldBe MetricValue.fromRaw((PLN(6) / mortgageStock).toLong)

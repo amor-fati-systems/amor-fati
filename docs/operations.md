@@ -223,8 +223,9 @@ The seed time-series files also include always-on aggregate diagnostic blocks
 for household liquidity, firm automation/adoption, bank capital, and bank
 failure triggers. The bank capital block uses `BankCapital_*` columns to
 reconcile opening capital, retained income, realized credit losses, provisions,
-valuation losses, failure-related capital destruction, reconciliation residuals,
-and closing capital. The `BankEcl_*` block attributes IFRS 9 provision changes
+valuation losses, interbank contagion losses, failure-related capital
+destruction, reconciliation residuals, and closing capital. The `BankEcl_*`
+block attributes IFRS 9 provision changes
 to opening/closing allowance, an all-Stage-1 baseline allowance, excess
 allowance, and S2/S3 migration shares. The `BankFailure_*` block identifies the
 monthly primary trigger for newly failed banks. The `BankCreditLoss_*` block
