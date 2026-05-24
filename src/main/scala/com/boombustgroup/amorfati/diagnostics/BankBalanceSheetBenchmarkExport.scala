@@ -205,7 +205,8 @@ object BankBalanceSheetBenchmarkExport:
       vintage = BaselineVintage,
       lower = Some(BigDecimal("0.06")),
       upper = Some(BigDecimal("0.12")),
-      sourceNote = "Stylized Poland 2026 opening balance-sheet guardrail: capital should be material relative to simplified banking-sector assets.",
+      sourceNote =
+        "Stylized Poland 2026 opening balance-sheet guardrail using BankState.capital, the regulatory/accounting bank-capital buffer, relative to simplified banking-sector assets.",
       interpretation = "Checks whether the opening balance sheet is thinly capitalised before any macro shock.",
     ),
     TargetBand(
@@ -216,7 +217,8 @@ object BankBalanceSheetBenchmarkExport:
       vintage = BaselineVintage,
       lower = Some(BigDecimal("0.191")),
       upper = Some(BigDecimal("0.231")),
-      sourceNote = "KNF February 2026 total-capital ratio anchor near 21.1%, mapped to the model's simplified RWA perimeter with +/-2pp tolerance.",
+      sourceNote =
+        "KNF February 2026 total-capital ratio anchor near 21.1%, mapped from BankState.capital to the model's simplified RWA perimeter with +/-2pp tolerance.",
       interpretation = "The sector should not start close to regulatory capital failure.",
     ),
     TargetBand(
@@ -227,7 +229,7 @@ object BankBalanceSheetBenchmarkExport:
       vintage = BaselineVintage,
       lower = Some(BigDecimal("0.08")),
       upper = None,
-      sourceNote = "Basel III CRR floor: model banks should not start below the base 8% capital requirement.",
+      sourceNote = "Basel III CRR floor applied to BankState.capital; model banks should not start below the base 8% capital requirement.",
       interpretation = "A bank below the base capital floor at t=0 means the failure process begins from an invalid initial state.",
     ),
     TargetBand(
@@ -238,7 +240,7 @@ object BankBalanceSheetBenchmarkExport:
       vintage = BaselineVintage,
       lower = Some(BigDecimal("0.00")),
       upper = None,
-      sourceNote = "Effective minimum CAR includes base requirement, O-SII buffer and P2R add-ons with CCyB at zero at model start.",
+      sourceNote = "Effective minimum CAR compares BankState.capital with base requirement, O-SII buffer and P2R add-ons with CCyB at zero at model start.",
       interpretation = "Negative opening buffer means at least one bank starts already in supervisory breach.",
     ),
     TargetBand(
@@ -249,7 +251,7 @@ object BankBalanceSheetBenchmarkExport:
       vintage = BaselineVintage,
       lower = Some(BigDecimal("0")),
       upper = Some(BigDecimal("0")),
-      sourceNote = "Direct count of opening bank rows whose CAR is below their effective minimum.",
+      sourceNote = "Direct count of opening bank rows whose BankState.capital-based CAR is below their effective minimum.",
       interpretation = "No bank should require resolution before the first simulated month.",
     ),
     TargetBand(
@@ -708,6 +710,10 @@ object BankBalanceSheetBenchmarkExport:
         "- `HARD_INVARIANT`: opening accounting or prudential boundary that should not fail.",
         "- `SOFT_CALIBRATION_WARNING`: Poland-relevant opening balance-sheet band; violations are warnings, not runtime failures.",
         "- `EXPLORATORY_DIAGNOSTIC`: useful bank-sector diagnostic without a settled empirical acceptance band.",
+        "",
+        "## Bank Capital Semantics",
+        "",
+        "Capital columns use `BankState.capital`: a persisted regulatory/accounting bank-capital buffer seeded by bank calibration and updated by the bank P&L/loss waterfall. It is SFC-validated diagnostic state, not holder-resolved ledger-owned equity.",
         "",
         "## Target Bands",
         "",

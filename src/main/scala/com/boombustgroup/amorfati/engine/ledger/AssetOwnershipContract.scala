@@ -321,7 +321,7 @@ object AssetOwnershipContract:
       AssetType.Capital,
       PublicAssetStatus.UnsupportedPersistedStock,
       Set(dynamic(EntitySector.Banks)),
-      "Used for persisted bank capital diagnostics, but not part of the supported transferable ledger-owned stock slice.",
+      "BankState.capital is a persisted regulatory/accounting bank-capital buffer for CAR, failure and SFC diagnostics; it is not holder-resolved equity and is outside the supported transferable ledger-owned stock slice.",
     ),
     PublicAssetContract(
       AssetType.ForeignAsset,
@@ -415,7 +415,7 @@ object AssetOwnershipContract:
     UnsupportedFamily(
       UnsupportedFamilyId.BankCapital,
       UnsupportedCategory.UnsupportedPersistedStock,
-      "Bank capital is persisted and SFC-validated as a diagnostic stock, but not modeled as a supported transferable asset family.",
+      "Bank capital is persisted as BankState.capital and SFC-validated as a regulatory/accounting diagnostic stock, but not modeled as holder-resolved equity or a supported transferable asset family.",
     ),
     UnsupportedFamily(
       UnsupportedFamilyId.BankCreditRiskState,

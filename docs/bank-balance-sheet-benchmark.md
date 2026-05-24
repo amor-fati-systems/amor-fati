@@ -22,6 +22,19 @@ The task writes:
   liquidity, and concentration rows.
 - `bank-balance-sheet-report.md`: human-readable summary.
 
+## Bank Capital Semantics
+
+Capital columns in this diagnostic use `Banking.BankState.capital`. This is the
+model's persisted regulatory/accounting bank-capital buffer: it is seeded by
+bank calibration and `BankInit`, then updated by the monthly bank P&L, loss,
+provision, valuation and resolution waterfall.
+
+It is SFC-validated diagnostic state, not holder-resolved ledger-owned equity.
+`LedgerFinancialState.BankBalances` owns deposits, loans, reserves and security
+holdings, but not bank-capital ownership. `AssetOwnershipContract` therefore
+keeps `AssetType.Capital` as an unsupported persisted diagnostic family instead
+of adding it to the transferable supported stock slice.
+
 ## Guardrail Classes
 
 `HARD_INVARIANT` covers opening accounting or prudential boundaries that should
@@ -66,7 +79,9 @@ These ratios guide follow-up calibration and source-bridge work.
 The current bands are guardrails for the `2026-04-30` Poland model-start
 baseline, not final empirical validation. `AggregateCar` is anchored to the KNF
 February 2026 total-capital-ratio bridge already recorded in calibration
-provenance. `ConsumerLoansToGdp` and `MortgageLoansToGdp` reuse the household
+provenance, using `BankState.capital` as the capital numerator. This benchmark
+does not assert household, fund, insurer, government or foreign ownership of
+bank capital. `ConsumerLoansToGdp` and `MortgageLoansToGdp` reuse the household
 credit-stress calibration ranges. ECL bands are model-semantics checks: they ask
 whether the opening loan book is already staged and provisioned before monthly
 ECL dynamics begin. The current opening ECL bridge assigns the covered firm and

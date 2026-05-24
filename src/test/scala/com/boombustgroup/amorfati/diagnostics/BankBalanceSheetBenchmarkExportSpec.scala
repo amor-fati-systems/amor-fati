@@ -111,6 +111,8 @@ class BankBalanceSheetBenchmarkExportSpec extends AnyFlatSpec with Matchers:
     bankCsv should include("PKO BP")
     report should include("--seed-start 2")
     report should include("ReserveToDeposits")
+    report should include("regulatory/accounting bank-capital buffer")
+    report should include("not holder-resolved ledger-owned equity")
   }
 
 end BankBalanceSheetBenchmarkExportSpec
