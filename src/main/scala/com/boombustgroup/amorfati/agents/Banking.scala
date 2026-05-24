@@ -218,6 +218,7 @@ object Banking:
       absorberId: BankId,
       bankCorpBondHoldings: Vector[PLN] = Vector.empty,
       allFailedFallbackUsed: Boolean = false,
+      resolvedBankCount: Int = 0,
   )
 
   /** Auditable result of a firm-credit approval check. `approvalRoll` is
@@ -789,7 +790,7 @@ object Banking:
         else if bank.failed && stocks.totalDeposits == PLN.Zero then PLN.Zero
         else holderBalances(index)
       }
-      ResolutionResult(resolved, resolvedStocks, absorberId, resolvedCorpBonds)
+      ResolutionResult(resolved, resolvedStocks, absorberId, resolvedCorpBonds, resolvedBankCount = toAbsorb.size)
 
   /** Find the healthiest surviving bank.
     *

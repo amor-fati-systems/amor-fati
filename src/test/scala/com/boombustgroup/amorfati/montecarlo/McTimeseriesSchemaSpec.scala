@@ -4,7 +4,14 @@ import com.boombustgroup.amorfati.FixedPointSpecSupport.*
 import com.boombustgroup.amorfati.agents.{Banking, EclStaging, Firm, Household, TechState}
 import com.boombustgroup.amorfati.config.{HousingConfig, SimParams}
 import com.boombustgroup.amorfati.engine.SimulationMonth.ExecutionMonth
-import com.boombustgroup.amorfati.engine.{BankCapitalDiagnostics, BankEclDiagnostics, BankFailureDiagnostics, BankReconciliationDiagnostics, World}
+import com.boombustgroup.amorfati.engine.{
+  BankCapitalDiagnostics,
+  BankEclDiagnostics,
+  BankFailureDiagnostics,
+  BankReconciliationDiagnostics,
+  BankResolutionDiagnostics,
+  World,
+}
 import com.boombustgroup.amorfati.engine.flows.FlowSimulation
 import com.boombustgroup.amorfati.engine.ledger.LedgerFinancialState
 import com.boombustgroup.amorfati.init.{InitRandomness, WorldInit}
@@ -157,6 +164,14 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     "MinBankCAR",
     "MaxBankNPL",
     "BankFailures",
+    "BankResolution_ActiveBanks",
+    "BankResolution_FailedBanks",
+    "BankResolution_NewFailures",
+    "BankResolution_BailInEvents",
+    "BankResolution_ResolvedBanks",
+    "BankResolution_AllFailedFallback",
+    "BankResolution_BridgeRecapitalization",
+    "BankResolution_InvalidActiveBankInvariant",
     "BankFailure_NewNegativeCapital",
     "BankFailure_NewCarBreach",
     "BankFailure_NewLiquidityBreach",
@@ -443,7 +458,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     MetricValue.fromRaw(Share.fraction(numerator, denominator).toLong)
 
   "McTimeseriesSchema" should "expose the stable schema contract" in {
-    McTimeseriesSchema.nCols shouldBe 388
+    McTimeseriesSchema.nCols shouldBe 396
     McTimeseriesSchema.colNames.toVector shouldBe expectedColNames
   }
 
@@ -777,6 +792,36 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     valueAt(row, "BankFailure_InvariantViolation") shouldBe MetricValue.Zero
     valueAt(row, "BankFailure_FirstNewReasonCode") shouldBe MetricValue.fromInt(3)
     valueAt(row, "BankFailure_FirstNewBankId") shouldBe MetricValue.fromInt(4)
+  }
+
+  it should "emit bank resolution count diagnostics" in {
+    val banks       = init.banks.zipWithIndex.map: (bank, idx) =>
+      if idx < 2 then bank.copy(status = Banking.BankStatus.Failed(ExecutionMonth.First))
+      else bank
+    val diagnostics = BankResolutionDiagnostics(
+      newFailures = 3,
+      bailInEvents = 3,
+      resolvedBanks = 2,
+      allFailedFallback = 0,
+      bridgeRecapitalization = PLN(7),
+      invalidActiveBankInvariant = 1,
+    )
+    val world       = init.world.copy(
+      flows = init.world.flows.copy(
+        sectorOutputs = Vector.fill(summon[SimParams].sectorDefs.length)(PLN.Zero),
+        bankResolution = diagnostics,
+      ),
+    )
+    val row         = computeRow(world, banks = banks)
+
+    valueAt(row, "BankResolution_ActiveBanks") shouldBe MetricValue.fromInt(banks.count(bank => !bank.failed))
+    valueAt(row, "BankResolution_FailedBanks") shouldBe MetricValue.fromInt(2)
+    valueAt(row, "BankResolution_NewFailures") shouldBe MetricValue.fromInt(3)
+    valueAt(row, "BankResolution_BailInEvents") shouldBe MetricValue.fromInt(3)
+    valueAt(row, "BankResolution_ResolvedBanks") shouldBe MetricValue.fromInt(2)
+    valueAt(row, "BankResolution_AllFailedFallback") shouldBe MetricValue.Zero
+    valueAt(row, "BankResolution_BridgeRecapitalization") shouldBe polandScale(PLN(7))
+    valueAt(row, "BankResolution_InvalidActiveBankInvariant") shouldBe MetricValue.fromInt(1)
   }
 
   it should "emit bank reconciliation residual impact diagnostics" in {

@@ -331,6 +331,48 @@ object BankFailureDiagnostics:
       firstNewBankId = firstEvent.map(_.bankId.toInt).getOrElse(-1),
     )
 
+/** Monthly bank-resolution diagnostics for Monte Carlo timeseries.
+  *
+  * These fields are intentionally count-oriented and sit beside the richer
+  * `BankFailure_*`, `BankCapital_*`, and `BankReconciliation_*` blocks so a run
+  * can distinguish credit-demand weakness from bank-supply collapse.
+  */
+case class BankResolutionDiagnostics(
+    activeBanks: Int = 0,                   // active bank rows after monthly failure/resolution
+    failedBanks: Int = 0,                   // failed bank rows after monthly failure/resolution
+    newFailures: Int = 0,                   // banks newly marked failed during the month
+    bailInEvents: Int = 0,                  // distinct newly failed bank ids eligible for event-based bail-in
+    resolvedBanks: Int = 0,                 // failed bank rows whose balance sheets were transferred by P&A
+    allFailedFallback: Int = 0,             // stable legacy flag; current semantics fail fast before fallback
+    bridgeRecapitalization: PLN = PLN.Zero, // explicit bridge/nationalization recap amount; zero until modeled
+    invalidActiveBankInvariant: Int = 0,    // 1 when an active bank ends the month with negative capital
+)
+
+object BankResolutionDiagnostics:
+  val zero: BankResolutionDiagnostics = BankResolutionDiagnostics()
+
+  def fromState(
+      banks: Vector[Banking.BankState],
+      newFailures: Int,
+      bailInEvents: Int,
+      resolvedBanks: Int,
+      allFailedFallbackUsed: Boolean,
+      bridgeRecapitalization: PLN = PLN.Zero,
+  ): BankResolutionDiagnostics =
+    val activeBanks   = banks.count(bank => !bank.failed)
+    val failedBanks   = banks.size - activeBanks
+    val invalidActive = banks.exists(bank => !bank.failed && bank.capital < PLN.Zero)
+    BankResolutionDiagnostics(
+      activeBanks = activeBanks,
+      failedBanks = failedBanks,
+      newFailures = newFailures,
+      bailInEvents = bailInEvents,
+      resolvedBanks = resolvedBanks,
+      allFailedFallback = if allFailedFallbackUsed then 1 else 0,
+      bridgeRecapitalization = bridgeRecapitalization,
+      invalidActiveBankInvariant = if invalidActive then 1 else 0,
+    )
+
 /** Diagnostics for the aggregate-exactness patch applied to one bank row.
   *
   * `capitalResidual` has the same sign as the patch: positive adds bank
@@ -430,6 +472,7 @@ case class FlowState(
     bfgLevyTotal: PLN = PLN.Zero,                                                           // BFG resolution levy from all banks
     bankCapital: BankCapitalDiagnostics = BankCapitalDiagnostics.zero,                      // monthly bank-capital waterfall diagnostics
     bankFailure: BankFailureDiagnostics = BankFailureDiagnostics.zero,                      // monthly bank-failure trigger diagnostics
+    bankResolution: BankResolutionDiagnostics = BankResolutionDiagnostics.zero,             // monthly bank-resolution count diagnostics
     bankReconciliation: BankReconciliationDiagnostics = BankReconciliationDiagnostics.zero, // exactness-patch impact on target bank capital/CAR
     bankEcl: BankEclDiagnostics = BankEclDiagnostics.zero,                                  // IFRS 9 ECL allowance and staging diagnostics
 )

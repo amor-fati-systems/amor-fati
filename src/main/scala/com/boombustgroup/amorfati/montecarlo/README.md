@@ -226,6 +226,14 @@ tracks the ordinary consumer-loan capital loss used by the bank waterfall.
 The seed timeseries also includes monthly failure-trigger diagnostics:
 
 ```text
+BankResolution_ActiveBanks
+BankResolution_FailedBanks
+BankResolution_NewFailures
+BankResolution_BailInEvents
+BankResolution_ResolvedBanks
+BankResolution_AllFailedFallback
+BankResolution_BridgeRecapitalization
+BankResolution_InvalidActiveBankInvariant
 BankFailure_NewNegativeCapital
 BankFailure_NewCarBreach
 BankFailure_NewLiquidityBreach
@@ -244,6 +252,14 @@ BankReconciliation_MaterialResidual
 BankReconciliation_CrossedFailureThreshold
 BankReconciliation_PostResidualReasonCode
 ```
+
+`BankResolution_*` columns provide the first-pass state counts for explaining
+credit-supply collapse: active and failed bank rows after month close, newly
+failed banks, distinct event-based bail-in entries, and P&A-resolved bank rows.
+`BankResolution_BridgeRecapitalization` remains zero until an explicit bridge or
+nationalization mechanism is implemented. `BankResolution_InvalidActiveBankInvariant`
+should remain zero; a non-zero value means an active bank ended the month with
+negative capital.
 
 `BankFailure_NewNegativeCapital`, `BankFailure_NewCarBreach`, and
 `BankFailure_NewLiquidityBreach` count newly failed banks by primary trigger.
