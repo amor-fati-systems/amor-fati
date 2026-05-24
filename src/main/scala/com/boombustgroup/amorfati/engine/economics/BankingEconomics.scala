@@ -712,8 +712,10 @@ object BankingEconomics:
 
     // IFRS 9 ECL staging: provision change hits capital
     val unemployment: Share              = in.w.unemploymentRate(in.s2.employed)
+    val referenceUnemployment: Share     = eclReferenceUnemployment(in)
     val gdpGrowth: Coefficient           = eclGdpGrowth(in)
-    val eclResult: EclStaging.StepResult = EclStaging.step(b.eclStaging, newLoansTotal + stocks.consumerLoan, bankNplNew, unemployment, gdpGrowth)
+    val eclResult: EclStaging.StepResult =
+      EclStaging.step(b.eclStaging, newLoansTotal + stocks.consumerLoan, bankNplNew, unemployment, referenceUnemployment, gdpGrowth)
 
     SingleBankUpdate(
       bank = b.copy(
@@ -1000,7 +1002,7 @@ object BankingEconomics:
       BankFailureDiagnostics.fromEvents(failureEvents, resolveResult.allFailedFallbackUsed || reconciled.allFailedFallbackUsed, invariantMismatches)
     val anyFailureForMobility = anyFailed || reconciled.newFailuresDelta > 0
     val eclGdpGrowthMonthly   = eclGdpGrowth(in)
-    val eclMigrationRate      = EclStaging.migrationRate(in.w.unemploymentRate(in.s2.employed), eclGdpGrowthMonthly)
+    val eclMigrationRate      = EclStaging.migrationRate(in.w.unemploymentRate(in.s2.employed), eclReferenceUnemployment(in), eclGdpGrowthMonthly)
     val eclDiagnostics        = computeBankEclDiagnostics(in.banks, finalFailureBanks, eclMigrationRate, eclGdpGrowthMonthly)
 
     // Repair stale failed-bank routing every month; mobility validates survivor bankIds.
@@ -1105,6 +1107,10 @@ object BankingEconomics:
   private def eclGdpGrowth(in: StepInput): Coefficient =
     val prevGdp = in.w.cachedMonthlyGdpProxy
     if prevGdp > PLN.Zero then (in.s7.gdp.ratioTo(prevGdp) - Scalar.One).toCoefficient else Coefficient.Zero
+
+  private def eclReferenceUnemployment(in: StepInput)(using p: SimParams): Share =
+    val lagged = in.w.pipeline.laggedUnemploymentRate
+    if lagged > Share.Zero then lagged else p.pop.initialUnemploymentRate
 
   private def computeBankEclDiagnostics(
       openingBanks: Vector[Banking.BankState],

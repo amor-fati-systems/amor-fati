@@ -43,6 +43,7 @@ class WorldInitSpec extends AnyFlatSpec with Matchers:
     agg.unemployed shouldBe expectedUnemployed
     unempRate shouldBe Share.fraction(expectedUnemployed, laborForce)
     decimal(unempRate) shouldBe decimal(p.pop.initialUnemploymentRate) +- (BigDecimal(1) / BigDecimal(laborForce))
+    decimal(init.world.pipeline.laggedUnemploymentRate) shouldBe decimal(p.pop.initialUnemploymentRate) +- (BigDecimal(1) / BigDecimal(laborForce))
     decimal(annualGdp) shouldBe decimal(p.pop.realGdp) +- BigDecimal("1000000.0")
   }
 

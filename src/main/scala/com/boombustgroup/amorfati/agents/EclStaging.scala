@@ -54,16 +54,20 @@ object EclStaging:
 
   /** Compute macro-driven S1→S2 migration rate.
     *
-    * When unemployment rises above NAIRU or GDP contracts, a fraction of
-    * performing loans migrates to Stage 2 (significant credit risk increase).
+    * When unemployment deteriorates relative to the carried reference level or
+    * GDP contracts, a fraction of performing loans migrates to Stage 2
+    * (significant credit risk increase). The reference level is usually the
+    * previous month's unemployment rate, bootstrapped at model start from the
+    * opening macro baseline, so an opening unemployment level above NAIRU does
+    * not by itself create recurring stress migration.
     *
-    * migrationRate = sensitivity × max(0, unemployment − nairu) +
+    * migrationRate = sensitivity × max(0, unemployment − reference) +
     * gdpSensitivity × max(0, −gdpGrowth) Clamped to [0, maxMigration].
     */
-  private[amorfati] def migrationRate(unemployment: Share, gdpGrowthMonthly: Coefficient)(using p: SimParams): Share =
-    val unempExcess: Share          = (unemployment - p.monetary.nairu).max(Share.Zero)
+  private[amorfati] def migrationRate(unemployment: Share, referenceUnemployment: Share, gdpGrowthMonthly: Coefficient)(using p: SimParams): Share =
+    val unempDeterioration: Share   = (unemployment - referenceUnemployment).max(Share.Zero)
     val gdpContraction: Coefficient = (-gdpGrowthMonthly).max(Coefficient.Zero)
-    val rawMigration: Coefficient   = p.banking.eclMigrationSensitivity * unempExcess + p.banking.eclGdpSensitivity * gdpContraction
+    val rawMigration: Coefficient   = p.banking.eclMigrationSensitivity * unempDeterioration + p.banking.eclGdpSensitivity * gdpContraction
     rawMigration.max(Coefficient.Zero).min(p.banking.eclMaxMigration.toCoefficient).toShare
 
   /** Monthly ECL staging step for a single bank.
@@ -76,6 +80,8 @@ object EclStaging:
     *   new defaults this month (→ Stage 3)
     * @param unemployment
     *   current unemployment rate
+    * @param referenceUnemployment
+    *   carried baseline/lagged unemployment used to measure deterioration
     * @param gdpGrowthMonthly
     *   month-on-month GDP growth
     */
@@ -84,9 +90,10 @@ object EclStaging:
       totalLoans: PLN,
       nplNew: PLN,
       unemployment: Share,
+      referenceUnemployment: Share,
       gdpGrowthMonthly: Coefficient,
   )(using p: SimParams): StepResult =
-    val migration: Share = migrationRate(unemployment, gdpGrowthMonthly)
+    val migration: Share = migrationRate(unemployment, referenceUnemployment, gdpGrowthMonthly)
 
     // Stage transitions
     val s1ToS2: PLN = prev.stage1 * migration             // macro-driven migration
