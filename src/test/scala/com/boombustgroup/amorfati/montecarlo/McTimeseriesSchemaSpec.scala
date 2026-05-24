@@ -204,9 +204,19 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     "ConsumerRejectedOrigination",
     "ConsumerBankRejectedOrigination",
     "ConsumerDebtService",
+    "ConsumerPrincipal",
     "ConsumerDefault",
     "ConsumerLoanDefault",
     "LiquidityBridgeChargeOff",
+    "ConsumerCredit_NetStockFlow",
+    "ConsumerCredit_UnderwrittenNetFlow",
+    "ConsumerCredit_BridgeNetFlow",
+    "ConsumerCredit_NplStock",
+    "ConsumerCredit_NplRatioGross",
+    "ConsumerCredit_ApprovedToDemand",
+    "ConsumerCredit_RejectedToDemand",
+    "ConsumerCredit_BankRejectedToDemand",
+    "ConsumerCredit_ShortfallToApprovedOrigination",
     "TotalCreditStock",
     "BankFirmLoansToGdp",
     "ConsumerLoansToGdp",
@@ -458,7 +468,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     MetricValue.fromRaw(Share.fraction(numerator, denominator).toLong)
 
   "McTimeseriesSchema" should "expose the stable schema contract" in {
-    McTimeseriesSchema.nCols shouldBe 396
+    McTimeseriesSchema.nCols shouldBe 406
     McTimeseriesSchema.colNames.toVector shouldBe expectedColNames
   }
 
@@ -630,6 +640,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
   it should "emit validation-ready credit stock splits and GDP ratios" in {
     val bankFirmLoans = PLN(10) * initState.ledgerFinancialState.banks.length
     val consumerLoans = PLN(2) * initState.ledgerFinancialState.banks.length
+    val consumerNpl   = PLN(1) * initState.ledgerFinancialState.banks.length
     val bankCorpBonds = PLN(25) * initState.ledgerFinancialState.banks.length
     val mortgageStock = PLN(20)
     val nbfiLoans     = PLN(6)
@@ -644,6 +655,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
         nbfi = initState.ledgerFinancialState.funds.nbfi.copy(nbfiLoanStock = nbfiLoans),
       ),
     )
+    val banks         = init.banks.map(_.copy(consumerNpl = PLN(1)))
     val bankCapital   = BankCapitalDiagnostics(
       openingCapital = PLN(1000),
       firmNplLoss = PLN(2),
@@ -661,17 +673,40 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
       ),
     )
     val hhAgg         = init.householdAggregates.copy(
+      totalConsumerOrigination = PLN(12),
+      totalConsumerApprovedOrigination = PLN(8),
+      totalConsumerCreditDemand = PLN(20),
+      totalConsumerRejectedOrigination = PLN(12),
+      totalConsumerBankRejectedOrigination = PLN(6),
+      totalConsumerPrincipal = PLN(5),
       totalConsumerDefault = PLN(7),
       totalConsumerLoanDefault = PLN(3),
+      totalLiquidityShortfallFinancing = PLN(4),
       totalLiquidityBridgeChargeOff = PLN(4),
     )
-    val row           = computeRow(world, ledger, householdAggregates = hhAgg)
+    val row           = computeRow(world, ledger, banks = banks, householdAggregates = hhAgg)
 
     valueAt(row, "BankFirmLoans") shouldBe polandScale(bankFirmLoans)
     valueAt(row, "ConsumerLoans") shouldBe polandScale(consumerLoans)
+    valueAt(row, "ConsumerNplRatio") shouldBe MetricValue.fromRaw((consumerNpl / consumerLoans).toLong)
+    valueAt(row, "ConsumerOrigination") shouldBe polandScale(PLN(12))
+    valueAt(row, "ConsumerApprovedOrigination") shouldBe polandScale(PLN(8))
+    valueAt(row, "ConsumerCreditDemand") shouldBe polandScale(PLN(20))
+    valueAt(row, "ConsumerRejectedOrigination") shouldBe polandScale(PLN(12))
+    valueAt(row, "ConsumerBankRejectedOrigination") shouldBe polandScale(PLN(6))
+    valueAt(row, "ConsumerPrincipal") shouldBe polandScale(PLN(5))
     valueAt(row, "ConsumerDefault") shouldBe polandScale(PLN(7))
     valueAt(row, "ConsumerLoanDefault") shouldBe polandScale(PLN(3))
     valueAt(row, "LiquidityBridgeChargeOff") shouldBe polandScale(PLN(4))
+    valueAt(row, "ConsumerCredit_NetStockFlow") shouldBe polandScale(PLN.Zero)
+    valueAt(row, "ConsumerCredit_UnderwrittenNetFlow") shouldBe polandScale(PLN.Zero)
+    valueAt(row, "ConsumerCredit_BridgeNetFlow") shouldBe polandScale(PLN.Zero)
+    valueAt(row, "ConsumerCredit_NplStock") shouldBe polandScale(consumerNpl)
+    valueAt(row, "ConsumerCredit_NplRatioGross") shouldBe MetricValue.fromRaw((consumerNpl / (consumerLoans + consumerNpl)).toLong)
+    valueAt(row, "ConsumerCredit_ApprovedToDemand") shouldBe MetricValue.fromRaw((PLN(8) / PLN(20)).toLong)
+    valueAt(row, "ConsumerCredit_RejectedToDemand") shouldBe MetricValue.fromRaw((PLN(12) / PLN(20)).toLong)
+    valueAt(row, "ConsumerCredit_BankRejectedToDemand") shouldBe MetricValue.fromRaw((PLN(6) / PLN(20)).toLong)
+    valueAt(row, "ConsumerCredit_ShortfallToApprovedOrigination") shouldBe MetricValue.fromRaw((PLN(4) / PLN(8)).toLong)
     valueAt(row, "NbfiLoanStock") shouldBe polandScale(nbfiLoans)
     valueAt(row, "TotalCreditStock") shouldBe polandScale(totalCredit)
     valueAt(row, "BankFirmLoansToGdp") shouldBe MetricValue.fromRaw((bankFirmLoans / annualGdp).toLong)
