@@ -223,7 +223,9 @@ The seed time-series files also include always-on aggregate diagnostic blocks
 for household liquidity, firm automation/adoption, firm credit, bank capital,
 and bank failure triggers. The `FirmCredit_*` columns reconcile firm-loan
 origination, principal repayment, default, NPL recovery/loss, investment credit
-demand, bank rejection, and cash-financed investment. The consumer-credit block
+demand, bank rejection, and cash-financed investment. The `Nbfi*` credit columns
+reconcile NBFI origination, repayment, defaults, net stock flow, bank tightness,
+and TFI deposit-drain pressure. The consumer-credit block
 uses `ConsumerCredit_*` columns to
 reconcile approved origination, principal repayment, default, bridge charge-off,
 NPL stock, and borrower-side versus bank-side rejection. The bank capital block

@@ -1,7 +1,7 @@
 package com.boombustgroup.amorfati.montecarlo
 
 import com.boombustgroup.amorfati.FixedPointSpecSupport.*
-import com.boombustgroup.amorfati.agents.{Banking, EclStaging, Firm, Household, TechState}
+import com.boombustgroup.amorfati.agents.{Banking, EclStaging, Firm, Household, Nbfi, TechState}
 import com.boombustgroup.amorfati.config.{HousingConfig, SimParams}
 import com.boombustgroup.amorfati.engine.SimulationMonth.ExecutionMonth
 import com.boombustgroup.amorfati.engine.{
@@ -269,7 +269,12 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     "NbfiTfiGovBondHoldings",
     "NbfiLoanStock",
     "NbfiOrigination",
+    "NbfiRepayment",
     "NbfiDefaults",
+    "NbfiNetStockFlow",
+    "NbfiOriginationToStock",
+    "NbfiRepaymentToStock",
+    "NbfiDefaultsToStock",
     "NbfiBankTightness",
     "QfBondsOutstanding",
     "QfNbpHoldings",
@@ -277,6 +282,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     "QfIssuance",
     "Esa2010DebtToGdp",
     "NbfiDepositDrain",
+    "NbfiDepositDrainToAum",
     "BankAfsBonds",
     "BankHtmBonds",
     "EclStage1",
@@ -486,7 +492,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     MetricValue.fromRaw(Share.fraction(numerator, denominator).toLong)
 
   "McTimeseriesSchema" should "expose the stable schema contract" in {
-    McTimeseriesSchema.nCols shouldBe 424
+    McTimeseriesSchema.nCols shouldBe 430
     McTimeseriesSchema.colNames.toVector shouldBe expectedColNames
   }
 
@@ -662,6 +668,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     val bankCorpBonds = PLN(25) * initState.ledgerFinancialState.banks.length
     val mortgageStock = PLN(20)
     val nbfiLoans     = PLN(6)
+    val nbfiAum       = PLN(30)
     val totalCredit   = bankFirmLoans + consumerLoans + mortgageStock + nbfiLoans
     val annualGdp     = PLN(10) * 12
     val firmDefault   = PLN(10)
@@ -672,7 +679,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
       households = householdRows,
       banks = initState.ledgerFinancialState.banks.map(_.copy(firmLoan = PLN(10), consumerLoan = PLN(2), corpBond = PLN(25))),
       funds = initState.ledgerFinancialState.funds.copy(
-        nbfi = initState.ledgerFinancialState.funds.nbfi.copy(nbfiLoanStock = nbfiLoans),
+        nbfi = initState.ledgerFinancialState.funds.nbfi.copy(tfiUnit = nbfiAum, nbfiLoanStock = nbfiLoans),
       ),
     )
     val banks         = init.banks.map(_.copy(consumerNpl = PLN(1)))
@@ -688,6 +695,17 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
       real = init.world.real.copy(
         housing = init.world.real.housing.copy(lastDefault = PLN(6)),
         grossInvestment = PLN(15),
+      ),
+      financialMarkets = init.world.financialMarkets.copy(
+        nbfi = Nbfi.State(
+          lastTfiNetInflow = PLN(3),
+          lastNbfiOrigination = PLN(5),
+          lastNbfiRepayment = PLN(2),
+          lastNbfiDefaultAmount = PLN(1),
+          lastNbfiInterestIncome = PLN.Zero,
+          lastBankTightness = Share.decimal(25, 2),
+          lastDepositDrain = PLN(3),
+        ),
       ),
       flows = init.world.flows.copy(
         monthlyGdpProxy = PLN(10),
@@ -759,6 +777,16 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     valueAt(row, "ConsumerCredit_BankRejectedToDemand") shouldBe MetricValue.fromRaw((PLN(6) / PLN(20)).toLong)
     valueAt(row, "ConsumerCredit_ShortfallToApprovedOrigination") shouldBe MetricValue.fromRaw((PLN(4) / PLN(8)).toLong)
     valueAt(row, "NbfiLoanStock") shouldBe polandScale(nbfiLoans)
+    valueAt(row, "NbfiOrigination") shouldBe polandScale(PLN(5))
+    valueAt(row, "NbfiRepayment") shouldBe polandScale(PLN(2))
+    valueAt(row, "NbfiDefaults") shouldBe polandScale(PLN(1))
+    valueAt(row, "NbfiNetStockFlow") shouldBe polandScale(PLN(2))
+    valueAt(row, "NbfiOriginationToStock") shouldBe MetricValue.fromRaw((PLN(5) / nbfiLoans).toLong)
+    valueAt(row, "NbfiRepaymentToStock") shouldBe MetricValue.fromRaw((PLN(2) / nbfiLoans).toLong)
+    valueAt(row, "NbfiDefaultsToStock") shouldBe MetricValue.fromRaw((PLN(1) / nbfiLoans).toLong)
+    valueAt(row, "NbfiBankTightness") shouldBe MetricValue.fromRaw(Share.decimal(25, 2).toLong)
+    valueAt(row, "NbfiDepositDrain") shouldBe polandScale(PLN(3))
+    valueAt(row, "NbfiDepositDrainToAum") shouldBe MetricValue.fromRaw((PLN(3) / nbfiAum).toLong)
     valueAt(row, "TotalCreditStock") shouldBe polandScale(totalCredit)
     valueAt(row, "BankFirmLoansToGdp") shouldBe MetricValue.fromRaw((bankFirmLoans / annualGdp).toLong)
     valueAt(row, "ConsumerLoansToGdp") shouldBe MetricValue.fromRaw((consumerLoans / annualGdp).toLong)
