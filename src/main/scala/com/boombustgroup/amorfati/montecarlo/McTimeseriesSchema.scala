@@ -581,6 +581,7 @@ object McTimeseriesSchema:
     ColumnDef.macroPln("BankCapital_MortgageNplLoss", ctx => ctx.bankCapital.mortgageNplLoss),
     ColumnDef.macroPln("BankCapital_ConsumerNplLoss", ctx => ctx.bankCapital.consumerNplLoss),
     ColumnDef.macroPln("BankCapital_CorpBondDefaultLoss", ctx => ctx.bankCapital.corpBondDefaultLoss),
+    ColumnDef.macroPln("BankCapital_InterbankContagionLoss", ctx => ctx.bankCapital.interbankContagionLoss),
     ColumnDef.macroPln("BankCapital_BfgLevy", ctx => ctx.bankCapital.bfgLevy),
     ColumnDef.macroPln("BankCapital_UnrealizedBondLoss", ctx => ctx.bankCapital.unrealizedBondLoss),
     ColumnDef.macroPln("BankCapital_HtmRealizedLoss", ctx => ctx.bankCapital.htmRealizedLoss),
@@ -987,6 +988,7 @@ object McTimeseriesSchema:
     val BankCapitalMortgageNplLoss: Col                = lookup("BankCapital_MortgageNplLoss")
     val BankCapitalConsumerNplLoss: Col                = lookup("BankCapital_ConsumerNplLoss")
     val BankCapitalCorpBondDefaultLoss: Col            = lookup("BankCapital_CorpBondDefaultLoss")
+    val BankCapitalInterbankContagionLoss: Col         = lookup("BankCapital_InterbankContagionLoss")
     val BankCapitalBfgLevy: Col                        = lookup("BankCapital_BfgLevy")
     val BankCapitalUnrealizedBondLoss: Col             = lookup("BankCapital_UnrealizedBondLoss")
     val BankCapitalHtmRealizedLoss: Col                = lookup("BankCapital_HtmRealizedLoss")

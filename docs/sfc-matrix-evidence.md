@@ -107,7 +107,8 @@ Runtime channel coverage:
 - Defaults and write-offs: consumer credit, firm NPL, mortgage, corporate bond,
   and NBFI default mechanisms, plus bank loss-recognition mechanisms.
 - Bond valuation and loss recognition: `BankUnrealizedLoss`, plus
-  `htmRealizedLoss` and `eclProvisionChange` from `BankingEconomics`.
+  `htmRealizedLoss`, `eclProvisionChange`, and `interbankContagionLoss` from
+  `BankingEconomics`.
 - Bond clearing: government and quasi-fiscal holder/issuer level checks over
   supported bank, NBP, insurance, fund, foreign, and issuer stocks.
 - Insurance technical reserves: household reserve assets are mirrored from the
@@ -117,9 +118,10 @@ Runtime channel coverage:
   household, insurance, NBFI, and foreign equity stock deltas as first-class
   TFM evidence. Foreign equity ownership is persisted as a holder-resolved
   foreign-sector equity stock.
-- Other changes in volume: bank capital destruction, bail-in, amortization,
-  repayment, and quasi-fiscal lending channels are explicit components of the
-  exact identities where they affect supported stocks.
+- Other changes in volume: bank capital destruction, interbank contagion loss,
+  bail-in, amortization, repayment, and quasi-fiscal lending channels are
+  explicit components of the exact identities where they affect supported
+  stocks.
 
 ## Sector Order
 

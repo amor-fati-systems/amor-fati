@@ -90,6 +90,7 @@ class SfcPropertySpec extends AnyFlatSpec with Matchers with ScalaCheckPropertyC
         bfgLevy = PLN.Zero,
         bailInLoss = PLN.Zero,
         bankCapitalDestruction = PLN.Zero,
+        interbankContagionLoss = PLN.Zero,
         investNetDepositFlow = PLN.Zero,
         firmPrincipalRepaid = PLN.Zero,
         unrealizedBondLoss = PLN.Zero,

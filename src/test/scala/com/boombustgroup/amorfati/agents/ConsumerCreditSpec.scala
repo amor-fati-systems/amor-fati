@@ -307,6 +307,7 @@ class ConsumerCreditSpec extends AnyFlatSpec with Matchers:
     bfgLevy = PLN.Zero,
     bailInLoss = PLN.Zero,
     bankCapitalDestruction = PLN.Zero,
+    interbankContagionLoss = PLN.Zero,
     investNetDepositFlow = PLN.Zero,
     firmPrincipalRepaid = PLN.Zero,
     unrealizedBondLoss = PLN.Zero,

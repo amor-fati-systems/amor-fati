@@ -276,6 +276,7 @@ case class BankCapitalDiagnostics(
     htmRealizedLoss: PLN = PLN.Zero,        // HTM forced-reclassification realized loss
     eclProvisionChange: PLN = PLN.Zero,     // IFRS 9 provision increase, positive when capital is hit
     capitalDestruction: PLN = PLN.Zero,     // shareholder capital wiped when banks newly fail
+    interbankContagionLoss: PLN = PLN.Zero, // failed-counterparty interbank exposure loss
     reconciliationResidual: PLN = PLN.Zero, // per-bank exactness patch; positive values add capital
     depositBailInLoss: PLN = PLN.Zero,      // depositor haircut from resolution, not equity-capital P&L
     newFailures: Int = 0,                   // banks newly marked failed during the month
@@ -287,7 +288,7 @@ case class BankCapitalDiagnostics(
 
   def expectedDelta: PLN =
     retainedIncome - realizedCreditLoss - bfgLevy - unrealizedBondLoss -
-      htmRealizedLoss - eclProvisionChange - capitalDestruction
+      htmRealizedLoss - eclProvisionChange - interbankContagionLoss - capitalDestruction
 
   /** Unexplained capital delta after ordinary waterfall terms and the per-bank
     * exactness patch. Values away from zero indicate a missing diagnostic term.

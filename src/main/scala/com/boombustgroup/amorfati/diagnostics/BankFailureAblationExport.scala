@@ -46,6 +46,7 @@ object BankFailureAblationExport:
       peakFailures: Int,
       cumulativeNewFailures: BigDecimal,
       cumulativeRealizedCreditLoss: BigDecimal,
+      cumulativeInterbankContagionLoss: BigDecimal,
       cumulativeEclProvisionChange: BigDecimal,
       cumulativeBailInLoss: BigDecimal,
       cumulativeCapitalDestruction: BigDecimal,
@@ -56,6 +57,7 @@ object BankFailureAblationExport:
       firstFailureFirmNplLoss: BigDecimal,
       firstFailureMortgageNplLoss: BigDecimal,
       firstFailureCorpBondDefaultLoss: BigDecimal,
+      firstFailureInterbankContagionLoss: BigDecimal,
       firstFailureReconciliationResidual: BigDecimal,
       firstFailureDepositBailInLoss: BigDecimal,
       terminalTotalCreditToGdp: BigDecimal,
@@ -78,6 +80,7 @@ object BankFailureAblationExport:
       peakFailuresMean: BigDecimal,
       cumulativeNewFailuresMean: BigDecimal,
       cumulativeRealizedCreditLossMean: BigDecimal,
+      cumulativeInterbankContagionLossMean: BigDecimal,
       cumulativeEclProvisionChangeMean: BigDecimal,
       cumulativeBailInLossMean: BigDecimal,
       cumulativeCapitalDestructionMean: BigDecimal,
@@ -88,6 +91,7 @@ object BankFailureAblationExport:
       firstFailureFirmNplLossMean: BigDecimal,
       firstFailureMortgageNplLossMean: BigDecimal,
       firstFailureCorpBondDefaultLossMean: BigDecimal,
+      firstFailureInterbankContagionLossMean: BigDecimal,
       terminalTotalCreditToGdpMean: BigDecimal,
       terminalUnemploymentMean: BigDecimal,
       terminalInflationMean: BigDecimal,
@@ -110,6 +114,7 @@ object BankFailureAblationExport:
     "BankCapital_MortgageNplLoss",
     "BankCapital_ConsumerNplLoss",
     "BankCapital_CorpBondDefaultLoss",
+    "BankCapital_InterbankContagionLoss",
     "BankCapital_EclProvisionChange",
     "BankCapital_CapitalDestruction",
     "BankCapital_ReconciliationResidual",
@@ -205,6 +210,7 @@ object BankFailureAblationExport:
       firmNplLoss: BigDecimal,
       mortgageNplLoss: BigDecimal,
       corpBondDefaultLoss: BigDecimal,
+      interbankContagionLoss: BigDecimal,
       reconciliationResidual: BigDecimal,
       depositBailInLoss: BigDecimal,
   )
@@ -221,6 +227,7 @@ object BankFailureAblationExport:
         firmNplLoss = col(row, "BankCapital_FirmNplLoss"),
         mortgageNplLoss = col(row, "BankCapital_MortgageNplLoss"),
         corpBondDefaultLoss = col(row, "BankCapital_CorpBondDefaultLoss"),
+        interbankContagionLoss = col(row, "BankCapital_InterbankContagionLoss"),
         reconciliationResidual = col(row, "BankCapital_ReconciliationResidual"),
         depositBailInLoss = col(row, "BankCapital_DepositBailInLoss"),
       )
@@ -232,6 +239,7 @@ object BankFailureAblationExport:
       peakFailures: Int,
       cumulativeNewFailures: BigDecimal,
       cumulativeRealizedCreditLoss: BigDecimal,
+      cumulativeInterbankContagionLoss: BigDecimal,
       cumulativeEclProvisionChange: BigDecimal,
       cumulativeBailInLoss: BigDecimal,
       cumulativeCapitalDestruction: BigDecimal,
@@ -245,6 +253,7 @@ object BankFailureAblationExport:
         peakFailures = scala.math.max(peakFailures, colInt(row, "BankFailures")),
         cumulativeNewFailures = cumulativeNewFailures + col(row, "BankCapital_NewFailures"),
         cumulativeRealizedCreditLoss = cumulativeRealizedCreditLoss + col(row, "BankCapital_RealizedCreditLoss"),
+        cumulativeInterbankContagionLoss = cumulativeInterbankContagionLoss + col(row, "BankCapital_InterbankContagionLoss"),
         cumulativeEclProvisionChange = cumulativeEclProvisionChange + col(row, "BankCapital_EclProvisionChange"),
         cumulativeBailInLoss = cumulativeBailInLoss + col(row, "BankCapital_DepositBailInLoss"),
         cumulativeCapitalDestruction = cumulativeCapitalDestruction + col(row, "BankCapital_CapitalDestruction"),
@@ -272,6 +281,7 @@ object BankFailureAblationExport:
         peakFailures = peakFailures,
         cumulativeNewFailures = cumulativeNewFailures,
         cumulativeRealizedCreditLoss = cumulativeRealizedCreditLoss,
+        cumulativeInterbankContagionLoss = cumulativeInterbankContagionLoss,
         cumulativeEclProvisionChange = cumulativeEclProvisionChange,
         cumulativeBailInLoss = cumulativeBailInLoss,
         cumulativeCapitalDestruction = cumulativeCapitalDestruction,
@@ -282,6 +292,7 @@ object BankFailureAblationExport:
         firstFailureFirmNplLoss = firstFailure.map(_.firmNplLoss).getOrElse(BigDecimal(0)),
         firstFailureMortgageNplLoss = firstFailure.map(_.mortgageNplLoss).getOrElse(BigDecimal(0)),
         firstFailureCorpBondDefaultLoss = firstFailure.map(_.corpBondDefaultLoss).getOrElse(BigDecimal(0)),
+        firstFailureInterbankContagionLoss = firstFailure.map(_.interbankContagionLoss).getOrElse(BigDecimal(0)),
         firstFailureReconciliationResidual = firstFailure.map(_.reconciliationResidual).getOrElse(BigDecimal(0)),
         firstFailureDepositBailInLoss = firstFailure.map(_.depositBailInLoss).getOrElse(BigDecimal(0)),
         terminalTotalCreditToGdp = col(terminal, "TotalCreditToGdp"),
@@ -299,6 +310,7 @@ object BankFailureAblationExport:
         peakFailures = 0,
         cumulativeNewFailures = BigDecimal(0),
         cumulativeRealizedCreditLoss = BigDecimal(0),
+        cumulativeInterbankContagionLoss = BigDecimal(0),
         cumulativeEclProvisionChange = BigDecimal(0),
         cumulativeBailInLoss = BigDecimal(0),
         cumulativeCapitalDestruction = BigDecimal(0),
@@ -333,6 +345,7 @@ object BankFailureAblationExport:
         peakFailuresMean = mean(scenarioRows.map(row => BigDecimal(row.peakFailures))),
         cumulativeNewFailuresMean = mean(scenarioRows.map(_.cumulativeNewFailures)),
         cumulativeRealizedCreditLossMean = mean(scenarioRows.map(_.cumulativeRealizedCreditLoss)),
+        cumulativeInterbankContagionLossMean = mean(scenarioRows.map(_.cumulativeInterbankContagionLoss)),
         cumulativeEclProvisionChangeMean = mean(scenarioRows.map(_.cumulativeEclProvisionChange)),
         cumulativeBailInLossMean = mean(scenarioRows.map(_.cumulativeBailInLoss)),
         cumulativeCapitalDestructionMean = mean(scenarioRows.map(_.cumulativeCapitalDestruction)),
@@ -343,6 +356,7 @@ object BankFailureAblationExport:
         firstFailureFirmNplLossMean = meanFailedOnly(scenarioRows)(_.firstFailureFirmNplLoss),
         firstFailureMortgageNplLossMean = meanFailedOnly(scenarioRows)(_.firstFailureMortgageNplLoss),
         firstFailureCorpBondDefaultLossMean = meanFailedOnly(scenarioRows)(_.firstFailureCorpBondDefaultLoss),
+        firstFailureInterbankContagionLossMean = meanFailedOnly(scenarioRows)(_.firstFailureInterbankContagionLoss),
         terminalTotalCreditToGdpMean = mean(scenarioRows.map(_.terminalTotalCreditToGdp)),
         terminalUnemploymentMean = mean(scenarioRows.map(_.terminalUnemployment)),
         terminalInflationMean = mean(scenarioRows.map(_.terminalInflation)),
@@ -371,12 +385,12 @@ object BankFailureAblationExport:
 
   private val SeedCsvSchema: McCsvSchema[SeedResult] =
     val header =
-      "RunId;ScenarioId;ScenarioLabel;Seed;Months;FirstFailureMonth;FirstFailureReasonCode;FirstFailureBankId;TerminalFailures;PeakFailures;CumulativeNewFailures;CumulativeRealizedCreditLoss;CumulativeEclProvisionChange;CumulativeBailInLoss;CumulativeCapitalDestruction;CumulativeReconciliationResidualAbs;FirstFailureRealizedCreditLoss;FirstFailureEclProvisionChange;FirstFailureConsumerNplLoss;FirstFailureFirmNplLoss;FirstFailureMortgageNplLoss;FirstFailureCorpBondDefaultLoss;FirstFailureReconciliationResidual;FirstFailureDepositBailInLoss;TerminalTotalCreditToGdp;TerminalUnemployment;TerminalInflation;Interpretation"
+      "RunId;ScenarioId;ScenarioLabel;Seed;Months;FirstFailureMonth;FirstFailureReasonCode;FirstFailureBankId;TerminalFailures;PeakFailures;CumulativeNewFailures;CumulativeRealizedCreditLoss;CumulativeInterbankContagionLoss;CumulativeEclProvisionChange;CumulativeBailInLoss;CumulativeCapitalDestruction;CumulativeReconciliationResidualAbs;FirstFailureRealizedCreditLoss;FirstFailureEclProvisionChange;FirstFailureConsumerNplLoss;FirstFailureFirmNplLoss;FirstFailureMortgageNplLoss;FirstFailureCorpBondDefaultLoss;FirstFailureInterbankContagionLoss;FirstFailureReconciliationResidual;FirstFailureDepositBailInLoss;TerminalTotalCreditToGdp;TerminalUnemployment;TerminalInflation;Interpretation"
     McCsvSchema(header, renderSeedRow)
 
   private val SummaryCsvSchema: McCsvSchema[SummaryResult] =
     val header =
-      "RunId;ScenarioId;ScenarioLabel;Seeds;Months;FailedSeeds;FirstFailureMonthMean;FirstFailureMonthMin;FirstFailureMonthMax;TerminalFailuresMean;PeakFailuresMean;CumulativeNewFailuresMean;CumulativeRealizedCreditLossMean;CumulativeEclProvisionChangeMean;CumulativeBailInLossMean;CumulativeCapitalDestructionMean;CumulativeReconciliationResidualAbsMean;FirstFailureRealizedCreditLossMean;FirstFailureEclProvisionChangeMean;FirstFailureConsumerNplLossMean;FirstFailureFirmNplLossMean;FirstFailureMortgageNplLossMean;FirstFailureCorpBondDefaultLossMean;TerminalTotalCreditToGdpMean;TerminalUnemploymentMean;TerminalInflationMean;Interpretation"
+      "RunId;ScenarioId;ScenarioLabel;Seeds;Months;FailedSeeds;FirstFailureMonthMean;FirstFailureMonthMin;FirstFailureMonthMax;TerminalFailuresMean;PeakFailuresMean;CumulativeNewFailuresMean;CumulativeRealizedCreditLossMean;CumulativeInterbankContagionLossMean;CumulativeEclProvisionChangeMean;CumulativeBailInLossMean;CumulativeCapitalDestructionMean;CumulativeReconciliationResidualAbsMean;FirstFailureRealizedCreditLossMean;FirstFailureEclProvisionChangeMean;FirstFailureConsumerNplLossMean;FirstFailureFirmNplLossMean;FirstFailureMortgageNplLossMean;FirstFailureCorpBondDefaultLossMean;FirstFailureInterbankContagionLossMean;TerminalTotalCreditToGdpMean;TerminalUnemploymentMean;TerminalInflationMean;Interpretation"
     McCsvSchema(header, renderSummaryRow)
 
   private val ScenarioCsvSchema: McCsvSchema[BankFailureAblationScenarios.Spec] =
@@ -399,6 +413,7 @@ object BankFailureAblationExport:
       row.peakFailures.toString,
       renderDecimal(row.cumulativeNewFailures),
       renderDecimal(row.cumulativeRealizedCreditLoss),
+      renderDecimal(row.cumulativeInterbankContagionLoss),
       renderDecimal(row.cumulativeEclProvisionChange),
       renderDecimal(row.cumulativeBailInLoss),
       renderDecimal(row.cumulativeCapitalDestruction),
@@ -409,6 +424,7 @@ object BankFailureAblationExport:
       renderDecimal(row.firstFailureFirmNplLoss),
       renderDecimal(row.firstFailureMortgageNplLoss),
       renderDecimal(row.firstFailureCorpBondDefaultLoss),
+      renderDecimal(row.firstFailureInterbankContagionLoss),
       renderDecimal(row.firstFailureReconciliationResidual),
       renderDecimal(row.firstFailureDepositBailInLoss),
       renderDecimal(row.terminalTotalCreditToGdp),
@@ -432,6 +448,7 @@ object BankFailureAblationExport:
       renderDecimal(row.peakFailuresMean),
       renderDecimal(row.cumulativeNewFailuresMean),
       renderDecimal(row.cumulativeRealizedCreditLossMean),
+      renderDecimal(row.cumulativeInterbankContagionLossMean),
       renderDecimal(row.cumulativeEclProvisionChangeMean),
       renderDecimal(row.cumulativeBailInLossMean),
       renderDecimal(row.cumulativeCapitalDestructionMean),
@@ -442,6 +459,7 @@ object BankFailureAblationExport:
       renderDecimal(row.firstFailureFirmNplLossMean),
       renderDecimal(row.firstFailureMortgageNplLossMean),
       renderDecimal(row.firstFailureCorpBondDefaultLossMean),
+      renderDecimal(row.firstFailureInterbankContagionLossMean),
       renderDecimal(row.terminalTotalCreditToGdpMean),
       renderDecimal(row.terminalUnemploymentMean),
       renderDecimal(row.terminalInflationMean),
@@ -462,6 +480,7 @@ object BankFailureAblationExport:
           row.firstFailureMonthMean.map(renderDecimal).getOrElse("n/a"),
           renderDecimal(row.terminalFailuresMean),
           renderDecimal(row.cumulativeRealizedCreditLossMean),
+          renderDecimal(row.cumulativeInterbankContagionLossMean),
           renderDecimal(row.cumulativeEclProvisionChangeMean),
           renderDecimal(row.cumulativeBailInLossMean),
           renderDecimal(row.cumulativeReconciliationResidualAbsMean),
@@ -494,12 +513,13 @@ object BankFailureAblationExport:
           "Mean First Failure Month",
           "Mean Terminal Failures",
           "Mean Cum Realized Loss",
+          "Mean Cum Interbank Loss",
           "Mean Cum ECL",
           "Mean Cum Bail-In",
           "Mean Abs Reconciliation Residual",
         ),
       ),
-      markdownRow(Vector("---", "---", "---", "---", "---", "---", "---", "---")),
+      markdownRow(Vector("---", "---", "---", "---", "---", "---", "---", "---", "---")),
     ) ++ rows ++ Vector(
       "",
       "## Baseline Comparison",

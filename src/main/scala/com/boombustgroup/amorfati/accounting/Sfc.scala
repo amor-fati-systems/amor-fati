@@ -190,6 +190,7 @@ object Sfc:
       bfgLevy: PLN,                             // BFG levy (bank capital expense)
       bailInLoss: PLN,                          // bail-in deposit destruction
       bankCapitalDestruction: PLN,              // Capital wiped when bank fails (shareholders wiped)
+      interbankContagionLoss: PLN,              // counterparty loss on failed-bank interbank exposures
       investNetDepositFlow: PLN,                // Investment timing deposit settlement: lagged domestic demand - current domestic spend
       firmPrincipalRepaid: PLN,                 // firm loan principal repaid (deposit destruction)
       unrealizedBondLoss: PLN,                  // mark-to-market loss on gov bond portfolio (interest rate risk channel)
@@ -327,11 +328,11 @@ object Sfc:
     * The monetary circuit closes via the sector-level flow-of-funds identity.
     *
     *   1. Bank capital: Δ = -nplLoss - mortgageNplLoss - consumerNplLoss -
-    *      corpBondDefaultLoss - bfgLevy - bankCapitalDestruction +
-    *      (interestIncome + bankBondIncome + mortgageInterestIncome + consumer
-    *      interest income + corpBondCouponIncome - depositInterestPaid +
-    *      reserveInterest + standingFacilityIncome + interbankInterest) ×
-    *      BankProfitRetention
+    *      corpBondDefaultLoss - interbankContagionLoss - bfgLevy -
+    *      bankCapitalDestruction + (interestIncome + bankBondIncome +
+    *      mortgageInterestIncome + consumer interest income +
+    *      corpBondCouponIncome - depositInterestPaid + reserveInterest +
+    *      standingFacilityIncome + interbankInterest) × BankProfitRetention
     *   2. Bank deposits: Δ = totalIncome - totalConsumption +
     *      investNetDepositFlow + jstDepositChange + dividendIncome -
     *      foreignDividendOutflow - remittanceOutflow + diasporaInflow +
@@ -419,7 +420,8 @@ object Sfc:
         expected = {
           val losses                 = flows.nplLoss + flows.mortgageNplLoss + flows.consumerNplLoss +
             flows.corpBondDefaultLoss + flows.bfgLevy + flows.unrealizedBondLoss +
-            flows.htmRealizedLoss + flows.eclProvisionChange + flows.bankCapitalDestruction
+            flows.htmRealizedLoss + flows.eclProvisionChange + flows.interbankContagionLoss +
+            flows.bankCapitalDestruction
           val consumerInterestIncome = flows.consumerDebtService - flows.consumerPrincipalRepaid
           val grossIncome            = flows.interestIncome + flows.bankBondIncome +
             flows.mortgageInterestIncome + consumerInterestIncome + flows.corpBondCouponIncome -

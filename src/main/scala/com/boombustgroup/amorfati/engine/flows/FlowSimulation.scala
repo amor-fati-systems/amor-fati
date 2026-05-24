@@ -1087,6 +1087,7 @@ object FlowSimulation:
       bfgLevy = evidence.amount(FlowMechanism.BankBfgLevy),
       bailInLoss = evidence.amount(FlowMechanism.BankBailIn),
       bankCapitalDestruction = banking.multiCapDestruction,
+      interbankContagionLoss = banking.interbankContagionLoss,
       investNetDepositFlow = evidence.investNetDepositFlow,
       firmPrincipalRepaid = evidence.amount(FlowMechanism.FirmLoanRepayment),
       unrealizedBondLoss = evidence.amount(FlowMechanism.BankUnrealizedLoss),

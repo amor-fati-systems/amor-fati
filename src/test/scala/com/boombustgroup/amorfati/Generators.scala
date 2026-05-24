@@ -523,6 +523,7 @@ object Generators:
     mortOrig     <- genDecimal("0.0", "1000000000.0")
     mortPrinc    <- genDecimal("0.0", "100000000.0")
     mortDefAmt   <- genDecimal("0.0", "10000000.0")
+    ibLoss       <- genDecimal("0.0", "10000000.0")
   yield Sfc.SemanticFlows(
     govSpending = plnBD(govSpend),
     govRevenue = plnBD(govRev),
@@ -584,6 +585,7 @@ object Generators:
     bfgLevy = PLN.Zero,
     bailInLoss = PLN.Zero,
     bankCapitalDestruction = PLN.Zero,
+    interbankContagionLoss = plnBD(ibLoss),
     investNetDepositFlow = PLN.Zero,
     firmPrincipalRepaid = PLN.Zero,
     unrealizedBondLoss = PLN.Zero,
@@ -605,7 +607,8 @@ object Generators:
       flows <- genMonthlyFlows
     yield
       val expectedBankCapChange  = -flows.nplLoss - flows.mortgageNplLoss - flows.consumerNplLoss
-        - flows.corpBondDefaultLoss - flows.bfgLevy - flows.unrealizedBondLoss - flows.htmRealizedLoss - flows.bankCapitalDestruction +
+        - flows.corpBondDefaultLoss - flows.bfgLevy - flows.unrealizedBondLoss - flows.htmRealizedLoss -
+        flows.interbankContagionLoss - flows.bankCapitalDestruction +
         (flows.interestIncome + flows.bankBondIncome + flows.mortgageInterestIncome
           + (flows.consumerDebtService - flows.consumerPrincipalRepaid) + flows.corpBondCouponIncome
           - flows.depositInterestPaid

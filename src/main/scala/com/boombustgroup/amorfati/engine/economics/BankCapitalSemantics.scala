@@ -105,9 +105,9 @@ object BankCapitalSemantics:
         "b.copy(capital = b.capital - loss)",
       ),
       sfcTreatment =
-        "Same-month per-bank counterparty loss. Closing aggregate exactness must classify its effect through failure capital destruction or the documented reconciliation residual until a dedicated interbank-loss SFC term is introduced.",
+        "Same-month per-bank counterparty loss. Monthly BankCapital identity term interbankContagionLoss keeps it separate from failure capital destruction and reconciliation residual.",
       absorber = "Initially the exposed bank capital buffer; if resolution is triggered, remaining loss is handled by the failure/bail-in path.",
-      diagnostics = "Failure-trigger evidence plus BankCapital_CapitalDestruction and BankCapital_ReconciliationResidual at aggregate close.",
+      diagnostics = "BankCapital_InterbankContagionLoss plus failure-trigger evidence at aggregate close.",
     ),
     WriteSite(
       id = "failure-check-capital-wipe",
