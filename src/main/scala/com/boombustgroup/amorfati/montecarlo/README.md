@@ -361,9 +361,10 @@ older `HouseholdBankruptcies`, `HouseholdBankruptcyRate`, and terminal
 
 The timeseries also includes residual shortfall settlement and its component
 attribution. `ConsumerDefault` is the matching same-month default/write-off
-diagnostic for the combined consumer-credit stock identity; `ConsumerPrincipal`,
-`ConsumerLoanDefault`, and `LiquidityBridgeChargeOff` split that flow for
-interpretation:
+diagnostic for the combined consumer-credit stock identity. `ConsumerPrincipal`
+reports principal repayment and is not part of the default/write-off flow;
+`ConsumerLoanDefault` and `LiquidityBridgeChargeOff` split the write-off flow
+into ordinary consumer-loan default and same-month bridge charge-off:
 
 ```text
 HouseholdLiquidity_ShortfallFinancing
