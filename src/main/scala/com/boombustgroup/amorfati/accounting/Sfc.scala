@@ -92,7 +92,7 @@ object Sfc:
       hhDebt: PLN,                      // Σ household debt (individual mode only, 0 in aggregate)
       firmCash: PLN,                    // Σ firm cash holdings
       firmDebt: PLN,                    // Σ firm bank loan debt
-      bankCapital: PLN,                 // aggregate bank equity capital (retained earnings)
+      bankCapital: PLN,                 // aggregate regulatory/accounting bank-capital buffer
       bankDeposits: PLN,                // aggregate bank deposits (HH + firm + JST)
       bankLoans: PLN,                   // aggregate bank loan book
       govDebt: PLN,                     // fiscal debt metric from deficit accumulation, distinct from holder-tracked bond stock
