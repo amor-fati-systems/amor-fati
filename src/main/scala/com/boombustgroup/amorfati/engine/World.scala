@@ -463,6 +463,16 @@ case class FlowState(
     automationAiDebtTrap: Int = 0,                                                          // AI debt-trap bankruptcies
     automationNewFullAi: Int = 0,                                                           // new full-AI adopters
     automationNewHybrid: Int = 0,                                                           // new hybrid adopters
+    firmNewLoans: PLN = PLN.Zero,                                                           // aggregate firm bank-loan origination, including bond reversion
+    firmPrincipalRepaid: PLN = PLN.Zero,                                                    // aggregate scheduled firm-loan principal repayment
+    firmGrossDefault: PLN = PLN.Zero,                                                       // gross firm-loan default volume from newly bankrupt firms
+    firmNplLoss: PLN = PLN.Zero,                                                            // net firm-loan credit loss after recovery
+    firmInvestmentCreditDemand: PLN = PLN.Zero,                                             // physical-investment bank credit requested
+    firmInvestmentCreditApproved: PLN = PLN.Zero,                                           // physical-investment bank credit approved
+    firmInvestmentCreditRejected: PLN = PLN.Zero,                                           // physical-investment bank credit rejected by bank supply
+    firmTechCreditDemand: PLN = PLN.Zero,                                                   // technology-upgrade bank credit requested or bank-rejected
+    firmTechCreditApproved: PLN = PLN.Zero,                                                 // technology-upgrade bank credit approved
+    firmTechCreditRejected: PLN = PLN.Zero,                                                 // technology-upgrade bank credit rejected by bank supply
     firmBirths: Int = 0,                                                                    // new firms (recycled + net new)
     firmDeaths: Int = 0,                                                                    // firms bankrupt this step
     netFirmBirths: Int = 0,                                                                 // net new firms appended to vector

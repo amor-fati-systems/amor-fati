@@ -196,6 +196,24 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     "WIBOR_3M",
     "WIBOR_6M",
     "BankFirmLoans",
+    "FirmCredit_NewLoans",
+    "FirmCredit_PrincipalRepaid",
+    "FirmCredit_GrossDefault",
+    "FirmCredit_NplRecovery",
+    "FirmCredit_NplLoss",
+    "FirmCredit_NetStockFlow",
+    "FirmCredit_CreditDemand",
+    "FirmCredit_CreditApproved",
+    "FirmCredit_BankRejected",
+    "FirmCredit_ApprovalRate",
+    "FirmCredit_InvestmentDemand",
+    "FirmCredit_InvestmentApproved",
+    "FirmCredit_InvestmentBankRejected",
+    "FirmCredit_CashFinancedInvestment",
+    "FirmCredit_CashFinancedInvestmentToGrossInvestment",
+    "FirmCredit_TechDemand",
+    "FirmCredit_TechApproved",
+    "FirmCredit_TechBankRejected",
     "ConsumerLoans",
     "ConsumerNplRatio",
     "ConsumerOrigination",
@@ -468,7 +486,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     MetricValue.fromRaw(Share.fraction(numerator, denominator).toLong)
 
   "McTimeseriesSchema" should "expose the stable schema contract" in {
-    McTimeseriesSchema.nCols shouldBe 406
+    McTimeseriesSchema.nCols shouldBe 424
     McTimeseriesSchema.colNames.toVector shouldBe expectedColNames
   }
 
@@ -646,6 +664,8 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     val nbfiLoans     = PLN(6)
     val totalCredit   = bankFirmLoans + consumerLoans + mortgageStock + nbfiLoans
     val annualGdp     = PLN(10) * 12
+    val firmDefault   = PLN(10)
+    val firmRecovery  = firmDefault * summon[SimParams].banking.loanRecovery
     val householdRows = initState.ledgerFinancialState.households.zipWithIndex.map: (household, idx) =>
       household.copy(mortgageLoan = if idx == 0 then mortgageStock else PLN.Zero)
     val ledger        = initState.ledgerFinancialState.copy(
@@ -665,10 +685,23 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
       interbankContagionLoss = PLN(4),
     )
     val world         = init.world.copy(
-      real = init.world.real.copy(housing = init.world.real.housing.copy(lastDefault = PLN(6))),
+      real = init.world.real.copy(
+        housing = init.world.real.housing.copy(lastDefault = PLN(6)),
+        grossInvestment = PLN(15),
+      ),
       flows = init.world.flows.copy(
         monthlyGdpProxy = PLN(10),
         sectorOutputs = Vector.fill(summon[SimParams].sectorDefs.length)(PLN.Zero),
+        firmNewLoans = PLN(20),
+        firmPrincipalRepaid = PLN(6),
+        firmGrossDefault = firmDefault,
+        firmNplLoss = PLN(4),
+        firmInvestmentCreditDemand = PLN(12),
+        firmInvestmentCreditApproved = PLN(5),
+        firmInvestmentCreditRejected = PLN(7),
+        firmTechCreditDemand = PLN(8),
+        firmTechCreditApproved = PLN(3),
+        firmTechCreditRejected = PLN(5),
         bankCapital = bankCapital,
       ),
     )
@@ -687,6 +720,24 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     val row           = computeRow(world, ledger, banks = banks, householdAggregates = hhAgg)
 
     valueAt(row, "BankFirmLoans") shouldBe polandScale(bankFirmLoans)
+    valueAt(row, "FirmCredit_NewLoans") shouldBe polandScale(PLN(20))
+    valueAt(row, "FirmCredit_PrincipalRepaid") shouldBe polandScale(PLN(6))
+    valueAt(row, "FirmCredit_GrossDefault") shouldBe polandScale(firmDefault)
+    valueAt(row, "FirmCredit_NplRecovery") shouldBe polandScale(firmRecovery)
+    valueAt(row, "FirmCredit_NplLoss") shouldBe polandScale(PLN(4))
+    valueAt(row, "FirmCredit_NetStockFlow") shouldBe polandScale(PLN(20) - PLN(6) - firmRecovery)
+    valueAt(row, "FirmCredit_CreditDemand") shouldBe polandScale(PLN(20))
+    valueAt(row, "FirmCredit_CreditApproved") shouldBe polandScale(PLN(8))
+    valueAt(row, "FirmCredit_BankRejected") shouldBe polandScale(PLN(12))
+    valueAt(row, "FirmCredit_ApprovalRate") shouldBe MetricValue.fromRaw((PLN(8) / PLN(20)).toLong)
+    valueAt(row, "FirmCredit_InvestmentDemand") shouldBe polandScale(PLN(12))
+    valueAt(row, "FirmCredit_InvestmentApproved") shouldBe polandScale(PLN(5))
+    valueAt(row, "FirmCredit_InvestmentBankRejected") shouldBe polandScale(PLN(7))
+    valueAt(row, "FirmCredit_CashFinancedInvestment") shouldBe polandScale(PLN(10))
+    valueAt(row, "FirmCredit_CashFinancedInvestmentToGrossInvestment") shouldBe MetricValue.fromRaw((PLN(10) / PLN(15)).toLong)
+    valueAt(row, "FirmCredit_TechDemand") shouldBe polandScale(PLN(8))
+    valueAt(row, "FirmCredit_TechApproved") shouldBe polandScale(PLN(3))
+    valueAt(row, "FirmCredit_TechBankRejected") shouldBe polandScale(PLN(5))
     valueAt(row, "ConsumerLoans") shouldBe polandScale(consumerLoans)
     valueAt(row, "ConsumerNplRatio") shouldBe MetricValue.fromRaw((consumerNpl / consumerLoans).toLong)
     valueAt(row, "ConsumerOrigination") shouldBe polandScale(PLN(12))

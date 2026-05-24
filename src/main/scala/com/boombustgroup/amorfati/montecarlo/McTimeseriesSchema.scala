@@ -94,6 +94,12 @@ object McTimeseriesSchema:
     lazy val householdLiquidity: McHouseholdLiquidityDiagnostics.Summary                            =
       McHouseholdLiquidityDiagnostics.fromBalances(ledgerFinancialState.households)
     lazy val bankFirmLoans: PLN                                                                     = bankAgg.totalLoans
+    lazy val firmDefaultRecovery: PLN                                                               = world.flows.firmGrossDefault * p.banking.loanRecovery
+    lazy val firmCreditDemand: PLN                                                                  = world.flows.firmInvestmentCreditDemand + world.flows.firmTechCreditDemand
+    lazy val firmCreditApproved: PLN                                                                = world.flows.firmInvestmentCreditApproved + world.flows.firmTechCreditApproved
+    lazy val firmCreditRejected: PLN                                                                = world.flows.firmInvestmentCreditRejected + world.flows.firmTechCreditRejected
+    lazy val firmCashFinancedInvestment: PLN                                                        =
+      (world.real.grossInvestment - world.flows.firmInvestmentCreditApproved).max(PLN.Zero)
     lazy val consumerLoanStock: PLN                                                                 = bankAgg.consumerLoans
     lazy val nbfiLoanStock: PLN                                                                     = ledgerFinancialState.funds.nbfi.nbfiLoanStock
     lazy val eclStage1: PLN                                                                         = banks.map(b => b.eclStaging.stage1).sumPln
@@ -475,6 +481,31 @@ object McTimeseriesSchema:
     ColumnDef("WIBOR_6M", ctx => ctx.world.bankingSector.interbankCurve.map(c => c.wibor6m).getOrElse(Rate.Zero)),
     // Validation-ready credit aggregates: stocks use annualized GDP as denominator.
     ColumnDef.macroPln("BankFirmLoans", ctx => ctx.bankFirmLoans),
+    // Firm Credit
+    ColumnDef.macroPln("FirmCredit_NewLoans", ctx => ctx.world.flows.firmNewLoans),
+    ColumnDef.macroPln("FirmCredit_PrincipalRepaid", ctx => ctx.world.flows.firmPrincipalRepaid),
+    ColumnDef.macroPln("FirmCredit_GrossDefault", ctx => ctx.world.flows.firmGrossDefault),
+    ColumnDef.macroPln("FirmCredit_NplRecovery", ctx => ctx.firmDefaultRecovery),
+    ColumnDef.macroPln("FirmCredit_NplLoss", ctx => ctx.world.flows.firmNplLoss),
+    ColumnDef.macroPln(
+      "FirmCredit_NetStockFlow",
+      ctx => ctx.world.flows.firmNewLoans - ctx.world.flows.firmPrincipalRepaid - ctx.firmDefaultRecovery,
+    ),
+    ColumnDef.macroPln("FirmCredit_CreditDemand", ctx => ctx.firmCreditDemand),
+    ColumnDef.macroPln("FirmCredit_CreditApproved", ctx => ctx.firmCreditApproved),
+    ColumnDef.macroPln("FirmCredit_BankRejected", ctx => ctx.firmCreditRejected),
+    ColumnDef("FirmCredit_ApprovalRate", ctx => ctx.flowToFlowRatio(ctx.firmCreditApproved, ctx.firmCreditDemand)),
+    ColumnDef.macroPln("FirmCredit_InvestmentDemand", ctx => ctx.world.flows.firmInvestmentCreditDemand),
+    ColumnDef.macroPln("FirmCredit_InvestmentApproved", ctx => ctx.world.flows.firmInvestmentCreditApproved),
+    ColumnDef.macroPln("FirmCredit_InvestmentBankRejected", ctx => ctx.world.flows.firmInvestmentCreditRejected),
+    ColumnDef.macroPln("FirmCredit_CashFinancedInvestment", ctx => ctx.firmCashFinancedInvestment),
+    ColumnDef(
+      "FirmCredit_CashFinancedInvestmentToGrossInvestment",
+      ctx => ctx.flowToFlowRatio(ctx.firmCashFinancedInvestment, ctx.world.real.grossInvestment),
+    ),
+    ColumnDef.macroPln("FirmCredit_TechDemand", ctx => ctx.world.flows.firmTechCreditDemand),
+    ColumnDef.macroPln("FirmCredit_TechApproved", ctx => ctx.world.flows.firmTechCreditApproved),
+    ColumnDef.macroPln("FirmCredit_TechBankRejected", ctx => ctx.world.flows.firmTechCreditRejected),
     // Consumer Credit
     ColumnDef.macroPln("ConsumerLoans", ctx => ctx.consumerLoanStock),
     ColumnDef(
@@ -1010,6 +1041,24 @@ object McTimeseriesSchema:
     val BankReconciliationCrossedFailureThreshold: Col = lookup("BankReconciliation_CrossedFailureThreshold")
     val BankReconciliationPostResidualReasonCode: Col  = lookup("BankReconciliation_PostResidualReasonCode")
     val BankFirmLoans: Col                             = lookup("BankFirmLoans")
+    val FirmCreditNewLoans: Col                        = lookup("FirmCredit_NewLoans")
+    val FirmCreditPrincipalRepaid: Col                 = lookup("FirmCredit_PrincipalRepaid")
+    val FirmCreditGrossDefault: Col                    = lookup("FirmCredit_GrossDefault")
+    val FirmCreditNplRecovery: Col                     = lookup("FirmCredit_NplRecovery")
+    val FirmCreditNplLoss: Col                         = lookup("FirmCredit_NplLoss")
+    val FirmCreditNetStockFlow: Col                    = lookup("FirmCredit_NetStockFlow")
+    val FirmCreditCreditDemand: Col                    = lookup("FirmCredit_CreditDemand")
+    val FirmCreditCreditApproved: Col                  = lookup("FirmCredit_CreditApproved")
+    val FirmCreditBankRejected: Col                    = lookup("FirmCredit_BankRejected")
+    val FirmCreditApprovalRate: Col                    = lookup("FirmCredit_ApprovalRate")
+    val FirmCreditInvestmentDemand: Col                = lookup("FirmCredit_InvestmentDemand")
+    val FirmCreditInvestmentApproved: Col              = lookup("FirmCredit_InvestmentApproved")
+    val FirmCreditInvestmentBankRejected: Col          = lookup("FirmCredit_InvestmentBankRejected")
+    val FirmCreditCashFinancedInvestment: Col          = lookup("FirmCredit_CashFinancedInvestment")
+    val FirmCreditCashFinancedInvestmentToGfcf: Col    = lookup("FirmCredit_CashFinancedInvestmentToGrossInvestment")
+    val FirmCreditTechDemand: Col                      = lookup("FirmCredit_TechDemand")
+    val FirmCreditTechApproved: Col                    = lookup("FirmCredit_TechApproved")
+    val FirmCreditTechBankRejected: Col                = lookup("FirmCredit_TechBankRejected")
     val ConsumerPrincipal: Col                         = lookup("ConsumerPrincipal")
     val ConsumerCreditNetStockFlow: Col                = lookup("ConsumerCredit_NetStockFlow")
     val ConsumerCreditUnderwrittenNetFlow: Col         = lookup("ConsumerCredit_UnderwrittenNetFlow")
