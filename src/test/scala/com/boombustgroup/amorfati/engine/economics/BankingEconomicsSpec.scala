@@ -157,6 +157,19 @@ class BankingEconomicsSpec extends AnyFlatSpec with Matchers:
     LedgerFinancialState.projectBankFinancialStocks(result.ledgerFinancialState.banks.head) shouldBe alignedOpeningStocks
   }
 
+  it should "resolve a bank made insolvent by aggregate capital reconciliation" in {
+    val prepared       = preparedBankingStep()
+    val stressedFirmS5 = prepared.s5.copy(nplLoss = prepared.s5.nplLoss + PLN(250000000000L))
+
+    val result = prepared.run(s5Override = stressedFirmS5)
+
+    result.bankReconciliationDiagnostics.crossedFailureThreshold shouldBe 1
+    result.bankReconciliationDiagnostics.postResidualReasonCode shouldBe Banking.BankFailureReason.NegativeCapital.code
+    result.banks.exists(bank => bank.id.toInt == result.bankReconciliationDiagnostics.targetBankId && bank.failed) shouldBe true
+    result.banks.filterNot(_.failed).foreach(_.capital should be >= PLN.Zero)
+    result.bankFailureDiagnostics.newNegativeCapital should be >= 1
+  }
+
   it should "realign consumer-loan book distribution to household bank routing without changing the aggregate stock" in {
     val households        = Vector(
       TestHouseholdState(id = HhId(0), skill = Share.decimal(7, 1), mpc = Share.decimal(8, 1), status = HhStatus.Unemployed(0), bankId = BankId(0)),
@@ -213,6 +226,7 @@ class BankingEconomicsSpec extends AnyFlatSpec with Matchers:
         worldOverride: World = world,
         ledgerFinancialStateOverride: LedgerFinancialState = ledgerFinancialState,
         banksOverride: Vector[Banking.BankState] = banks,
+        s5Override: FirmEconomics.StepOutput = s5,
     ): BankingEconomics.StepOutput =
       val bankingRng = MonthRandomness.Contract.fromSeed(TestSeed).stages.newStreams().bankingEconomics
       BankingEconomics.runStep(
@@ -223,7 +237,7 @@ class BankingEconomicsSpec extends AnyFlatSpec with Matchers:
           s2,
           s3,
           s4,
-          s5,
+          s5Override,
           s6,
           s7,
           s8,
