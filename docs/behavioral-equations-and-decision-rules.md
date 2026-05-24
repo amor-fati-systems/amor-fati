@@ -892,6 +892,10 @@ banks entering resolution in the current failure event set. P&A resolution then
 transfers deposits, government bonds, performing loans, consumer loans, and
 corporate-bond holdings to the healthiest surviving bank. Firms and households
 routed to failed banks are reassigned to the absorber.
+If every bank has failed while deposits still need resolution, the baseline
+path fails fast. Selecting a failed row as the absorber would be an implicit
+bridge-bank recapitalization or nationalization mechanism, so it must be added
+as an explicit SFC/fiscal mechanism before such runs are considered valid.
 In later months, a failed-bank row is an inert shell: ordinary lending, P&L,
 ECL migration, NPL write-off, and deposit-flow updates are skipped unless an
 explicit resolution or reconciliation mechanism changes the row.
@@ -903,12 +907,10 @@ multiple triggers are true, the priority is negative capital, then CAR breach,
 then LCR/liquidity breach. `BankFailure_FirstNewReasonCode` records the first
 new failure reason in bank-id order using `0 = none`, `1 = negative capital`,
 `2 = CAR breach`, `3 = LCR/liquidity breach`, `4 = all-failed fallback`, and
-`5 = invariant mismatch`. `BankFailure_AllFailedFallback` flags the current
-bridge-bank/resolution fallback where all banks have already failed and the
-absorber is selected from that failed set; this is the path #549 must decide
-whether to recapitalize or fail fast. `BankFailure_InvariantViolation` should
-remain zero and means the failure-event diagnostics do not reconcile to the
-new-failure count.
+`5 = invariant mismatch`. `BankFailure_AllFailedFallback` is retained as a
+stable diagnostic column and should remain zero under fail-fast all-failed
+semantics. `BankFailure_InvariantViolation` should remain zero and means the
+failure-event diagnostics do not reconcile to the new-failure count.
 
 ## Fiscal, Monetary, Bond-Market, And External Rules
 

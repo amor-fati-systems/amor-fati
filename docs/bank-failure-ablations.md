@@ -38,5 +38,6 @@ full model simulation.
 
 These scenarios are diagnostics, not candidate policy settings. A scenario that
 materially delays or prevents failures identifies a channel that needs deeper
-economic or accounting work before all-failed bank resolution semantics are
-changed.
+economic or accounting work before an explicit bridge-bank recapitalization,
+nationalization, or shutdown mechanism can replace the current all-failed
+fail-fast boundary.

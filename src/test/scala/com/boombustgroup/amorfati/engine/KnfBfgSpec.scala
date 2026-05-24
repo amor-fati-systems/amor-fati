@@ -158,8 +158,8 @@ class KnfBfgSpec extends AnyFlatSpec with Matchers:
     decimal(result.financialStocks.map(_.interbankLoan).sumPln) shouldBe BigDecimal("0.0") +- BigDecimal("1e-6")
   }
 
-  it should "create a bridge bank when all banks fail and preserve aggregate bond stock" in {
-    val rows   = Vector(
+  it should "fail fast when all banks fail instead of creating an implicit bridge bank" in {
+    val rows = Vector(
       mkBankRow(
         id = 0,
         deposits = PLN(500000),
@@ -188,23 +188,24 @@ class KnfBfgSpec extends AnyFlatSpec with Matchers:
         status = BankStatus.Failed(ExecutionMonth(3)),
       ),
     )
-    val before = stocks(rows).map(s => decimal(Banking.govBondHoldings(s))).sum
-    val result = Banking.resolveFailures(banks(rows), stocks(rows))
-    val after  = result.financialStocks.map(s => decimal(Banking.govBondHoldings(s))).sum
+    val ex   = intercept[IllegalStateException]:
+      Banking.resolveFailures(banks(rows), stocks(rows))
 
-    after shouldBe before +- BigDecimal("1.0")
-    result.banks.exists(!_.failed) shouldBe true
-    result.allFailedFallbackUsed shouldBe true
+    ex.getMessage should include("all-failed banking sector")
+    ex.getMessage should include("refusing to resurrect a failed bank")
   }
 
-  "Banking.healthiestBankId" should "return bank with highest capital when all fail" in {
+  "Banking.healthiestBankId" should "fail fast when all banks have failed" in {
     val rows = Vector(
       mkBankRow(id = 0, deposits = PLN(500000), loans = PLN(100000), capital = PLN(-20000), status = BankStatus.Failed(ExecutionMonth(3))),
       mkBankRow(id = 1, deposits = PLN(300000), loans = PLN(80000), capital = PLN(-5000), status = BankStatus.Failed(ExecutionMonth(3))),
       mkBankRow(id = 2, deposits = PLN(200000), loans = PLN(60000), capital = PLN(-15000), status = BankStatus.Failed(ExecutionMonth(3))),
     )
+    val ex   = intercept[IllegalStateException]:
+      Banking.healthiestBankId(banks(rows), stocks(rows))
 
-    Banking.healthiestBankId(banks(rows), stocks(rows)) shouldBe BankId(1)
+    ex.getMessage should include("every bank is failed")
+    ex.getMessage should include("recapitalization")
   }
 
   "World defaults" should "keep bfgFundBalance and bailInLoss at zero" in {
