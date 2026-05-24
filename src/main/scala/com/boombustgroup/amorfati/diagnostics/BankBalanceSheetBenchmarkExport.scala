@@ -14,7 +14,9 @@ import scala.util.Try
 
 object BankBalanceSheetBenchmarkExport:
 
-  private val BaselineVintage = "2026-04-30 model-start baseline"
+  private val BaselineVintage                         = "2026-04-30 model-start baseline"
+  private[diagnostics] val BankCapitalSourceStatement =
+    "Capital source: `BankState.capital`. It is a persisted regulatory/accounting bank-capital buffer seeded by bank calibration and updated by the bank P&L/loss waterfall. `LedgerFinancialState.BankBalances` intentionally has no capital field; this diagnostic must not infer holder-resolved ledger-owned bank equity."
 
   final case class Config(
       seedStart: Long = 1L,
@@ -539,7 +541,7 @@ object BankBalanceSheetBenchmarkExport:
         status = status,
       )
 
-  private def computeSeed(config: Config, seed: Long, init: WorldInit.InitResult)(using SimParams): (Vector[SeedMetric], Vector[BankRow]) =
+  private[diagnostics] def computeSeed(config: Config, seed: Long, init: WorldInit.InitResult)(using SimParams): (Vector[SeedMetric], Vector[BankRow]) =
     val context = SeedContext(seed, init)
     val metrics = Metrics.map: metric =>
       val value = metric.compute(context)
@@ -713,7 +715,9 @@ object BankBalanceSheetBenchmarkExport:
         "",
         "## Bank Capital Semantics",
         "",
-        "Capital columns use `BankState.capital`: a persisted regulatory/accounting bank-capital buffer seeded by bank calibration and updated by the bank P&L/loss waterfall. It is SFC-validated diagnostic state, not holder-resolved ledger-owned equity.",
+        BankCapitalSourceStatement,
+        "",
+        "`AssetType.Capital` remains an unsupported persisted diagnostic stock: SFC-validatable, but outside the supported transferable ledger-owned stock slice.",
         "",
         "## Target Bands",
         "",
