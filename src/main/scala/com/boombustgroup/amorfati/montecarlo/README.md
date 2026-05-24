@@ -288,6 +288,48 @@ reason code uses the same reason-code mapping as `BankFailure_FirstNewReasonCode
 If the patched active bank has a post-residual failure reason, the banking stage
 runs a final failure, bail-in, and P&A resolution pass before month close.
 
+## Firm Credit Diagnostics
+
+The monthly timeseries firm-credit block relevant to loan-book runoff is:
+
+```text
+FirmCredit_NewLoans
+FirmCredit_PrincipalRepaid
+FirmCredit_GrossDefault
+FirmCredit_NplRecovery
+FirmCredit_NplLoss
+FirmCredit_NetStockFlow
+FirmCredit_CreditDemand
+FirmCredit_CreditApproved
+FirmCredit_BankRejected
+FirmCredit_ApprovalRate
+FirmCredit_InvestmentDemand
+FirmCredit_InvestmentApproved
+FirmCredit_InvestmentBankRejected
+FirmCredit_CashFinancedInvestment
+FirmCredit_CashFinancedInvestmentToGrossInvestment
+FirmCredit_TechDemand
+FirmCredit_TechApproved
+FirmCredit_TechBankRejected
+```
+
+`FirmCredit_NetStockFlow` reports the bank-book flow currently applied to the
+firm-loan stock: new bank loans minus scheduled principal repayment minus the
+recovered part of newly defaulted firm debt. `FirmCredit_GrossDefault` and
+`FirmCredit_NplLoss` expose the gross default volume and after-recovery capital
+loss separately. Comparing month-over-month `BankFirmLoans` deltas to
+`FirmCredit_NetStockFlow` isolates residual effects from clipping, routing, or
+resolution.
+
+`FirmCredit_CreditDemand`, `FirmCredit_CreditApproved`, and
+`FirmCredit_BankRejected` aggregate the always-on investment and technology
+credit decision surfaces before equity and corporate-bond channel substitution;
+final bank-loan origination is `FirmCredit_NewLoans`. The `Investment*` columns
+explain physical-capital financing; `FirmCredit_CashFinancedInvestment` is gross
+investment not financed by approved investment credit. The `Tech*` columns cover
+automation and hybrid upgrade credit demand, including otherwise feasible
+upgrades rejected by the relationship bank.
+
 ## Household Liquidity Diagnostics
 
 The timeseries schema and terminal `_hh.csv` summary include generic household

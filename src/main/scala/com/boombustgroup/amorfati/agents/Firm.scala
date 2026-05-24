@@ -210,6 +210,12 @@ object Firm:
       energyCost: PLN,                            // Total energy + ETS cost this month
       greenInvestment: PLN,                       // Green capital investment this month
       principalRepaid: PLN,                       // Monthly firm loan principal repayment
+      investmentCreditDemand: PLN = PLN.Zero,     // Physical-investment bank credit requested
+      investmentCreditApproved: PLN = PLN.Zero,   // Physical-investment bank credit approved
+      investmentCreditRejected: PLN = PLN.Zero,   // Physical-investment bank credit rejected by bank supply
+      techCreditDemand: PLN = PLN.Zero,           // Technology-upgrade bank credit requested or bank-rejected
+      techCreditApproved: PLN = PLN.Zero,         // Technology-upgrade bank credit approved
+      techCreditRejected: PLN = PLN.Zero,         // Technology-upgrade bank credit rejected by bank supply
       decisionTrace: Option[DecisionTrace] = None, // Auditable decision surface for optional exports
   )
   object Result:
@@ -746,8 +752,9 @@ object Firm:
     val r4       = applyInventory(r3, sectorDemandMult = operationalSignals.sectorDemandMult(firm.sector.toInt))
     val r5       = applyFdiFlows(r4)
     val finalR   = applyInformalCitEvasion(r5, w.mechanisms.informalCyclicalAdj)
-    if traceDecision then finalR.copy(decisionTrace = finalR.decisionTrace.map(refreshDecisionTraceClosing(_, finalR)))
-    else finalR
+    val auditedR = applyTechCreditDiagnostics(finalR, decision)
+    if traceDecision then auditedR.copy(decisionTrace = auditedR.decisionTrace.map(refreshDecisionTraceClosing(_, auditedR)))
+    else auditedR
 
   // ---- Decide (all match logic + RandomStream rolls) ----
 
@@ -1446,6 +1453,15 @@ object Firm:
       case Decision.UpgradeFailed(_, _, _, loan, _) => loan
       case _                                        => PLN.Zero
 
+  private def applyTechCreditDiagnostics(result: Result, decision: DecisionWithAudit): Result =
+    val demand   = decision.audit.techCreditNeed.getOrElse(decisionCreditNeed(decision.decision)).max(result.techNewLoan)
+    val approved = result.techNewLoan.min(demand)
+    result.copy(
+      techCreditDemand = demand,
+      techCreditApproved = approved,
+      techCreditRejected = (demand - approved).max(PLN.Zero),
+    )
+
   // ---- Execute (pure dispatch, zero RandomStream calls) ----
 
   /** Pure dispatch: map `Decision` → `Result`. No RandomStream calls, no side
@@ -1620,6 +1636,9 @@ object Firm:
       ),
       newLoan = r.newLoan + creditInv,
       grossInvestment = actualInv,
+      investmentCreditDemand = creditNeed,
+      investmentCreditApproved = creditInv,
+      investmentCreditRejected = (creditNeed - creditInv).max(PLN.Zero),
       decisionTrace = investmentTrace,
     )
 
