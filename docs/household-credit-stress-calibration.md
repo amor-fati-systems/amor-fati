@@ -67,11 +67,20 @@ outside the reference band is still reported as `WARN`, but the warning means
 
 The current bands are stylized for the `2026-04-30` Poland model-start
 baseline. `MortgageLoansToGdp` is anchored to the existing empirical-validation
-manifest bridge for KNF housing loans relative to model GDP. Mortgage principal
-and interest ratios decompose `MortgageDebtServiceToIncome`; they are internal
-diagnostics, not standalone empirical acceptance bands. `ConsumerDebtServiceToIncome`
-is also a household cash-flow burden: principal reduces the consumer-loan stock,
-while only the interest component enters bank income. The consumer-credit,
+manifest bridge for KNF housing loans relative to model GDP and should be
+checked along the simulated path, including the 60-month terminal value, not
+only at initialization. `MortgageNetStockFlow` and its component flow-to-stock
+rates identify whether any drift is numerator runoff from origination,
+repayment, or default; `AnnualizedGdpProxy` separates denominator growth.
+If the 60-month baseline falls below the band while
+`MortgageOriginationSupplyConstrained` is false, the relevant calibration lever
+is `housing.originationRate` relative to scheduled amortization, gross default,
+and GDP growth rather than a bank-resolution supply cap.
+Mortgage principal and interest ratios decompose `MortgageDebtServiceToIncome`;
+they are internal diagnostics, not standalone empirical acceptance bands.
+`ConsumerDebtServiceToIncome` is also a household cash-flow burden: principal
+reduces the consumer-loan stock, while only the interest component enters bank
+income. The consumer-credit,
 household DSR, arrears/default and liquidity-buffer ranges are deliberately
 documented as guardrails, not final empirical pass/fail tests. `ConsumerDefault`
 remains the combined SFC flow used for stock closure and bank losses, while

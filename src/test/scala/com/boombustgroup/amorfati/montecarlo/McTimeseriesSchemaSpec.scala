@@ -338,6 +338,12 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     "MortgageOrigination",
     "MortgageRepayment",
     "MortgageDefault",
+    "MortgageNetStockFlow",
+    "MortgageOriginationToStock",
+    "MortgageRepaymentToStock",
+    "MortgageDefaultToStock",
+    "MortgageNetStockFlowToStock",
+    "MortgageOriginationSupplyConstrained",
     "MortgageInterestIncome",
     "HhHousingWealth",
     "HousingWealthEffect",
@@ -492,7 +498,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     MetricValue.fromRaw(Share.fraction(numerator, denominator).toLong)
 
   "McTimeseriesSchema" should "expose the stable schema contract" in {
-    McTimeseriesSchema.nCols shouldBe 430
+    McTimeseriesSchema.nCols shouldBe 436
     McTimeseriesSchema.colNames.toVector shouldBe expectedColNames
   }
 
@@ -662,28 +668,32 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
   }
 
   it should "emit validation-ready credit stock splits and GDP ratios" in {
-    val bankFirmLoans = PLN(10) * initState.ledgerFinancialState.banks.length
-    val consumerLoans = PLN(2) * initState.ledgerFinancialState.banks.length
-    val consumerNpl   = PLN(1) * initState.ledgerFinancialState.banks.length
-    val bankCorpBonds = PLN(25) * initState.ledgerFinancialState.banks.length
-    val mortgageStock = PLN(20)
-    val nbfiLoans     = PLN(6)
-    val nbfiAum       = PLN(30)
-    val totalCredit   = bankFirmLoans + consumerLoans + mortgageStock + nbfiLoans
-    val annualGdp     = PLN(10) * 12
-    val firmDefault   = PLN(10)
-    val firmRecovery  = firmDefault * summon[SimParams].banking.loanRecovery
-    val householdRows = initState.ledgerFinancialState.households.zipWithIndex.map: (household, idx) =>
+    val bankFirmLoans       = PLN(10) * initState.ledgerFinancialState.banks.length
+    val consumerLoans       = PLN(2) * initState.ledgerFinancialState.banks.length
+    val consumerNpl         = PLN(1) * initState.ledgerFinancialState.banks.length
+    val bankCorpBonds       = PLN(25) * initState.ledgerFinancialState.banks.length
+    val mortgageStock       = PLN(20)
+    val mortgageOrigination = PLN(9)
+    val mortgageRepayment   = PLN(4)
+    val mortgageDefault     = PLN(6)
+    val mortgageNetFlow     = mortgageOrigination - mortgageRepayment - mortgageDefault
+    val nbfiLoans           = PLN(6)
+    val nbfiAum             = PLN(30)
+    val totalCredit         = bankFirmLoans + consumerLoans + mortgageStock + nbfiLoans
+    val annualGdp           = PLN(10) * 12
+    val firmDefault         = PLN(10)
+    val firmRecovery        = firmDefault * summon[SimParams].banking.loanRecovery
+    val householdRows       = initState.ledgerFinancialState.households.zipWithIndex.map: (household, idx) =>
       household.copy(mortgageLoan = if idx == 0 then mortgageStock else PLN.Zero)
-    val ledger        = initState.ledgerFinancialState.copy(
+    val ledger              = initState.ledgerFinancialState.copy(
       households = householdRows,
       banks = initState.ledgerFinancialState.banks.map(_.copy(firmLoan = PLN(10), consumerLoan = PLN(2), corpBond = PLN(25))),
       funds = initState.ledgerFinancialState.funds.copy(
         nbfi = initState.ledgerFinancialState.funds.nbfi.copy(tfiUnit = nbfiAum, nbfiLoanStock = nbfiLoans),
       ),
     )
-    val banks         = init.banks.map(_.copy(consumerNpl = PLN(1)))
-    val bankCapital   = BankCapitalDiagnostics(
+    val banks               = init.banks.map(_.copy(consumerNpl = PLN(1)))
+    val bankCapital         = BankCapitalDiagnostics(
       openingCapital = PLN(1000),
       firmNplLoss = PLN(2),
       mortgageNplLoss = PLN(2),
@@ -691,9 +701,14 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
       corpBondDefaultLoss = PLN(3),
       interbankContagionLoss = PLN(4),
     )
-    val world         = init.world.copy(
+    val world               = init.world.copy(
       real = init.world.real.copy(
-        housing = init.world.real.housing.copy(lastDefault = PLN(6)),
+        housing = init.world.real.housing.copy(
+          lastOrigination = mortgageOrigination,
+          lastRepayment = mortgageRepayment,
+          lastDefault = mortgageDefault,
+          lastOriginationSupplyConstrained = true,
+        ),
         grossInvestment = PLN(15),
       ),
       financialMarkets = init.world.financialMarkets.copy(
@@ -723,7 +738,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
         bankCapital = bankCapital,
       ),
     )
-    val hhAgg         = init.householdAggregates.copy(
+    val hhAgg               = init.householdAggregates.copy(
       totalConsumerOrigination = PLN(12),
       totalConsumerApprovedOrigination = PLN(8),
       totalConsumerCreditDemand = PLN(20),
@@ -735,7 +750,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
       totalLiquidityShortfallFinancing = PLN(4),
       totalLiquidityBridgeChargeOff = PLN(4),
     )
-    val row           = computeRow(world, ledger, banks = banks, householdAggregates = hhAgg)
+    val row                 = computeRow(world, ledger, banks = banks, householdAggregates = hhAgg)
 
     valueAt(row, "BankFirmLoans") shouldBe polandScale(bankFirmLoans)
     valueAt(row, "FirmCredit_NewLoans") shouldBe polandScale(PLN(20))
@@ -787,6 +802,17 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     valueAt(row, "NbfiBankTightness") shouldBe MetricValue.fromRaw(Share.decimal(25, 2).toLong)
     valueAt(row, "NbfiDepositDrain") shouldBe polandScale(PLN(3))
     valueAt(row, "NbfiDepositDrainToAum") shouldBe MetricValue.fromRaw((PLN(3) / nbfiAum).toLong)
+    valueAt(row, "MortgageStock") shouldBe polandScale(mortgageStock)
+    valueAt(row, "MortgageOrigination") shouldBe polandScale(mortgageOrigination)
+    valueAt(row, "MortgageRepayment") shouldBe polandScale(mortgageRepayment)
+    valueAt(row, "MortgageDefault") shouldBe polandScale(mortgageDefault)
+    valueAt(row, "MortgageNetStockFlow") shouldBe polandScale(mortgageNetFlow)
+    valueAt(row, "MortgageOriginationToStock") shouldBe MetricValue.fromRaw((mortgageOrigination / mortgageStock).toLong)
+    valueAt(row, "MortgageRepaymentToStock") shouldBe MetricValue.fromRaw((mortgageRepayment / mortgageStock).toLong)
+    valueAt(row, "MortgageDefaultToStock") shouldBe MetricValue.fromRaw((mortgageDefault / mortgageStock).toLong)
+    valueAt(row, "MortgageNetStockFlowToStock") shouldBe MetricValue.fromRaw((mortgageNetFlow / mortgageStock).toLong)
+    valueAt(row, "MortgageOriginationSupplyConstrained") shouldBe MetricValue.fromBoolean(true)
+    valueAt(row, "MortgageToGdp") shouldBe MetricValue.fromRaw((mortgageStock / annualGdp).toLong)
     valueAt(row, "TotalCreditStock") shouldBe polandScale(totalCredit)
     valueAt(row, "BankFirmLoansToGdp") shouldBe MetricValue.fromRaw((bankFirmLoans / annualGdp).toLong)
     valueAt(row, "ConsumerLoansToGdp") shouldBe MetricValue.fromRaw((consumerLoans / annualGdp).toLong)
@@ -804,7 +830,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     valueAt(row, "BankCapital_InterbankContagionLoss") shouldBe polandScale(PLN(4))
     valueAt(row, "BankCreditLoss_FirmDefaultRate") shouldBe MetricValue.fromRaw((firmGrossDefault / bankFirmLoans).toLong)
     valueAt(row, "BankCreditLoss_FirmLossRate") shouldBe MetricValue.fromRaw((bankCapital.firmNplLoss / bankFirmLoans).toLong)
-    valueAt(row, "BankCreditLoss_MortgageDefaultRate") shouldBe MetricValue.fromRaw((PLN(6) / mortgageStock).toLong)
+    valueAt(row, "BankCreditLoss_MortgageDefaultRate") shouldBe MetricValue.fromRaw((mortgageDefault / mortgageStock).toLong)
     valueAt(row, "BankCreditLoss_MortgageLossRate") shouldBe MetricValue.fromRaw((bankCapital.mortgageNplLoss / mortgageStock).toLong)
     valueAt(row, "BankCreditLoss_ConsumerLoanDefaultRate") shouldBe MetricValue.fromRaw((PLN(3) / consumerLoans).toLong)
     valueAt(row, "BankCreditLoss_LiquidityBridgeChargeOffRate") shouldBe MetricValue.fromRaw((PLN(4) / consumerLoans).toLong)

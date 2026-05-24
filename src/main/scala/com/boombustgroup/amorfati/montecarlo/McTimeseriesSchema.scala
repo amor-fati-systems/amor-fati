@@ -101,6 +101,10 @@ object McTimeseriesSchema:
     lazy val firmCashFinancedInvestment: PLN                                                        =
       (world.real.grossInvestment - world.flows.firmInvestmentCreditApproved).max(PLN.Zero)
     lazy val consumerLoanStock: PLN                                                                 = bankAgg.consumerLoans
+    lazy val mortgageOrigination: PLN                                                               = world.real.housing.lastOrigination
+    lazy val mortgageRepayment: PLN                                                                 = world.real.housing.lastRepayment
+    lazy val mortgageDefault: PLN                                                                   = world.real.housing.lastDefault
+    lazy val mortgageNetStockFlow: PLN                                                              = mortgageOrigination - mortgageRepayment - mortgageDefault
     lazy val nbfiLoanStock: PLN                                                                     = ledgerFinancialState.funds.nbfi.nbfiLoanStock
     lazy val nbfiOrigination: PLN                                                                   = world.financialMarkets.nbfi.lastNbfiOrigination
     lazy val nbfiRepayment: PLN                                                                     = world.financialMarkets.nbfi.lastNbfiRepayment
@@ -692,9 +696,15 @@ object McTimeseriesSchema:
       ColumnDef.macroPln("HousingMarketValue", ctx => ctx.world.real.housing.totalValue),
       ColumnDef.macroPln("MortgageStock", ctx => ctx.ledgerHouseholdMortgageStock),
       ColumnDef("AvgMortgageRate", ctx => ctx.world.real.housing.avgMortgageRate),
-      ColumnDef.macroPln("MortgageOrigination", ctx => ctx.world.real.housing.lastOrigination),
-      ColumnDef.macroPln("MortgageRepayment", ctx => ctx.world.real.housing.lastRepayment),
-      ColumnDef.macroPln("MortgageDefault", ctx => ctx.world.real.housing.lastDefault),
+      ColumnDef.macroPln("MortgageOrigination", ctx => ctx.mortgageOrigination),
+      ColumnDef.macroPln("MortgageRepayment", ctx => ctx.mortgageRepayment),
+      ColumnDef.macroPln("MortgageDefault", ctx => ctx.mortgageDefault),
+      ColumnDef.macroPln("MortgageNetStockFlow", ctx => ctx.mortgageNetStockFlow),
+      ColumnDef("MortgageOriginationToStock", ctx => ctx.flowToStockRate(ctx.mortgageOrigination, ctx.ledgerHouseholdMortgageStock)),
+      ColumnDef("MortgageRepaymentToStock", ctx => ctx.flowToStockRate(ctx.mortgageRepayment, ctx.ledgerHouseholdMortgageStock)),
+      ColumnDef("MortgageDefaultToStock", ctx => ctx.flowToStockRate(ctx.mortgageDefault, ctx.ledgerHouseholdMortgageStock)),
+      ColumnDef("MortgageNetStockFlowToStock", ctx => ctx.flowToStockRate(ctx.mortgageNetStockFlow, ctx.ledgerHouseholdMortgageStock)),
+      ColumnDef("MortgageOriginationSupplyConstrained", ctx => ctx.world.real.housing.lastOriginationSupplyConstrained),
       ColumnDef.macroPln("MortgageInterestIncome", ctx => ctx.world.real.housing.mortgageInterestIncome),
       ColumnDef.macroPln("HhHousingWealth", ctx => ctx.world.real.housing.hhHousingWealth),
       ColumnDef.macroPln("HousingWealthEffect", ctx => ctx.world.real.housing.lastWealthEffect),
@@ -1093,6 +1103,17 @@ object McTimeseriesSchema:
     val ConsumerCreditRejectedToDemand: Col            = lookup("ConsumerCredit_RejectedToDemand")
     val ConsumerCreditBankRejectedToDemand: Col        = lookup("ConsumerCredit_BankRejectedToDemand")
     val ConsumerCreditShortfallToApproved: Col         = lookup("ConsumerCredit_ShortfallToApprovedOrigination")
+    val MortgageStock: Col                             = lookup("MortgageStock")
+    val MortgageOrigination: Col                       = lookup("MortgageOrigination")
+    val MortgageRepayment: Col                         = lookup("MortgageRepayment")
+    val MortgageDefault: Col                           = lookup("MortgageDefault")
+    val MortgageNetStockFlow: Col                      = lookup("MortgageNetStockFlow")
+    val MortgageOriginationToStock: Col                = lookup("MortgageOriginationToStock")
+    val MortgageRepaymentToStock: Col                  = lookup("MortgageRepaymentToStock")
+    val MortgageDefaultToStock: Col                    = lookup("MortgageDefaultToStock")
+    val MortgageNetStockFlowToStock: Col               = lookup("MortgageNetStockFlowToStock")
+    val MortgageOriginationSupplyConstrained: Col      = lookup("MortgageOriginationSupplyConstrained")
+    val MortgageToGdp: Col                             = lookup("MortgageToGdp")
     val TotalCreditStock: Col                          = lookup("TotalCreditStock")
     val TotalCreditToGdp: Col                          = lookup("TotalCreditToGdp")
     val ReserveInterest: Col                           = lookup("ReserveInterest")

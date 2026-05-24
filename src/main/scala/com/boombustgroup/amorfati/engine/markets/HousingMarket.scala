@@ -50,6 +50,7 @@ object HousingMarket:
       monthlyReturn: Rate,
       mortgageInterestIncome: PLN,
       regions: Option[Vector[RegionalState]] = None,
+      lastOriginationSupplyConstrained: Boolean = false,
   ):
     regions.foreach: rs =>
       require(
@@ -255,6 +256,7 @@ object HousingMarket:
     if !bankCapacity then
       prev.copy(
         lastOrigination = PLN.Zero,
+        lastOriginationSupplyConstrained = true,
         regions = prev.regions.map(_.map(_.copy(lastOrigination = PLN.Zero))),
       )
     else
@@ -267,6 +269,7 @@ object HousingMarket:
           prev.copy(
             mortgageStock = prev.mortgageStock + origination,
             lastOrigination = origination,
+            lastOriginationSupplyConstrained = false,
           )
 
   private def computeRawOrigination(prev: State, totalIncome: PLN, mortgageRate: Rate)(using p: SimParams): PLN =
@@ -307,6 +310,7 @@ object HousingMarket:
     prev.copy(
       mortgageStock = prev.mortgageStock + realizedOrigination,
       lastOrigination = realizedOrigination,
+      lastOriginationSupplyConstrained = false,
       regions = Some(updatedRegions),
     )
 

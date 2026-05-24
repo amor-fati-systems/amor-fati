@@ -358,6 +358,44 @@ bank-NPL-driven counter-cyclical origination signal, while
 relative to TFI AUM. TFI deposit drain affects banking-system deposits and AUM;
 it is not a direct term in the NBFI loan-stock identity.
 
+## Mortgage Credit Diagnostics
+
+The monthly timeseries mortgage-credit block relevant to housing-credit drift is:
+
+```text
+MortgageStock
+MortgageOrigination
+MortgageRepayment
+MortgageDefault
+MortgageNetStockFlow
+MortgageOriginationToStock
+MortgageRepaymentToStock
+MortgageDefaultToStock
+MortgageNetStockFlowToStock
+MortgageOriginationSupplyConstrained
+MortgageToGdp
+AnnualizedGdpProxy
+```
+
+`MortgageNetStockFlow` reports the expected monthly mortgage-book flow as
+origination minus scheduled principal repayment minus gross mortgage default.
+Comparing month-over-month `MortgageStock` deltas to `MortgageNetStockFlow`
+isolates residual ledger or clipping effects. The three component `*ToStock`
+rates identify whether mortgage runoff is driven by insufficient origination,
+ordinary amortization, or default. `MortgageNetStockFlowToStock` is the compact
+monthly growth/runoff rate of the mortgage book.
+
+`MortgageToGdp` uses the closing ledger-owned `MortgageStock` divided by
+`AnnualizedGdpProxy`, so a declining ratio can come from negative
+`MortgageNetStockFlow`, a growing GDP denominator, or both. In the current
+baseline, mortgage origination is not wired to a binding bank-supply gate:
+`MortgageOriginationSupplyConstrained` remains false unless
+`HousingMarket.processOrigination` is called with `bankCapacity = false`. If a
+60-month baseline falls below the mortgage/GDP calibration band while this flag
+is false, the calibration mechanism is `housing.originationRate` relative to
+scheduled amortization, gross default, and GDP growth, not bank-resolution
+supply.
+
 ## Household Liquidity Diagnostics
 
 The timeseries schema and terminal `_hh.csv` summary include generic household

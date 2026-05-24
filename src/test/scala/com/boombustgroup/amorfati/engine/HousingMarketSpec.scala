@@ -348,3 +348,12 @@ class HousingMarketSpec extends AnyFlatSpec with Matchers:
     result.lastOrigination shouldBe PLN.Zero
     result.mortgageStock shouldBe PLN.Zero
   }
+
+  it should "mark origination as supply-constrained when bank capacity is closed" in {
+    val state  = initState.copy(totalValue = pln(1_000_000_000), mortgageStock = pln(100_000_000), regions = None)
+    val result = HousingMarket.processOrigination(state, pln(100_000_000), rateBps(800), bankCapacity = false)
+
+    result.lastOrigination shouldBe PLN.Zero
+    result.mortgageStock shouldBe state.mortgageStock
+    result.lastOriginationSupplyConstrained shouldBe true
+  }
