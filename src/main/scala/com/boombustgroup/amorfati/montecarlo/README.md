@@ -317,6 +317,10 @@ FirmCredit_CashFinancedInvestmentToGrossInvestment
 FirmCredit_TechDemand
 FirmCredit_TechApproved
 FirmCredit_TechBankRejected
+FirmCredit_TechSelectedDemand
+FirmCredit_TechSelectedApproved
+FirmCredit_TechSelectedBankRejected
+FirmCredit_TechCandidateBankRejected
 ```
 
 `FirmCredit_NetStockFlow` reports the bank-book flow currently applied to the
@@ -335,9 +339,11 @@ splits bank-supply rejections by the primary approval gate: failed bank, CAR,
 LCR, NSFR, stochastic approval roll, or unclassified legacy/boolean paths. The
 `Investment*` columns explain physical-capital financing;
 `FirmCredit_CashFinancedInvestment` is gross investment not financed by approved
-investment credit. The `Tech*` columns cover automation and hybrid upgrade
-credit demand, including otherwise feasible upgrades rejected by the
-relationship bank.
+investment credit. `FirmCredit_TechDemand`, `FirmCredit_TechApproved`, and
+`FirmCredit_TechBankRejected` remain the aggregate technology-credit surface.
+The `TechSelected*` columns isolate the actually selected automation or hybrid
+upgrade path, while `FirmCredit_TechCandidateBankRejected` isolates otherwise
+feasible upgrade candidates blocked by the relationship bank.
 
 ## NBFI Credit Diagnostics
 
@@ -649,7 +655,8 @@ The CLI flag is:
 Trace selection is by firm id and does not use model RNG. Rows are one selected
 firm per execution month and include opening/closing tech state, decision type,
 bankruptcy reason, cash, loan, digital readiness, workers, capex, new loan,
-down payment, bank id, lending rate, available approval/feasibility/probability
-flags, plus separate adoption, implementation, upgrade-candidate bank approval,
-investment-credit bank approval, digital-invest, upgrade-efficiency, and
-labor-adjustment residual rolls where those gates were evaluated.
+down payment, bank id, lending rate, technology credit type/source/need/amount,
+available approval/feasibility/probability flags, plus separate adoption,
+implementation, upgrade-candidate bank approval, investment-credit bank
+approval, digital-invest, upgrade-efficiency, and labor-adjustment residual
+rolls where those gates were evaluated.

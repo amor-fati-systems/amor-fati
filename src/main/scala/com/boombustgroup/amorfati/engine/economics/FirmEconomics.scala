@@ -29,26 +29,30 @@ object FirmEconomics:
     * via `+`.
     */
   private case class FirmFlows(
-      tax: PLN,                      // CIT paid (after informal evasion)
-      capex: PLN,                    // technology upgrade CAPEX (AI or hybrid)
-      techImp: PLN,                  // import content of CAPEX (forex demand)
-      newLoans: PLN,                 // new bank loans net of equity/bond splits
-      equityIssuance: PLN,           // GPW equity raised this month
-      grossInvestment: PLN,          // physical capital investment
-      bondIssuance: PLN,             // corporate bond issuance (pre-absorption)
-      profitShifting: PLN,           // FDI profit shifting outflow
-      fdiRepatriation: PLN,          // FDI dividend repatriation outflow
-      inventoryChange: PLN,          // net inventory change (+ accumulation, - drawdown)
-      citEvasion: PLN,               // CIT evaded via informal economy
-      energyCost: PLN,               // total energy + ETS cost
-      greenInvestment: PLN,          // green capital investment
-      principalRepaid: PLN,          // firm loan principal repaid
-      investmentCreditDemand: PLN,   // physical-investment bank credit requested
-      investmentCreditApproved: PLN, // physical-investment bank credit approved
-      investmentCreditRejected: PLN, // physical-investment bank credit rejected by bank supply
-      techCreditDemand: PLN,         // technology-upgrade bank credit requested or bank-rejected
-      techCreditApproved: PLN,       // technology-upgrade bank credit approved
-      techCreditRejected: PLN,       // technology-upgrade bank credit rejected by bank supply
+      tax: PLN,                         // CIT paid (after informal evasion)
+      capex: PLN,                       // technology upgrade CAPEX (AI or hybrid)
+      techImp: PLN,                     // import content of CAPEX (forex demand)
+      newLoans: PLN,                    // new bank loans net of equity/bond splits
+      equityIssuance: PLN,              // GPW equity raised this month
+      grossInvestment: PLN,             // physical capital investment
+      bondIssuance: PLN,                // corporate bond issuance (pre-absorption)
+      profitShifting: PLN,              // FDI profit shifting outflow
+      fdiRepatriation: PLN,             // FDI dividend repatriation outflow
+      inventoryChange: PLN,             // net inventory change (+ accumulation, - drawdown)
+      citEvasion: PLN,                  // CIT evaded via informal economy
+      energyCost: PLN,                  // total energy + ETS cost
+      greenInvestment: PLN,             // green capital investment
+      principalRepaid: PLN,             // firm loan principal repaid
+      investmentCreditDemand: PLN,      // physical-investment bank credit requested
+      investmentCreditApproved: PLN,    // physical-investment bank credit approved
+      investmentCreditRejected: PLN,    // physical-investment bank credit rejected by bank supply
+      techCreditDemand: PLN,            // technology-upgrade bank credit requested or bank-rejected
+      techCreditApproved: PLN,          // technology-upgrade bank credit approved
+      techCreditRejected: PLN,          // technology-upgrade bank credit rejected by bank supply
+      techSelectedCreditDemand: PLN,    // actual selected technology-upgrade bank credit requested
+      techSelectedCreditApproved: PLN,  // actual selected technology-upgrade bank credit approved
+      techSelectedCreditRejected: PLN,  // actual selected technology-upgrade bank credit rejected by bank supply
+      techCandidateCreditRejected: PLN, // otherwise feasible technology-upgrade candidate rejected by bank supply
       creditRejectedByReason: CreditRejectionBreakdown,
   ):
     def +(o: FirmFlows): FirmFlows = FirmFlows(
@@ -72,11 +76,19 @@ object FirmEconomics:
       techCreditDemand + o.techCreditDemand,
       techCreditApproved + o.techCreditApproved,
       techCreditRejected + o.techCreditRejected,
+      techSelectedCreditDemand + o.techSelectedCreditDemand,
+      techSelectedCreditApproved + o.techSelectedCreditApproved,
+      techSelectedCreditRejected + o.techSelectedCreditRejected,
+      techCandidateCreditRejected + o.techCandidateCreditRejected,
       creditRejectedByReason + o.creditRejectedByReason,
     )
 
   private object FirmFlows:
     val zero: FirmFlows = FirmFlows(
+      PLN.Zero,
+      PLN.Zero,
+      PLN.Zero,
+      PLN.Zero,
       PLN.Zero,
       PLN.Zero,
       PLN.Zero,
@@ -242,6 +254,10 @@ object FirmEconomics:
       sumTechCreditDemand: PLN,                   // technology-upgrade bank credit requested or bank-rejected
       sumTechCreditApproved: PLN,                 // technology-upgrade bank credit approved
       sumTechCreditRejected: PLN,                 // technology-upgrade bank credit rejected by bank supply
+      sumTechSelectedCreditDemand: PLN,           // actual selected technology-upgrade bank credit requested
+      sumTechSelectedCreditApproved: PLN,         // actual selected technology-upgrade bank credit approved
+      sumTechSelectedCreditRejected: PLN,         // actual selected technology-upgrade bank credit rejected by bank supply
+      sumTechCandidateCreditRejected: PLN,        // otherwise feasible technology-upgrade candidate rejected by bank supply
       sumCreditRejectedByReason: CreditRejectionBreakdown,
       postFirmCrossSectorHires: Int,              // cross-sector hires in labor matching
       postFirmHires: Int,                         // total hires consumed by firm-stage matching
@@ -452,6 +468,10 @@ object FirmEconomics:
             techCreditDemand = r.techCreditDemand,
             techCreditApproved = r.techCreditApproved,
             techCreditRejected = r.techCreditRejected,
+            techSelectedCreditDemand = r.techSelectedCreditDemand,
+            techSelectedCreditApproved = r.techSelectedCreditApproved,
+            techSelectedCreditRejected = r.techSelectedCreditRejected,
+            techCandidateCreditRejected = r.techCandidateCreditRejected,
             creditRejectedByReason = r.investmentCreditRejectionBreakdown + r.techCreditRejectionBreakdown,
           ),
           realizedPostTaxProfit = r.realizedPostTaxProfit,
@@ -928,6 +948,10 @@ object FirmEconomics:
       sumTechCreditDemand = flows.techCreditDemand,
       sumTechCreditApproved = flows.techCreditApproved,
       sumTechCreditRejected = flows.techCreditRejected,
+      sumTechSelectedCreditDemand = flows.techSelectedCreditDemand,
+      sumTechSelectedCreditApproved = flows.techSelectedCreditApproved,
+      sumTechSelectedCreditRejected = flows.techSelectedCreditRejected,
+      sumTechCandidateCreditRejected = flows.techCandidateCreditRejected,
       sumCreditRejectedByReason = flows.creditRejectedByReason,
       postFirmCrossSectorHires = crossSectorHires,
       postFirmHires = hires,

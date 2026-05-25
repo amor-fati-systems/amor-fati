@@ -191,31 +191,35 @@ object Firm:
     * variables.
     */
   case class Result(
-      firm: State,                                // Updated firm state after this month
-      financialStocks: FinancialStocks,           // Closing ledger-contracted financial stocks
-      taxPaid: PLN,                               // CIT actually paid (after informal evasion)
-      realizedPostTaxProfit: PLN,                 // realized monthly profit after tax, floored at zero for payout logic
-      signedRealizedPostTaxProfit: PLN,           // signed net-after-tax profit before payout floor, for diagnostics
-      capexSpent: PLN,                            // Technology upgrade CAPEX (AI or hybrid)
-      techImports: PLN,                           // Import content of CAPEX (forex demand)
-      newLoan: PLN,                               // New bank loan requested before financing-channel split
-      techNewLoan: PLN,                           // Portion of newLoan tied to technology CAPEX
-      equityIssuance: PLN,                        // GPW equity raised this month (filled by S4)
-      grossInvestment: PLN,                       // Physical capital investment this month
-      bondIssuance: PLN,                          // Corporate bond issuance (filled by S4)
-      profitShiftCost: PLN,                       // FDI profit shifting outflow
-      fdiRepatriation: PLN,                       // FDI dividend repatriation outflow
-      inventoryChange: PLN,                       // Net inventory change (+ accumulation, - drawdown)
-      citEvasion: PLN,                            // CIT evaded via informal economy
-      energyCost: PLN,                            // Total energy + ETS cost this month
-      greenInvestment: PLN,                       // Green capital investment this month
-      principalRepaid: PLN,                       // Monthly firm loan principal repayment
-      investmentCreditDemand: PLN = PLN.Zero,     // Physical-investment bank credit requested
-      investmentCreditApproved: PLN = PLN.Zero,   // Physical-investment bank credit approved
-      investmentCreditRejected: PLN = PLN.Zero,   // Physical-investment bank credit rejected by bank supply
-      techCreditDemand: PLN = PLN.Zero,           // Technology-upgrade bank credit requested or bank-rejected
-      techCreditApproved: PLN = PLN.Zero,         // Technology-upgrade bank credit approved
-      techCreditRejected: PLN = PLN.Zero,         // Technology-upgrade bank credit rejected by bank supply
+      firm: State,                                 // Updated firm state after this month
+      financialStocks: FinancialStocks,            // Closing ledger-contracted financial stocks
+      taxPaid: PLN,                                // CIT actually paid (after informal evasion)
+      realizedPostTaxProfit: PLN,                  // realized monthly profit after tax, floored at zero for payout logic
+      signedRealizedPostTaxProfit: PLN,            // signed net-after-tax profit before payout floor, for diagnostics
+      capexSpent: PLN,                             // Technology upgrade CAPEX (AI or hybrid)
+      techImports: PLN,                            // Import content of CAPEX (forex demand)
+      newLoan: PLN,                                // New bank loan requested before financing-channel split
+      techNewLoan: PLN,                            // Portion of newLoan tied to technology CAPEX
+      equityIssuance: PLN,                         // GPW equity raised this month (filled by S4)
+      grossInvestment: PLN,                        // Physical capital investment this month
+      bondIssuance: PLN,                           // Corporate bond issuance (filled by S4)
+      profitShiftCost: PLN,                        // FDI profit shifting outflow
+      fdiRepatriation: PLN,                        // FDI dividend repatriation outflow
+      inventoryChange: PLN,                        // Net inventory change (+ accumulation, - drawdown)
+      citEvasion: PLN,                             // CIT evaded via informal economy
+      energyCost: PLN,                             // Total energy + ETS cost this month
+      greenInvestment: PLN,                        // Green capital investment this month
+      principalRepaid: PLN,                        // Monthly firm loan principal repayment
+      investmentCreditDemand: PLN = PLN.Zero,      // Physical-investment bank credit requested
+      investmentCreditApproved: PLN = PLN.Zero,    // Physical-investment bank credit approved
+      investmentCreditRejected: PLN = PLN.Zero,    // Physical-investment bank credit rejected by bank supply
+      techCreditDemand: PLN = PLN.Zero,            // Technology-upgrade bank credit requested or bank-rejected
+      techCreditApproved: PLN = PLN.Zero,          // Technology-upgrade bank credit approved
+      techCreditRejected: PLN = PLN.Zero,          // Technology-upgrade bank credit rejected by bank supply
+      techSelectedCreditDemand: PLN = PLN.Zero,    // Actual selected technology-upgrade bank credit requested
+      techSelectedCreditApproved: PLN = PLN.Zero,  // Actual selected technology-upgrade bank credit approved
+      techSelectedCreditRejected: PLN = PLN.Zero,  // Actual selected technology-upgrade bank credit rejected by bank supply
+      techCandidateCreditRejected: PLN = PLN.Zero, // Otherwise feasible technology-upgrade candidate rejected by bank supply
       investmentCreditRejectionBreakdown: CreditRejectionBreakdown = CreditRejectionBreakdown.zero,
       techCreditRejectionBreakdown: CreditRejectionBreakdown = CreditRejectionBreakdown.zero,
       decisionTrace: Option[DecisionTrace] = None, // Auditable decision surface for optional exports
@@ -272,6 +276,7 @@ object Firm:
       capex: PLN,
       newLoan: PLN,
       techCreditDecisionType: Option[DecisionTrace.DecisionType],
+      techCreditSource: Option[DecisionTrace.TechCreditSource],
       techCreditNeed: PLN,
       techCreditAmount: PLN,
       downPayment: Option[PLN],
@@ -319,6 +324,10 @@ object Firm:
       case HybridUpgrade extends DecisionType("hybrid-upgrade")
       case UpgradeFailed extends DecisionType("upgrade-failed")
       case Bankrupt      extends DecisionType("bankrupt")
+
+    enum TechCreditSource(val csvValue: String):
+      case SelectedUpgrade       extends TechCreditSource("selected-upgrade")
+      case BankRejectedCandidate extends TechCreditSource("bank-rejected-candidate")
 
   /** Monthly profit-and-loss breakdown, computed by `computePnL`. */
   case class PnL(
@@ -416,6 +425,7 @@ object Firm:
       hybridBankApprovalRoll: Option[Share] = None,
       hybridBankApprovalAudit: Banking.CreditApprovalAudit = Banking.CreditApprovalAudit.empty,
       techCreditDecisionType: Option[DecisionTrace.DecisionType] = None,
+      techCreditSource: Option[DecisionTrace.TechCreditSource] = None,
       techCreditNeed: Option[PLN] = None,
       implementationFailureProbability: Option[Share] = None,
       implementationRoll: Option[Share] = None,
@@ -446,6 +456,7 @@ object Firm:
         hybridBankApprovalRoll = next.hybridBankApprovalRoll.orElse(hybridBankApprovalRoll),
         hybridBankApprovalAudit = next.hybridBankApprovalAudit.orElse(hybridBankApprovalAudit),
         techCreditDecisionType = next.techCreditDecisionType.orElse(techCreditDecisionType),
+        techCreditSource = next.techCreditSource.orElse(techCreditSource),
         techCreditNeed = next.techCreditNeed.orElse(techCreditNeed),
         implementationFailureProbability = next.implementationFailureProbability.orElse(implementationFailureProbability),
         implementationRoll = next.implementationRoll.orElse(implementationRoll),
@@ -473,15 +484,21 @@ object Firm:
       selectedBankApprovalAudit = credit.audit,
     )
 
-  private def selectedTechBankAudit(credit: CreditDecision, need: PLN, decisionType: DecisionTrace.DecisionType): DecisionAudit =
+  private def selectedTechBankAudit(
+      credit: CreditDecision,
+      need: PLN,
+      decisionType: DecisionTrace.DecisionType,
+      source: DecisionTrace.TechCreditSource,
+  ): DecisionAudit =
     selectedBankAudit(credit).copy(
       techCreditDecisionType = Some(decisionType),
+      techCreditSource = Some(source),
       techCreditNeed = Some(need),
     )
 
   private def bankRejectedTechDemandAudit(candidate: UpgradeCandidate, decisionType: DecisionTrace.DecisionType): DecisionAudit =
     if !candidate.bankOk && candidate.profitable && candidate.canPay && candidate.ready then
-      selectedTechBankAudit(candidate.credit, candidate.loan, decisionType)
+      selectedTechBankAudit(candidate.credit, candidate.loan, decisionType, DecisionTrace.TechCreditSource.BankRejectedCandidate)
     else DecisionAudit()
 
   private def fullAiBankAudit(credit: CreditDecision): DecisionAudit =
@@ -1017,7 +1034,13 @@ object Firm:
       fullAiAdoptionProbability = Some(prob.min(Share.One)),
     ).merge(fullAiBankAudit(bankCredit))
       .merge(
-        if !bankOk && profitable && canPay && ready then selectedTechBankAudit(bankCredit, upLoan, DecisionTrace.DecisionType.FullAiUpgrade)
+        if !bankOk && profitable && canPay && ready then
+          selectedTechBankAudit(
+            bankCredit,
+            upLoan,
+            DecisionTrace.DecisionType.FullAiUpgrade,
+            DecisionTrace.TechCreditSource.BankRejectedCandidate,
+          )
         else DecisionAudit(),
       )
     val roll        = Share.random(rng)
@@ -1028,7 +1051,14 @@ object Firm:
       DecisionWithAudit(
         Decision.Upgrade(pnl, TechState.Automated(eff), upCapex, upLoan, upDown, drUpdate = Some(ready2)),
         audit
-          .merge(selectedTechBankAudit(bankCredit, upLoan, DecisionTrace.DecisionType.FullAiUpgrade))
+          .merge(
+            selectedTechBankAudit(
+              bankCredit,
+              upLoan,
+              DecisionTrace.DecisionType.FullAiUpgrade,
+              DecisionTrace.TechCreditSource.SelectedUpgrade,
+            ),
+          )
           .copy(adoptionRoll = Some(roll), upgradeEfficiencyDraw = Some(effDraw), upgradeEfficiencyMultiplier = Some(eff)),
       )
     else
@@ -1377,13 +1407,31 @@ object Firm:
       val upgrade = rollFullAiUpgrade(firm, pnl, ai, rng)
       DecisionWithAudit(
         upgrade.decision,
-        baseAudit.merge(selectedTechBankAudit(ai.credit, ai.loan, DecisionTrace.DecisionType.FullAiUpgrade)).merge(upgrade.audit),
+        baseAudit
+          .merge(
+            selectedTechBankAudit(
+              ai.credit,
+              ai.loan,
+              DecisionTrace.DecisionType.FullAiUpgrade,
+              DecisionTrace.TechCreditSource.SelectedUpgrade,
+            ),
+          )
+          .merge(upgrade.audit),
       )
     else if roll < pFull + pHyb then
       val upgrade = rollHybridUpgrade(firm, pnl, hyb, hWkrs, rng)
       DecisionWithAudit(
         upgrade.decision,
-        baseAudit.merge(selectedTechBankAudit(hyb.credit, hyb.loan, DecisionTrace.DecisionType.HybridUpgrade)).merge(upgrade.audit),
+        baseAudit
+          .merge(
+            selectedTechBankAudit(
+              hyb.credit,
+              hyb.loan,
+              DecisionTrace.DecisionType.HybridUpgrade,
+              DecisionTrace.TechCreditSource.SelectedUpgrade,
+            ),
+          )
+          .merge(upgrade.audit),
       )
     else
       val fallback = fallbackDecision(firm, financialStocks, pnl, w, operationalSignals, workers, rng, nextTech = TechState.Traditional(_))
@@ -1421,6 +1469,7 @@ object Firm:
       capex = result.capexSpent,
       newLoan = result.newLoan,
       techCreditDecisionType = decision.audit.techCreditDecisionType,
+      techCreditSource = decision.audit.techCreditSource,
       techCreditNeed = decision.audit.techCreditNeed.getOrElse(decisionCreditNeed(d)),
       techCreditAmount = result.techNewLoan,
       downPayment = downPayment(d),
@@ -1514,14 +1563,29 @@ object Firm:
       case _                                        => PLN.Zero
 
   private def applyTechCreditDiagnostics(result: Result, decision: DecisionWithAudit): Result =
-    val demand   = decision.audit.techCreditNeed.getOrElse(decisionCreditNeed(decision.decision)).max(result.techNewLoan)
-    val approved = result.techNewLoan.min(demand)
-    val rejected = (demand - approved).max(PLN.Zero)
+    val selectedDemand    =
+      decision.audit.techCreditSource match
+        case Some(DecisionTrace.TechCreditSource.BankRejectedCandidate) => PLN.Zero
+        case _                                                          => decisionCreditNeed(decision.decision).max(result.techNewLoan)
+    val selectedApproved  = result.techNewLoan.min(selectedDemand)
+    val selectedRejected  = (selectedDemand - selectedApproved).max(PLN.Zero)
+    val candidateRejected =
+      decision.audit.techCreditSource match
+        case Some(DecisionTrace.TechCreditSource.BankRejectedCandidate) => decision.audit.techCreditNeed.getOrElse(PLN.Zero)
+        case _                                                          => PLN.Zero
+    val demand            = selectedDemand + candidateRejected
+    val approved          = selectedApproved
+    val rejected          = selectedRejected + candidateRejected
     result.copy(
       techCreditDemand = demand,
       techCreditApproved = approved,
       techCreditRejected = rejected,
-      techCreditRejectionBreakdown = CreditRejectionBreakdown.from(decision.audit.selectedBankApprovalAudit.rejectionReason, rejected),
+      techSelectedCreditDemand = selectedDemand,
+      techSelectedCreditApproved = selectedApproved,
+      techSelectedCreditRejected = selectedRejected,
+      techCandidateCreditRejected = candidateRejected,
+      techCreditRejectionBreakdown = CreditRejectionBreakdown.from(decision.audit.selectedBankApprovalAudit.rejectionReason, selectedRejected) +
+        CreditRejectionBreakdown.from(decision.audit.selectedBankApprovalAudit.rejectionReason, candidateRejected),
     )
 
   // ---- Execute (pure dispatch, zero RandomStream calls) ----
