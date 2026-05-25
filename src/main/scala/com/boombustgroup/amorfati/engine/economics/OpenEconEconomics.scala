@@ -474,7 +474,6 @@ object OpenEconEconomics:
           corpBondYield = newCorpBondYield,
           equityReturn = in.s7.equityAfterForeignStock.monthlyReturn,
           depositRate = nbfiDepositRate,
-          domesticCons = in.s3.domesticCons,
           corpBondDefaultLoss = corpBondDefaultLoss,
         ),
       )

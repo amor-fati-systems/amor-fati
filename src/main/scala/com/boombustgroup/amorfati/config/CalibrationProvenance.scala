@@ -382,10 +382,10 @@ object CalibrationProvenance:
         ),
         "nbfi.creditBaseRate"       -> linkedEvidence(
           CalibrationValidationMode.HistoricalFit,
-          "docs/empirical-validation/baseline-validation-snapshot.csv",
-          "Non-bank credit contribution to aggregate credit",
-          "EmpiricalValidationExport records the current credit/GDP bridge while NBFI split extraction remains partial.",
-          artifactLabel = Some("Credit/GDP"),
+          "docs/private-credit-renewal-calibration.md",
+          "Private credit renewal calibration",
+          "Issue #610 documents the Nix-built 10-seed 60-month NBFI stock-renewal calibration and terminal private-credit split.",
+          artifactLabel = Some("20260525-610-nbfi-only"),
         ),
       ).toMap
 
@@ -710,7 +710,7 @@ object CalibrationProvenance:
 | `nbfi.tfiInitAum` | `448.3e9` | raw PLN | Analizy/IZFiA fund assets, March 2026 | TFI AUM | Scaled by `gdpRatio` | `NbfiConfig`, `SimParams` | `EMPIRICAL` |
 | `nbfi.creditInitStock` | `234e9` | raw PLN | ZPL active leasing and leasing-loan portfolio, end-2025 | NBFI credit stock | Scaled by `gdpRatio` | `NbfiConfig`, `SimParams` | `EMPIRICAL_TRANSFORMED` |
 | `nbfi.tfiGovBondShare`, `tfiCorpBondShare`, `tfiEquityShare` | `0.40`, `0.10`, `0.10` | share | Structural TFI portfolio-allocation prior | TFI portfolio allocation | Portfolio rebalance target | `NbfiConfig` | `ASSUMED` |
-| `nbfi.creditBaseRate` | `0.005` | monthly share | UNKNOWN_SOURCE | NBFI credit origination rate | Direct | `NbfiConfig` | `TUNED_NEEDS_VALIDATION` |
+| `nbfi.creditBaseRate` | `0.031` | monthly share | #610 private-credit renewal calibration | NBFI credit origination stock-renewal rate | Direct fraction of opening loan stock | `NbfiConfig` | `TUNED_NEEDS_VALIDATION` |
 | `nbfi.creditRate` | `0.10` | annual rate | Structural NBFI loan-rate prior | NBFI loan rate | `.monthly` in income | `NbfiConfig` | `ASSUMED` |
 | `nbfi.defaultBase`, `defaultUnempSens` | `0.002`, `3.0` | share/coefficient | UNKNOWN_SOURCE | NBFI default dynamics | Direct | `NbfiConfig` | `TUNED_NEEDS_VALIDATION` |
 | `quasiFiscal.issuanceShare` | `0.40` | share | Code note bridge: NIK bridge prior | BGK/PFR share of capital programs | Direct | `QuasiFiscalConfig` | `CODE_NOTE_EMPIRICAL` |

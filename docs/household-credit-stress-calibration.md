@@ -76,6 +76,9 @@ If the 60-month baseline falls below the band while
 `MortgageOriginationSupplyConstrained` is false, the relevant calibration lever
 is `housing.originationRate` relative to scheduled amortization, gross default,
 and GDP growth rather than a bank-resolution supply cap.
+For the non-bank credit slice, `NbfiOriginationToStock` is a stock-renewal rate;
+compare it directly with `NbfiRepaymentToStock` and `NbfiDefaultsToStock` before
+attributing aggregate private-credit compression to household stress.
 Mortgage principal and interest ratios decompose `MortgageDebtServiceToIncome`;
 they are internal diagnostics, not standalone empirical acceptance bands.
 `ConsumerDebtServiceToIncome` is also a household cash-flow burden: principal

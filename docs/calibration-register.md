@@ -169,7 +169,7 @@ a concrete diagnostic artifact path.
 | `informal.unempThreshold`, `cyclicalSens`, `smoothing` | `MODEL_BEHAVIOR_CALIBRATION` | `MISSING_VALIDATION_EVIDENCE` |  |  | Counter-cyclical informal-sector response | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
 | `soe.dividendFiscalThreshold`, `dividendFiscalSensitivity` | `MODEL_BEHAVIOR_CALIBRATION` | `MISSING_VALIDATION_EVIDENCE` |  |  | Fiscal-pressure dividend response | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
 | `soe.firingReduction`, `investmentMultiplier`, `energyPassthrough` | `MODEL_BEHAVIOR_CALIBRATION` | `MISSING_VALIDATION_EVIDENCE` |  |  | SOE labor buffer, directed investment, energy pass-through | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
-| `nbfi.creditBaseRate` | `HISTORICAL_FIT` | docs/empirical-validation/baseline-validation-snapshot.csv | Credit/GDP |  | Non-bank credit contribution to aggregate credit | EmpiricalValidationExport records the current credit/GDP bridge while NBFI split extraction remains partial. |
+| `nbfi.creditBaseRate` | `HISTORICAL_FIT` | docs/private-credit-renewal-calibration.md | 20260525-610-nbfi-only |  | Private credit renewal calibration | Issue #610 documents the Nix-built 10-seed 60-month NBFI stock-renewal calibration and terminal private-credit split. |
 | `nbfi.defaultBase`, `defaultUnempSens` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` |  |  | NBFI default dynamics | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
 
 ## Transformation Rules
@@ -454,7 +454,7 @@ a concrete diagnostic artifact path.
 | `nbfi.tfiInitAum` | `448.3e9` | raw PLN | Analizy/IZFiA fund assets, March 2026 | TFI AUM | Scaled by gdpRatio | `NbfiConfig`, `SimParams` | `EMPIRICAL` |
 | `nbfi.creditInitStock` | `234e9` | raw PLN | ZPL active leasing and leasing-loan portfolio, end-2025 | NBFI credit stock | Scaled by gdpRatio | `NbfiConfig`, `SimParams` | `EMPIRICAL_TRANSFORMED` |
 | `nbfi.tfiGovBondShare`, `tfiCorpBondShare`, `tfiEquityShare` | `0.40, 0.10, 0.10` | share | Structural TFI portfolio-allocation prior | TFI portfolio allocation | Portfolio rebalance target | `NbfiConfig` | `ASSUMED` |
-| `nbfi.creditBaseRate` | `0.005` | monthly share | UNKNOWN_SOURCE | NBFI credit origination rate | Direct | `NbfiConfig` | `TUNED_NEEDS_VALIDATION` |
+| `nbfi.creditBaseRate` | `0.031` | monthly share | #610 private-credit renewal calibration | NBFI credit origination stock-renewal rate | Direct fraction of opening loan stock | `NbfiConfig` | `TUNED_NEEDS_VALIDATION` |
 | `nbfi.creditRate` | `0.10` | annual rate | Structural NBFI loan-rate prior | NBFI loan rate | .monthly in income | `NbfiConfig` | `ASSUMED` |
 | `nbfi.defaultBase`, `defaultUnempSens` | `0.002, 3.0` | share/coefficient | UNKNOWN_SOURCE | NBFI default dynamics | Direct | `NbfiConfig` | `TUNED_NEEDS_VALIDATION` |
 | `quasiFiscal.issuanceShare` | `0.40` | share | Code note bridge: NIK bridge prior | BGK/PFR share of capital programs | Direct | `QuasiFiscalConfig` | `CODE_NOTE_EMPIRICAL` |
