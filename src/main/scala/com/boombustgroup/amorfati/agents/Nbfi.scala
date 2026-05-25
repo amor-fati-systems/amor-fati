@@ -160,7 +160,6 @@ object Nbfi:
       corpBondYield: Rate,                             // corporate bond yield (annualised)
       equityReturn: Rate,                              // equity monthly return
       depositRate: Rate,                               // bank deposit rate (TFI opportunity cost)
-      @scala.annotation.unused domesticCons: PLN,      // macro context; NBFI credit is stock-renewal based
       corpBondDefaultLoss: PLN,
   )
 

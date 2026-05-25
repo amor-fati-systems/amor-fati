@@ -27,7 +27,6 @@ class ShadowBankingSpec extends AnyFlatSpec with Matchers:
       corpBondYield: Rate = Rate.decimal(7, 2),
       equityReturn: Rate = Rate.decimal(5, 3),
       depositRate: Rate = Rate.decimal(3, 2),
-      domesticCons: PLN = PLN(100000000),
       prevCorpBondHoldings: PLN = initialCorpBondHoldings,
       corpBondDefaultLoss: PLN = PLN.Zero,
   ): Nbfi.StepResult =
@@ -43,7 +42,6 @@ class ShadowBankingSpec extends AnyFlatSpec with Matchers:
         corpBondYield = corpBondYield,
         equityReturn = equityReturn,
         depositRate = depositRate,
-        domesticCons = domesticCons,
         corpBondDefaultLoss = corpBondDefaultLoss,
       ),
     )
