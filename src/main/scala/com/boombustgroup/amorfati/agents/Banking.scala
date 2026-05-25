@@ -225,10 +225,37 @@ object Banking:
     * defined only when balance-sheet constraints pass and the stochastic
     * approval gate is actually sampled.
     */
+  enum CreditRejectionReason(val csvValue: String):
+    case FailedBank        extends CreditRejectionReason("failed-bank")
+    case CapitalAdequacy   extends CreditRejectionReason("car")
+    case LiquidityCoverage extends CreditRejectionReason("lcr")
+    case StableFunding     extends CreditRejectionReason("nsfr")
+    case Stochastic        extends CreditRejectionReason("stochastic")
+
+  case class CreditApprovalAudit(
+      rejectionReason: Option[CreditRejectionReason] = None,
+      projectedCar: Option[Multiplier] = None,
+      minCar: Option[Multiplier] = None,
+      lcr: Option[Multiplier] = None,
+      lcrMin: Option[Multiplier] = None,
+      nsfr: Option[Multiplier] = None,
+      nsfrMin: Option[Multiplier] = None,
+  ):
+    def isEmpty: Boolean =
+      rejectionReason.isEmpty && projectedCar.isEmpty && minCar.isEmpty &&
+        lcr.isEmpty && lcrMin.isEmpty && nsfr.isEmpty && nsfrMin.isEmpty
+
+    def orElse(fallback: CreditApprovalAudit): CreditApprovalAudit =
+      if isEmpty then fallback else this
+
+  object CreditApprovalAudit:
+    val empty: CreditApprovalAudit = CreditApprovalAudit()
+
   case class CreditApproval(
       approved: Boolean,
       approvalProbability: Option[Share],
       approvalRoll: Option[Share],
+      audit: CreditApprovalAudit = CreditApprovalAudit.empty,
   )
 
   // ---------------------------------------------------------------------------
@@ -525,22 +552,56 @@ object Banking:
   def creditApproval(bank: BankState, stocks: BankFinancialStocks, amount: PLN, rng: RandomStream, ccyb: Multiplier, corpBondHoldings: PLN)(using
       p: SimParams,
   ): CreditApproval =
-    if bank.failed then CreditApproval(approved = false, approvalProbability = None, approvalRoll = None)
+    if bank.failed then
+      CreditApproval(
+        approved = false,
+        approvalProbability = None,
+        approvalRoll = None,
+        audit = CreditApprovalAudit(rejectionReason = Some(CreditRejectionReason.FailedBank)),
+      )
     else
-      val projectedRwa = stocks.firmLoan + stocks.consumerLoan + corpBondHoldings * CorpBondRiskWeight + amount
-      val projectedCar = if projectedRwa > MinBalanceThreshold then bank.capital.ratioTo(projectedRwa).toMultiplier else SafeRatioFloor
-      val minCar       = Macroprudential.effectiveMinCar(bank.id.toInt, ccyb)
-      val carOk        = projectedCar >= minCar
-      val lcrOk        = lcr(stocks) >= p.banking.lcrMin
-      val nsfrOk       = nsfr(bank, stocks, corpBondHoldings) >= p.banking.nsfrMin
-      val nplPenalty   = nplRatio(bank, stocks) * NplApprovalPenalty // Share * Multiplier → Multiplier
-      val freeReserves = stocks.totalDeposits * (Share.One - p.banking.reserveReq) - stocks.firmLoan - govBondHoldings(stocks)
-      val resPenalty   = if freeReserves > PLN.Zero then Share.Zero else ReserveDeficitPenalty
-      val approvalP    = (Share.One - nplPenalty.toShare - resPenalty).max(MinApprovalProb)
+      val projectedRwa                                                      = stocks.firmLoan + stocks.consumerLoan + corpBondHoldings * CorpBondRiskWeight + amount
+      val projectedCar                                                      = if projectedRwa > MinBalanceThreshold then bank.capital.ratioTo(projectedRwa).toMultiplier else SafeRatioFloor
+      val minCar                                                            = Macroprudential.effectiveMinCar(bank.id.toInt, ccyb)
+      val carOk                                                             = projectedCar >= minCar
+      val currentLcr                                                        = lcr(stocks)
+      val lcrOk                                                             = currentLcr >= p.banking.lcrMin
+      val currentNsfr                                                       = nsfr(bank, stocks, corpBondHoldings)
+      val nsfrOk                                                            = currentNsfr >= p.banking.nsfrMin
+      val nplPenalty                                                        = nplRatio(bank, stocks) * NplApprovalPenalty // Share * Multiplier → Multiplier
+      val freeReserves                                                      = stocks.totalDeposits * (Share.One - p.banking.reserveReq) - stocks.firmLoan - govBondHoldings(stocks)
+      val resPenalty                                                        = if freeReserves > PLN.Zero then Share.Zero else ReserveDeficitPenalty
+      val approvalP                                                         = (Share.One - nplPenalty.toShare - resPenalty).max(MinApprovalProb)
+      def audit(reason: Option[CreditRejectionReason]): CreditApprovalAudit =
+        CreditApprovalAudit(
+          rejectionReason = reason,
+          projectedCar = Some(projectedCar),
+          minCar = Some(minCar),
+          lcr = Some(currentLcr),
+          lcrMin = Some(p.banking.lcrMin),
+          nsfr = Some(currentNsfr),
+          nsfrMin = Some(p.banking.nsfrMin),
+        )
       if carOk && lcrOk && nsfrOk then
-        val roll = Share.random(rng)
-        CreditApproval(approved = roll < approvalP, approvalProbability = Some(approvalP), approvalRoll = Some(roll))
-      else CreditApproval(approved = false, approvalProbability = Some(approvalP), approvalRoll = None)
+        val roll     = Share.random(rng)
+        val approved = roll < approvalP
+        CreditApproval(
+          approved = approved,
+          approvalProbability = Some(approvalP),
+          approvalRoll = Some(roll),
+          audit = audit(if approved then None else Some(CreditRejectionReason.Stochastic)),
+        )
+      else
+        val reason =
+          if !carOk then CreditRejectionReason.CapitalAdequacy
+          else if !lcrOk then CreditRejectionReason.LiquidityCoverage
+          else CreditRejectionReason.StableFunding
+        CreditApproval(
+          approved = false,
+          approvalProbability = Some(approvalP),
+          approvalRoll = None,
+          audit = audit(Some(reason)),
+        )
 
   // ---------------------------------------------------------------------------
   // Interbank market

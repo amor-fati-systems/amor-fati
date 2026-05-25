@@ -302,6 +302,12 @@ FirmCredit_NetStockFlow
 FirmCredit_CreditDemand
 FirmCredit_CreditApproved
 FirmCredit_BankRejected
+FirmCredit_RejectedFailedBank
+FirmCredit_RejectedCarGate
+FirmCredit_RejectedLcrGate
+FirmCredit_RejectedNsfrGate
+FirmCredit_RejectedStochastic
+FirmCredit_RejectedUnclassified
 FirmCredit_ApprovalRate
 FirmCredit_InvestmentDemand
 FirmCredit_InvestmentApproved
@@ -324,11 +330,14 @@ resolution.
 `FirmCredit_CreditDemand`, `FirmCredit_CreditApproved`, and
 `FirmCredit_BankRejected` aggregate the always-on investment and technology
 credit decision surfaces before equity and corporate-bond channel substitution;
-final bank-loan origination is `FirmCredit_NewLoans`. The `Investment*` columns
-explain physical-capital financing; `FirmCredit_CashFinancedInvestment` is gross
-investment not financed by approved investment credit. The `Tech*` columns cover
-automation and hybrid upgrade credit demand, including otherwise feasible
-upgrades rejected by the relationship bank.
+final bank-loan origination is `FirmCredit_NewLoans`. `FirmCredit_Rejected*`
+splits bank-supply rejections by the primary approval gate: failed bank, CAR,
+LCR, NSFR, stochastic approval roll, or unclassified legacy/boolean paths. The
+`Investment*` columns explain physical-capital financing;
+`FirmCredit_CashFinancedInvestment` is gross investment not financed by approved
+investment credit. The `Tech*` columns cover automation and hybrid upgrade
+credit demand, including otherwise feasible upgrades rejected by the
+relationship bank.
 
 ## NBFI Credit Diagnostics
 

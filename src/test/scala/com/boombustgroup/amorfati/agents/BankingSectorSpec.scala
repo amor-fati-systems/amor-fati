@@ -128,11 +128,20 @@ class BankingSectorSpec extends AnyFlatSpec with Matchers:
   }
 
   it should "expose audited approval probability and roll only when the stochastic gate is sampled" in {
+    val failed      = mkBankRow(capital = PLN(100000), status = BankStatus.Failed(ExecutionMonth(30)))
+    val failedAudit = Banking.creditApproval(failed.bank, failed.stocks, PLN(1000), RandomStream.seeded(42), Multiplier.Zero, PLN.Zero)
+    failedAudit.approved shouldBe false
+    failedAudit.audit.rejectionReason shouldBe Some(Banking.CreditRejectionReason.FailedBank)
+
     val weak      = mkBankRow(loans = PLN(100000), capital = PLN(8000))
     val weakAudit = Banking.creditApproval(weak.bank, weak.stocks, PLN(10000), RandomStream.seeded(42), Multiplier.Zero, PLN.Zero)
     weakAudit.approved shouldBe false
     weakAudit.approvalProbability should not be empty
     weakAudit.approvalRoll shouldBe None
+    weakAudit.audit.rejectionReason shouldBe Some(Banking.CreditRejectionReason.CapitalAdequacy)
+    weakAudit.audit.projectedCar should not be empty
+    weakAudit.audit.lcr should not be empty
+    weakAudit.audit.nsfr should not be empty
 
     val healthy      = mkBankRow()
     val healthyAudit = Banking.creditApproval(healthy.bank, healthy.stocks, PLN(1000), RandomStream.seeded(42), Multiplier.Zero, PLN.Zero)
