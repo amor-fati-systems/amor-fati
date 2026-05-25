@@ -88,13 +88,24 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     "IoFlows",
     "IoGdpRatio",
     "NFA",
+    "NfaToGdp",
     "CurrentAccount",
     "CurrentAccountToGdp",
+    "CurrentAccountPrimaryIncome",
+    "CurrentAccountPrimaryIncomeToGdp",
+    "CurrentAccountSecondaryIncome",
+    "CurrentAccountSecondaryIncomeToGdp",
+    "CurrentAccountClosureResidual",
     "CapitalAccount",
+    "CapitalAccountToGdp",
     "TradeBalance_OE",
+    "TradeBalanceToGdp",
     "Exports_OE",
+    "ExportsToGdp",
     "TotalImports_OE",
+    "ImportsToGdp",
     "ImportedInterm",
+    "ImportedIntermToImports",
     "FDI",
     "GvcDisruptionIndex",
     "ForeignPriceIndex",
@@ -516,7 +527,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     MetricValue.fromRaw(Share.fraction(numerator, denominator).toLong)
 
   "McTimeseriesSchema" should "expose the stable schema contract" in {
-    McTimeseriesSchema.nCols shouldBe 454
+    McTimeseriesSchema.nCols shouldBe 465
     McTimeseriesSchema.colNames.toVector shouldBe expectedColNames
   }
 
@@ -672,17 +683,49 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
 
   it should "emit validation-ready wage and current-account diagnostics" in {
     val world = init.world.copy(
-      bop = init.world.bop.copy(currentAccount = PLN(5)),
+      bop = init.world.bop.copy(
+        nfa = PLN(120),
+        currentAccount = PLN(5),
+        capitalAccount = PLN(6),
+        tradeBalance = PLN(7),
+        primaryIncome = PLN(2),
+        secondaryIncome = PLN(3),
+        exports = PLN(20),
+        totalImports = PLN(13),
+        importedIntermediates = PLN(5),
+      ),
+      financialMarkets = init.world.financialMarkets.copy(
+        equity = init.world.financialMarkets.equity.copy(lastForeignDividends = PLN(1)),
+      ),
       flows = init.world.flows.copy(
         monthlyGdpProxy = PLN(100),
         sectorOutputs = Vector.fill(summon[SimParams].sectorDefs.length)(PLN.Zero),
+        fdiProfitShifting = PLN(2),
+        fdiRepatriation = PLN(6),
       ),
     )
     val row   = computeRow(world)
 
     valueAt(row, "MeanEmployedWage") should be > MetricValue.Zero
+    valueAt(row, "NFA") shouldBe polandScale(PLN(120))
+    valueAt(row, "NfaToGdp") shouldBe MetricValue.fromRaw(Share.decimal(10, 2).toLong)
     valueAt(row, "CurrentAccount") shouldBe polandScale(PLN(5))
     valueAt(row, "CurrentAccountToGdp") shouldBe MetricValue.fromRaw(Share.decimal(5, 2).toLong)
+    valueAt(row, "CurrentAccountPrimaryIncome") shouldBe polandScale(PLN(2))
+    valueAt(row, "CurrentAccountPrimaryIncomeToGdp") shouldBe MetricValue.fromRaw(Share.decimal(2, 2).toLong)
+    valueAt(row, "CurrentAccountSecondaryIncome") shouldBe polandScale(PLN(3))
+    valueAt(row, "CurrentAccountSecondaryIncomeToGdp") shouldBe MetricValue.fromRaw(Share.decimal(3, 2).toLong)
+    valueAt(row, "CurrentAccountClosureResidual") shouldBe MetricValue.Zero
+    valueAt(row, "CapitalAccount") shouldBe polandScale(PLN(6))
+    valueAt(row, "CapitalAccountToGdp") shouldBe MetricValue.fromRaw(Share.decimal(6, 2).toLong)
+    valueAt(row, "TradeBalance_OE") shouldBe polandScale(PLN(7))
+    valueAt(row, "TradeBalanceToGdp") shouldBe MetricValue.fromRaw(Share.decimal(7, 2).toLong)
+    valueAt(row, "Exports_OE") shouldBe polandScale(PLN(20))
+    valueAt(row, "ExportsToGdp") shouldBe MetricValue.fromRaw(Share.decimal(20, 2).toLong)
+    valueAt(row, "TotalImports_OE") shouldBe polandScale(PLN(13))
+    valueAt(row, "ImportsToGdp") shouldBe MetricValue.fromRaw(Share.decimal(13, 2).toLong)
+    valueAt(row, "ImportedInterm") shouldBe polandScale(PLN(5))
+    valueAt(row, "ImportedIntermToImports") shouldBe MetricValue.fromRaw((PLN(5) / PLN(13)).toLong)
   }
 
   it should "emit validation-ready credit stock splits and GDP ratios" in {

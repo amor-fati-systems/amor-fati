@@ -133,6 +133,14 @@ object McTimeseriesSchema:
       world.social.zus.govSubvention + world.social.nfz.govSubvention + world.social.earmarked.totalGovSubvention
     lazy val govTotalOutlays: PLN                                                                   = world.gov.domesticBudgetOutlays + govSocialFundSubventions
     lazy val govPrimaryDeficit: PLN                                                                 = world.gov.deficit - world.gov.debtServiceSpend
+    lazy val currentAccountClosureResidual: PLN                                                     =
+      val reconstructed =
+        world.bop.tradeBalance +
+          world.bop.primaryIncome +
+          world.bop.secondaryIncome -
+          world.financialMarkets.equity.lastForeignDividends -
+          world.flows.fdiRepatriation
+      world.bop.currentAccount - reconstructed
     lazy val sectorOutputs: Vector[PLN]                                                             =
       world.flows.sectorOutputs match
         case outputs if outputs.length == p.sectorDefs.length => outputs
@@ -310,13 +318,24 @@ object McTimeseriesSchema:
 
   private def externalGroup: Vector[ColumnDef] = Vector(
     ColumnDef.macroPln("NFA", ctx => ctx.world.bop.nfa),
+    ColumnDef("NfaToGdp", ctx => ctx.annualizedGdpRatio(ctx.world.bop.nfa)),
     ColumnDef.macroPln("CurrentAccount", ctx => ctx.world.bop.currentAccount),
     ColumnDef("CurrentAccountToGdp", ctx => ctx.monthlyFlowToGdpRatio(ctx.world.bop.currentAccount)),
+    ColumnDef.macroPln("CurrentAccountPrimaryIncome", ctx => ctx.world.bop.primaryIncome),
+    ColumnDef("CurrentAccountPrimaryIncomeToGdp", ctx => ctx.monthlyFlowToGdpRatio(ctx.world.bop.primaryIncome)),
+    ColumnDef.macroPln("CurrentAccountSecondaryIncome", ctx => ctx.world.bop.secondaryIncome),
+    ColumnDef("CurrentAccountSecondaryIncomeToGdp", ctx => ctx.monthlyFlowToGdpRatio(ctx.world.bop.secondaryIncome)),
+    ColumnDef.macroPln("CurrentAccountClosureResidual", ctx => ctx.currentAccountClosureResidual),
     ColumnDef.macroPln("CapitalAccount", ctx => ctx.world.bop.capitalAccount),
+    ColumnDef("CapitalAccountToGdp", ctx => ctx.monthlyFlowToGdpRatio(ctx.world.bop.capitalAccount)),
     ColumnDef.macroPln("TradeBalance_OE", ctx => ctx.world.bop.tradeBalance),
+    ColumnDef("TradeBalanceToGdp", ctx => ctx.monthlyFlowToGdpRatio(ctx.world.bop.tradeBalance)),
     ColumnDef.macroPln("Exports_OE", ctx => ctx.world.bop.exports),
+    ColumnDef("ExportsToGdp", ctx => ctx.monthlyFlowToGdpRatio(ctx.world.bop.exports)),
     ColumnDef.macroPln("TotalImports_OE", ctx => ctx.world.bop.totalImports),
+    ColumnDef("ImportsToGdp", ctx => ctx.monthlyFlowToGdpRatio(ctx.world.bop.totalImports)),
     ColumnDef.macroPln("ImportedInterm", ctx => ctx.world.bop.importedIntermediates),
+    ColumnDef("ImportedIntermToImports", ctx => ctx.flowToFlowRatio(ctx.world.bop.importedIntermediates, ctx.world.bop.totalImports)),
     ColumnDef.macroPln("FDI", ctx => ctx.world.bop.fdi),
     // GVC / Deep External Sector
     ColumnDef("GvcDisruptionIndex", ctx => ctx.world.external.gvc.disruptionIndex),
@@ -1035,13 +1054,24 @@ object McTimeseriesSchema:
     val IoFlows: Col                                   = lookup("IoFlows")
     val IoGdpRatio: Col                                = lookup("IoGdpRatio")
     val NFA: Col                                       = lookup("NFA")
+    val NfaToGdp: Col                                  = lookup("NfaToGdp")
     val CurrentAccount: Col                            = lookup("CurrentAccount")
     val CurrentAccountToGdp: Col                       = lookup("CurrentAccountToGdp")
+    val CurrentAccountPrimaryIncome: Col               = lookup("CurrentAccountPrimaryIncome")
+    val CurrentAccountPrimaryIncomeToGdp: Col          = lookup("CurrentAccountPrimaryIncomeToGdp")
+    val CurrentAccountSecondaryIncome: Col             = lookup("CurrentAccountSecondaryIncome")
+    val CurrentAccountSecondaryIncomeToGdp: Col        = lookup("CurrentAccountSecondaryIncomeToGdp")
+    val CurrentAccountClosureResidual: Col             = lookup("CurrentAccountClosureResidual")
     val CapitalAccount: Col                            = lookup("CapitalAccount")
+    val CapitalAccountToGdp: Col                       = lookup("CapitalAccountToGdp")
     val TradeBalance: Col                              = lookup("TradeBalance_OE")
+    val TradeBalanceToGdp: Col                         = lookup("TradeBalanceToGdp")
     val Exports: Col                                   = lookup("Exports_OE")
+    val ExportsToGdp: Col                              = lookup("ExportsToGdp")
     val TotalImports: Col                              = lookup("TotalImports_OE")
+    val ImportsToGdp: Col                              = lookup("ImportsToGdp")
     val ImportedInterm: Col                            = lookup("ImportedInterm")
+    val ImportedIntermToImports: Col                   = lookup("ImportedIntermToImports")
     val FDI: Col                                       = lookup("FDI")
     val UnempBenefitSpend: Col                         = lookup("UnempBenefitSpend")
     val OutputGap: Col                                 = lookup("OutputGap")

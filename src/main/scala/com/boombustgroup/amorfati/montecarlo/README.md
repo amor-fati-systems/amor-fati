@@ -106,6 +106,34 @@ be split into the primary balance and the interest-cost channel. The
 `*ToGdp` columns use the monthly flow divided by the current monthly GDP proxy,
 matching the annualized flow-ratio convention used by `DeficitToGdp`.
 
+## Timeseries External Diagnostics
+
+The external block exposes both BoP levels and GDP-normalized ratios so current
+account drift can be decomposed without reconstructing hidden engine state.
+`NfaToGdp` is a stock ratio against annualized GDP; `CurrentAccountToGdp`,
+`TradeBalanceToGdp`, `ExportsToGdp`, `ImportsToGdp`,
+`CapitalAccountToGdp`, `CurrentAccountPrimaryIncomeToGdp`, and
+`CurrentAccountSecondaryIncomeToGdp` are monthly flow ratios against monthly
+GDP. `ImportedIntermToImports` isolates the GVC/intermediate-import share of
+total imports.
+
+The final exported current-account identity is:
+
+```text
+CurrentAccount =
+  TradeBalance_OE
+  + CurrentAccountPrimaryIncome
+  + CurrentAccountSecondaryIncome
+  - ForeignDividendOutflow
+  - FdiRepatriation
+  + CurrentAccountClosureResidual
+```
+
+`TradeBalance_OE` is already net of `FdiProfitShifting`, which is booked as an
+imported service in the final BoP adjustment. `FdiGrossOutflow` remains useful
+as a total foreign-owned-firm outflow measure, but it must not be subtracted
+again when closing `CurrentAccount` from `TradeBalance_OE`.
+
 ## Timeseries Automation Diagnostics
 
 The timeseries schema includes generic monthly automation diagnostics:

@@ -1099,10 +1099,26 @@ effects.
 The current account is:
 
 ```text
-currentAccount = tradeBalance + primaryIncome + secondaryIncome
+openEconomyCurrentAccount = tradeBalance + primaryIncome + secondaryIncome
 primaryIncome = NFA * nfaReturnRate.monthly
 secondaryIncome = EUFunds - remittanceOutflow + diasporaInflow
 ```
+
+The final exported BoP then applies firm/equity owner outflows:
+
+```text
+CurrentAccount =
+  TradeBalance_OE
+  + CurrentAccountPrimaryIncome
+  + CurrentAccountSecondaryIncome
+  - ForeignDividendOutflow
+  - FdiRepatriation
+  + CurrentAccountClosureResidual
+```
+
+`TradeBalance_OE` is the post-adjustment trade balance; `FdiProfitShifting` has
+already been booked into it as an imported service, so `FdiGrossOutflow` is not
+the right subtraction term for closing the exported current account.
 
 The capital account combines FDI, ordinary portfolio flows, carry-trade flows,
 and stress capital-flight outflows. FDI rises with automation and falls with a
