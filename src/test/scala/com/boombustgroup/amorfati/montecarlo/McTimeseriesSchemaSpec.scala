@@ -1,7 +1,7 @@
 package com.boombustgroup.amorfati.montecarlo
 
 import com.boombustgroup.amorfati.FixedPointSpecSupport.*
-import com.boombustgroup.amorfati.agents.{Banking, EclStaging, Firm, Household, Nbfi, TechState}
+import com.boombustgroup.amorfati.agents.{Banking, EarmarkedFunds, EclStaging, Firm, Household, Nbfi, SocialSecurity, TechState}
 import com.boombustgroup.amorfati.config.{HousingConfig, SimParams}
 import com.boombustgroup.amorfati.engine.SimulationMonth.ExecutionMonth
 import com.boombustgroup.amorfati.engine.{
@@ -127,8 +127,13 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     "GovCapitalSpendDomestic",
     "GovDomesticBudgetDemand",
     "GovDomesticBudgetOutlays",
+    "GovSocialFundSubventions",
+    "GovTotalOutlays",
     "GovDeficit",
+    "GovPrimaryDeficit",
     "GovOutlaysToGdp",
+    "GovTotalOutlaysToGdp",
+    "GovPrimaryDeficitToGdp",
     "EuProjectCapitalTotal",
     "PublicCapitalStock",
     "EuCofinancingDomestic",
@@ -511,7 +516,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     MetricValue.fromRaw(Share.fraction(numerator, denominator).toLong)
 
   "McTimeseriesSchema" should "expose the stable schema contract" in {
-    McTimeseriesSchema.nCols shouldBe 449
+    McTimeseriesSchema.nCols shouldBe 454
     McTimeseriesSchema.colNames.toVector shouldBe expectedColNames
   }
 
@@ -1058,6 +1063,11 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
           euCofinancing = PLN.Zero,
         ),
       ),
+      social = init.world.social.copy(
+        zus = SocialSecurity.ZusState(PLN.Zero, PLN.Zero, PLN(3)),
+        nfz = SocialSecurity.NfzState(PLN.Zero, PLN.Zero, PLN(2)),
+        earmarked = EarmarkedFunds.State.zero.copy(totalGovSubvention = PLN(1)),
+      ),
       flows = init.world.flows.copy(
         monthlyGdpProxy = PLN(100),
         sectorOutputs = Vector.fill(summon[SimParams].sectorDefs.length)(PLN.Zero),
@@ -1069,8 +1079,13 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     valueAt(row, "GovDividendRevenue") shouldBe polandScale(PLN(5))
     valueAt(row, "GovTotalRevenue") shouldBe polandScale(PLN(35))
     valueAt(row, "GovDeficit") shouldBe polandScale(PLN(4))
+    valueAt(row, "GovSocialFundSubventions") shouldBe polandScale(PLN(6))
+    valueAt(row, "GovTotalOutlays") shouldBe polandScale(PLN(38))
+    valueAt(row, "GovPrimaryDeficit") shouldBe polandScale(PLN(2))
     valueAt(row, "GovRevenueToGdp") shouldBe MetricValue.fromRaw(Share.decimal(35, 2).toLong)
     valueAt(row, "GovOutlaysToGdp") shouldBe MetricValue.fromRaw(Share.decimal(32, 2).toLong)
+    valueAt(row, "GovTotalOutlaysToGdp") shouldBe MetricValue.fromRaw(Share.decimal(38, 2).toLong)
+    valueAt(row, "GovPrimaryDeficitToGdp") shouldBe MetricValue.fromRaw(Share.decimal(2, 2).toLong)
   }
 
   it should "emit total GFCF and investment-to-GDP ratios" in {
