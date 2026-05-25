@@ -394,7 +394,9 @@ baseline, mortgage origination is not wired to a binding bank-supply gate:
 60-month baseline falls below the mortgage/GDP calibration band while this flag
 is false, the calibration mechanism is `housing.originationRate` relative to
 scheduled amortization, gross default, and GDP growth, not bank-resolution
-supply.
+supply. NBFI credit renewal is likewise stock based: `NbfiOriginationToStock`
+should be compared with `NbfiRepaymentToStock` and `NbfiDefaultsToStock` to
+separate insufficient origination from ordinary maturity/default runoff.
 
 ## Household Liquidity Diagnostics
 

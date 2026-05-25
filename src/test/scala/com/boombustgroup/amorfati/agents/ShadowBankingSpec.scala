@@ -129,7 +129,7 @@ class ShadowBankingSpec extends AnyFlatSpec with Matchers:
 
   // ---- nbfiOrigination ----
 
-  "Nbfi.nbfiOrigination" should "be proportional to consumption" in {
+  "Nbfi.nbfiOrigination" should "be proportional to loan stock" in {
     val o1 = Nbfi.nbfiOrigination(PLN(1000000), Share.decimal(2, 2))
     val o2 = Nbfi.nbfiOrigination(PLN(2000000), Share.decimal(2, 2))
     decimal(o2 / o1) shouldBe BigDecimal("2.0") +- BigDecimal("0.01")

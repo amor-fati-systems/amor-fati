@@ -127,11 +127,13 @@ object Nbfi:
     val excessReturn = (fundReturn - depositRate).clamp(-ExcessReturnCap, ExcessReturnCap)
     base * (Multiplier.One + (excessReturn * ExcessReturnSens).toMultiplier)
 
-  /** NBFI credit origination: counter-cyclical to bank tightness. */
-  def nbfiOrigination(domesticCons: PLN, bankNplRatio: Share)(using p: SimParams): PLN =
+  /** NBFI credit origination: stock-renewal flow, counter-cyclical to bank
+    * tightness.
+    */
+  def nbfiOrigination(loanStock: PLN, bankNplRatio: Share)(using p: SimParams): PLN =
     val tight       = bankTightness(bankNplRatio)
     val cyclicalAdj = Multiplier.One + (p.nbfi.countercyclical * tight).toMultiplier
-    domesticCons * p.nbfi.creditBaseRate * cyclicalAdj
+    loanStock * p.nbfi.creditBaseRate * cyclicalAdj
 
   /** NBFI loan repayment: stock / maturity. */
   def nbfiRepayment(loanStock: PLN)(using p: SimParams): PLN =
@@ -158,7 +160,7 @@ object Nbfi:
       corpBondYield: Rate,                             // corporate bond yield (annualised)
       equityReturn: Rate,                              // equity monthly return
       depositRate: Rate,                               // bank deposit rate (TFI opportunity cost)
-      domesticCons: PLN,                               // domestic consumption (NBFI credit base)
+      @scala.annotation.unused domesticCons: PLN,      // macro context; NBFI credit is stock-renewal based
       corpBondDefaultLoss: PLN,
   )
 
@@ -194,7 +196,7 @@ object Nbfi:
 
     // NBFI credit: counter-cyclical origination → repayment → defaults
     val tight          = bankTightness(input.bankNplRatio)
-    val origination    = nbfiOrigination(input.domesticCons, input.bankNplRatio)
+    val origination    = nbfiOrigination(opening.nbfiLoanStock, input.bankNplRatio)
     val repayment      = nbfiRepayment(opening.nbfiLoanStock)
     val defaults       = nbfiDefaults(opening.nbfiLoanStock, input.unempRate)
     val newLoanStock   = (opening.nbfiLoanStock + origination - repayment - defaults).max(PLN.Zero)

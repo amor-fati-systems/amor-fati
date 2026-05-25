@@ -31,7 +31,9 @@ import com.boombustgroup.amorfati.types.*
   *   initial leasing and leasing-loan active portfolio in raw PLN (ZPL
   *   end-2025: ~234 mld, scaled by gdpRatio)
   * @param creditBaseRate
-  *   base monthly NBFI credit origination rate (fraction of stock)
+  *   base monthly NBFI credit origination rate as a fraction of opening loan
+  *   stock; calibrated to renew the 36-month book after scheduled repayment and
+  *   baseline defaults
   * @param creditRate
   *   NBFI lending rate (higher than bank rate due to risk profile)
   * @param countercyclical
@@ -52,7 +54,7 @@ case class NbfiConfig(
     tfiInflowRate: Share = Share.decimal(1, 3),
     tfiRebalanceSpeed: Coefficient = Coefficient.decimal(5, 2),
     creditInitStock: PLN = PLN(234000000000L), // raw — scaled by gdpRatio
-    creditBaseRate: Share = Share.decimal(5, 3),
+    creditBaseRate: Share = Share.decimal(31, 3),
     creditRate: Rate = Rate.decimal(10, 2),
     countercyclical: Coefficient = Coefficient(2),
     creditMaturity: Scalar = Scalar(36),

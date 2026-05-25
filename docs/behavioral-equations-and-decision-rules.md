@@ -1178,7 +1178,7 @@ NBFI credit is counter-cyclical to bank tightness:
 
 ```text
 bankTightness = clamp((bankNplRatio - 0.03) / 0.03, 0, 1)
-origination = domesticConsumption * creditBaseRate
+origination = loanStock * creditBaseRate
               * (1 + countercyclical * bankTightness)
 repayment = loanStock / creditMaturity
 defaults = loanStock * defaultBase
@@ -1188,9 +1188,12 @@ loanStock' = max(loanStock + origination - repayment - defaults, 0)
 
 The timeseries exposes `NbfiNetStockFlow` as `origination - repayment -
 defaults`, plus `NbfiOriginationToStock`, `NbfiRepaymentToStock`, and
-`NbfiDefaultsToStock` to attribute loan-book runoff. `NbfiDepositDrainToAum`
-diagnoses TFI fund-flow pressure relative to AUM; deposit drain is a banking
-deposit/AUM channel, not a direct term in the NBFI loan-stock identity.
+`NbfiDefaultsToStock` to attribute loan-book renewal or runoff. `creditBaseRate`
+is a monthly stock-renewal rate calibrated against scheduled repayment and
+baseline defaults, with the counter-cyclical multiplier adding origination when
+bank NPL tightness rises. `NbfiDepositDrainToAum` diagnoses TFI fund-flow
+pressure relative to AUM; deposit drain is a banking deposit/AUM channel, not a
+direct term in the NBFI loan-stock identity.
 
 ### Quasi-Fiscal BGK/PFR
 
