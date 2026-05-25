@@ -219,6 +219,8 @@ object Firm:
       techSelectedCreditDemand: PLN = PLN.Zero,    // Actual selected technology-upgrade bank credit requested
       techSelectedCreditApproved: PLN = PLN.Zero,  // Actual selected technology-upgrade bank credit approved
       techSelectedCreditRejected: PLN = PLN.Zero,  // Actual selected technology-upgrade bank credit rejected by bank supply
+      techCandidateCreditDemand: PLN = PLN.Zero,   // Otherwise feasible technology-upgrade candidate bank credit requested
+      techCandidateCreditApproved: PLN = PLN.Zero, // Otherwise feasible technology-upgrade candidate bank credit approved
       techCandidateCreditRejected: PLN = PLN.Zero, // Otherwise feasible technology-upgrade candidate rejected by bank supply
       investmentCreditRejectionBreakdown: CreditRejectionBreakdown = CreditRejectionBreakdown.zero,
       techCreditRejectionBreakdown: CreditRejectionBreakdown = CreditRejectionBreakdown.zero,
@@ -427,6 +429,10 @@ object Firm:
       techCreditDecisionType: Option[DecisionTrace.DecisionType] = None,
       techCreditSource: Option[DecisionTrace.TechCreditSource] = None,
       techCreditNeed: Option[PLN] = None,
+      techCandidateCreditDemand: PLN = PLN.Zero,
+      techCandidateCreditApproved: PLN = PLN.Zero,
+      techCandidateCreditRejected: PLN = PLN.Zero,
+      techCandidateCreditRejectionBreakdown: CreditRejectionBreakdown = CreditRejectionBreakdown.zero,
       implementationFailureProbability: Option[Share] = None,
       implementationRoll: Option[Share] = None,
       upgradeEfficiencyDraw: Option[Scalar] = None,
@@ -458,6 +464,10 @@ object Firm:
         techCreditDecisionType = next.techCreditDecisionType.orElse(techCreditDecisionType),
         techCreditSource = next.techCreditSource.orElse(techCreditSource),
         techCreditNeed = next.techCreditNeed.orElse(techCreditNeed),
+        techCandidateCreditDemand = techCandidateCreditDemand + next.techCandidateCreditDemand,
+        techCandidateCreditApproved = techCandidateCreditApproved + next.techCandidateCreditApproved,
+        techCandidateCreditRejected = techCandidateCreditRejected + next.techCandidateCreditRejected,
+        techCandidateCreditRejectionBreakdown = techCandidateCreditRejectionBreakdown + next.techCandidateCreditRejectionBreakdown,
         implementationFailureProbability = next.implementationFailureProbability.orElse(implementationFailureProbability),
         implementationRoll = next.implementationRoll.orElse(implementationRoll),
         upgradeEfficiencyDraw = next.upgradeEfficiencyDraw.orElse(upgradeEfficiencyDraw),
@@ -496,10 +506,33 @@ object Firm:
       techCreditNeed = Some(need),
     )
 
-  private def bankRejectedTechDemandAudit(candidate: UpgradeCandidate, decisionType: DecisionTrace.DecisionType): DecisionAudit =
+  private def techCandidateCreditAudit(candidate: UpgradeCandidate): DecisionAudit =
+    if candidate.profitable && candidate.canPay && candidate.ready then
+      val approved = if candidate.bankOk then candidate.loan else PLN.Zero
+      val rejected = if candidate.bankOk then PLN.Zero else candidate.loan
+      DecisionAudit(
+        techCandidateCreditDemand = candidate.loan,
+        techCandidateCreditApproved = approved,
+        techCandidateCreditRejected = rejected,
+        techCandidateCreditRejectionBreakdown = CreditRejectionBreakdown.from(candidate.credit.audit.rejectionReason, rejected),
+      )
+    else DecisionAudit()
+
+  private def rejectedTechCandidateTraceAudit(candidate: UpgradeCandidate, decisionType: DecisionTrace.DecisionType): DecisionAudit =
     if !candidate.bankOk && candidate.profitable && candidate.canPay && candidate.ready then
       selectedTechBankAudit(candidate.credit, candidate.loan, decisionType, DecisionTrace.TechCreditSource.BankRejectedCandidate)
     else DecisionAudit()
+
+  private def primaryRejectedTechCandidateTraceAudit(fullAi: UpgradeCandidate, hybrid: UpgradeCandidate): DecisionAudit =
+    val candidates = Vector(
+      fullAi -> DecisionTrace.DecisionType.FullAiUpgrade,
+      hybrid -> DecisionTrace.DecisionType.HybridUpgrade,
+    )
+    candidates
+      .collectFirst:
+        case (candidate, decisionType) if !candidate.bankOk && candidate.profitable && candidate.canPay && candidate.ready =>
+          selectedTechBankAudit(candidate.credit, candidate.loan, decisionType, DecisionTrace.TechCreditSource.BankRejectedCandidate)
+      .getOrElse(DecisionAudit())
 
   private def fullAiBankAudit(credit: CreditDecision): DecisionAudit =
     DecisionAudit(
@@ -1023,26 +1056,17 @@ object Firm:
     val canPay     = financialStocks.cash > upDown
     val ready      = firm.digitalReadiness >= p.firm.fullAiReadinessMin
     val bankCredit = bankCreditDecision(upLoan)
-    val bankOk     = bankCredit.approved
+    val candidate  = UpgradeCandidate(upCapex, upLoan, upDown, profitable, canPay, ready, bankCredit)
 
     val prob: Share =
-      if profitable && canPay && ready && bankOk then
-        ((firm.riskProfile * RiskWeightHybUpgrade) + (w.real.automationRatio * AutoRatioWeight)) * firm.digitalReadiness
+      if candidate.feasible then ((firm.riskProfile * RiskWeightHybUpgrade) + (w.real.automationRatio * AutoRatioWeight)) * firm.digitalReadiness
       else Share.Zero
     val audit       = DecisionAudit(
-      fullAiFeasible = Some(profitable && canPay && ready && bankOk),
+      fullAiFeasible = Some(candidate.feasible),
       fullAiAdoptionProbability = Some(prob.min(Share.One)),
     ).merge(fullAiBankAudit(bankCredit))
-      .merge(
-        if !bankOk && profitable && canPay && ready then
-          selectedTechBankAudit(
-            bankCredit,
-            upLoan,
-            DecisionTrace.DecisionType.FullAiUpgrade,
-            DecisionTrace.TechCreditSource.BankRejectedCandidate,
-          )
-        else DecisionAudit(),
-      )
+      .merge(techCandidateCreditAudit(candidate))
+      .merge(rejectedTechCandidateTraceAudit(candidate, DecisionTrace.DecisionType.FullAiUpgrade))
     val roll        = Share.random(rng)
 
     if roll < prob then
@@ -1400,8 +1424,9 @@ object Firm:
       adoptionRoll = Some(roll),
     ).merge(fullAiBankAudit(ai.credit))
       .merge(hybridBankAudit(hyb.credit))
-      .merge(bankRejectedTechDemandAudit(ai, DecisionTrace.DecisionType.FullAiUpgrade))
-      .merge(bankRejectedTechDemandAudit(hyb, DecisionTrace.DecisionType.HybridUpgrade))
+      .merge(techCandidateCreditAudit(ai))
+      .merge(techCandidateCreditAudit(hyb))
+      .merge(primaryRejectedTechCandidateTraceAudit(ai, hyb))
 
     if roll < pFull then
       val upgrade = rollFullAiUpgrade(firm, pnl, ai, rng)
@@ -1569,10 +1594,7 @@ object Firm:
         case _                                                          => decisionCreditNeed(decision.decision).max(result.techNewLoan)
     val selectedApproved  = result.techNewLoan.min(selectedDemand)
     val selectedRejected  = (selectedDemand - selectedApproved).max(PLN.Zero)
-    val candidateRejected =
-      decision.audit.techCreditSource match
-        case Some(DecisionTrace.TechCreditSource.BankRejectedCandidate) => decision.audit.techCreditNeed.getOrElse(PLN.Zero)
-        case _                                                          => PLN.Zero
+    val candidateRejected = decision.audit.techCandidateCreditRejected
     val demand            = selectedDemand + candidateRejected
     val approved          = selectedApproved
     val rejected          = selectedRejected + candidateRejected
@@ -1583,9 +1605,11 @@ object Firm:
       techSelectedCreditDemand = selectedDemand,
       techSelectedCreditApproved = selectedApproved,
       techSelectedCreditRejected = selectedRejected,
+      techCandidateCreditDemand = decision.audit.techCandidateCreditDemand,
+      techCandidateCreditApproved = decision.audit.techCandidateCreditApproved,
       techCandidateCreditRejected = candidateRejected,
       techCreditRejectionBreakdown = CreditRejectionBreakdown.from(decision.audit.selectedBankApprovalAudit.rejectionReason, selectedRejected) +
-        CreditRejectionBreakdown.from(decision.audit.selectedBankApprovalAudit.rejectionReason, candidateRejected),
+        decision.audit.techCandidateCreditRejectionBreakdown,
     )
 
   // ---- Execute (pure dispatch, zero RandomStream calls) ----

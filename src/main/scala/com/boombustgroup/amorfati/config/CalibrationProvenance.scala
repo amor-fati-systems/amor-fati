@@ -626,6 +626,7 @@ object CalibrationProvenance:
 | `banking.minCar` | `0.08` | multiplier/share | Code note bridge: Basel III CRR | Minimum capital adequacy | Direct | `BankingConfig` | `EMPIRICAL` |
 | `banking.loanRecovery` | `0.30` | share | Structural corporate-loan workout recovery prior | Corporate loan recovery | Direct | `BankingConfig` | `ASSUMED` |
 | `banking.firmLoanAmortRate` | `1/60` | monthly rate | Code note bridge: NBP bridge prior maturity | Five-year average loan maturity | Direct | `BankingConfig` | `CODE_NOTE_EMPIRICAL` |
+| `banking.firmCreditMinApprovalProb`, `firmCreditNplApprovalPenalty`, `firmCreditReserveDeficitPenalty` | `0.10`, `3.0`, `0.50` | share/coefficient | #523 candidate-gate diagnostic prior | Firm-credit stochastic approval after CAR/LCR/NSFR gates pass | Direct | `BankingConfig`, `Banking.creditApproval` | `TUNED_NEEDS_VALIDATION` |
 | `banking.reserveReq` | `0.035` | share | Code note bridge: NBP bridge prior | Required reserve ratio | Direct | `BankingConfig` | `EMPIRICAL` |
 | `banking.lcrMin`, `nsfrMin` | `1.0`, `1.0` | multiplier | Basel III | Minimum LCR/NSFR | Direct | `BankingConfig` | `EMPIRICAL` |
 | `banking.p2rAddons` | `[0.015, 0.010, 0.030, 0.015, 0.020, 0.025, 0.020, 0.020, 0.025, 0.020]` | multiplier by bank | Code note bridge: KNF bridge prior | SREP/P2R add-ons | Direct | `BankingConfig` | `CODE_NOTE_EMPIRICAL` |

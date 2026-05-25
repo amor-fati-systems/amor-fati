@@ -320,7 +320,10 @@ FirmCredit_TechBankRejected
 FirmCredit_TechSelectedDemand
 FirmCredit_TechSelectedApproved
 FirmCredit_TechSelectedBankRejected
+FirmCredit_TechCandidateDemand
+FirmCredit_TechCandidateApproved
 FirmCredit_TechCandidateBankRejected
+FirmCredit_TechCandidateApprovalRate
 ```
 
 `FirmCredit_NetStockFlow` reports the bank-book flow currently applied to the
@@ -342,8 +345,9 @@ LCR, NSFR, stochastic approval roll, or unclassified legacy/boolean paths. The
 investment credit. `FirmCredit_TechDemand`, `FirmCredit_TechApproved`, and
 `FirmCredit_TechBankRejected` remain the aggregate technology-credit surface.
 The `TechSelected*` columns isolate the actually selected automation or hybrid
-upgrade path, while `FirmCredit_TechCandidateBankRejected` isolates otherwise
-feasible upgrade candidates blocked by the relationship bank.
+upgrade path. The `TechCandidate*` columns expose the full otherwise-feasible
+upgrade candidate surface before adoption choice, including the candidate
+approval rate used to calibrate bank-side stochastic credit gating.
 
 ## NBFI Credit Diagnostics
 

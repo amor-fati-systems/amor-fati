@@ -523,7 +523,13 @@ object McTimeseriesSchema:
     ColumnDef.macroPln("FirmCredit_TechSelectedDemand", ctx => ctx.world.flows.firmTechSelectedCreditDemand),
     ColumnDef.macroPln("FirmCredit_TechSelectedApproved", ctx => ctx.world.flows.firmTechSelectedCreditApproved),
     ColumnDef.macroPln("FirmCredit_TechSelectedBankRejected", ctx => ctx.world.flows.firmTechSelectedCreditRejected),
+    ColumnDef.macroPln("FirmCredit_TechCandidateDemand", ctx => ctx.world.flows.firmTechCandidateCreditDemand),
+    ColumnDef.macroPln("FirmCredit_TechCandidateApproved", ctx => ctx.world.flows.firmTechCandidateCreditApproved),
     ColumnDef.macroPln("FirmCredit_TechCandidateBankRejected", ctx => ctx.world.flows.firmTechCandidateCreditRejected),
+    ColumnDef(
+      "FirmCredit_TechCandidateApprovalRate",
+      ctx => ctx.flowToFlowRatio(ctx.world.flows.firmTechCandidateCreditApproved, ctx.world.flows.firmTechCandidateCreditDemand),
+    ),
     // Consumer Credit
     ColumnDef.macroPln("ConsumerLoans", ctx => ctx.consumerLoanStock),
     ColumnDef(
@@ -1112,7 +1118,10 @@ object McTimeseriesSchema:
     val FirmCreditTechSelectedDemand: Col              = lookup("FirmCredit_TechSelectedDemand")
     val FirmCreditTechSelectedApproved: Col            = lookup("FirmCredit_TechSelectedApproved")
     val FirmCreditTechSelectedBankRejected: Col        = lookup("FirmCredit_TechSelectedBankRejected")
+    val FirmCreditTechCandidateDemand: Col             = lookup("FirmCredit_TechCandidateDemand")
+    val FirmCreditTechCandidateApproved: Col           = lookup("FirmCredit_TechCandidateApproved")
     val FirmCreditTechCandidateBankRejected: Col       = lookup("FirmCredit_TechCandidateBankRejected")
+    val FirmCreditTechCandidateApprovalRate: Col       = lookup("FirmCredit_TechCandidateApprovalRate")
     val ConsumerPrincipal: Col                         = lookup("ConsumerPrincipal")
     val ConsumerCreditNetStockFlow: Col                = lookup("ConsumerCredit_NetStockFlow")
     val ConsumerCreditUnderwrittenNetFlow: Col         = lookup("ConsumerCredit_UnderwrittenNetFlow")

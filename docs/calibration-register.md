@@ -40,7 +40,7 @@ These counts are rendered from `CalibrationProvenance.Baseline` at generation ti
 | `EMPIRICAL_TRANSFORMED` | 17 |
 | `CODE_NOTE_EMPIRICAL` | 61 |
 | `ASSUMED` | 33 |
-| `TUNED_NEEDS_VALIDATION` | 86 |
+| `TUNED_NEEDS_VALIDATION` | 88 |
 | `POLICY_SCENARIO` | 7 |
 | `PLACEHOLDER` | 1 |
 | `UNKNOWN_SOURCE` | 0 |
@@ -76,9 +76,9 @@ a concrete diagnostic artifact path.
 
 | Validation mode | Count | Linked evidence paths | Missing evidence paths |
 | --- | ---: | ---: | ---: |
-| `HISTORICAL_FIT` | 30 | 4 | 26 |
+| `HISTORICAL_FIT` | 31 | 4 | 27 |
 | `STYLIZED_FACT_TARGET` | 11 | 7 | 4 |
-| `SENSITIVITY_RANGE` | 31 | 5 | 26 |
+| `SENSITIVITY_RANGE` | 32 | 5 | 27 |
 | `MODEL_BEHAVIOR_CALIBRATION` | 14 | 0 | 14 |
 
 ### Evidence Paths
@@ -148,7 +148,9 @@ a concrete diagnostic artifact path.
 | `monetary.taylorInertia` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` |  |  | Policy-rate smoothing | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
 | `monetary.maxRateChange` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` |  |  | Monthly policy-rate adjustment cap | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
 | `monetary.nairu` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` |  |  | NAIRU | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `banking.firmCreditMinApprovalProb`, `firmCreditNplApprovalPenalty`, `firmCreditReserveDeficitPenalty` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` |  |  | Firm-credit stochastic approval after CAR/LCR/NSFR gates pass | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
 | `banking.depositPanicRate` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` |  |  | Panic switching after failure | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `banking.eclMigrationSensitivity`, `eclGdpSensitivity`, `eclMaxMigration` | `HISTORICAL_FIT` | `MISSING_VALIDATION_EVIDENCE` |  |  | Stage 1 to Stage 2 migration under unemployment deterioration or GDP contraction | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
 | `forex.irpSensitivity`, `exRateAdjSpeed` | `SENSITIVITY_RANGE` | docs/sensitivity-robustness-workflow.md | sensitivity-summary.csv | external-risk-off | FX and external-balance sensitivity | SensitivityRobustnessExport varies IRP sensitivity in the external-risk-off scenario and reports FX/current-account metrics. |
 | `priceLevel.importPush` | `HISTORICAL_FIT` | `MISSING_VALIDATION_EVIDENCE` |  |  | Imported inflation pass-through to CPI | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
 | `openEcon.erElasticity` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` |  |  | Exchange-rate elasticity of trade | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
@@ -355,6 +357,7 @@ a concrete diagnostic artifact path.
 | `banking.minCar` | `0.08` | multiplier/share | Code note bridge: Basel III CRR | Minimum capital adequacy | Direct | `BankingConfig` | `EMPIRICAL` |
 | `banking.loanRecovery` | `0.30` | share | Structural corporate-loan workout recovery prior | Corporate loan recovery | Direct | `BankingConfig` | `ASSUMED` |
 | `banking.firmLoanAmortRate` | `1/60` | monthly rate | Code note bridge: NBP bridge prior maturity | Five-year average loan maturity | Direct | `BankingConfig` | `CODE_NOTE_EMPIRICAL` |
+| `banking.firmCreditMinApprovalProb`, `firmCreditNplApprovalPenalty`, `firmCreditReserveDeficitPenalty` | `0.10, 3.0, 0.50` | share/coefficient | #523 candidate-gate diagnostic prior | Firm-credit stochastic approval after CAR/LCR/NSFR gates pass | Direct | `BankingConfig`, `Banking.creditApproval` | `TUNED_NEEDS_VALIDATION` |
 | `banking.reserveReq` | `0.035` | share | Code note bridge: NBP bridge prior | Required reserve ratio | Direct | `BankingConfig` | `EMPIRICAL` |
 | `banking.lcrMin`, `nsfrMin` | `1.0, 1.0` | multiplier | Basel III | Minimum LCR/NSFR | Direct | `BankingConfig` | `EMPIRICAL` |
 | `banking.p2rAddons` | `[0.015, 0.010, 0.030, 0.015, 0.020, 0.025, 0.020, 0.020, 0.025, 0.020]` | multiplier by bank | Code note bridge: KNF bridge prior | SREP/P2R add-ons | Direct | `BankingConfig` | `CODE_NOTE_EMPIRICAL` |
@@ -365,7 +368,7 @@ a concrete diagnostic artifact path.
 | `banking.htmShare` | `0.60` | share | Code note bridge: NBP bridge prior | HTM share of gov bond portfolio | Direct | `BankingConfig` | `CODE_NOTE_EMPIRICAL` |
 | `banking.depositPanicRate` | `0.03` | monthly share | Code note bridge: Diamond-Dybvig mechanism | Panic switching after failure | Direct | `BankingConfig` | `TUNED_NEEDS_VALIDATION` |
 | `banking.eclRate1`, `eclRate2`, `eclRate3` | `0.01, 0.08, 0.50` | share | Code note bridge: KNF IFRS 9 | ECL provision rates | Direct | `BankingConfig` | `CODE_NOTE_EMPIRICAL` |
-| `banking.eclMigrationSensitivity`, `eclGdpSensitivity`, `eclMaxMigration` | `3.0, 5.0, 0.20` | coefficient/share | Code note bridge: IFRS 9 significant-increase-in-credit-risk stress rule | Stage 1 to Stage 2 migration under unemployment deterioration or GDP contraction | Applied to `max(0, unemployment_t - unemployment_ref)` and `max(0, -gdpGrowth_t)`; `unemployment_ref` is carried from the lagged pipeline and bootstrapped from the opening Poland baseline | `EclStaging`, `BankingEconomics` | `TUNED_NEEDS_VALIDATION` |
+| `banking.eclMigrationSensitivity`, `eclGdpSensitivity`, `eclMaxMigration` | `3.0, 5.0, 0.20` | coefficient/share | Code note bridge: IFRS 9 significant-increase-in-credit-risk stress rule | Stage 1 to Stage 2 migration under unemployment deterioration or GDP contraction | Applied to max(0, unemployment_t - unemployment_ref) and max(0, -gdpGrowth_t); unemployment_ref is carried from the lagged pipeline and bootstrapped from the opening Poland baseline | `EclStaging`, `BankingEconomics` | `TUNED_NEEDS_VALIDATION` |
 
 ## External Sector And Financial Markets
 
