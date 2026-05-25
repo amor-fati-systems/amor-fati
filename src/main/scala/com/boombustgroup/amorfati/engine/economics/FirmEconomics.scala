@@ -21,6 +21,7 @@ object FirmEconomics:
 
   // ---- Calibration constants ----
   private val BondRevertThreshold: Share = Share.decimal(1, 3) // minimum revert ratio to trigger bond-to-loan reversion
+  private type CreditRejectionBreakdown = Firm.CreditRejectionBreakdown
 
   // ---- Accumulated flows (monoid on PLN) ----
 
@@ -48,6 +49,7 @@ object FirmEconomics:
       techCreditDemand: PLN,         // technology-upgrade bank credit requested or bank-rejected
       techCreditApproved: PLN,       // technology-upgrade bank credit approved
       techCreditRejected: PLN,       // technology-upgrade bank credit rejected by bank supply
+      creditRejectedByReason: CreditRejectionBreakdown,
   ):
     def +(o: FirmFlows): FirmFlows = FirmFlows(
       tax + o.tax,
@@ -70,6 +72,7 @@ object FirmEconomics:
       techCreditDemand + o.techCreditDemand,
       techCreditApproved + o.techCreditApproved,
       techCreditRejected + o.techCreditRejected,
+      creditRejectedByReason + o.creditRejectedByReason,
     )
 
   private object FirmFlows:
@@ -94,6 +97,7 @@ object FirmEconomics:
       PLN.Zero,
       PLN.Zero,
       PLN.Zero,
+      Firm.CreditRejectionBreakdown.zero,
     )
 
   // ---- Internal phase result types ----
@@ -238,6 +242,7 @@ object FirmEconomics:
       sumTechCreditDemand: PLN,                   // technology-upgrade bank credit requested or bank-rejected
       sumTechCreditApproved: PLN,                 // technology-upgrade bank credit approved
       sumTechCreditRejected: PLN,                 // technology-upgrade bank credit rejected by bank supply
+      sumCreditRejectedByReason: CreditRejectionBreakdown,
       postFirmCrossSectorHires: Int,              // cross-sector hires in labor matching
       postFirmHires: Int,                         // total hires consumed by firm-stage matching
       postFirmHireCapacity: Int,                  // monthly hire capacity available at firm-stage matching
@@ -357,11 +362,7 @@ object FirmEconomics:
     }
     val creditDecision     = (bankId: Int, amt: PLN) =>
       val approval = Banking.creditApproval(in.banks(bankId), bankStocks(bankId), amt, rng, ccyb, bankCorpBonds(BankId(bankId)))
-      Firm.CreditDecision(
-        approved = approval.approved,
-        approvalProbability = approval.approvalProbability,
-        approvalRoll = approval.approvalRoll,
-      )
+      Firm.CreditDecision.fromApproval(approval)
     val operationalSignals = OperationalSignals(
       sectorDemandMult = in.s4.sectorMults,
       sectorDemandPressure = in.s4.sectorDemandPressure,
@@ -451,6 +452,7 @@ object FirmEconomics:
             techCreditDemand = r.techCreditDemand,
             techCreditApproved = r.techCreditApproved,
             techCreditRejected = r.techCreditRejected,
+            creditRejectedByReason = r.investmentCreditRejectionBreakdown + r.techCreditRejectionBreakdown,
           ),
           realizedPostTaxProfit = r.realizedPostTaxProfit,
           bankId = f.bankId,
@@ -926,6 +928,7 @@ object FirmEconomics:
       sumTechCreditDemand = flows.techCreditDemand,
       sumTechCreditApproved = flows.techCreditApproved,
       sumTechCreditRejected = flows.techCreditRejected,
+      sumCreditRejectedByReason = flows.creditRejectedByReason,
       postFirmCrossSectorHires = crossSectorHires,
       postFirmHires = hires,
       postFirmHireCapacity = hireCapacity,

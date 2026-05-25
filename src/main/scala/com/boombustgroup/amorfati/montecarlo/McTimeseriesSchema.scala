@@ -502,6 +502,12 @@ object McTimeseriesSchema:
     ColumnDef.macroPln("FirmCredit_CreditDemand", ctx => ctx.firmCreditDemand),
     ColumnDef.macroPln("FirmCredit_CreditApproved", ctx => ctx.firmCreditApproved),
     ColumnDef.macroPln("FirmCredit_BankRejected", ctx => ctx.firmCreditRejected),
+    ColumnDef.macroPln("FirmCredit_RejectedFailedBank", ctx => ctx.world.flows.firmCreditRejectedByReason.failedBank),
+    ColumnDef.macroPln("FirmCredit_RejectedCarGate", ctx => ctx.world.flows.firmCreditRejectedByReason.carGate),
+    ColumnDef.macroPln("FirmCredit_RejectedLcrGate", ctx => ctx.world.flows.firmCreditRejectedByReason.lcrGate),
+    ColumnDef.macroPln("FirmCredit_RejectedNsfrGate", ctx => ctx.world.flows.firmCreditRejectedByReason.nsfrGate),
+    ColumnDef.macroPln("FirmCredit_RejectedStochastic", ctx => ctx.world.flows.firmCreditRejectedByReason.stochastic),
+    ColumnDef.macroPln("FirmCredit_RejectedUnclassified", ctx => ctx.world.flows.firmCreditRejectedByReason.unclassified),
     ColumnDef("FirmCredit_ApprovalRate", ctx => ctx.flowToFlowRatio(ctx.firmCreditApproved, ctx.firmCreditDemand)),
     ColumnDef.macroPln("FirmCredit_InvestmentDemand", ctx => ctx.world.flows.firmInvestmentCreditDemand),
     ColumnDef.macroPln("FirmCredit_InvestmentApproved", ctx => ctx.world.flows.firmInvestmentCreditApproved),
@@ -1084,6 +1090,12 @@ object McTimeseriesSchema:
     val FirmCreditCreditDemand: Col                    = lookup("FirmCredit_CreditDemand")
     val FirmCreditCreditApproved: Col                  = lookup("FirmCredit_CreditApproved")
     val FirmCreditBankRejected: Col                    = lookup("FirmCredit_BankRejected")
+    val FirmCreditRejectedFailedBank: Col              = lookup("FirmCredit_RejectedFailedBank")
+    val FirmCreditRejectedCarGate: Col                 = lookup("FirmCredit_RejectedCarGate")
+    val FirmCreditRejectedLcrGate: Col                 = lookup("FirmCredit_RejectedLcrGate")
+    val FirmCreditRejectedNsfrGate: Col                = lookup("FirmCredit_RejectedNsfrGate")
+    val FirmCreditRejectedStochastic: Col              = lookup("FirmCredit_RejectedStochastic")
+    val FirmCreditRejectedUnclassified: Col            = lookup("FirmCredit_RejectedUnclassified")
     val FirmCreditApprovalRate: Col                    = lookup("FirmCredit_ApprovalRate")
     val FirmCreditInvestmentDemand: Col                = lookup("FirmCredit_InvestmentDemand")
     val FirmCreditInvestmentApproved: Col              = lookup("FirmCredit_InvestmentApproved")

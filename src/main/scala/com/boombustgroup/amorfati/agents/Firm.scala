@@ -216,6 +216,8 @@ object Firm:
       techCreditDemand: PLN = PLN.Zero,           // Technology-upgrade bank credit requested or bank-rejected
       techCreditApproved: PLN = PLN.Zero,         // Technology-upgrade bank credit approved
       techCreditRejected: PLN = PLN.Zero,         // Technology-upgrade bank credit rejected by bank supply
+      investmentCreditRejectionBreakdown: CreditRejectionBreakdown = CreditRejectionBreakdown.zero,
+      techCreditRejectionBreakdown: CreditRejectionBreakdown = CreditRejectionBreakdown.zero,
       decisionTrace: Option[DecisionTrace] = None, // Auditable decision surface for optional exports
   )
   object Result:
@@ -278,6 +280,7 @@ object Firm:
       selectedBankApproval: Option[Boolean],
       selectedBankApprovalProbability: Option[Share],
       selectedBankApprovalRoll: Option[Share],
+      selectedBankApprovalAudit: Banking.CreditApprovalAudit,
       fullAiFeasible: Option[Boolean],
       hybridFeasible: Option[Boolean],
       fullAiAdoptionProbability: Option[Share],
@@ -286,9 +289,11 @@ object Firm:
       fullAiBankApproval: Option[Boolean],
       fullAiBankApprovalProbability: Option[Share],
       fullAiBankApprovalRoll: Option[Share],
+      fullAiBankApprovalAudit: Banking.CreditApprovalAudit,
       hybridBankApproval: Option[Boolean],
       hybridBankApprovalProbability: Option[Share],
       hybridBankApprovalRoll: Option[Share],
+      hybridBankApprovalAudit: Banking.CreditApprovalAudit,
       implementationFailureProbability: Option[Share],
       implementationRoll: Option[Share],
       upgradeEfficiencyDraw: Option[Scalar],
@@ -298,6 +303,7 @@ object Firm:
       investmentBankApproval: Option[Boolean],
       investmentBankApprovalProbability: Option[Share],
       investmentBankApprovalRoll: Option[Share],
+      investmentBankApprovalAudit: Banking.CreditApprovalAudit,
       digitalInvestProbability: Option[Share],
       digitalInvestRoll: Option[Share],
       laborAdjustmentResidualProbability: Option[Share],
@@ -345,15 +351,57 @@ object Firm:
       approved: Boolean,
       approvalProbability: Option[Share] = None,
       approvalRoll: Option[Share] = None,
+      audit: Banking.CreditApprovalAudit = Banking.CreditApprovalAudit.empty,
   )
   object CreditDecision:
     def fromBoolean(approved: Boolean): CreditDecision =
       CreditDecision(approved)
 
+    def fromApproval(approval: Banking.CreditApproval): CreditDecision =
+      CreditDecision(
+        approved = approval.approved,
+        approvalProbability = approval.approvalProbability,
+        approvalRoll = approval.approvalRoll,
+        audit = approval.audit,
+      )
+
+  case class CreditRejectionBreakdown(
+      failedBank: PLN = PLN.Zero,
+      carGate: PLN = PLN.Zero,
+      lcrGate: PLN = PLN.Zero,
+      nsfrGate: PLN = PLN.Zero,
+      stochastic: PLN = PLN.Zero,
+      unclassified: PLN = PLN.Zero,
+  ):
+    def +(other: CreditRejectionBreakdown): CreditRejectionBreakdown =
+      CreditRejectionBreakdown(
+        failedBank = failedBank + other.failedBank,
+        carGate = carGate + other.carGate,
+        lcrGate = lcrGate + other.lcrGate,
+        nsfrGate = nsfrGate + other.nsfrGate,
+        stochastic = stochastic + other.stochastic,
+        unclassified = unclassified + other.unclassified,
+      )
+
+  object CreditRejectionBreakdown:
+    val zero: CreditRejectionBreakdown = CreditRejectionBreakdown()
+
+    def from(reason: Option[Banking.CreditRejectionReason], amount: PLN): CreditRejectionBreakdown =
+      if amount <= PLN.Zero then zero
+      else
+        reason match
+          case Some(Banking.CreditRejectionReason.FailedBank)        => CreditRejectionBreakdown(failedBank = amount)
+          case Some(Banking.CreditRejectionReason.CapitalAdequacy)   => CreditRejectionBreakdown(carGate = amount)
+          case Some(Banking.CreditRejectionReason.LiquidityCoverage) => CreditRejectionBreakdown(lcrGate = amount)
+          case Some(Banking.CreditRejectionReason.StableFunding)     => CreditRejectionBreakdown(nsfrGate = amount)
+          case Some(Banking.CreditRejectionReason.Stochastic)        => CreditRejectionBreakdown(stochastic = amount)
+          case None                                                  => CreditRejectionBreakdown(unclassified = amount)
+
   private case class DecisionAudit(
       selectedBankApproval: Option[Boolean] = None,
       selectedBankApprovalProbability: Option[Share] = None,
       selectedBankApprovalRoll: Option[Share] = None,
+      selectedBankApprovalAudit: Banking.CreditApprovalAudit = Banking.CreditApprovalAudit.empty,
       fullAiFeasible: Option[Boolean] = None,
       hybridFeasible: Option[Boolean] = None,
       fullAiAdoptionProbability: Option[Share] = None,
@@ -362,9 +410,11 @@ object Firm:
       fullAiBankApproval: Option[Boolean] = None,
       fullAiBankApprovalProbability: Option[Share] = None,
       fullAiBankApprovalRoll: Option[Share] = None,
+      fullAiBankApprovalAudit: Banking.CreditApprovalAudit = Banking.CreditApprovalAudit.empty,
       hybridBankApproval: Option[Boolean] = None,
       hybridBankApprovalProbability: Option[Share] = None,
       hybridBankApprovalRoll: Option[Share] = None,
+      hybridBankApprovalAudit: Banking.CreditApprovalAudit = Banking.CreditApprovalAudit.empty,
       techCreditDecisionType: Option[DecisionTrace.DecisionType] = None,
       techCreditNeed: Option[PLN] = None,
       implementationFailureProbability: Option[Share] = None,
@@ -381,6 +431,7 @@ object Firm:
         selectedBankApproval = next.selectedBankApproval.orElse(selectedBankApproval),
         selectedBankApprovalProbability = next.selectedBankApprovalProbability.orElse(selectedBankApprovalProbability),
         selectedBankApprovalRoll = next.selectedBankApprovalRoll.orElse(selectedBankApprovalRoll),
+        selectedBankApprovalAudit = next.selectedBankApprovalAudit.orElse(selectedBankApprovalAudit),
         fullAiFeasible = next.fullAiFeasible.orElse(fullAiFeasible),
         hybridFeasible = next.hybridFeasible.orElse(hybridFeasible),
         fullAiAdoptionProbability = next.fullAiAdoptionProbability.orElse(fullAiAdoptionProbability),
@@ -389,9 +440,11 @@ object Firm:
         fullAiBankApproval = next.fullAiBankApproval.orElse(fullAiBankApproval),
         fullAiBankApprovalProbability = next.fullAiBankApprovalProbability.orElse(fullAiBankApprovalProbability),
         fullAiBankApprovalRoll = next.fullAiBankApprovalRoll.orElse(fullAiBankApprovalRoll),
+        fullAiBankApprovalAudit = next.fullAiBankApprovalAudit.orElse(fullAiBankApprovalAudit),
         hybridBankApproval = next.hybridBankApproval.orElse(hybridBankApproval),
         hybridBankApprovalProbability = next.hybridBankApprovalProbability.orElse(hybridBankApprovalProbability),
         hybridBankApprovalRoll = next.hybridBankApprovalRoll.orElse(hybridBankApprovalRoll),
+        hybridBankApprovalAudit = next.hybridBankApprovalAudit.orElse(hybridBankApprovalAudit),
         techCreditDecisionType = next.techCreditDecisionType.orElse(techCreditDecisionType),
         techCreditNeed = next.techCreditNeed.orElse(techCreditNeed),
         implementationFailureProbability = next.implementationFailureProbability.orElse(implementationFailureProbability),
@@ -417,6 +470,7 @@ object Firm:
       selectedBankApproval = Some(credit.approved),
       selectedBankApprovalProbability = credit.approvalProbability,
       selectedBankApprovalRoll = credit.approvalRoll,
+      selectedBankApprovalAudit = credit.audit,
     )
 
   private def selectedTechBankAudit(credit: CreditDecision, need: PLN, decisionType: DecisionTrace.DecisionType): DecisionAudit =
@@ -435,6 +489,7 @@ object Firm:
       fullAiBankApproval = Some(credit.approved),
       fullAiBankApprovalProbability = credit.approvalProbability,
       fullAiBankApprovalRoll = credit.approvalRoll,
+      fullAiBankApprovalAudit = credit.audit,
     )
 
   private def hybridBankAudit(credit: CreditDecision): DecisionAudit =
@@ -442,6 +497,7 @@ object Firm:
       hybridBankApproval = Some(credit.approved),
       hybridBankApprovalProbability = credit.approvalProbability,
       hybridBankApprovalRoll = credit.approvalRoll,
+      hybridBankApprovalAudit = credit.audit,
     )
 
   // ---- Queries ----
@@ -1373,6 +1429,7 @@ object Firm:
       selectedBankApproval = decision.audit.selectedBankApproval,
       selectedBankApprovalProbability = decision.audit.selectedBankApprovalProbability,
       selectedBankApprovalRoll = decision.audit.selectedBankApprovalRoll,
+      selectedBankApprovalAudit = decision.audit.selectedBankApprovalAudit,
       fullAiFeasible = decision.audit.fullAiFeasible,
       hybridFeasible = decision.audit.hybridFeasible,
       fullAiAdoptionProbability = decision.audit.fullAiAdoptionProbability,
@@ -1381,9 +1438,11 @@ object Firm:
       fullAiBankApproval = decision.audit.fullAiBankApproval,
       fullAiBankApprovalProbability = decision.audit.fullAiBankApprovalProbability,
       fullAiBankApprovalRoll = decision.audit.fullAiBankApprovalRoll,
+      fullAiBankApprovalAudit = decision.audit.fullAiBankApprovalAudit,
       hybridBankApproval = decision.audit.hybridBankApproval,
       hybridBankApprovalProbability = decision.audit.hybridBankApprovalProbability,
       hybridBankApprovalRoll = decision.audit.hybridBankApprovalRoll,
+      hybridBankApprovalAudit = decision.audit.hybridBankApprovalAudit,
       implementationFailureProbability = decision.audit.implementationFailureProbability,
       implementationRoll = decision.audit.implementationRoll,
       upgradeEfficiencyDraw = decision.audit.upgradeEfficiencyDraw,
@@ -1393,6 +1452,7 @@ object Firm:
       investmentBankApproval = None,
       investmentBankApprovalProbability = None,
       investmentBankApprovalRoll = None,
+      investmentBankApprovalAudit = Banking.CreditApprovalAudit.empty,
       digitalInvestProbability = decision.audit.digitalInvestProbability,
       digitalInvestRoll = decision.audit.digitalInvestRoll,
       laborAdjustmentResidualProbability = decision.audit.laborAdjustmentResidualProbability,
@@ -1456,10 +1516,12 @@ object Firm:
   private def applyTechCreditDiagnostics(result: Result, decision: DecisionWithAudit): Result =
     val demand   = decision.audit.techCreditNeed.getOrElse(decisionCreditNeed(decision.decision)).max(result.techNewLoan)
     val approved = result.techNewLoan.min(demand)
+    val rejected = (demand - approved).max(PLN.Zero)
     result.copy(
       techCreditDemand = demand,
       techCreditApproved = approved,
-      techCreditRejected = (demand - approved).max(PLN.Zero),
+      techCreditRejected = rejected,
+      techCreditRejectionBreakdown = CreditRejectionBreakdown.from(decision.audit.selectedBankApprovalAudit.rejectionReason, rejected),
     )
 
   // ---- Execute (pure dispatch, zero RandomStream calls) ----
@@ -1599,34 +1661,38 @@ object Firm:
     * replacement + expansion investment, cash-constrained.
     */
   private def applyInvestment(r: Result, sectorDemandPressure: Multiplier, bankCreditDecision: PLN => CreditDecision)(using p: SimParams): Result =
-    val f                 = r.firm
+    val f                  = r.firm
     if !isAlive(f) then return r.copy(firm = f.copy(capitalStock = PLN.Zero))
-    val stocks            = r.financialStocks
-    val depRate           = p.capital.depRates(f.sector.toInt).monthly
-    val depn: PLN         = f.capitalStock * depRate
-    val postDepK          = f.capitalStock - depn
-    val baseTargetK       = capitalPlanningWorkers(f) * p.capital.klRatios(f.sector.toInt)
-    val invMult           = if f.stateOwned then StateOwned.directedInvestmentMultiplier(f.sector.toInt) else Multiplier.One
-    val pressure          = sectorDemandPressure.deviationFromOne.clamp(Coefficient.Zero, Coefficient.One)
-    val persistence       = Scalar.fraction(f.hiringSignalMonths.min(InvestmentSignalRampMonths), InvestmentSignalRampMonths)
-    val demandTargetBoost =
+    val stocks             = r.financialStocks
+    val depRate            = p.capital.depRates(f.sector.toInt).monthly
+    val depn: PLN          = f.capitalStock * depRate
+    val postDepK           = f.capitalStock - depn
+    val baseTargetK        = capitalPlanningWorkers(f) * p.capital.klRatios(f.sector.toInt)
+    val invMult            = if f.stateOwned then StateOwned.directedInvestmentMultiplier(f.sector.toInt) else Multiplier.One
+    val pressure           = sectorDemandPressure.deviationFromOne.clamp(Coefficient.Zero, Coefficient.One)
+    val persistence        = Scalar.fraction(f.hiringSignalMonths.min(InvestmentSignalRampMonths), InvestmentSignalRampMonths)
+    val demandTargetBoost  =
       ((pressure.toScalar * persistence) * p.capital.demandExpansionSensitivity).toMultiplier
-    val targetK           = baseTargetK * (Multiplier.One + demandTargetBoost)
-    val gap               = (targetK - postDepK).max(PLN.Zero)
-    val desiredInv        = depn + (gap * p.capital.adjustSpeed * invMult)
-    val cashInv           = desiredInv.min(stocks.cash.max(PLN.Zero))
-    val creditNeed        = (desiredInv - cashInv).max(PLN.Zero) * p.capital.investmentCreditShare
-    val creditDecision    = if creditNeed > PLN.Zero then Some(bankCreditDecision(creditNeed)) else None
-    val creditInv         = if creditDecision.exists(_.approved) then creditNeed else PLN.Zero
-    val actualInv         = (cashInv + creditInv).min(desiredInv)
-    val newK              = postDepK + actualInv
-    val investmentTrace   = r.decisionTrace.map: trace =>
+    val targetK            = baseTargetK * (Multiplier.One + demandTargetBoost)
+    val gap                = (targetK - postDepK).max(PLN.Zero)
+    val desiredInv         = depn + (gap * p.capital.adjustSpeed * invMult)
+    val cashInv            = desiredInv.min(stocks.cash.max(PLN.Zero))
+    val creditNeed         = (desiredInv - cashInv).max(PLN.Zero) * p.capital.investmentCreditShare
+    val creditDecision     = if creditNeed > PLN.Zero then Some(bankCreditDecision(creditNeed)) else None
+    val creditInv          = if creditDecision.exists(_.approved) then creditNeed else PLN.Zero
+    val rejectedCredit     = (creditNeed - creditInv).max(PLN.Zero)
+    val rejectionBreakdown =
+      creditDecision.fold(CreditRejectionBreakdown.zero)(credit => CreditRejectionBreakdown.from(credit.audit.rejectionReason, rejectedCredit))
+    val actualInv          = (cashInv + creditInv).min(desiredInv)
+    val newK               = postDepK + actualInv
+    val investmentTrace    = r.decisionTrace.map: trace =>
       trace.copy(
         investmentCreditNeed = if creditNeed > PLN.Zero then Some(creditNeed) else None,
         investmentCreditAmount = if creditNeed > PLN.Zero then Some(creditInv) else None,
         investmentBankApproval = creditDecision.map(_.approved),
         investmentBankApprovalProbability = creditDecision.flatMap(_.approvalProbability),
         investmentBankApprovalRoll = creditDecision.flatMap(_.approvalRoll),
+        investmentBankApprovalAudit = creditDecision.map(_.audit).getOrElse(Banking.CreditApprovalAudit.empty),
       )
     r.copy(
       firm = f.copy(capitalStock = newK),
@@ -1638,7 +1704,8 @@ object Firm:
       grossInvestment = actualInv,
       investmentCreditDemand = creditNeed,
       investmentCreditApproved = creditInv,
-      investmentCreditRejected = (creditNeed - creditInv).max(PLN.Zero),
+      investmentCreditRejected = rejectedCredit,
+      investmentCreditRejectionBreakdown = rejectionBreakdown,
       decisionTrace = investmentTrace,
     )
 

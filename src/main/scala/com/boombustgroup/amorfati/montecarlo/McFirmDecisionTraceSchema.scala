@@ -1,6 +1,7 @@
 package com.boombustgroup.amorfati.montecarlo
 
-import com.boombustgroup.amorfati.agents.{BankruptReason, Firm, TechState}
+import com.boombustgroup.amorfati.agents.{Banking, BankruptReason, Firm, TechState}
+import com.boombustgroup.amorfati.types.*
 
 private[montecarlo] object McFirmDecisionTraceSchema:
 
@@ -36,6 +37,13 @@ private[montecarlo] object McFirmDecisionTraceSchema:
     "SelectedBankApproval"               -> (row => row.trace.selectedBankApproval.fold("")(_.toString)),
     "SelectedBankApprovalProbability"    -> (row => row.trace.selectedBankApprovalProbability.fold("")(_.format(6))),
     "SelectedBankApprovalRoll"           -> (row => row.trace.selectedBankApprovalRoll.fold("")(_.format(6))),
+    "SelectedBankRejectionReason"        -> (row => creditRejectionReason(row.trace.selectedBankApprovalAudit)),
+    "SelectedBankProjectedCar"           -> (row => auditMultiplier(row.trace.selectedBankApprovalAudit.projectedCar)),
+    "SelectedBankMinCar"                 -> (row => auditMultiplier(row.trace.selectedBankApprovalAudit.minCar)),
+    "SelectedBankLcr"                    -> (row => auditMultiplier(row.trace.selectedBankApprovalAudit.lcr)),
+    "SelectedBankLcrMin"                 -> (row => auditMultiplier(row.trace.selectedBankApprovalAudit.lcrMin)),
+    "SelectedBankNsfr"                   -> (row => auditMultiplier(row.trace.selectedBankApprovalAudit.nsfr)),
+    "SelectedBankNsfrMin"                -> (row => auditMultiplier(row.trace.selectedBankApprovalAudit.nsfrMin)),
     "FullAiFeasible"                     -> (row => row.trace.fullAiFeasible.fold("")(_.toString)),
     "HybridFeasible"                     -> (row => row.trace.hybridFeasible.fold("")(_.toString)),
     "FullAiAdoptionProbability"          -> (row => row.trace.fullAiAdoptionProbability.fold("")(_.format(6))),
@@ -44,9 +52,23 @@ private[montecarlo] object McFirmDecisionTraceSchema:
     "FullAiBankApproval"                 -> (row => row.trace.fullAiBankApproval.fold("")(_.toString)),
     "FullAiBankApprovalProbability"      -> (row => row.trace.fullAiBankApprovalProbability.fold("")(_.format(6))),
     "FullAiBankApprovalRoll"             -> (row => row.trace.fullAiBankApprovalRoll.fold("")(_.format(6))),
+    "FullAiBankRejectionReason"          -> (row => creditRejectionReason(row.trace.fullAiBankApprovalAudit)),
+    "FullAiBankProjectedCar"             -> (row => auditMultiplier(row.trace.fullAiBankApprovalAudit.projectedCar)),
+    "FullAiBankMinCar"                   -> (row => auditMultiplier(row.trace.fullAiBankApprovalAudit.minCar)),
+    "FullAiBankLcr"                      -> (row => auditMultiplier(row.trace.fullAiBankApprovalAudit.lcr)),
+    "FullAiBankLcrMin"                   -> (row => auditMultiplier(row.trace.fullAiBankApprovalAudit.lcrMin)),
+    "FullAiBankNsfr"                     -> (row => auditMultiplier(row.trace.fullAiBankApprovalAudit.nsfr)),
+    "FullAiBankNsfrMin"                  -> (row => auditMultiplier(row.trace.fullAiBankApprovalAudit.nsfrMin)),
     "HybridBankApproval"                 -> (row => row.trace.hybridBankApproval.fold("")(_.toString)),
     "HybridBankApprovalProbability"      -> (row => row.trace.hybridBankApprovalProbability.fold("")(_.format(6))),
     "HybridBankApprovalRoll"             -> (row => row.trace.hybridBankApprovalRoll.fold("")(_.format(6))),
+    "HybridBankRejectionReason"          -> (row => creditRejectionReason(row.trace.hybridBankApprovalAudit)),
+    "HybridBankProjectedCar"             -> (row => auditMultiplier(row.trace.hybridBankApprovalAudit.projectedCar)),
+    "HybridBankMinCar"                   -> (row => auditMultiplier(row.trace.hybridBankApprovalAudit.minCar)),
+    "HybridBankLcr"                      -> (row => auditMultiplier(row.trace.hybridBankApprovalAudit.lcr)),
+    "HybridBankLcrMin"                   -> (row => auditMultiplier(row.trace.hybridBankApprovalAudit.lcrMin)),
+    "HybridBankNsfr"                     -> (row => auditMultiplier(row.trace.hybridBankApprovalAudit.nsfr)),
+    "HybridBankNsfrMin"                  -> (row => auditMultiplier(row.trace.hybridBankApprovalAudit.nsfrMin)),
     "ImplementationFailureProbability"   -> (row => row.trace.implementationFailureProbability.fold("")(_.format(6))),
     "ImplementationRoll"                 -> (row => row.trace.implementationRoll.fold("")(_.format(6))),
     "UpgradeEfficiencyDraw"              -> (row => row.trace.upgradeEfficiencyDraw.fold("")(_.format(6))),
@@ -56,6 +78,13 @@ private[montecarlo] object McFirmDecisionTraceSchema:
     "InvestmentBankApproval"             -> (row => row.trace.investmentBankApproval.fold("")(_.toString)),
     "InvestmentBankApprovalProbability"  -> (row => row.trace.investmentBankApprovalProbability.fold("")(_.format(6))),
     "InvestmentBankApprovalRoll"         -> (row => row.trace.investmentBankApprovalRoll.fold("")(_.format(6))),
+    "InvestmentBankRejectionReason"      -> (row => creditRejectionReason(row.trace.investmentBankApprovalAudit)),
+    "InvestmentBankProjectedCar"         -> (row => auditMultiplier(row.trace.investmentBankApprovalAudit.projectedCar)),
+    "InvestmentBankMinCar"               -> (row => auditMultiplier(row.trace.investmentBankApprovalAudit.minCar)),
+    "InvestmentBankLcr"                  -> (row => auditMultiplier(row.trace.investmentBankApprovalAudit.lcr)),
+    "InvestmentBankLcrMin"               -> (row => auditMultiplier(row.trace.investmentBankApprovalAudit.lcrMin)),
+    "InvestmentBankNsfr"                 -> (row => auditMultiplier(row.trace.investmentBankApprovalAudit.nsfr)),
+    "InvestmentBankNsfrMin"              -> (row => auditMultiplier(row.trace.investmentBankApprovalAudit.nsfrMin)),
     "DigitalInvestProbability"           -> (row => row.trace.digitalInvestProbability.fold("")(_.format(6))),
     "DigitalInvestRoll"                  -> (row => row.trace.digitalInvestRoll.fold("")(_.format(6))),
     "LaborAdjustmentResidualProbability" -> (row => row.trace.laborAdjustmentResidualProbability.fold("")(_.format(6))),
@@ -100,3 +129,9 @@ private[montecarlo] object McFirmDecisionTraceSchema:
 
   private def text(value: String): String =
     value.replace(';', ',').replace('\n', ' ').replace('\r', ' ')
+
+  private def creditRejectionReason(audit: Banking.CreditApprovalAudit): String =
+    audit.rejectionReason.fold("")(reason => text(reason.csvValue))
+
+  private def auditMultiplier(value: Option[Multiplier]): String =
+    value.fold("")(_.format(6))
