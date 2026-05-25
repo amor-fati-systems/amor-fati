@@ -40,7 +40,7 @@ These counts are rendered from `CalibrationProvenance.Baseline` at generation ti
 | `EMPIRICAL_TRANSFORMED` | 17 |
 | `CODE_NOTE_EMPIRICAL` | 61 |
 | `ASSUMED` | 33 |
-| `TUNED_NEEDS_VALIDATION` | 88 |
+| `TUNED_NEEDS_VALIDATION` | 89 |
 | `POLICY_SCENARIO` | 7 |
 | `PLACEHOLDER` | 1 |
 | `UNKNOWN_SOURCE` | 0 |
@@ -76,7 +76,7 @@ a concrete diagnostic artifact path.
 
 | Validation mode | Count | Linked evidence paths | Missing evidence paths |
 | --- | ---: | ---: | ---: |
-| `HISTORICAL_FIT` | 31 | 4 | 27 |
+| `HISTORICAL_FIT` | 32 | 5 | 27 |
 | `STYLIZED_FACT_TARGET` | 11 | 7 | 4 |
 | `SENSITIVITY_RANGE` | 32 | 5 | 27 |
 | `MODEL_BEHAVIOR_CALIBRATION` | 14 | 0 | 14 |
@@ -157,6 +157,7 @@ a concrete diagnostic artifact path.
 | `openEcon.portfolioSensitivity`, `riskPremiumSensitivity` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` |  |  | Portfolio/risk premium response | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
 | `fdi.profitShiftRate`, `repatriationRate` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` |  |  | Profit shifting and dividend repatriation | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
 | `fdi.maProb`, `maSizeMin` | `MODEL_BEHAVIOR_CALIBRATION` | `MISSING_VALIDATION_EVIDENCE` |  |  | Domestic firm acquisition probability and eligibility | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `gvc.exportCapacityElasticity` | `HISTORICAL_FIT` | docs/external-sector-baseline-calibration.md | 20260525-617-external-baseline-after035 |  | Current-account and trade-balance baseline path | Issue #617 documents the Nix-built 5-seed 60-month external-sector baseline calibration and before/after BoP decomposition. |
 | `gvc.commodityVolatility`, `commodityMeanReversion` | `HISTORICAL_FIT` | `MISSING_VALIDATION_EVIDENCE` |  |  | No-shock baseline commodity path; explicit energy-shock scenario carries crisis dynamics | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
 | `immigration.monthlyRate`, `foreignWage` | `HISTORICAL_FIT` | `MISSING_VALIDATION_EVIDENCE` |  |  | Base labor-immigration rate and reference wage; moderated after 48m diagnostics showed the prior pull channel added roughly 3% of represented working-age population per year and over-amplified real GDP catch-up | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
 | `immigration.returnRate`, `returnUnempThreshold`, `returnUnempSensitivity` | `HISTORICAL_FIT` | `MISSING_VALIDATION_EVIDENCE` |  |  | Baseline and unemployment-sensitive return migration | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
@@ -397,6 +398,7 @@ a concrete diagnostic artifact path.
 | `gvc.exportShares` | `[0.05, 0.55, 0.15, 0.03, 0.02, 0.20]` | share by sector | Code note bridge: GUS bridge prior | Sector export shares | Direct | `GvcConfig` | `CODE_NOTE_EMPIRICAL` |
 | `gvc.depth` | `[0.35, 0.75, 0.30, 0.40, 0.10, 0.45]` | share by sector | Code note bridge: WIOD/OECD ICIO | GVC backward linkage | Direct | `GvcConfig` | `CODE_NOTE_EMPIRICAL` |
 | `gvc.foreignInflation`, `foreignGdpGrowth` | `0.02, 0.015` | annual rate | Code note bridge: ECB/IMF | Foreign inflation/growth | .monthly where used | `GvcConfig` | `CODE_NOTE_EMPIRICAL` |
+| `gvc.exportCapacityElasticity` | `0.35` | coefficient | #617 external-sector baseline calibration | GVC export realization response to domestic sector output capacity | Sector output is anchored on the first observed real output; later export demand is multiplied by (realOutput / anchor)^elasticity | `GvcConfig`, `GvcTrade` | `TUNED_NEEDS_VALIDATION` |
 | `gvc.commodityVolatility`, `commodityMeanReversion` | `0.015, 0.08` | monthly sigma / share | #461 GDP-growth calibration | No-shock baseline commodity path; explicit energy-shock scenario carries crisis dynamics | Mean-reverting stochastic process plus scenario shock | `GvcConfig`, `GvcTrade` | `TUNED_NEEDS_VALIDATION` |
 | `gvc.demandShockMonth`, `commodityShockMonth` | `0, 0` | month | Scenario switches | No baseline external shocks | Direct | `GvcConfig` | `POLICY_SCENARIO` |
 | `immigration.monthlyRate`, `foreignWage` | `0.0008, 6500` | monthly share / PLN | #461 labor/GDP calibration | Base labor-immigration rate and reference wage; moderated after 48m diagnostics showed the prior pull channel added roughly 3% of represented working-age population per year and over-amplified real GDP catch-up | Direct | `ImmigrationConfig` | `TUNED_NEEDS_VALIDATION` |

@@ -24,6 +24,9 @@ import com.boombustgroup.amorfati.types.*
   *   annual foreign (trading partner) inflation rate (ECB/IMF)
   * @param foreignGdpGrowth
   *   annual foreign GDP growth rate (ECB/IMF projections)
+  * @param exportCapacityElasticity
+  *   elasticity of foreign export demand realization to domestic sector output
+  *   capacity, anchored on the first observed real sector output
   * @param erPassthrough
   *   exchange rate pass-through to non-EU import prices (Campa & Goldberg 2005)
   * @param euErPassthrough
@@ -58,6 +61,7 @@ case class GvcConfig(
       Vector(Share.decimal(35, 2), Share.decimal(75, 2), Share.decimal(30, 2), Share.decimal(40, 2), Share.decimal(10, 2), Share.decimal(45, 2)),
     foreignInflation: Rate = Rate.decimal(2, 2),
     foreignGdpGrowth: Rate = Rate.decimal(15, 3),
+    exportCapacityElasticity: Coefficient = Coefficient.decimal(35, 2),
     erPassthrough: Coefficient = Coefficient.decimal(60, 2),
     euErPassthrough: Coefficient = Coefficient.decimal(15, 2),
     demandShockMonth: Int = 0,

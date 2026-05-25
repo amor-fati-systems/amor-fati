@@ -14,8 +14,9 @@ import com.boombustgroup.amorfati.util.Distributions
   * supply, price index, and supply-chain disruption state.
   *
   * Export demand: foreign GDP growth × real ER elasticity × automation boost ×
-  * (1 − disruption). Import demand: sector output × GVC depth × differentiated
-  * ER pass-through (EU vs non-EU). Disruptions recover at configurable rate.
+  * domestic output capacity × (1 − disruption). Import demand: sector output ×
+  * GVC depth × differentiated ER pass-through (EU vs non-EU). Disruptions
+  * recover at configurable rate.
   *
   * Calibration: GUS foreign-trade bridge prior, NBP BoP statistics, OECD TiVA.
   */
@@ -41,6 +42,7 @@ object GvcTrade:
       totalIntermImports: PLN = PLN.Zero,
       sectorExports: Vector[PLN] = Vector.fill(6)(PLN.Zero),
       sectorImports: Vector[PLN] = Vector.fill(6)(PLN.Zero),
+      sectorOutputAnchors: Vector[PLN] = Vector.empty,
       disruptionIndex: Share = Share.Zero,
       foreignPriceIndex: PriceIndex = PriceIndex.Base,
       tradeConcentration: Share = Share.Zero,
@@ -121,10 +123,12 @@ object GvcTrade:
     val shockActive      = p.gvc.demandShockMonth > 0 && in.month.toInt >= p.gvc.demandShockMonth
     val shockMag         = if shockActive then p.gvc.demandShockSize else Share.Zero
     val updatedFirms     = evolveFirms(in.prev.foreignFirms, monthlyInflation, shockActive, in.month)
+    val realOutputs      = realSectorOutputs(in.sectorOutputs, in.priceLevel)
+    val outputAnchors    = sectorOutputAnchors(in.prev, realOutputs, nSectors)
     val elapsedMonths    = in.month.previousCompleted.toInt
     val foreignGdpFactor = compoundedGrowth(p.gvc.foreignGdpGrowth.monthly.growthMultiplier, elapsedMonths)
     val erEffect         = realExchangeRateEffect(in.priceLevel, in.exchangeRate)
-    val exports          = computeSectorExports(updatedFirms, nSectors, foreignGdpFactor, erEffect, in.autoRatio)
+    val exports          = computeSectorExports(updatedFirms, nSectors, foreignGdpFactor, erEffect, in.autoRatio, realOutputs, outputAnchors)
     val imports          = computeSectorImports(updatedFirms, nSectors, in.sectorOutputs, in.priceLevel, in.exchangeRate)
 
     State(
@@ -133,6 +137,7 @@ object GvcTrade:
       totalIntermImports = sumPln(imports),
       sectorExports = exports,
       sectorImports = imports,
+      sectorOutputAnchors = outputAnchors,
       disruptionIndex = weightedDisruption(updatedFirms),
       foreignPriceIndex = newForeignPrice,
       tradeConcentration = hhi(p.gvc.euTradeShare),
@@ -170,15 +175,30 @@ object GvcTrade:
       foreignGdpFactor: Multiplier,
       erEffect: Scalar,
       autoRatio: Share,
-  ): Vector[PLN] =
+      realOutputs: Vector[PLN],
+      outputAnchors: Vector[PLN],
+  )(using p: SimParams): Vector[PLN] =
     val autoBoost = (autoRatio * AutomationExportBoost).growthMultiplier
     (0 until nSectors)
       .map: s =>
-        val sectorFirms = firms.filter(_.sectorId == s)
-        val demand      = sumPln(sectorFirms.map(_.baseExportDemand)) * foreignGdpFactor
-        val disruption  = weightedSectorDisruption(sectorFirms, _.baseExportDemand)
-        ((erEffect * demand) * autoBoost) * (Share.One - disruption)
+        val sectorFirms    = firms.filter(_.sectorId == s)
+        val demand         = sumPln(sectorFirms.map(_.baseExportDemand)) * foreignGdpFactor
+        val capacityEffect = exportCapacityEffect(realOutputs(s), outputAnchors(s))
+        val disruption     = weightedSectorDisruption(sectorFirms, _.baseExportDemand)
+        (((erEffect * demand) * capacityEffect) * autoBoost) * (Share.One - disruption)
       .toVector
+
+  private def realSectorOutputs(sectorOutputs: Vector[PLN], priceLevel: PriceIndex): Vector[PLN] =
+    val price = priceLevel.toMultiplier
+    sectorOutputs.map(_ / price)
+
+  private def sectorOutputAnchors(prev: State, realOutputs: Vector[PLN], nSectors: Int): Vector[PLN] =
+    if prev.sectorOutputAnchors.lengthCompare(nSectors) == 0 then prev.sectorOutputAnchors
+    else realOutputs.map(_.max(PLN(1)))
+
+  private def exportCapacityEffect(realOutput: PLN, anchor: PLN)(using p: SimParams): Multiplier =
+    if realOutput > PLN.Zero && anchor > PLN.Zero then realOutput.ratioTo(anchor).pow(p.gvc.exportCapacityElasticity.toScalar).toMultiplier
+    else Multiplier.Zero
 
   private def computeSectorImports(
       firms: Vector[ForeignFirm],

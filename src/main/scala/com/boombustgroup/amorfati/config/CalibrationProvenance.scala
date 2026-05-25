@@ -269,49 +269,49 @@ object CalibrationProvenance:
 
     private val validationEvidenceById: Map[String, CalibrationValidationEvidence] =
       Vector(
-        "pop.firmSizeDist"          -> linkedEvidence(
+        "pop.firmSizeDist"             -> linkedEvidence(
           CalibrationValidationMode.StylizedFactTarget,
           "docs/empirical-validation/baseline-validation-snapshot.csv",
           "Firm-size distribution family",
           "EmpiricalValidationExport exposes the current aggregate firm-size bridge.",
           artifactLabel = Some("Firm-size distribution"),
         ),
-        "pop.firmSizeMicroShare"    -> linkedEvidence(
+        "pop.firmSizeMicroShare"       -> linkedEvidence(
           CalibrationValidationMode.StylizedFactTarget,
           "docs/empirical-validation/baseline-validation-snapshot.csv",
           "Micro-enterprise share",
           "EmpiricalValidationExport compares the terminal micro-firm share to the GUS active-enterprise comparator.",
           artifactLabel = Some("Firm-size distribution - Micro"),
         ),
-        "pop.firmSizeSmallShare"    -> linkedEvidence(
+        "pop.firmSizeSmallShare"       -> linkedEvidence(
           CalibrationValidationMode.StylizedFactTarget,
           "docs/empirical-validation/baseline-validation-snapshot.csv",
           "Small-enterprise share",
           "EmpiricalValidationExport compares the terminal small-firm share to the GUS active-enterprise comparator.",
           artifactLabel = Some("Firm-size distribution - Small"),
         ),
-        "pop.firmSizeMediumShare"   -> linkedEvidence(
+        "pop.firmSizeMediumShare"      -> linkedEvidence(
           CalibrationValidationMode.StylizedFactTarget,
           "docs/empirical-validation/baseline-validation-snapshot.csv",
           "Medium-enterprise share",
           "EmpiricalValidationExport compares the terminal medium-firm share to the GUS active-enterprise comparator.",
           artifactLabel = Some("Firm-size distribution - Medium"),
         ),
-        "pop.firmSizeLargeShare"    -> linkedEvidence(
+        "pop.firmSizeLargeShare"       -> linkedEvidence(
           CalibrationValidationMode.StylizedFactTarget,
           "docs/empirical-validation/baseline-validation-snapshot.csv",
           "Large-enterprise share",
           "EmpiricalValidationExport compares the terminal large-firm share to the GUS active-enterprise comparator.",
           artifactLabel = Some("Firm-size distribution - Large"),
         ),
-        "sectorDefs.share"          -> linkedEvidence(
+        "sectorDefs.share"             -> linkedEvidence(
           CalibrationValidationMode.StylizedFactTarget,
           "docs/empirical-validation/baseline-validation-snapshot.csv",
           "Six-sector output and employment bridge",
           "EmpiricalValidationExport carries the sectoral-output bridge as missing-data evidence until a full source crosswalk is available.",
           artifactLabel = Some("Sectoral output"),
         ),
-        "household.mpc"             -> linkedEvidence(
+        "household.mpc"                -> linkedEvidence(
           CalibrationValidationMode.SensitivityRange,
           "docs/sensitivity-robustness-workflow.md",
           "Consumption-led demand sensitivity",
@@ -319,14 +319,14 @@ object CalibrationProvenance:
           artifactLabel = Some("sensitivity-summary.csv"),
           scenarioIds = Vector("mpc-low", "mpc-high"),
         ),
-        "firm.productivityGrowth"   -> linkedEvidence(
+        "firm.productivityGrowth"      -> linkedEvidence(
           CalibrationValidationMode.HistoricalFit,
           "docs/empirical-validation/baseline-validation-snapshot.csv",
           "Baseline GDP growth path",
           "EmpiricalValidationExport records the current GDP-growth bridge and model output used to judge the productivity/catch-up path.",
           artifactLabel = Some("GDP growth"),
         ),
-        "capital.adjustSpeed"       -> linkedEvidence(
+        "capital.adjustSpeed"          -> linkedEvidence(
           CalibrationValidationMode.SensitivityRange,
           "docs/sensitivity-robustness-workflow.md",
           "Investment and balance-sheet sensitivity",
@@ -334,14 +334,14 @@ object CalibrationProvenance:
           artifactLabel = Some("sensitivity-summary.csv"),
           scenarioIds = Vector("investment-fast"),
         ),
-        "fiscal.govInitCapital"     -> linkedEvidence(
+        "fiscal.govInitCapital"        -> linkedEvidence(
           CalibrationValidationMode.HistoricalFit,
           "docs/empirical-validation/baseline-validation-snapshot.csv",
           "Public investment and fiscal stance bridge",
           "EmpiricalValidationExport keeps the current fiscal coverage bridge visible while public-capital stock validation remains partial.",
           artifactLabel = Some("Fiscal stance - state budget expenditure plan 2026"),
         ),
-        "monetary.neutralRate"      -> linkedEvidence(
+        "monetary.neutralRate"         -> linkedEvidence(
           CalibrationValidationMode.SensitivityRange,
           "docs/sensitivity-robustness-workflow.md",
           "Monetary-policy sensitivity",
@@ -349,7 +349,7 @@ object CalibrationProvenance:
           artifactLabel = Some("sensitivity-summary.csv"),
           scenarioIds = Vector("monetary-tight"),
         ),
-        "forex.irpSensitivity"      -> linkedEvidence(
+        "forex.irpSensitivity"         -> linkedEvidence(
           CalibrationValidationMode.SensitivityRange,
           "docs/sensitivity-robustness-workflow.md",
           "FX and external-balance sensitivity",
@@ -357,7 +357,7 @@ object CalibrationProvenance:
           artifactLabel = Some("sensitivity-summary.csv"),
           scenarioIds = Vector("external-risk-off"),
         ),
-        "pricing.demandSensitivity" -> linkedEvidence(
+        "pricing.demandSensitivity"    -> linkedEvidence(
           CalibrationValidationMode.SensitivityRange,
           "docs/sensitivity-robustness-workflow.md",
           "Price-level and markup sensitivity",
@@ -365,14 +365,14 @@ object CalibrationProvenance:
           artifactLabel = Some("sensitivity-summary.csv"),
           scenarioIds = Vector("markup-high"),
         ),
-        "housing.originationRate"   -> linkedEvidence(
+        "housing.originationRate"      -> linkedEvidence(
           CalibrationValidationMode.HistoricalFit,
           "docs/empirical-validation/baseline-validation-snapshot.csv",
           "Mortgage origination/default bridge",
           "EmpiricalValidationExport carries mortgage stock and default-flow validation rows for the housing credit channel.",
           artifactLabel = Some("Housing and mortgages - mortgage default bridge"),
         ),
-        "household.ccEligRate"      -> linkedEvidence(
+        "household.ccEligRate"         -> linkedEvidence(
           CalibrationValidationMode.StylizedFactTarget,
           "docs/household-credit-stress-calibration.md",
           "Liquidity shortfall versus approved consumer-credit origination",
@@ -380,12 +380,19 @@ object CalibrationProvenance:
           artifactLabel = Some("household-credit-stress-summary.csv"),
           scenarioIds = Vector("issue-534"),
         ),
-        "nbfi.creditBaseRate"       -> linkedEvidence(
+        "nbfi.creditBaseRate"          -> linkedEvidence(
           CalibrationValidationMode.HistoricalFit,
           "docs/private-credit-renewal-calibration.md",
           "Private credit renewal calibration",
           "Issue #610 documents the Nix-built 10-seed 60-month NBFI stock-renewal calibration and terminal private-credit split.",
           artifactLabel = Some("20260525-610-nbfi-only"),
+        ),
+        "gvc.exportCapacityElasticity" -> linkedEvidence(
+          CalibrationValidationMode.HistoricalFit,
+          "docs/external-sector-baseline-calibration.md",
+          "Current-account and trade-balance baseline path",
+          "Issue #617 documents the Nix-built 5-seed 60-month external-sector baseline calibration and before/after BoP decomposition.",
+          artifactLabel = Some("20260525-617-external-baseline-after035"),
         ),
       ).toMap
 
@@ -661,6 +668,7 @@ object CalibrationProvenance:
 | `gvc.exportShares` | `[0.05, 0.55, 0.15, 0.03, 0.02, 0.20]` | share by sector | Code note bridge: GUS bridge prior | Sector export shares | Direct | `GvcConfig` | `CODE_NOTE_EMPIRICAL` |
 | `gvc.depth` | `[0.35, 0.75, 0.30, 0.40, 0.10, 0.45]` | share by sector | Code note bridge: WIOD/OECD ICIO | GVC backward linkage | Direct | `GvcConfig` | `CODE_NOTE_EMPIRICAL` |
 | `gvc.foreignInflation`, `foreignGdpGrowth` | `0.02`, `0.015` | annual rate | Code note bridge: ECB/IMF | Foreign inflation/growth | `.monthly` where used | `GvcConfig` | `CODE_NOTE_EMPIRICAL` |
+| `gvc.exportCapacityElasticity` | `0.35` | coefficient | #617 external-sector baseline calibration | GVC export realization response to domestic sector output capacity | Sector output is anchored on the first observed real output; later export demand is multiplied by `(realOutput / anchor)^elasticity` | `GvcConfig`, `GvcTrade` | `TUNED_NEEDS_VALIDATION` |
 | `gvc.commodityVolatility`, `commodityMeanReversion` | `0.015`, `0.08` | monthly sigma / share | #461 GDP-growth calibration | No-shock baseline commodity path; explicit `energy-shock` scenario carries crisis dynamics | Mean-reverting stochastic process plus scenario shock | `GvcConfig`, `GvcTrade` | `TUNED_NEEDS_VALIDATION` |
 | `gvc.demandShockMonth`, `commodityShockMonth` | `0`, `0` | month | Scenario switches | No baseline external shocks | Direct | `GvcConfig` | `POLICY_SCENARIO` |
 | `immigration.monthlyRate`, `foreignWage` | `0.0008`, `6500` | monthly share / PLN | #461 labor/GDP calibration | Base labor-immigration rate and reference wage; moderated after 48m diagnostics showed the prior pull channel added roughly 3% of represented working-age population per year and over-amplified real GDP catch-up | Direct | `ImmigrationConfig` | `TUNED_NEEDS_VALIDATION` |

@@ -18,11 +18,12 @@ class ExternalSectorSpec extends AnyFlatSpec with Matchers:
 
   private def baseInput(
       prev: GvcTrade.State = GvcTrade.initial,
+      outputs: Vector[PLN] = sectorOutputs,
       er: BigDecimal = decimal(p.forex.baseExRate),
       price: BigDecimal = BigDecimal("1.0"),
       autoR: BigDecimal = BigDecimal("0.0"),
       month: Int = 30,
-  ) = GvcTrade.StepInput(prev, sectorOutputs, priceIndexBD(price), exchangeRateBD(er), shareBD(autoR), ExecutionMonth(month), rng = RandomStream.seeded(42))
+  ) = GvcTrade.StepInput(prev, outputs, priceIndexBD(price), exchangeRateBD(er), shareBD(autoR), ExecutionMonth(month), rng = RandomStream.seeded(42))
 
   // ---- Initialization ----
 
@@ -78,6 +79,15 @@ class ExternalSectorSpec extends AnyFlatSpec with Matchers:
 
     r.totalExports shouldBe init.totalExports
     r.sectorExports shouldBe init.sectorExports
+  }
+
+  it should "scale export demand with domestic sector output after anchoring" in {
+    val anchored = GvcTrade.step(baseInput(prev = GvcTrade.initial, month = 1))
+    val flat     = GvcTrade.step(baseInput(prev = anchored, month = 2))
+    val expanded = GvcTrade.step(baseInput(prev = anchored, outputs = sectorOutputs.map(_ * Multiplier(2)), month = 2))
+
+    anchored.sectorOutputAnchors shouldBe sectorOutputs
+    expanded.totalExports should be > flat.totalExports
   }
 
   it should "produce positive total intermediate imports" in {
