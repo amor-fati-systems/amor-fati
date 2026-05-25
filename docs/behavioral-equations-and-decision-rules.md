@@ -1089,7 +1089,12 @@ update.
 
 Exports come from GVC sector exports when available; otherwise they follow
 foreign GDP growth, real exchange-rate competitiveness, and automation-related
-unit-labor-cost effects.
+unit-labor-cost effects. GVC sector exports also include a domestic export
+capacity term: each sector is anchored on its first observed real output, and
+subsequent export demand realization scales with the sector's real-output ratio
+using `gvc.exportCapacityElasticity`. This keeps the empirical opening export
+base intact while allowing exports to move with domestic supply capacity over a
+multi-year baseline run.
 
 Imports include household consumption imports, technology and investment
 imports, imported intermediates, and tourism imports. Imported intermediates
