@@ -83,6 +83,29 @@ fold state needed for summaries.
 many monthly snapshots the runner materializes, but it is not part of
 `SimParams` and should not leak into economic decision rules.
 
+## Timeseries Fiscal Diagnostics
+
+The timeseries fiscal block keeps the domestic-demand budget and the deficit
+closure view separate. `GovDomesticBudgetOutlays` covers central-budget
+domestic outlays visible on `GovState`: unemployment benefits, social transfers,
+current purchases, domestic capital purchases, debt service, and EU
+co-financing. It intentionally excludes social-fund top-ups because ZUS, NFZ,
+and earmarked funds are reported in the social block.
+
+`GovSocialFundSubventions` sums `ZusGovSubvention`, `NfzGovSubvention`, and
+`EarmarkedGovSubvention`. `GovTotalOutlays` then reconciles to the fiscal
+deficit identity:
+
+```text
+GovTotalOutlays = GovDomesticBudgetOutlays + GovSocialFundSubventions
+GovDeficit      = GovTotalOutlays - GovTotalRevenue
+```
+
+`GovPrimaryDeficit` removes `DebtService` from `GovDeficit`, so fiscal drift can
+be split into the primary balance and the interest-cost channel. The
+`*ToGdp` columns use the monthly flow divided by the current monthly GDP proxy,
+matching the annualized flow-ratio convention used by `DeficitToGdp`.
+
 ## Timeseries Automation Diagnostics
 
 The timeseries schema includes generic monthly automation diagnostics:

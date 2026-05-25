@@ -129,6 +129,10 @@ object McTimeseriesSchema:
     )
     lazy val monthlyGdp: PLN                                                                        = world.cachedMonthlyGdpProxy
     lazy val annualizedGdp: PLN                                                                     = monthlyGdp * 12
+    lazy val govSocialFundSubventions: PLN                                                          =
+      world.social.zus.govSubvention + world.social.nfz.govSubvention + world.social.earmarked.totalGovSubvention
+    lazy val govTotalOutlays: PLN                                                                   = world.gov.domesticBudgetOutlays + govSocialFundSubventions
+    lazy val govPrimaryDeficit: PLN                                                                 = world.gov.deficit - world.gov.debtServiceSpend
     lazy val sectorOutputs: Vector[PLN]                                                             =
       world.flows.sectorOutputs match
         case outputs if outputs.length == p.sectorDefs.length => outputs
@@ -374,8 +378,13 @@ object McTimeseriesSchema:
     ColumnDef.macroPln("GovCapitalSpendDomestic", ctx => ctx.world.gov.govCapitalSpend),
     ColumnDef.macroPln("GovDomesticBudgetDemand", ctx => ctx.world.gov.domesticBudgetDemand),
     ColumnDef.macroPln("GovDomesticBudgetOutlays", ctx => ctx.world.gov.domesticBudgetOutlays),
+    ColumnDef.macroPln("GovSocialFundSubventions", ctx => ctx.govSocialFundSubventions),
+    ColumnDef.macroPln("GovTotalOutlays", ctx => ctx.govTotalOutlays),
     ColumnDef.macroPln("GovDeficit", ctx => ctx.world.gov.deficit),
+    ColumnDef.macroPln("GovPrimaryDeficit", ctx => ctx.govPrimaryDeficit),
     ColumnDef("GovOutlaysToGdp", ctx => if ctx.monthlyGdp > PLN.Zero then ctx.world.gov.domesticBudgetOutlays / ctx.monthlyGdp else Scalar.Zero),
+    ColumnDef("GovTotalOutlaysToGdp", ctx => if ctx.monthlyGdp > PLN.Zero then ctx.govTotalOutlays / ctx.monthlyGdp else Scalar.Zero),
+    ColumnDef("GovPrimaryDeficitToGdp", ctx => if ctx.monthlyGdp > PLN.Zero then ctx.govPrimaryDeficit / ctx.monthlyGdp else Scalar.Zero),
     ColumnDef.macroPln("EuProjectCapitalTotal", ctx => ctx.world.gov.euProjectCapital),
     ColumnDef.macroPln("PublicCapitalStock", ctx => ctx.world.gov.publicCapitalStock),
     ColumnDef.macroPln("EuCofinancingDomestic", ctx => ctx.world.gov.euCofinancing),
