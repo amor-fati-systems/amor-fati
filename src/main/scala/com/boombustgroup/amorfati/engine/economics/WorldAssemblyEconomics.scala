@@ -413,6 +413,8 @@ object WorldAssemblyEconomics:
       firmTechSelectedCreditDemand = in.s5.sumTechSelectedCreditDemand,
       firmTechSelectedCreditApproved = in.s5.sumTechSelectedCreditApproved,
       firmTechSelectedCreditRejected = in.s5.sumTechSelectedCreditRejected,
+      firmTechCandidateCreditDemand = in.s5.sumTechCandidateCreditDemand,
+      firmTechCandidateCreditApproved = in.s5.sumTechCandidateCreditApproved,
       firmTechCandidateCreditRejected = in.s5.sumTechCandidateCreditRejected,
       firmCreditRejectedByReason = in.s5.sumCreditRejectedByReason,
       firmBirths = 0,

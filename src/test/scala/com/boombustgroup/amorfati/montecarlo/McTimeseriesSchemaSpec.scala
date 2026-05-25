@@ -223,7 +223,10 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     "FirmCredit_TechSelectedDemand",
     "FirmCredit_TechSelectedApproved",
     "FirmCredit_TechSelectedBankRejected",
+    "FirmCredit_TechCandidateDemand",
+    "FirmCredit_TechCandidateApproved",
     "FirmCredit_TechCandidateBankRejected",
+    "FirmCredit_TechCandidateApprovalRate",
     "ConsumerLoans",
     "ConsumerNplRatio",
     "ConsumerOrigination",
@@ -508,7 +511,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     MetricValue.fromRaw(Share.fraction(numerator, denominator).toLong)
 
   "McTimeseriesSchema" should "expose the stable schema contract" in {
-    McTimeseriesSchema.nCols shouldBe 446
+    McTimeseriesSchema.nCols shouldBe 449
     McTimeseriesSchema.colNames.toVector shouldBe expectedColNames
   }
 
@@ -748,6 +751,8 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
         firmTechSelectedCreditDemand = PLN(4),
         firmTechSelectedCreditApproved = PLN(3),
         firmTechSelectedCreditRejected = PLN(1),
+        firmTechCandidateCreditDemand = PLN(20),
+        firmTechCandidateCreditApproved = PLN(16),
         firmTechCandidateCreditRejected = PLN(4),
         firmCreditRejectedByReason = Firm.CreditRejectionBreakdown(carGate = PLN(7), stochastic = PLN(5)),
         bankCapital = bankCapital,
@@ -795,7 +800,10 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     valueAt(row, "FirmCredit_TechSelectedDemand") shouldBe polandScale(PLN(4))
     valueAt(row, "FirmCredit_TechSelectedApproved") shouldBe polandScale(PLN(3))
     valueAt(row, "FirmCredit_TechSelectedBankRejected") shouldBe polandScale(PLN(1))
+    valueAt(row, "FirmCredit_TechCandidateDemand") shouldBe polandScale(PLN(20))
+    valueAt(row, "FirmCredit_TechCandidateApproved") shouldBe polandScale(PLN(16))
     valueAt(row, "FirmCredit_TechCandidateBankRejected") shouldBe polandScale(PLN(4))
+    valueAt(row, "FirmCredit_TechCandidateApprovalRate") shouldBe MetricValue.fromRaw((PLN(16) / PLN(20)).toLong)
     valueAt(row, "ConsumerLoans") shouldBe polandScale(consumerLoans)
     valueAt(row, "ConsumerNplRatio") shouldBe MetricValue.fromRaw((consumerNpl / consumerLoans).toLong)
     valueAt(row, "ConsumerOrigination") shouldBe polandScale(PLN(12))

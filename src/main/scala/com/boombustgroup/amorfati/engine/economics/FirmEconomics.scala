@@ -52,6 +52,8 @@ object FirmEconomics:
       techSelectedCreditDemand: PLN,    // actual selected technology-upgrade bank credit requested
       techSelectedCreditApproved: PLN,  // actual selected technology-upgrade bank credit approved
       techSelectedCreditRejected: PLN,  // actual selected technology-upgrade bank credit rejected by bank supply
+      techCandidateCreditDemand: PLN,   // otherwise feasible technology-upgrade candidate bank credit requested
+      techCandidateCreditApproved: PLN, // otherwise feasible technology-upgrade candidate bank credit approved
       techCandidateCreditRejected: PLN, // otherwise feasible technology-upgrade candidate rejected by bank supply
       creditRejectedByReason: CreditRejectionBreakdown,
   ):
@@ -79,12 +81,16 @@ object FirmEconomics:
       techSelectedCreditDemand + o.techSelectedCreditDemand,
       techSelectedCreditApproved + o.techSelectedCreditApproved,
       techSelectedCreditRejected + o.techSelectedCreditRejected,
+      techCandidateCreditDemand + o.techCandidateCreditDemand,
+      techCandidateCreditApproved + o.techCandidateCreditApproved,
       techCandidateCreditRejected + o.techCandidateCreditRejected,
       creditRejectedByReason + o.creditRejectedByReason,
     )
 
   private object FirmFlows:
     val zero: FirmFlows = FirmFlows(
+      PLN.Zero,
+      PLN.Zero,
       PLN.Zero,
       PLN.Zero,
       PLN.Zero,
@@ -257,6 +263,8 @@ object FirmEconomics:
       sumTechSelectedCreditDemand: PLN,           // actual selected technology-upgrade bank credit requested
       sumTechSelectedCreditApproved: PLN,         // actual selected technology-upgrade bank credit approved
       sumTechSelectedCreditRejected: PLN,         // actual selected technology-upgrade bank credit rejected by bank supply
+      sumTechCandidateCreditDemand: PLN,          // otherwise feasible technology-upgrade candidate bank credit requested
+      sumTechCandidateCreditApproved: PLN,        // otherwise feasible technology-upgrade candidate bank credit approved
       sumTechCandidateCreditRejected: PLN,        // otherwise feasible technology-upgrade candidate rejected by bank supply
       sumCreditRejectedByReason: CreditRejectionBreakdown,
       postFirmCrossSectorHires: Int,              // cross-sector hires in labor matching
@@ -471,6 +479,8 @@ object FirmEconomics:
             techSelectedCreditDemand = r.techSelectedCreditDemand,
             techSelectedCreditApproved = r.techSelectedCreditApproved,
             techSelectedCreditRejected = r.techSelectedCreditRejected,
+            techCandidateCreditDemand = r.techCandidateCreditDemand,
+            techCandidateCreditApproved = r.techCandidateCreditApproved,
             techCandidateCreditRejected = r.techCandidateCreditRejected,
             creditRejectedByReason = r.investmentCreditRejectionBreakdown + r.techCreditRejectionBreakdown,
           ),
@@ -951,6 +961,8 @@ object FirmEconomics:
       sumTechSelectedCreditDemand = flows.techSelectedCreditDemand,
       sumTechSelectedCreditApproved = flows.techSelectedCreditApproved,
       sumTechSelectedCreditRejected = flows.techSelectedCreditRejected,
+      sumTechCandidateCreditDemand = flows.techCandidateCreditDemand,
+      sumTechCandidateCreditApproved = flows.techCandidateCreditApproved,
       sumTechCandidateCreditRejected = flows.techCandidateCreditRejected,
       sumCreditRejectedByReason = flows.creditRejectedByReason,
       postFirmCrossSectorHires = crossSectorHires,

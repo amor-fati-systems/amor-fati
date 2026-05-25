@@ -149,6 +149,14 @@ class BankingSectorSpec extends AnyFlatSpec with Matchers:
     healthyAudit.approvalRoll should not be empty
   }
 
+  it should "apply reserve-pressure approval penalty to the requested firm loan" in {
+    val tightLiquidity = mkBankRow(deposits = PLN(1000000), loans = PLN(900000), capital = PLN(300000))
+    val approval       = Banking.creditApproval(tightLiquidity.bank, tightLiquidity.stocks, PLN(100000), RandomStream.seeded(42), Multiplier.Zero, PLN.Zero)
+
+    approval.approvalProbability shouldBe Some(Share.decimal(5, 1))
+    approval.approvalRoll should not be empty
+  }
+
   "Banking.interbankRate" should "use explicit financial stocks" in {
     val healthy  = Vector(mkBankRow(id = 0), mkBankRow(id = 1))
     val stressed = Vector(

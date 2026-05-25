@@ -477,6 +477,8 @@ case class FlowState(
     firmTechSelectedCreditDemand: PLN = PLN.Zero,                                           // actual selected technology-upgrade bank credit requested
     firmTechSelectedCreditApproved: PLN = PLN.Zero,                                         // actual selected technology-upgrade bank credit approved
     firmTechSelectedCreditRejected: PLN = PLN.Zero,                                         // actual selected technology-upgrade bank credit rejected by bank supply
+    firmTechCandidateCreditDemand: PLN = PLN.Zero,                                          // otherwise feasible technology-upgrade candidate bank credit requested
+    firmTechCandidateCreditApproved: PLN = PLN.Zero,                                        // otherwise feasible technology-upgrade candidate bank credit approved
     firmTechCandidateCreditRejected: PLN = PLN.Zero,                                        // otherwise feasible technology-upgrade candidate rejected by bank supply
     firmCreditRejectedByReason: CreditRejectionBreakdown = CreditRejectionBreakdown.zero,   // firm bank-credit rejections by primary reason
     firmBirths: Int = 0,                                                                    // new firms (recycled + net new)

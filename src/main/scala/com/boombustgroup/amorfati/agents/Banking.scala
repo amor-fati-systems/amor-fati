@@ -55,11 +55,6 @@ object Banking:
   private val CarPenaltyThreshMult: Multiplier = Multiplier.decimal(15, 1) // CAR penalty kicks in below minCar × 1.5
   private val CarPenaltyScale: Multiplier      = Multiplier(2)             // bps per unit of CAR shortfall
 
-  // Credit approval
-  private val MinApprovalProb: Share         = Share.decimal(1, 1) // floor: 10% approval even under max stress
-  private val NplApprovalPenalty: Multiplier = Multiplier(3)       // approval drop per unit NPL ratio (e.g. NPL 10% → 30pp)
-  private val ReserveDeficitPenalty: Share   = Share.decimal(5, 1) // 50pp approval drop when free reserves < 0
-
   // Crowding-out (gov bonds vs firm loans)
   private val CrowdingOutSensitivity: Multiplier = Multiplier.decimal(30, 2) // 30% of bond yield gap passed through to lending spread
 
@@ -568,10 +563,11 @@ object Banking:
       val lcrOk                                                             = currentLcr >= p.banking.lcrMin
       val currentNsfr                                                       = nsfr(bank, stocks, corpBondHoldings)
       val nsfrOk                                                            = currentNsfr >= p.banking.nsfrMin
-      val nplPenalty                                                        = nplRatio(bank, stocks) * NplApprovalPenalty // Share * Multiplier → Multiplier
+      val nplPenalty                                                        = nplRatio(bank, stocks) * p.banking.firmCreditNplApprovalPenalty // Share * Multiplier → Multiplier
       val freeReserves                                                      = stocks.totalDeposits * (Share.One - p.banking.reserveReq) - stocks.firmLoan - govBondHoldings(stocks)
-      val resPenalty                                                        = if freeReserves > PLN.Zero then Share.Zero else ReserveDeficitPenalty
-      val approvalP                                                         = (Share.One - nplPenalty.toShare - resPenalty).max(MinApprovalProb)
+      val postLoanFreeReserves                                              = freeReserves - amount
+      val resPenalty                                                        = if postLoanFreeReserves > PLN.Zero then Share.Zero else p.banking.firmCreditReserveDeficitPenalty
+      val approvalP                                                         = (Share.One - nplPenalty.toShare - resPenalty).max(p.banking.firmCreditMinApprovalProb)
       def audit(reason: Option[CreditRejectionReason]): CreditApprovalAudit =
         CreditApprovalAudit(
           rejectionReason = reason,
