@@ -520,6 +520,10 @@ object McTimeseriesSchema:
     ColumnDef.macroPln("FirmCredit_TechDemand", ctx => ctx.world.flows.firmTechCreditDemand),
     ColumnDef.macroPln("FirmCredit_TechApproved", ctx => ctx.world.flows.firmTechCreditApproved),
     ColumnDef.macroPln("FirmCredit_TechBankRejected", ctx => ctx.world.flows.firmTechCreditRejected),
+    ColumnDef.macroPln("FirmCredit_TechSelectedDemand", ctx => ctx.world.flows.firmTechSelectedCreditDemand),
+    ColumnDef.macroPln("FirmCredit_TechSelectedApproved", ctx => ctx.world.flows.firmTechSelectedCreditApproved),
+    ColumnDef.macroPln("FirmCredit_TechSelectedBankRejected", ctx => ctx.world.flows.firmTechSelectedCreditRejected),
+    ColumnDef.macroPln("FirmCredit_TechCandidateBankRejected", ctx => ctx.world.flows.firmTechCandidateCreditRejected),
     // Consumer Credit
     ColumnDef.macroPln("ConsumerLoans", ctx => ctx.consumerLoanStock),
     ColumnDef(
@@ -1105,6 +1109,10 @@ object McTimeseriesSchema:
     val FirmCreditTechDemand: Col                      = lookup("FirmCredit_TechDemand")
     val FirmCreditTechApproved: Col                    = lookup("FirmCredit_TechApproved")
     val FirmCreditTechBankRejected: Col                = lookup("FirmCredit_TechBankRejected")
+    val FirmCreditTechSelectedDemand: Col              = lookup("FirmCredit_TechSelectedDemand")
+    val FirmCreditTechSelectedApproved: Col            = lookup("FirmCredit_TechSelectedApproved")
+    val FirmCreditTechSelectedBankRejected: Col        = lookup("FirmCredit_TechSelectedBankRejected")
+    val FirmCreditTechCandidateBankRejected: Col       = lookup("FirmCredit_TechCandidateBankRejected")
     val ConsumerPrincipal: Col                         = lookup("ConsumerPrincipal")
     val ConsumerCreditNetStockFlow: Col                = lookup("ConsumerCredit_NetStockFlow")
     val ConsumerCreditUnderwrittenNetFlow: Col         = lookup("ConsumerCredit_UnderwrittenNetFlow")
