@@ -141,13 +141,18 @@ nix develop --command java -cp target/scala-3.8.2/amor-fati.jar \
 
 The scheduled workflow targets 02:00 Europe/Warsaw. GitHub cron only supports
 UTC, so the workflow registers both `0 0 * * *` and `0 1 * * *` UTC and then
-uses a lightweight gate step to continue only when `TZ=Europe/Warsaw` resolves
-to local hour `02`. This keeps the intended Polish-time schedule across CET and
-CEST without moving the long diagnostics into PR checks.
+uses a lightweight gate step to continue only for the intended local-time
+occurrence. In ordinary CEST this is `0 0 * * *`; in ordinary CET this is
+`0 1 * * *`. On the autumn DST transition, where local 02:00 occurs twice, the
+workflow keeps the second occurrence in CET and skips the first one. On the
+spring DST transition, where local 02:00 does not exist, the workflow runs at
+the first valid post-transition slot, 03:00 CEST. The gate runs before checkout
+or Nix setup, so skipped scheduled events are cheap.
 
 The job summary reports the profile, commit SHA, run id, runtime, manifest path,
-terminal status, and failure reason when the runner produces one. Uploading full
-diagnostic artifacts and retention policy is tracked separately by #635.
+terminal status, build/runtime exit codes, and failure reason when either the
+build or diagnostics runner produces one. Uploading full diagnostic artifacts
+and retention policy is tracked separately by #635.
 
 ## Profile Matrix
 

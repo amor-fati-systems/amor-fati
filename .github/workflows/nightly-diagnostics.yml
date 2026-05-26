@@ -36,33 +36,62 @@ jobs:
       OUT_DIR: target/nightly-diagnostics
       JAR_PATH: target/scala-3.8.2/amor-fati.jar
     steps:
-      - name: Check out HEAD of main
-        uses: actions/checkout@v4
-        with:
-          ref: main
-          fetch-depth: 0
-          submodules: recursive
-
-      - uses: cachix/install-nix-action@v31.10.6
-
       - name: Check 02:00 Warsaw schedule window
         id: schedule_window
         shell: bash
+        env:
+          SCHEDULE_CRON: ${{ github.event.schedule }}
         run: |
           set -euo pipefail
 
           should_run=true
-          warsaw_time="$(TZ=Europe/Warsaw date '+%Y-%m-%d %H:%M:%S %Z')"
+          schedule_reason="manual dispatch"
+          scheduled_cron="${SCHEDULE_CRON:-manual}"
+          scheduled_epoch="$(date +%s)"
+
           if [[ "${GITHUB_EVENT_NAME}" == "schedule" ]]; then
-            warsaw_hour="$(TZ=Europe/Warsaw date '+%H')"
-            if [[ "${warsaw_hour}" != "02" ]]; then
+            utc_date="$(date -u '+%Y-%m-%d')"
+            case "${scheduled_cron}" in
+              "0 0 * * *") scheduled_hour=00 ;;
+              "0 1 * * *") scheduled_hour=01 ;;
+              *)
+                scheduled_hour="$(date -u '+%H')"
+                schedule_reason="unknown scheduled cron '${scheduled_cron}'"
+                ;;
+            esac
+            scheduled_epoch="$(date -u -d "${utc_date} ${scheduled_hour}:00:00" '+%s')"
+          fi
+
+          warsaw_time="$(TZ=Europe/Warsaw date -d "@${scheduled_epoch}" '+%Y-%m-%d %H:%M:%S %Z')"
+          warsaw_hour="$(TZ=Europe/Warsaw date -d "@${scheduled_epoch}" '+%H')"
+          warsaw_zone="$(TZ=Europe/Warsaw date -d "@${scheduled_epoch}" '+%Z')"
+          prev_warsaw_hour="$(TZ=Europe/Warsaw date -d "@$((scheduled_epoch - 3600))" '+%H')"
+          prev_warsaw_zone="$(TZ=Europe/Warsaw date -d "@$((scheduled_epoch - 3600))" '+%Z')"
+          next_warsaw_hour="$(TZ=Europe/Warsaw date -d "@$((scheduled_epoch + 3600))" '+%H')"
+          next_warsaw_zone="$(TZ=Europe/Warsaw date -d "@$((scheduled_epoch + 3600))" '+%Z')"
+
+          if [[ "${GITHUB_EVENT_NAME}" == "schedule" ]]; then
+            should_run=false
+            if [[ "${scheduled_cron}" == "0 0 * * *" && "${warsaw_hour}" == "02" && "${warsaw_zone}" == "CEST" && ! ( "${next_warsaw_hour}" == "02" && "${next_warsaw_zone}" == "CET" ) ]]; then
+              should_run=true
+              schedule_reason="02:00 Warsaw during CEST"
+            elif [[ "${scheduled_cron}" == "0 1 * * *" && "${warsaw_hour}" == "02" && "${warsaw_zone}" == "CET" ]]; then
+              should_run=true
+              schedule_reason="02:00 Warsaw during CET"
+            elif [[ "${scheduled_cron}" == "0 1 * * *" && "${warsaw_hour}" == "03" && "${warsaw_zone}" == "CEST" && "${prev_warsaw_hour}" == "01" && "${prev_warsaw_zone}" == "CET" ]]; then
+              should_run=true
+              schedule_reason="spring DST gap: 02:00 Warsaw does not exist, running at 03:00 CEST"
+            else
               should_run=false
+              schedule_reason="scheduled cron does not correspond to the selected 02:00 Warsaw occurrence"
             fi
           fi
 
           {
             echo "should_run=${should_run}"
             echo "warsaw_time=${warsaw_time}"
+            echo "schedule_reason=${schedule_reason}"
+            echo "scheduled_cron=${scheduled_cron}"
           } >> "${GITHUB_OUTPUT}"
 
       - name: Skip non-02:00 Warsaw scheduled trigger
@@ -74,7 +103,19 @@ jobs:
             echo "Skipped scheduled trigger because local Warsaw time was not 02:00."
             echo
             echo "- Warsaw time: \`${{ steps.schedule_window.outputs.warsaw_time }}\`"
+            echo "- Schedule reason: \`${{ steps.schedule_window.outputs.schedule_reason }}\`"
           } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Check out HEAD of main
+        if: ${{ steps.schedule_window.outputs.should_run == 'true' }}
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          submodules: recursive
+
+      - uses: cachix/install-nix-action@v31.10.6
+        if: ${{ steps.schedule_window.outputs.should_run == 'true' }}
 
       - name: Resolve diagnostics run metadata
         if: ${{ steps.schedule_window.outputs.should_run == 'true' }}
@@ -106,14 +147,34 @@ jobs:
             echo "- Commit: \`${sha}\`"
             echo "- Run id: \`${run_id}\`"
             echo "- Output root: \`${run_root}\`"
+            echo "- Warsaw schedule time: \`${{ steps.schedule_window.outputs.warsaw_time }}\`"
+            echo "- Schedule reason: \`${{ steps.schedule_window.outputs.schedule_reason }}\`"
           } >> "${GITHUB_STEP_SUMMARY}"
 
       - name: Build assembled jar under Nix
+        id: build
         if: ${{ steps.schedule_window.outputs.should_run == 'true' }}
-        run: nix develop --command sbt assembly
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p "${OUT_DIR}"
+          start_seconds="$(date +%s)"
+          set +e
+          nix develop --command sbt assembly 2>&1 | tee "${OUT_DIR}/build.log"
+          exit_code="${PIPESTATUS[0]}"
+          set -e
+          end_seconds="$(date +%s)"
+
+          {
+            echo "exit_code=${exit_code}"
+            echo "duration_seconds=$((end_seconds - start_seconds))"
+          } >> "${GITHUB_OUTPUT}"
+
+          exit 0
 
       - name: Run diagnostics profile from assembled jar
-        if: ${{ steps.schedule_window.outputs.should_run == 'true' }}
+        if: ${{ steps.schedule_window.outputs.should_run == 'true' && steps.build.outputs.exit_code == '0' }}
         id: diagnostics
         shell: bash
         run: |
@@ -150,9 +211,12 @@ jobs:
           RUN_ID: ${{ steps.meta.outputs.run_id }}
           RUN_ROOT: ${{ steps.meta.outputs.run_root }}
           COMMIT_SHA: ${{ steps.meta.outputs.sha }}
-          EXIT_CODE: ${{ steps.diagnostics.outputs.exit_code }}
-          DURATION_SECONDS: ${{ steps.diagnostics.outputs.duration_seconds }}
+          BUILD_EXIT_CODE: ${{ steps.build.outputs.exit_code }}
+          BUILD_DURATION_SECONDS: ${{ steps.build.outputs.duration_seconds }}
+          DIAGNOSTICS_EXIT_CODE: ${{ steps.diagnostics.outputs.exit_code }}
+          DIAGNOSTICS_DURATION_SECONDS: ${{ steps.diagnostics.outputs.duration_seconds }}
           MANIFEST_PATH: ${{ steps.meta.outputs.run_root }}/run-manifest.json
+          BUILD_LOG_PATH: target/nightly-diagnostics/build.log
           LOG_PATH: target/nightly-diagnostics/diagnostics.log
         run: |
           set -euo pipefail
@@ -165,15 +229,23 @@ jobs:
           profile = os.environ.get("PROFILE", "unknown")
           run_id = os.environ.get("RUN_ID", "unknown")
           commit = os.environ.get("COMMIT_SHA", "unknown")
-          exit_code = os.environ.get("EXIT_CODE") or "not-run"
-          duration = os.environ.get("DURATION_SECONDS") or "not-recorded"
+          build_exit_code = os.environ.get("BUILD_EXIT_CODE") or "not-run"
+          build_duration = os.environ.get("BUILD_DURATION_SECONDS") or "not-recorded"
+          diagnostics_exit_code = os.environ.get("DIAGNOSTICS_EXIT_CODE") or "not-run"
+          diagnostics_duration = os.environ.get("DIAGNOSTICS_DURATION_SECONDS") or "not-recorded"
           manifest_path = Path(os.environ.get("MANIFEST_PATH", ""))
+          build_log_path = Path(os.environ.get("BUILD_LOG_PATH", ""))
           log_path = Path(os.environ.get("LOG_PATH", ""))
 
           status = "MISSING_MANIFEST"
           reason = ""
           failed_step = ""
-          if manifest_path.is_file():
+          if build_exit_code not in ("0", "not-run"):
+              status = "BUILD_FAILED"
+              if build_log_path.is_file():
+                  lines = build_log_path.read_text(errors="replace").splitlines()
+                  reason = "\n".join(lines[-40:])
+          elif manifest_path.is_file():
               try:
                   data = json.loads(manifest_path.read_text())
                   status = data.get("status", "UNKNOWN")
@@ -198,8 +270,10 @@ jobs:
               out.write(f"- Profile: `{profile}`\n")
               out.write(f"- Commit: `{commit}`\n")
               out.write(f"- Run id: `{run_id}`\n")
-              out.write(f"- Exit code: `{exit_code}`\n")
-              out.write(f"- Runtime seconds: `{duration}`\n")
+              out.write(f"- Build exit code: `{build_exit_code}`\n")
+              out.write(f"- Build runtime seconds: `{build_duration}`\n")
+              out.write(f"- Diagnostics exit code: `{diagnostics_exit_code}`\n")
+              out.write(f"- Diagnostics runtime seconds: `{diagnostics_duration}`\n")
               out.write(f"- Manifest: `{manifest_path}`\n")
               if failed_step:
                   out.write(f"- Failed step: `{failed_step}`\n")
@@ -210,6 +284,9 @@ jobs:
                   out.write("\n```\n")
           PY
 
-          if [[ "${EXIT_CODE:-}" =~ ^[0-9]+$ ]] && [[ "${EXIT_CODE}" != "0" ]]; then
-            exit "${EXIT_CODE}"
+          if [[ "${BUILD_EXIT_CODE:-}" =~ ^[0-9]+$ ]] && [[ "${BUILD_EXIT_CODE}" != "0" ]]; then
+            exit "${BUILD_EXIT_CODE}"
+          fi
+          if [[ "${DIAGNOSTICS_EXIT_CODE:-}" =~ ^[0-9]+$ ]] && [[ "${DIAGNOSTICS_EXIT_CODE}" != "0" ]]; then
+            exit "${DIAGNOSTICS_EXIT_CODE}"
           fi
