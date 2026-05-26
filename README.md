@@ -1,21 +1,32 @@
-<h1 align="center">AMOR FATI</h1>
-<p align="center">
-  <em>Stock-Flow Consistent Agent-Based Macroeconomic Engine</em>
-</p>
+# AMOR FATI
 
+*Stock-Flow Consistent Agent-Based Macroeconomic Engine*
 
+> *Ducunt volentem fata, nolentem trahunt.*<br>
+> The fates lead the willing; they drag the unwilling.<br>
+> — Cleanthes, quoted by Seneca, *Epistulae Morales* 107.11
 
-<p align="center">
-  <a href="https://github.com/boombustgroup/amor-fati/actions"><img src="https://github.com/boombustgroup/amor-fati/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="https://codecov.io/gh/boombustgroup/amor-fati"><img src="https://codecov.io/gh/boombustgroup/amor-fati/graph/badge.svg" alt="Coverage"></a>
-  <img src="https://img.shields.io/badge/exact_SFC_identities-15-orange.svg" alt="15 exact SFC identities">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache_2.0-blue.svg" alt="Apache 2.0"></a>
-</p>
+---
 
-> <p align="center">
->   <em>"I want to learn more and more to see as beautiful what is necessary in things;<br>then I shall be one of those who makes things beautiful.<br>Amor fati: let that be my love henceforth!"</em><br>
->   — Friedrich Nietzsche, <em>The Gay Science</em> §276
-> </p>
+## Status
+
+### Quality Gates
+
+| CI | Coverage | Generated outputs |
+| --- | --- | --- |
+| [![CI](https://github.com/boombustgroup/amor-fati/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/boombustgroup/amor-fati/actions/workflows/ci.yml) | [![Coverage](https://codecov.io/gh/boombustgroup/amor-fati/graph/badge.svg)](https://codecov.io/gh/boombustgroup/amor-fati) | [![Generated outputs guarded](https://img.shields.io/badge/generated_outputs-guarded-2ea44f.svg)](scripts/check-generated-outputs.sh) |
+
+### Research and Accounting Contract
+
+| Exact SFC identities | Verified ledger | Empirical validation |
+| --- | --- | --- |
+| [![15 exact SFC identities](https://img.shields.io/badge/exact_SFC_identities-15-orange.svg)](docs/sfc-matrix-evidence.md) | [![Verified ledger with Stainless and Z3](https://img.shields.io/badge/verified_ledger-Stainless_%2B_Z3-4B32C3.svg)](modules/ledger/docs/verification.md) | [![Empirical validation snapshot](https://img.shields.io/badge/empirical_validation-snapshot-0A7EA4.svg)](docs/empirical-validation-report.md) |
+
+### Operational Diagnostics
+
+| Nightly diagnostics | Diagnostic profiles |
+| --- | --- |
+| [![Nightly Diagnostics](https://github.com/boombustgroup/amor-fati/actions/workflows/nightly-diagnostics.yml/badge.svg?branch=main)](https://github.com/boombustgroup/amor-fati/actions/workflows/nightly-diagnostics.yml) | [![Diagnostics profiles](https://img.shields.io/badge/diagnostics-smoke_%7C_nightly_%7C_extended-8A2BE2.svg)](docs/nightly-diagnostics.md) |
 
 ---
 
