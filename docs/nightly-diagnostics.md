@@ -139,9 +139,11 @@ nix develop --command java -cp target/scala-3.8.2/amor-fati.jar \
   --require-main
 ```
 
-The scheduled cron is `30 22 * * *` UTC. This is 23:30 Warsaw during CET and
-00:30 Warsaw during CEST. The workflow deliberately chooses a stable UTC time
-instead of claiming exact local midnight across daylight-saving transitions.
+The scheduled workflow targets 02:00 Europe/Warsaw. GitHub cron only supports
+UTC, so the workflow registers both `0 0 * * *` and `0 1 * * *` UTC and then
+uses a lightweight gate step to continue only when `TZ=Europe/Warsaw` resolves
+to local hour `02`. This keeps the intended Polish-time schedule across CET and
+CEST without moving the long diagnostics into PR checks.
 
 The job summary reports the profile, commit SHA, run id, runtime, manifest path,
 terminal status, and failure reason when the runner produces one. Uploading full

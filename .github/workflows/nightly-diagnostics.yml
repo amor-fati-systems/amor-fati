@@ -2,9 +2,11 @@ name: Nightly Diagnostics
 
 on:
   schedule:
-    # GitHub cron is UTC. 22:30 UTC is 23:30 Warsaw in CET and 00:30 Warsaw in
-    # CEST, avoiding a DST-dependent attempt to mean exact local midnight.
-    - cron: "30 22 * * *"
+    # GitHub cron is UTC. Both entries are needed to hit 02:00 Europe/Warsaw
+    # across DST; the schedule gate below skips whichever one is not 02:00
+    # locally on that date.
+    - cron: "0 0 * * *"
+    - cron: "0 1 * * *"
   workflow_dispatch:
     inputs:
       profile:
@@ -43,7 +45,39 @@ jobs:
 
       - uses: cachix/install-nix-action@v31.10.6
 
+      - name: Check 02:00 Warsaw schedule window
+        id: schedule_window
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          should_run=true
+          warsaw_time="$(TZ=Europe/Warsaw date '+%Y-%m-%d %H:%M:%S %Z')"
+          if [[ "${GITHUB_EVENT_NAME}" == "schedule" ]]; then
+            warsaw_hour="$(TZ=Europe/Warsaw date '+%H')"
+            if [[ "${warsaw_hour}" != "02" ]]; then
+              should_run=false
+            fi
+          fi
+
+          {
+            echo "should_run=${should_run}"
+            echo "warsaw_time=${warsaw_time}"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Skip non-02:00 Warsaw scheduled trigger
+        if: ${{ steps.schedule_window.outputs.should_run != 'true' }}
+        run: |
+          {
+            echo "### Nightly Diagnostics"
+            echo
+            echo "Skipped scheduled trigger because local Warsaw time was not 02:00."
+            echo
+            echo "- Warsaw time: \`${{ steps.schedule_window.outputs.warsaw_time }}\`"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
       - name: Resolve diagnostics run metadata
+        if: ${{ steps.schedule_window.outputs.should_run == 'true' }}
         id: meta
         shell: bash
         run: |
@@ -75,9 +109,11 @@ jobs:
           } >> "${GITHUB_STEP_SUMMARY}"
 
       - name: Build assembled jar under Nix
+        if: ${{ steps.schedule_window.outputs.should_run == 'true' }}
         run: nix develop --command sbt assembly
 
       - name: Run diagnostics profile from assembled jar
+        if: ${{ steps.schedule_window.outputs.should_run == 'true' }}
         id: diagnostics
         shell: bash
         run: |
@@ -108,7 +144,7 @@ jobs:
           exit 0
 
       - name: Report diagnostics result
-        if: always()
+        if: ${{ always() && steps.schedule_window.outputs.should_run == 'true' }}
         shell: bash
         env:
           RUN_ID: ${{ steps.meta.outputs.run_id }}
