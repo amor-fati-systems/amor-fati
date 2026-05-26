@@ -168,7 +168,7 @@ object SignalExtraction:
         startupAbsorptionRate = SignalProvenance(
           seedOut.startupAbsorptionRate,
           MonthTraceStage.StartupStaffing,
-          "WorldAssemblyEconomics.applyStartupStaffing.startupAbsorptionRate",
+          "StartupStaffing.assign.startupAbsorptionRate",
         ),
         sectorDemandMult = SignalProvenance(
           seedOut.sectorDemandMult,

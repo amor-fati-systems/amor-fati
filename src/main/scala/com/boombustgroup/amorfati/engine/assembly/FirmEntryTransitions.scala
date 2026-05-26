@@ -1,4 +1,4 @@
-package com.boombustgroup.amorfati.engine.economics
+package com.boombustgroup.amorfati.engine.assembly
 
 import com.boombustgroup.amorfati.agents.{Firm, TechState}
 import com.boombustgroup.amorfati.types.FirmId

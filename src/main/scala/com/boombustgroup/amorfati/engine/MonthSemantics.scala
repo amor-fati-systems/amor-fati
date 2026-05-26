@@ -1,6 +1,6 @@
 package com.boombustgroup.amorfati.engine
 
-import com.boombustgroup.amorfati.engine.economics.WorldAssemblyEconomics
+import com.boombustgroup.amorfati.engine.assembly.WorldAssemblyEconomics
 import com.boombustgroup.amorfati.engine.flows.FlowSimulation.{MonthlyCalculus, PostMonth, SemanticFlowInputs, SignalBoundaryInputs}
 
 /** Tiny type-level timeline for one monthly engine step.

@@ -1,4 +1,4 @@
-package com.boombustgroup.amorfati.engine.economics
+package com.boombustgroup.amorfati.engine.assembly
 
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.types.*
@@ -28,7 +28,7 @@ object WorldObservables:
 
     Values(depositFacilityUsage, etsPrice, tourismSeasonalFactor)
 
-  private[economics] def monthlySeasonalCos(monthInYear: Int, peakMonth: Int): Coefficient =
+  private[assembly] def monthlySeasonalCos(monthInYear: Int, peakMonth: Int): Coefficient =
     Math.floorMod(monthInYear - peakMonth, 12) match
       case 0  => Coefficient.One
       case 1  => Coefficient.decimal(8660254038L, 10)
