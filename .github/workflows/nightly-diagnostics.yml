@@ -133,12 +133,21 @@ jobs:
             run_id="${PROFILE}-manual-$(date -u +%Y%m%d-%H%M)-${short_sha}"
           fi
           run_root="${OUT_DIR}/${PROFILE}/${run_id}"
+          artifact_name="amor-fati-diagnostics-${run_id}"
+          case "${PROFILE}" in
+            smoke) retention_days=7 ;;
+            nightly) retention_days=30 ;;
+            extended) retention_days=90 ;;
+            *) retention_days=14 ;;
+          esac
 
           {
             echo "sha=${sha}"
             echo "short_sha=${short_sha}"
             echo "run_id=${run_id}"
             echo "run_root=${run_root}"
+            echo "artifact_name=${artifact_name}"
+            echo "retention_days=${retention_days}"
           } >> "${GITHUB_OUTPUT}"
 
           {
@@ -148,6 +157,8 @@ jobs:
             echo "- Commit: \`${sha}\`"
             echo "- Run id: \`${run_id}\`"
             echo "- Output root: \`${run_root}\`"
+            echo "- Artifact: \`${artifact_name}\`"
+            echo "- Artifact retention: \`${retention_days} days\`"
             echo "- Warsaw schedule time: \`${{ steps.schedule_window.outputs.warsaw_time }}\`"
             echo "- Schedule reason: \`${{ steps.schedule_window.outputs.schedule_reason }}\`"
           } >> "${GITHUB_STEP_SUMMARY}"
@@ -216,6 +227,8 @@ jobs:
           BUILD_DURATION_SECONDS: ${{ steps.build.outputs.duration_seconds }}
           DIAGNOSTICS_EXIT_CODE: ${{ steps.diagnostics.outputs.exit_code }}
           DIAGNOSTICS_DURATION_SECONDS: ${{ steps.diagnostics.outputs.duration_seconds }}
+          ARTIFACT_NAME: ${{ steps.meta.outputs.artifact_name }}
+          RETENTION_DAYS: ${{ steps.meta.outputs.retention_days }}
           MANIFEST_PATH: ${{ steps.meta.outputs.run_root }}/run-manifest.json
           BUILD_LOG_PATH: target/nightly-diagnostics/build.log
           LOG_PATH: target/nightly-diagnostics/diagnostics.log
@@ -234,6 +247,8 @@ jobs:
           build_duration = os.environ.get("BUILD_DURATION_SECONDS") or "not-recorded"
           diagnostics_exit_code = os.environ.get("DIAGNOSTICS_EXIT_CODE") or "not-run"
           diagnostics_duration = os.environ.get("DIAGNOSTICS_DURATION_SECONDS") or "not-recorded"
+          artifact_name = os.environ.get("ARTIFACT_NAME") or "not-created"
+          retention_days = os.environ.get("RETENTION_DAYS") or "not-configured"
           manifest_path = Path(os.environ.get("MANIFEST_PATH", ""))
           build_log_path = Path(os.environ.get("BUILD_LOG_PATH", ""))
           log_path = Path(os.environ.get("LOG_PATH", ""))
@@ -276,6 +291,8 @@ jobs:
               out.write(f"- Diagnostics exit code: `{diagnostics_exit_code}`\n")
               out.write(f"- Diagnostics runtime seconds: `{diagnostics_duration}`\n")
               out.write(f"- Manifest: `{manifest_path}`\n")
+              out.write(f"- Artifact: `{artifact_name}`\n")
+              out.write(f"- Artifact retention days: `{retention_days}`\n")
               if failed_step:
                   out.write(f"- Failed step: `{failed_step}`\n")
               if reason:
@@ -291,3 +308,16 @@ jobs:
           if [[ "${DIAGNOSTICS_EXIT_CODE:-}" =~ ^[0-9]+$ ]] && [[ "${DIAGNOSTICS_EXIT_CODE}" != "0" ]]; then
             exit "${DIAGNOSTICS_EXIT_CODE}"
           fi
+
+      - name: Upload diagnostics artifacts
+        if: ${{ always() && steps.schedule_window.outputs.should_run == 'true' && steps.meta.outputs.artifact_name != '' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ${{ steps.meta.outputs.artifact_name }}
+          path: |
+            ${{ steps.meta.outputs.run_root }}/
+            target/nightly-diagnostics/build.log
+            target/nightly-diagnostics/diagnostics.log
+          if-no-files-found: warn
+          retention-days: ${{ steps.meta.outputs.retention_days }}
+          compression-level: 6
