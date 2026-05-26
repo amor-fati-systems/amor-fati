@@ -23,6 +23,12 @@ import scala.util.Try
   */
 object NightlyDiagnosticsProfileRunner:
 
+  /** CLI contract for profile runs.
+    *
+    * `jarPath` is recorded and hashed for provenance. The class is still
+    * launched with `java -cp ... NightlyDiagnosticsProfileRunner`, because the
+    * assembled jar's default `java -jar` entry point remains `Main`.
+    */
   final case class Config(
       profile: String = "smoke",
       out: Path = Path.of("target/nightly-diagnostics"),
@@ -35,6 +41,10 @@ object NightlyDiagnosticsProfileRunner:
 
   final case class RunResult(manifestPath: Path, runRoot: Path, status: String)
 
+  /** Provenance captured from the runtime process, not from the diagnostics
+    * themselves. Most fields are best-effort so missing local tools do not
+    * block a run after the git ref has been validated.
+    */
   private[diagnostics] final case class RuntimeMetadata(
       commit: String,
       shortCommit: String,
@@ -60,6 +70,10 @@ object NightlyDiagnosticsProfileRunner:
       startedAt: Instant,
   )
 
+  /** One row in the manifest's logical execution plan. A planned step is
+    * emitted before work starts, then rewritten with terminal status and
+    * artifact paths as the run advances.
+    */
   private[diagnostics] final case class ManifestStep(
       id: String,
       label: String,
@@ -97,6 +111,10 @@ object NightlyDiagnosticsProfileRunner:
       steps: RunContext => Vector[DiagnosticStep],
   )
 
+  /** Thin adapter around an existing diagnostic export. The step owns no model
+    * logic; it only maps a profile contract to that export's Config and output
+    * directory.
+    */
   private[diagnostics] final case class DiagnosticStep(
       id: String,
       label: String,
@@ -159,6 +177,8 @@ object NightlyDiagnosticsProfileRunner:
       steps     = profile.steps(ctx)
       _        <- ZIO
         .fromEither(validateRun(config, metadata))
+        // Write a manifest even when clean-ref validation fails. CI can then
+        // archive a machine-readable reason instead of only a console log.
         .catchAll: err =>
           for
             finished <- Clock.instant
@@ -200,6 +220,8 @@ object NightlyDiagnosticsProfileRunner:
     for
       completedRef <- Ref.make(Vector.empty[ManifestStep])
       failedRef    <- Ref.make(Option.empty[ManifestStep])
+      // The manifest is checkpointed before and after each step so an
+      // interrupted nightly still tells reviewers where it stopped.
       _            <- writeManifest(ctx, steps.map(_.planned(ctx)), "RUNNING", None, None)
       stepResult   <- ZIO
         .foreachDiscard(steps): step =>
@@ -270,6 +292,8 @@ object NightlyDiagnosticsProfileRunner:
     Either
       .cond(profileById(config.profile).isRight, (), s"--profile must be one of: ${Profiles.map(_.id).mkString(", ")}")
       .flatMap(_ => Either.cond(metadata.gitAvailable, (), "Cannot validate run ref because git metadata is unavailable"))
+      // Nightly evidence must come from a clean checkout. `--allow-dirty` is
+      // intentionally reserved for local probes and dry-run wiring.
       .flatMap(_ =>
         Either
           .cond(config.allowDirty || !metadata.dirty, (), "Ref validation failed: working tree is dirty; pass --allow-dirty only for local non-nightly probes"),
@@ -299,6 +323,8 @@ object NightlyDiagnosticsProfileRunner:
   private[diagnostics] def profileById(id: String): Either[String, ProfileSpec] =
     Profiles.find(_.id == id.trim.toLowerCase(Locale.ROOT)).toRight(s"--profile must be one of: ${Profiles.map(_.id).mkString(", ")}")
 
+  // Keep this vector in sync with docs/nightly-diagnostics.md. The 60-month
+  // ceiling is deliberate: 120m+ belongs to the future long-horizon profile.
   private[diagnostics] val Profiles: Vector[ProfileSpec] =
     Vector(
       ProfileSpec(
@@ -444,6 +470,8 @@ object NightlyDiagnosticsProfileRunner:
       outputDir = ctx => ctx.runRoot.resolve("empirical-validation"),
       details = Vector("source" -> "baseline-monte-carlo", "output_prefix" -> "baseline"),
       run = ctx =>
+        // Empirical validation consumes the baseline Monte Carlo files written
+        // earlier in the same profile run, so it must remain after that step.
         ZIO
           .fromEither(
             EmpiricalValidationExport.run(
@@ -596,6 +624,8 @@ object NightlyDiagnosticsProfileRunner:
     ZIO
       .attemptBlocking:
         val gitCommit = command(Vector("git", "rev-parse", "HEAD"))
+        // CI provides the authoritative ref through environment variables.
+        // Local runs fall back to git so the same runner works under Nix.
         val branch    = sys.env
           .get("GITHUB_REF_NAME")
           .filter(_.trim.nonEmpty)
@@ -621,6 +651,8 @@ object NightlyDiagnosticsProfileRunner:
         )
       .mapError(err => s"Failed to capture runtime metadata: ${message(err)}")
 
+  // Tool-version probes are intentionally best-effort. Missing `nix`, `sbt`,
+  // or git should degrade manifest detail, not crash metadata collection.
   private def command(args: Vector[String]): Option[String] =
     Try:
       val process = ProcessBuilder(args.asJava).redirectErrorStream(true).start()
@@ -652,6 +684,8 @@ object NightlyDiagnosticsProfileRunner:
     val clean = commit.trim.stripSuffix("-dirty")
     if clean.length >= 7 then clean.take(7) else clean
 
+  // Manual JSON rendering keeps the runner dependency-neutral; the schema is
+  // small and covered by NightlyDiagnosticsProfileRunnerSpec.
   private[diagnostics] def renderManifest(manifest: Manifest): String =
     val metadata = manifest.metadata
     val fields   = Vector(
