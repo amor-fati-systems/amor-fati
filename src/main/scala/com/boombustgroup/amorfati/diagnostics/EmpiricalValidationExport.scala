@@ -1,6 +1,8 @@
 package com.boombustgroup.amorfati.diagnostics
 
+import com.boombustgroup.amorfati.montecarlo.{McCsvFile, McCsvSchema}
 import com.boombustgroup.amorfati.util.BuildInfo
+import zio.ZIO
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path}
@@ -177,15 +179,18 @@ object EmpiricalValidationExport:
             result.paths.foreach(path => println(path.toString))
 
   def run(config: Config): Either[String, ExportResult] =
-    validate(config).flatMap: validConfig =>
-      for
-        sourceRows <- readSourceManifest(validConfig.sourceManifest)
-        baseRun    <- readOrBuildRunManifest(validConfig)
-        modelRun   <- inferSeedCount(baseRun)
-        output     <- MonteCarloOutput.load(modelRun)
-        snapshot    = buildSnapshot(sourceRows, modelRun, output)
-        paths      <- writeArtifacts(validConfig.out, sourceRows, modelRun, snapshot)
-      yield ExportResult(paths, snapshot)
+    DiagnosticIo.unsafeRun(runZIO(config))
+
+  def runZIO(config: Config): ZIO[Any, String, ExportResult] =
+    for
+      validConfig <- ZIO.fromEither(validate(config))
+      sourceRows  <- ZIO.fromEither(readSourceManifest(validConfig.sourceManifest))
+      baseRun     <- ZIO.fromEither(readOrBuildRunManifest(validConfig))
+      modelRun    <- ZIO.fromEither(inferSeedCount(baseRun))
+      output      <- ZIO.fromEither(MonteCarloOutput.load(modelRun))
+      snapshot     = buildSnapshot(sourceRows, modelRun, output)
+      paths       <- writeArtifactsZIO(validConfig.out, sourceRows, modelRun, snapshot)
+    yield ExportResult(paths, snapshot)
 
   def parseArgs(args: Vector[String]): Either[String, CliCommand] =
     def missingValue(flag: String): Left[String, Config] = Left(s"Missing value for $flag")
@@ -393,22 +398,20 @@ object EmpiricalValidationExport:
             base
     derived.mkString(" ")
 
-  private def writeArtifacts(
+  private def writeArtifactsZIO(
       out: Path,
       sourceRows: Vector[SourceManifestRow],
       modelRun: ModelRunManifest,
       snapshot: Vector[SnapshotRow],
-  ): Either[String, Vector[Path]] =
-    Try {
-      Files.createDirectories(out)
-      val sourceManifestPath = out.resolve("source-manifest.csv")
-      val runManifestPath    = out.resolve("model-run-manifest.csv")
-      val snapshotCsvPath    = out.resolve("baseline-validation-snapshot.csv")
-      Files.writeString(sourceManifestPath, renderSourceManifest(sourceRows), StandardCharsets.UTF_8)
-      Files.writeString(runManifestPath, renderModelRunManifest(modelRun), StandardCharsets.UTF_8)
-      Files.writeString(snapshotCsvPath, renderSnapshotCsv(snapshot), StandardCharsets.UTF_8)
-      Vector(sourceManifestPath, runManifestPath, snapshotCsvPath)
-    }.toEither.left.map(err => s"Failed to write empirical validation artifacts: ${err.getMessage}")
+  ): ZIO[Any, String, Vector[Path]] =
+    val sourceManifestPath = out.resolve("source-manifest.csv")
+    val runManifestPath    = out.resolve("model-run-manifest.csv")
+    val snapshotCsvPath    = out.resolve("baseline-validation-snapshot.csv")
+    for
+      sourcePath   <- McCsvFile.writeAll(sourceManifestPath, sourceRows, SourceManifestCsvSchema)(DiagnosticIo.outputFailure)
+      runPath      <- McCsvFile.writeAll(runManifestPath, Vector(modelRun), ModelRunManifestCsvSchema)(DiagnosticIo.outputFailure)
+      snapshotPath <- McCsvFile.writeAll(snapshotCsvPath, snapshot, SnapshotCsvSchema)(DiagnosticIo.outputFailure)
+    yield Vector(sourcePath, runPath, snapshotPath)
 
   private final case class MonteCarloOutput(
       timeSeries: Vector[Vector[CsvRow]],
@@ -577,62 +580,69 @@ object EmpiricalValidationExport:
         cells += cell.toString
         Right(cells.result().map(_.trim))
 
-  private def renderSourceManifest(rows: Vector[SourceManifestRow]): String =
-    val body = rows.map: row =>
-      Vector(
-        row.target,
-        row.sourceProvider,
-        row.sourceUrl,
-        row.datasetCode,
-        row.vintage,
-        row.accessedAt.map(_.toString).getOrElse(""),
-        row.licenseOrReuseNote,
-        row.frequency,
-        row.unit,
-        row.transformation,
-        row.modelTarget.render,
-        row.status.token,
-        row.empiricalValue.map(formatDecimal).getOrElse(""),
-        row.tolerance.map(formatDecimal).getOrElse(""),
-        row.criterion,
-        row.notes,
-      ).map(csv).mkString(";")
-    (SourceManifestHeader.mkString(";") +: body).mkString("\n") + "\n"
+  private[diagnostics] lazy val SourceManifestCsvSchema: McCsvSchema[SourceManifestRow] =
+    McCsvSchema(
+      header = SourceManifestHeader.mkString(";"),
+      render = row =>
+        Vector(
+          row.target,
+          row.sourceProvider,
+          row.sourceUrl,
+          row.datasetCode,
+          row.vintage,
+          row.accessedAt.map(_.toString).getOrElse(""),
+          row.licenseOrReuseNote,
+          row.frequency,
+          row.unit,
+          row.transformation,
+          row.modelTarget.render,
+          row.status.token,
+          row.empiricalValue.map(formatDecimal).getOrElse(""),
+          row.tolerance.map(formatDecimal).getOrElse(""),
+          row.criterion,
+          row.notes,
+        ).map(csv).mkString(";"),
+    )
 
-  private def renderModelRunManifest(manifest: ModelRunManifest): String =
-    val row = Vector(
-      manifest.runId,
-      manifest.outputPrefix,
-      manifest.durationMonths.toString,
-      manifest.seedCount.toString,
-      manifest.commit,
-      manifest.parameterBranch,
-      manifest.outputDir.toString,
-    ).map(csv).mkString(";")
-    Vector(ModelRunManifestHeader.mkString(";"), row).mkString("\n") + "\n"
+  private[diagnostics] lazy val ModelRunManifestCsvSchema: McCsvSchema[ModelRunManifest] =
+    McCsvSchema(
+      header = ModelRunManifestHeader.mkString(";"),
+      render = manifest =>
+        Vector(
+          manifest.runId,
+          manifest.outputPrefix,
+          manifest.durationMonths.toString,
+          manifest.seedCount.toString,
+          manifest.commit,
+          manifest.parameterBranch,
+          manifest.outputDir.toString,
+        ).map(csv).mkString(";"),
+    )
 
-  private def renderSnapshotCsv(rows: Vector[SnapshotRow]): String =
-    val body = rows.map: row =>
-      Vector(
-        row.target,
-        row.sourceProvider,
-        row.sourceUrl,
-        row.datasetCode,
-        row.vintage,
-        row.accessedAt.map(_.toString).getOrElse(""),
-        row.frequency,
-        row.unit,
-        row.transformation,
-        row.modelRun,
-        row.modelTarget,
-        row.empiricalValue.map(formatSnapshotDecimal).getOrElse(""),
-        row.modelValue.map(formatSnapshotDecimal).getOrElse(""),
-        row.tolerance.map(formatSnapshotDecimal).getOrElse(""),
-        row.criterion,
-        row.status.token,
-        row.notes,
-      ).map(csv).mkString(";")
-    (SnapshotHeader.mkString(";") +: body).mkString("\n") + "\n"
+  private[diagnostics] lazy val SnapshotCsvSchema: McCsvSchema[SnapshotRow] =
+    McCsvSchema(
+      header = SnapshotHeader.mkString(";"),
+      render = row =>
+        Vector(
+          row.target,
+          row.sourceProvider,
+          row.sourceUrl,
+          row.datasetCode,
+          row.vintage,
+          row.accessedAt.map(_.toString).getOrElse(""),
+          row.frequency,
+          row.unit,
+          row.transformation,
+          row.modelRun,
+          row.modelTarget,
+          row.empiricalValue.map(formatSnapshotDecimal).getOrElse(""),
+          row.modelValue.map(formatSnapshotDecimal).getOrElse(""),
+          row.tolerance.map(formatSnapshotDecimal).getOrElse(""),
+          row.criterion,
+          row.status.token,
+          row.notes,
+        ).map(csv).mkString(";"),
+    )
 
   private def csv(value: String): String =
     if value.exists(ch => ch == ';' || ch == '"' || ch == '\n') then "\"" + value.replace("\"", "\"\"") + "\""

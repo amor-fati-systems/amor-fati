@@ -35,6 +35,35 @@ class McCsvFileSpec extends AnyFlatSpec with Matchers:
       Files.exists(output) shouldBe false
       Files.exists(output.resolveSibling("values.csv.tmp")) shouldBe false
 
+  it should "split streamed rows across two CSV files while returning one fold state" in
+    withTempDir: dir =>
+      val leftOutput  = dir.resolve("left.csv")
+      val rightOutput = dir.resolve("nested").resolve("right.csv")
+      val rows        = ZStream.fromIterable(Vector(1, 2, 3, 4))
+      val result      = run:
+        McCsvFile.writeSplitFold(leftOutput, rightOutput, rows, schema, schema, Vector.newBuilder[Int]) { row =>
+          if row % 2 == 0 then Right(row) else Left(row)
+        }((builder, row) => builder += row)(outputFailure)
+
+      result.result() shouldBe Vector(1, 2, 3, 4)
+      Files.readAllLines(leftOutput, UTF_8).asScala.toVector shouldBe Vector("Value", "1", "3")
+      Files.readAllLines(rightOutput, UTF_8).asScala.toVector shouldBe Vector("Value", "2", "4")
+      Files.exists(leftOutput.resolveSibling("left.csv.tmp")) shouldBe false
+      Files.exists(rightOutput.resolveSibling("right.csv.tmp")) shouldBe false
+
+  it should "reject split CSV writes to the same output path" in
+    withTempDir: dir =>
+      val output = dir.resolve("same.csv")
+      val result = run:
+        McCsvFile
+          .writeSplitFold(output, output, ZStream.fromIterable(Vector(1)), schema, schema, ()) { row =>
+            Left(row)
+          }((_, _) => ())(outputFailure)
+          .either
+
+      result.left.getOrElse(fail("Expected split CSV path collision to fail")) should include("prepare split CSV outputs")
+      Files.exists(output) shouldBe false
+
   it should "not finalize a streaming CSV when a non-empty stream is required" in
     withTempDir: dir =>
       val output = dir.resolve("values.csv")
