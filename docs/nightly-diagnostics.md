@@ -7,6 +7,8 @@ implementation of the runner or GitHub Actions workflow.
 The goal is to keep long-running validation reproducible, inspectable, and
 scientifically honest. The profiles below validate the currently interpretable
 operational horizon of the model. They are not long-horizon cycle claims.
+The comparison semantics for these profiles are defined in
+[nightly-baseline-comparison.md](nightly-baseline-comparison.md).
 
 ## Principles
 
@@ -169,6 +171,8 @@ Primary artifacts:
 
 The baseline comparison layer should be profile-aware. The first comparison
 version should start with hard invariants and report-only research metrics.
+The detailed status model, threshold contract, and report format are specified
+in [nightly-baseline-comparison.md](nightly-baseline-comparison.md).
 
 Hard-fail candidates:
 
