@@ -56,6 +56,59 @@ Every run should include a manifest with at least:
 - start and end timestamps
 - Nix, Java, sbt, and project versions where practical
 
+## Jar / Nix Execution
+
+Build the assembled jar from the project Nix environment:
+
+```bash
+nix develop --command sbt assembly
+```
+
+Run a profile from that jar with the diagnostics profile runner:
+
+```bash
+nix develop --command java -cp target/scala-3.8.2/amor-fati.jar \
+  com.boombustgroup.amorfati.diagnostics.NightlyDiagnosticsProfileRunner \
+  --profile smoke \
+  --out target/nightly-diagnostics \
+  --run-id smoke-manual-20260526-abcdef0 \
+  --jar-path target/scala-3.8.2/amor-fati.jar
+```
+
+`java -jar target/scala-3.8.2/amor-fati.jar` remains the normal simulation
+entry point (`com.boombustgroup.amorfati.Main`). Diagnostics profiles use
+`java -cp ... com.boombustgroup.amorfati.diagnostics.NightlyDiagnosticsProfileRunner`
+so they can select the profile runner while still executing from the assembled
+jar.
+
+Scheduled `main` runs should require a clean `main` ref:
+
+```bash
+nix develop --command java -cp target/scala-3.8.2/amor-fati.jar \
+  com.boombustgroup.amorfati.diagnostics.NightlyDiagnosticsProfileRunner \
+  --profile nightly \
+  --out target/nightly-diagnostics \
+  --run-id nightly-20260526-abcdef0 \
+  --jar-path target/scala-3.8.2/amor-fati.jar \
+  --require-main
+```
+
+Local exploratory runs can pass `--allow-dirty` only when the output is not
+treated as nightly evidence. `--dry-run` writes the manifest and planned step
+contract without executing simulations, which is useful for CI wiring and
+profile review.
+
+The runner writes:
+
+```text
+target/nightly-diagnostics/<profile>/<run-id>/run-manifest.json
+```
+
+The manifest records the profile, resolved git ref, dirty-tree status, jar path
+and SHA-256 when available, command line, tool versions, step seed/month
+settings, step output directories, artifact paths, timestamps, and final
+status.
+
 ## Profile Matrix
 
 | Profile | Intended Trigger | Horizon | Purpose |
