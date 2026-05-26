@@ -1,0 +1,179 @@
+name: Nightly Diagnostics
+
+on:
+  schedule:
+    # GitHub cron is UTC. 22:30 UTC is 23:30 Warsaw in CET and 00:30 Warsaw in
+    # CEST, avoiding a DST-dependent attempt to mean exact local midnight.
+    - cron: "30 22 * * *"
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: "Diagnostics profile to run from the assembled jar"
+        required: true
+        default: nightly
+        type: choice
+        options:
+          - smoke
+          - nightly
+          - extended
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-diagnostics-${{ github.event_name == 'workflow_dispatch' && inputs.profile || 'nightly' }}
+  cancel-in-progress: false
+
+jobs:
+  diagnostics:
+    name: Run ${{ github.event_name == 'workflow_dispatch' && inputs.profile || 'nightly' }} diagnostics
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    env:
+      PROFILE: ${{ github.event_name == 'workflow_dispatch' && inputs.profile || 'nightly' }}
+      OUT_DIR: target/nightly-diagnostics
+      JAR_PATH: target/scala-3.8.2/amor-fati.jar
+    steps:
+      - name: Check out HEAD of main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          submodules: recursive
+
+      - uses: cachix/install-nix-action@v31.10.6
+
+      - name: Resolve diagnostics run metadata
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          sha="$(git rev-parse HEAD)"
+          short_sha="$(git rev-parse --short HEAD)"
+          if [[ "${GITHUB_EVENT_NAME}" == "schedule" ]]; then
+            run_id="${PROFILE}-$(date -u +%Y%m%d)-${short_sha}"
+          else
+            run_id="${PROFILE}-manual-$(date -u +%Y%m%d-%H%M)-${short_sha}"
+          fi
+          run_root="${OUT_DIR}/${PROFILE}/${run_id}"
+
+          {
+            echo "sha=${sha}"
+            echo "short_sha=${short_sha}"
+            echo "run_id=${run_id}"
+            echo "run_root=${run_root}"
+          } >> "${GITHUB_OUTPUT}"
+
+          {
+            echo "### Nightly Diagnostics"
+            echo
+            echo "- Profile: \`${PROFILE}\`"
+            echo "- Commit: \`${sha}\`"
+            echo "- Run id: \`${run_id}\`"
+            echo "- Output root: \`${run_root}\`"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Build assembled jar under Nix
+        run: nix develop --command sbt assembly
+
+      - name: Run diagnostics profile from assembled jar
+        id: diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p "${OUT_DIR}"
+          export GITHUB_REF_NAME=main
+          export GITHUB_SHA="${{ steps.meta.outputs.sha }}"
+
+          start_seconds="$(date +%s)"
+          set +e
+          nix develop --command java -cp "${JAR_PATH}" \
+            com.boombustgroup.amorfati.diagnostics.NightlyDiagnosticsProfileRunner \
+            --profile "${PROFILE}" \
+            --out "${OUT_DIR}" \
+            --run-id "${{ steps.meta.outputs.run_id }}" \
+            --jar-path "${JAR_PATH}" \
+            --require-main 2>&1 | tee "${OUT_DIR}/diagnostics.log"
+          exit_code="${PIPESTATUS[0]}"
+          set -e
+          end_seconds="$(date +%s)"
+
+          {
+            echo "exit_code=${exit_code}"
+            echo "duration_seconds=$((end_seconds - start_seconds))"
+          } >> "${GITHUB_OUTPUT}"
+
+          exit 0
+
+      - name: Report diagnostics result
+        if: always()
+        shell: bash
+        env:
+          RUN_ID: ${{ steps.meta.outputs.run_id }}
+          RUN_ROOT: ${{ steps.meta.outputs.run_root }}
+          COMMIT_SHA: ${{ steps.meta.outputs.sha }}
+          EXIT_CODE: ${{ steps.diagnostics.outputs.exit_code }}
+          DURATION_SECONDS: ${{ steps.diagnostics.outputs.duration_seconds }}
+          MANIFEST_PATH: ${{ steps.meta.outputs.run_root }}/run-manifest.json
+          LOG_PATH: target/nightly-diagnostics/diagnostics.log
+        run: |
+          set -euo pipefail
+
+          python3 <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          profile = os.environ.get("PROFILE", "unknown")
+          run_id = os.environ.get("RUN_ID", "unknown")
+          commit = os.environ.get("COMMIT_SHA", "unknown")
+          exit_code = os.environ.get("EXIT_CODE") or "not-run"
+          duration = os.environ.get("DURATION_SECONDS") or "not-recorded"
+          manifest_path = Path(os.environ.get("MANIFEST_PATH", ""))
+          log_path = Path(os.environ.get("LOG_PATH", ""))
+
+          status = "MISSING_MANIFEST"
+          reason = ""
+          failed_step = ""
+          if manifest_path.is_file():
+              try:
+                  data = json.loads(manifest_path.read_text())
+                  status = data.get("status", "UNKNOWN")
+                  reason = data.get("error") or ""
+                  for step in data.get("steps", []):
+                      if step.get("status") == "FAILED":
+                          failed_step = step.get("id", "")
+                          reason = reason or step.get("error") or ""
+                          break
+              except Exception as exc:
+                  status = "MALFORMED_MANIFEST"
+                  reason = f"{type(exc).__name__}: {exc}"
+          elif log_path.is_file():
+              lines = log_path.read_text(errors="replace").splitlines()
+              reason = "\n".join(lines[-20:])
+
+          summary = Path(os.environ["GITHUB_STEP_SUMMARY"])
+          with summary.open("a", encoding="utf-8") as out:
+              out.write("\n")
+              out.write("### Result\n\n")
+              out.write(f"- Status: `{status}`\n")
+              out.write(f"- Profile: `{profile}`\n")
+              out.write(f"- Commit: `{commit}`\n")
+              out.write(f"- Run id: `{run_id}`\n")
+              out.write(f"- Exit code: `{exit_code}`\n")
+              out.write(f"- Runtime seconds: `{duration}`\n")
+              out.write(f"- Manifest: `{manifest_path}`\n")
+              if failed_step:
+                  out.write(f"- Failed step: `{failed_step}`\n")
+              if reason:
+                  out.write("\n#### Failure Reason\n\n")
+                  out.write("```text\n")
+                  out.write(reason[-4000:])
+                  out.write("\n```\n")
+          PY
+
+          if [[ "${EXIT_CODE:-}" =~ ^[0-9]+$ ]] && [[ "${EXIT_CODE}" != "0" ]]; then
+            exit "${EXIT_CODE}"
+          fi

@@ -109,6 +109,44 @@ and SHA-256 when available, command line, tool versions, step seed/month
 settings, step output directories, artifact paths, timestamps, and final
 status.
 
+## Scheduled Workflow
+
+The GitHub Actions workflow `.github/workflows/nightly-diagnostics.yml` runs the
+same jar/Nix path. It is intentionally not attached to `pull_request`, so long
+diagnostics do not block normal PR feedback.
+
+Triggers:
+
+- `schedule`: runs the `nightly` profile against `HEAD` of `main`
+- `workflow_dispatch`: lets maintainers manually select `smoke`, `nightly`, or
+  `extended`
+
+The workflow checks out `main`, builds the assembled jar with:
+
+```bash
+nix develop --command sbt assembly
+```
+
+and runs:
+
+```bash
+nix develop --command java -cp target/scala-3.8.2/amor-fati.jar \
+  com.boombustgroup.amorfati.diagnostics.NightlyDiagnosticsProfileRunner \
+  --profile <profile> \
+  --out target/nightly-diagnostics \
+  --run-id <resolved-run-id> \
+  --jar-path target/scala-3.8.2/amor-fati.jar \
+  --require-main
+```
+
+The scheduled cron is `30 22 * * *` UTC. This is 23:30 Warsaw during CET and
+00:30 Warsaw during CEST. The workflow deliberately chooses a stable UTC time
+instead of claiming exact local midnight across daylight-saving transitions.
+
+The job summary reports the profile, commit SHA, run id, runtime, manifest path,
+terminal status, and failure reason when the runner produces one. Uploading full
+diagnostic artifacts and retention policy is tracked separately by #635.
+
 ## Profile Matrix
 
 | Profile | Intended Trigger | Horizon | Purpose |
@@ -263,13 +301,9 @@ diagnostics. Ten-year cycle claims should return only after the long-horizon
 research milestone defines interpretation rules, diagnostics, and validation
 targets.
 
-## Future Implementation Notes
+## Implementation Notes
 
-The scheduled workflow should not encode a long list of ad hoc shell commands
-directly in YAML. Prefer a single jar-runnable diagnostics profile runner that
-executes these logical steps from a profile id, calls existing Scala
-diagnostic `run` or `runZIO` methods, emits a run manifest, and lets GitHub
-Actions select a profile such as `--profile nightly`.
-
-GitHub cron runs in UTC. Any target such as Warsaw midnight needs an explicit
-UTC and daylight-saving-time decision before the workflow is scheduled.
+The scheduled workflow does not encode a long list of ad hoc diagnostic
+commands directly in YAML. It builds the assembled jar, invokes the single
+jar-runnable diagnostics profile runner, and lets the Scala runner own profile
+step selection, manifest emission, output layout, and clean-ref validation.
