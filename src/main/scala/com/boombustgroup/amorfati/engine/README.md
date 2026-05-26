@@ -4,14 +4,16 @@ The engine package orchestrates the monthly simulation loop. The month
 boundary is `FlowSimulation.SimState`, which carries `World` macro state,
 agent populations, household aggregates, and `LedgerFinancialState`.
 Domain logic is split across **economics** (9-stage computation pipeline),
-**flows** (SFC-verified monetary flow emission via ledger), **ledger**
-(financial ownership contracts and projections), **markets** (clearing
-mechanisms), and **mechanisms** (policy / regulatory rules).
+**assembly** (post-month state projection), **flows** (SFC-verified monetary
+flow emission via ledger), **ledger** (financial ownership contracts and
+projections), **markets** (clearing mechanisms), and **mechanisms** (policy /
+regulatory rules).
 
 ```
 engine/
 ├── World.scala             # Immutable macro/runtime state container (9 nested types)
 ├── economics/              # 9-stage computation pipeline (calculus, no flows)
+├── assembly/               # Post-month World/agent/ledger projection
 ├── flows/                  # SFC flow emission via verified ledger
 ├── ledger/                 # Ledger-owned financial state, ownership contracts, projections
 ├── markets/                # Market clearing & price formation
@@ -33,6 +35,7 @@ engine/
 | `OperationalSignals.scala` | Explicit same-month signal surface for month-`t` operational execution, kept distinct from persisted start-of-month `DecisionSignals`. |
 | `SignalExtraction.scala` | Explicit post-to-pre boundary: derives next-month `DecisionSignals` and typed seed provenance from realized month-`t` outcomes. |
 | `MonthTrace.scala` | Boundary-focused audit artifact with a stable month core (`boundary`, `seedTransition`, `randomness`, validations) plus extensible typed timing envelopes. |
+| `assembly/WorldAssemblyEconomics.scala` | Explicit post-month assembly boundary. Consumes stage outputs and assembly randomness, then returns the next `World`, agent populations, household aggregates, and ledger-owned financial state. |
 
 ## Month Step Boundary
 
@@ -87,7 +90,32 @@ without emitting monetary flows. `FlowSimulation` wires them together.
 | `PriceEquityEconomics.scala` | s7 | Inflation, GPW equity, sigma dynamics, GDP, macroprudential, EU funds                                                                        |
 | `OpenEconEconomics.scala` | s8 | BoP/forex, GVC trade, Taylor rule, bond yields, interbank, corporate bonds, insurance, NBFI                                                   |
 | `BankingEconomics.scala` | s9 | Bank P&L, provisioning, CAR, multi-bank resolution, bail-in, interbank, BFG levy, monetary aggregates (M1/M2/M3)                              |
-| `WorldAssemblyEconomics.scala` | final | Aggregation, informal economy, observables; assembles final World state + updated agents, exact SFC check                                    |
+
+Each stage exposes a `StepOutput` boundary type. Stages that historically named
+their payload `Output` keep `type StepOutput = Output` aliases, so pipeline
+boundaries can use one semantic naming convention without forcing a noisy
+case-class rename.
+
+## assembly/
+
+Post-month state projection. This package is intentionally separate from
+`economics`: it does not decide market behavior or emit monetary flows. It
+takes the already-computed stage outputs, applies deterministic post-month
+population/state transitions, and materializes the month-`t+1` engine boundary.
+
+| File | Responsibility |
+|------|----------------|
+| `WorldAssemblyEconomics.scala` | Public `StepInput` / `PostResult` contract and top-level ordering for post-month assembly. |
+| `WorldStateAssembler.scala` | Builds the post-stage `World` value from explicit stage outputs, observables, informal-economy state, and flow-of-funds diagnostics. |
+| `FlowStateAssembler.scala` | Maps stage outputs into `FlowState`, the diagnostic flow surface persisted on `World`. |
+| `PostMonthPopulationTransitions.scala` | Completes post-month population transitions: FDI M&A, firm entry, startup staffing, regional migration, firm-flow birth/death diagnostics, and firm ledger refresh. |
+| `PostMonthPipelineState.scala` | Persists same-month pipeline fields that become visible before next-month signal extraction. |
+| `WorldInformalEconomy.scala` | Computes tax evasion loss, realized shadow-tax share, and smoothed informal-economy cyclical state. |
+| `WorldObservables.scala` | Computes assembled-world observables such as deposit-facility usage, ETS price, and tourism seasonality. |
+| `FlowOfFundsDiagnostics.scala` | Computes the flow-of-funds residual from realized firm revenue and adjusted demand. |
+| `FdiOwnershipTransitions.scala` | Applies post-month stochastic conversion of eligible domestic firms to foreign ownership. |
+| `FirmEntryTransitions.scala` | Derives automation-native entrant diagnostics from newly created firms. |
+| `StartupStaffing.scala` | Assigns startup workers after firm entry and synchronizes startup filled-worker counts with household employment. |
 
 ## flows/
 
