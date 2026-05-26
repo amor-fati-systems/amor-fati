@@ -151,8 +151,17 @@ or Nix setup, so skipped scheduled events are cheap.
 
 The job summary reports the profile, commit SHA, run id, runtime, manifest path,
 terminal status, build/runtime exit codes, and failure reason when either the
-build or diagnostics runner produces one. Uploading full diagnostic artifacts
-and retention policy is tracked separately by #635.
+build or diagnostics runner produces one. The workflow also uploads a GitHub
+Actions artifact named `amor-fati-diagnostics-<run-id>` containing the profile
+run directory, `build.log`, and `diagnostics.log` when those files exist. Failed
+runs still upload partial logs and manifests when the build has progressed far
+enough to create them.
+
+Artifact retention is profile-specific:
+
+- `smoke`: 7 days
+- `nightly`: 30 days
+- `extended`: 90 days
 
 ## Profile Matrix
 
