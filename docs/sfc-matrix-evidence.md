@@ -42,12 +42,13 @@ The repository also keeps a canonical Markdown snapshot under
 `docs/sfc-matrix-artifacts/`. Refresh it with:
 
 ```bash
-sbt "sfcMatrices --seed 1 --months 12 --out docs/sfc-matrix-artifacts --format md"
+sbt "sfcMatrices --seed 1 --months 12 --out docs/sfc-matrix-artifacts --format md --commit committed-snapshot"
 ```
 
 The committed matrix snapshot is pinned independently from empirical-validation
-snapshots. The current matrix artifacts use seed `1`, month `12`, and commit
-`89528f07`.
+snapshots. The current matrix artifacts use seed `1`, month `12`, and the
+stable metadata label `committed-snapshot`; scratch exports can omit
+`--commit` to record the current build commit.
 
 The Balance Sheet Matrix and Transactions Flow Matrix LaTeX files are plain
 `tabular` fragments. The reconciliation and mapping LaTeX files use `longtable`
