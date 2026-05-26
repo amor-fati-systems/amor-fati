@@ -493,6 +493,23 @@ Generated local outputs normally belong in ignored paths:
 | `docs/sfc-matrix-artifacts/` | Intentional committed matrix snapshots | Yes, only when refreshed intentionally |
 | `docs/empirical-validation/` | Empirical-validation snapshot bundle | Yes, only when refreshed intentionally |
 
+### Generated Output Guard
+
+Pull-request CI runs `scripts/check-generated-outputs.sh` under the Nix
+development shell. The guard regenerates the fast committed artifacts
+`docs/calibration-register.md` and `docs/sfc-matrix-artifacts/`, then fails if
+those paths have a tracked diff or new untracked files.
+
+Run the same check locally with:
+
+```bash
+nix develop --command bash scripts/check-generated-outputs.sh
+```
+
+`docs/empirical-validation/` is intentionally outside this fast guard because
+it depends on a matching baseline Monte Carlo run. Nightly diagnostics own that
+longer evidence surface.
+
 ## Working Loop
 
 A practical local loop for model changes:

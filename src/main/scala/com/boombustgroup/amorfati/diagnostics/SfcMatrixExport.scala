@@ -7,6 +7,7 @@ import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.{MonthDriver, MonthRandomness}
 import com.boombustgroup.amorfati.engine.flows.FlowSimulation
 import com.boombustgroup.amorfati.init.{InitRandomness, WorldInit}
+import com.boombustgroup.amorfati.util.BuildInfo
 
 import java.nio.file.Path
 import scala.util.Try
@@ -18,6 +19,7 @@ object SfcMatrixExport:
       months: Int = 12,
       out: Path = Path.of("target/sfc-matrices"),
       formats: Vector[OutputFormat] = OutputFormat.Default,
+      commit: String = BuildInfo.gitCommit,
   )
 
   final case class ExportResult(
@@ -55,7 +57,7 @@ object SfcMatrixExport:
       steps.lastOption match
         case None       => Left("No simulation step was produced")
         case Some(step) =>
-          val bundle = MatrixEvidenceBundle.fromStep(config.seed, step)
+          val bundle = MatrixEvidenceBundle.fromStep(config.seed, step, commit = config.commit)
           val paths  = SfcMatrixRenderers.writeSymbolicBundle(bundle, config.out, config.formats)
           Right(ExportResult(bundle, paths))
 
@@ -79,6 +81,8 @@ object SfcMatrixExport:
               loop(next, config.copy(out = Path.of(value)))
             case Seq(value, next*) if flag == "--format" || flag == "--formats" =>
               OutputFormat.parseList(value).flatMap(formats => loop(next, config.copy(formats = formats)))
+            case Seq(value, next*) if flag == "--commit"                        =>
+              loop(next, config.copy(commit = value))
             case Seq(_, _*)                                                     => Left(s"Unknown argument: $flag")
         case Seq(flag, _*) if flag.startsWith("--") => Left(s"Unknown argument: $flag")
         case Seq(value, _*)                         => Left(s"Unexpected positional argument: $value")
@@ -86,7 +90,7 @@ object SfcMatrixExport:
     loop(args, Config())
 
   private def knownFlag(flag: String): Boolean =
-    flag == "--seed" || flag == "--months" || flag == "--out" || flag == "--format" || flag == "--formats"
+    flag == "--seed" || flag == "--months" || flag == "--out" || flag == "--format" || flag == "--formats" || flag == "--commit"
 
   private def parseLong(value: String, name: String): Either[String, Long] =
     Try(value.toLong).toEither.left.map(_ => s"$name must be a long integer")
@@ -95,6 +99,6 @@ object SfcMatrixExport:
     Try(value.toInt).toEither.left.map(_ => s"$name must be an integer")
 
   private val usage: String =
-    "Usage: SfcMatrixExport [--seed <long>] [--months <int>] [--out <path>] [--format|--formats tex,md]"
+    "Usage: SfcMatrixExport [--seed <long>] [--months <int>] [--out <path>] [--format|--formats tex,md] [--commit <label>]"
 
 end SfcMatrixExport

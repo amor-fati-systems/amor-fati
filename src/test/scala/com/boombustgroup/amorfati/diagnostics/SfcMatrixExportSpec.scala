@@ -19,6 +19,9 @@ class SfcMatrixExportSpec extends AnyFlatSpec with Matchers:
 
     SfcMatrixExport.parseArgs(Vector("--formats", "md")).map(_.formats) shouldBe
       Right(Vector(OutputFormat.Markdown))
+
+    SfcMatrixExport.parseArgs(Vector("--commit", "committed-snapshot")).map(_.commit) shouldBe
+      Right("committed-snapshot")
   }
 
   it should "reject unsupported matrix formats" in {
@@ -31,6 +34,7 @@ class SfcMatrixExportSpec extends AnyFlatSpec with Matchers:
     SfcMatrixExport.parseArgs(Vector("--out")) shouldBe Left("Missing value for --out")
     SfcMatrixExport.parseArgs(Vector("--format")) shouldBe Left("Missing value for --format")
     SfcMatrixExport.parseArgs(Vector("--formats")) shouldBe Left("Missing value for --format")
+    SfcMatrixExport.parseArgs(Vector("--commit")) shouldBe Left("Missing value for --commit")
     SfcMatrixExport.parseArgs(Vector("--seed", "--months", "3")) shouldBe Left("Missing value for --seed")
   }
 

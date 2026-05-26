@@ -1,4 +1,4 @@
-<!-- schema=sfc-matrix-v1 seed=1 month=12 commit=3e973c30 sfc=pass matrix=pass output=symbolic -->
+<!-- schema=sfc-matrix-v1 seed=1 month=12 commit=committed-snapshot sfc=pass matrix=pass output=symbolic -->
 
 # Symbolic Transactions Flow Matrix
 

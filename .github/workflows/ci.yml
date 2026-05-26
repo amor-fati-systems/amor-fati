@@ -5,6 +5,19 @@ on:
   pull_request:
 
 jobs:
+  generated-outputs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
+          submodules: recursive
+
+      - uses: cachix/install-nix-action@8aa03977d8d733052d78f4e008a241fd1dbf36b3
+
+      - name: Check generated repository outputs
+        run: nix develop --command bash scripts/check-generated-outputs.sh
+
   test:
     runs-on: ubuntu-latest
     steps:
