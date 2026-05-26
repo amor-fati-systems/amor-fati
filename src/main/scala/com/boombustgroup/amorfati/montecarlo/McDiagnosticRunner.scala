@@ -20,10 +20,18 @@ private[amorfati] object McDiagnosticRunner:
       months: Int,
       params: SimParams,
       label: String = "baseline",
+      traceFirmDecisions: Boolean = false,
   )(
       reduce: (Long, ZStream[Any, String, McSeedMonth]) => ZIO[Any, String, A],
   ): ZStream[Any, String, A] =
-    runScenarioSeeds[(String, SimParams), A](Vector(label -> params), seeds, months, _._1, _._2) { (_, seed, monthsStream) =>
+    runScenarioSeeds[(String, SimParams), A](
+      Vector(label -> params),
+      seeds,
+      months,
+      _._1,
+      _._2,
+      traceFirmDecisions = traceFirmDecisions,
+    ) { (_, seed, monthsStream) =>
       reduce(seed, monthsStream)
     }
 
@@ -34,6 +42,7 @@ private[amorfati] object McDiagnosticRunner:
       scenarioId: Scenario => String,
       params: Scenario => SimParams,
       parallelism: Option[Int] = None,
+      traceFirmDecisions: Boolean = false,
   )(
       reduce: (Scenario, Long, ZStream[Any, String, McSeedMonth]) => ZIO[Any, String, A],
   ): ZStream[Any, String, A] =
@@ -45,7 +54,7 @@ private[amorfati] object McDiagnosticRunner:
     ZStream
       .fromIterable(jobs)
       .mapZIOPar(parallelism.getOrElse(seedParallelism(jobs.length))): job =>
-        runJob(job, months, params(job.scenario), reduce)
+        runJob(job, months, params(job.scenario), traceFirmDecisions, reduce)
 
   def runScenarioSeedStreams[Scenario, A](
       scenarios: Vector[Scenario],
@@ -54,6 +63,7 @@ private[amorfati] object McDiagnosticRunner:
       scenarioId: Scenario => String,
       params: Scenario => SimParams,
       parallelism: Option[Int] = None,
+      traceFirmDecisions: Boolean = false,
   )(
       rows: (Scenario, Long, ZStream[Any, String, McSeedMonth]) => ZStream[Any, String, A],
   ): ZStream[Any, String, A] =
@@ -65,12 +75,13 @@ private[amorfati] object McDiagnosticRunner:
     ZStream
       .fromIterable(jobs)
       .flatMapPar(parallelism.getOrElse(seedParallelism(jobs.length))): job =>
-        runJobStream(job, months, params(job.scenario), rows)
+        runJobStream(job, months, params(job.scenario), traceFirmDecisions, rows)
 
   private def runJob[Scenario, A](
       job: Job[Scenario],
       months: Int,
       params: SimParams,
+      traceFirmDecisions: Boolean,
       reduce: (Scenario, Long, ZStream[Any, String, McSeedMonth]) => ZIO[Any, String, A],
   ): ZIO[Any, String, A] =
     val context = s"Scenario ${job.scenarioId} seed ${job.seed}"
@@ -78,7 +89,7 @@ private[amorfati] object McDiagnosticRunner:
       ZIO.suspendSucceed:
         given SimParams  = params
         val monthsStream = McRunner
-          .seedMonths(job.seed, months)
+          .seedMonths(job.seed, months, traceFirmDecisions)
           .mapError(_.toString)
         reduce(job.scenario, job.seed, monthsStream)
           .catchAll(err => ZIO.fail(s"$context failed: $err"))
@@ -92,6 +103,7 @@ private[amorfati] object McDiagnosticRunner:
       job: Job[Scenario],
       months: Int,
       params: SimParams,
+      traceFirmDecisions: Boolean,
       rows: (Scenario, Long, ZStream[Any, String, McSeedMonth]) => ZStream[Any, String, A],
   ): ZStream[Any, String, A] =
     val context = s"Scenario ${job.scenarioId} seed ${job.seed}"
@@ -100,7 +112,7 @@ private[amorfati] object McDiagnosticRunner:
         ZIO.suspendSucceed:
           given SimParams  = params
           val monthsStream = McRunner
-            .seedMonths(job.seed, months)
+            .seedMonths(job.seed, months, traceFirmDecisions)
             .mapError(_.toString)
           ZIO.succeed:
             rows(job.scenario, job.seed, monthsStream)

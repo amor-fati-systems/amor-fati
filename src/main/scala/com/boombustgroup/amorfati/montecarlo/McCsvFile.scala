@@ -36,6 +36,50 @@ private[amorfati] object McCsvFile:
   )(fold: (S, A) => S)(outputFailure: OutputFailure[E]): ZIO[Any, E, S] =
     writeFoldValidated(outputFile, rows, schema, initial)(fold)(outputFailure)(ZIO.succeed(_))
 
+  def writeSplitFold[E, A, L, R, S](
+      leftOutputFile: Path,
+      rightOutputFile: Path,
+      rows: ZStream[Any, E, A],
+      leftSchema: McCsvSchema[L],
+      rightSchema: McCsvSchema[R],
+      initial: S,
+  )(route: A => Either[L, R])(fold: (S, A) => S)(outputFailure: OutputFailure[E]): ZIO[Any, E, S] =
+    if leftOutputFile == rightOutputFile then
+      ZIO.fail(outputFailure("prepare split CSV outputs", leftOutputFile, IllegalArgumentException("leftOutputFile and rightOutputFile must be different")))
+    else
+      val leftTempFile  = leftOutputFile.resolveSibling(s"${leftOutputFile.getFileName.toString}.tmp")
+      val rightTempFile = rightOutputFile.resolveSibling(s"${rightOutputFile.getFileName.toString}.tmp")
+      val cleanupTemps  =
+        deleteIfExists(leftTempFile, outputFailure) *>
+          deleteIfExists(rightTempFile, outputFailure)
+      val rollback      =
+        deleteIfExists(leftOutputFile, outputFailure) *>
+          deleteIfExists(rightOutputFile, outputFailure) *>
+          cleanupTemps
+      val writeFiles    =
+        ZIO.scoped:
+          for
+            _           <- createParentDirectories(leftOutputFile, outputFailure)
+            _           <- createParentDirectories(rightOutputFile, outputFailure)
+            leftWriter  <- openWriter(leftTempFile, outputFailure)
+            rightWriter <- openWriter(rightTempFile, outputFailure)
+            _           <- writeLine(leftWriter, leftSchema.header, leftTempFile, outputFailure)
+            _           <- writeLine(rightWriter, rightSchema.header, rightTempFile, outputFailure)
+            finalState  <- rows.runFoldZIO(initial): (state, row) =>
+              val writeRow = route(row) match
+                case Left(left)   => writeLine(leftWriter, leftSchema.render(left), leftTempFile, outputFailure)
+                case Right(right) => writeLine(rightWriter, rightSchema.render(right), rightTempFile, outputFailure)
+              writeRow.as(fold(state, row))
+          yield finalState
+
+      writeFiles
+        .flatMap: finalState =>
+          (finalizeFile(leftTempFile, leftOutputFile, outputFailure) *>
+            finalizeFile(rightTempFile, rightOutputFile, outputFailure))
+            .as(finalState)
+            .onError(_ => rollback.ignore)
+        .onError(_ => cleanupTemps.ignore)
+
   private def writeFoldValidated[E, A, S, B](
       outputFile: Path,
       rows: ZStream[Any, E, A],

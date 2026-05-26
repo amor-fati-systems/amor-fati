@@ -1,17 +1,15 @@
 package com.boombustgroup.amorfati.diagnostics
 
-import com.boombustgroup.amorfati.accounting.{InitCheck, Sfc}
 import com.boombustgroup.amorfati.agents.{Banking, BankruptReason, Firm, HhFinancialDistressState, HhStatus, Household, TechState}
 import com.boombustgroup.amorfati.config.SimParams
-import com.boombustgroup.amorfati.engine.flows.FlowSimulation
 import com.boombustgroup.amorfati.engine.ledger.{CorporateBondOwnership, LedgerFinancialState}
-import com.boombustgroup.amorfati.engine.{MonthDriver, MonthRandomness}
 import com.boombustgroup.amorfati.fp.FixedPointBase
-import com.boombustgroup.amorfati.init.{InitRandomness, WorldInit}
+import com.boombustgroup.amorfati.montecarlo.{McCsvFile, McCsvSchema, McDiagnosticRunner, McSeedMonth}
 import com.boombustgroup.amorfati.types.*
+import zio.ZIO
+import zio.stream.ZStream
 
-import java.nio.charset.StandardCharsets
-import java.nio.file.{Files, Path}
+import java.nio.file.Path
 import scala.math.BigDecimal.RoundingMode
 import scala.util.Try
 
@@ -132,10 +130,20 @@ object LoanOriginationQualityExport:
 
   final case class ExportResult(
       paths: Vector[Path],
-      householdRows: Vector[HhOriginationRow],
-      firmRows: Vector[FirmOriginationRow],
       summaryRows: Vector[SummaryRow],
   )
+
+  private final case class ReportStats(
+      householdRows: Int,
+      householdBadRows: Int,
+      firmRows: Int,
+      firmBadRows: Int,
+  ):
+    def householdBadRate: Option[BigDecimal] =
+      if householdRows > 0 then Some(BigDecimal(householdBadRows) / BigDecimal(householdRows)) else None
+
+    def firmBadRate: Option[BigDecimal] =
+      if firmRows > 0 then Some(BigDecimal(firmBadRows) / BigDecimal(firmRows)) else None
 
   private final case class HhMonthOutcome(
       month: Int,
@@ -170,10 +178,189 @@ object LoanOriginationQualityExport:
       approvedPrincipal: PLN,
   )
 
-  private final case class SeedRawRows(
-      householdRows: Vector[HhOriginationRow],
-      firmRows: Vector[FirmOriginationRow],
+  private enum LoanRow:
+    case Household(row: HhOriginationRow)
+    case Firm(row: FirmOriginationRow)
+
+  private final case class CohortKey(
+      borrowerType: String,
+      cohortType: String,
+      cohortValue: String,
   )
+
+  private final class CohortAccumulator:
+    private var rowCount          = 0
+    private var approvedRowCount  = 0
+    private var rejectedRowCount  = 0
+    private var approvedPrincipal = PLN.Zero
+    private var futureBadRowCount = 0
+    private var riskRatioSum      = BigDecimal(0)
+    private var riskRatioCount    = 0
+    private var bankCarSum        = BigDecimal(0)
+    private var bankCarCount      = 0
+
+    def add(
+        approved: Boolean,
+        rejected: Boolean,
+        principal: PLN,
+        futureBad: Boolean,
+        riskRatio: Option[BigDecimal],
+        bankCar: BigDecimal,
+    ): Unit =
+      rowCount += 1
+      if approved then approvedRowCount += 1
+      if rejected then rejectedRowCount += 1
+      approvedPrincipal += principal
+      if futureBad then futureBadRowCount += 1
+      riskRatio.foreach: value =>
+        riskRatioSum += value
+        riskRatioCount += 1
+      bankCarSum += bankCar
+      bankCarCount += 1
+
+    def toSummaryRow(runId: String, key: CohortKey): SummaryRow =
+      SummaryRow(
+        runId = runId,
+        borrowerType = key.borrowerType,
+        cohortType = key.cohortType,
+        cohortValue = key.cohortValue,
+        rows = rowCount,
+        approvedRows = approvedRowCount,
+        rejectedRows = rejectedRowCount,
+        approvedPrincipal = approvedPrincipal,
+        futureBadRows = futureBadRowCount,
+        futureBadRate = if rowCount > 0 then Some(BigDecimal(futureBadRowCount) / BigDecimal(rowCount)) else None,
+        meanRiskRatio = if riskRatioCount > 0 then Some((riskRatioSum / BigDecimal(riskRatioCount)).setScale(6, RoundingMode.HALF_UP)) else None,
+        meanBankCar = if bankCarCount > 0 then Some((bankCarSum / BigDecimal(bankCarCount)).setScale(6, RoundingMode.HALF_UP)) else None,
+        interpretation = key.borrowerType match
+          case "Household" => "HH future bad rows mean later default/write-off or bankruptcy inside the configured observation window."
+          case "Firm"      => "Firm future bad rows mean later bankruptcy inside the configured observation window; mean risk ratio is DSCR proxy."
+          case other       => s"$other future bad rows are diagnostic cohort counts.",
+      )
+
+  private final class LoanSummaryAccumulator:
+    private val cohorts = scala.collection.mutable.Map.empty[CohortKey, CohortAccumulator]
+    private var hhRows  = 0
+    private var hhBad   = 0
+    private var fRows   = 0
+    private var fBad    = 0
+
+    def add(row: LoanRow): LoanSummaryAccumulator =
+      row match
+        case LoanRow.Household(hh) => addHousehold(hh)
+        case LoanRow.Firm(firm)    => addFirm(firm)
+      this
+
+    def reportStats: ReportStats =
+      ReportStats(hhRows, hhBad, fRows, fBad)
+
+    def summaryRows(runId: String): Vector[SummaryRow] =
+      HouseholdCohortTypes.flatMap(cohortRows(runId, "Household", _)) ++
+        FirmCohortTypes.flatMap(cohortRows(runId, "Firm", _))
+
+    private def addHousehold(row: HhOriginationRow): Unit =
+      val futureBad = row.futureDefaultWithinWindow || row.futureBankruptcyWithinWindow
+      hhRows += 1
+      if futureBad then hhBad += 1
+      householdCohorts(row).foreach: (cohortType, cohortValue) =>
+        addCohort(
+          CohortKey("Household", cohortType, cohortValue),
+          approved = row.approvedPrincipal > PLN.Zero,
+          rejected = row.rejectedPrincipal > PLN.Zero || row.bankRejectedPrincipal > PLN.Zero,
+          approvedPrincipal = row.approvedPrincipal,
+          futureBad = futureBad,
+          riskRatio = row.totalDsr,
+          bankCar = row.bankCar,
+        )
+
+    private def addFirm(row: FirmOriginationRow): Unit =
+      val futureBad = row.futureBankruptWithinWindow || row.sameMonthBankrupt
+      fRows += 1
+      if futureBad then fBad += 1
+      firmCohorts(row).foreach: (cohortType, cohortValue) =>
+        addCohort(
+          CohortKey("Firm", cohortType, cohortValue),
+          approved = row.approvedPrincipal > PLN.Zero,
+          rejected = row.bankRejected,
+          approvedPrincipal = row.approvedPrincipal,
+          futureBad = futureBad,
+          riskRatio = row.dscrProxy,
+          bankCar = row.bankCar,
+        )
+
+    private def addCohort(
+        key: CohortKey,
+        approved: Boolean,
+        rejected: Boolean,
+        approvedPrincipal: PLN,
+        futureBad: Boolean,
+        riskRatio: Option[BigDecimal],
+        bankCar: BigDecimal,
+    ): Unit =
+      val cohort = cohorts.getOrElseUpdate(key, new CohortAccumulator)
+      cohort.add(approved, rejected, approvedPrincipal, futureBad, riskRatio, bankCar)
+
+    private def cohortRows(runId: String, borrowerType: String, cohortType: String): Vector[SummaryRow] =
+      cohorts
+        .collect:
+          case (key, accumulator) if key.borrowerType == borrowerType && key.cohortType == cohortType =>
+            accumulator.toSummaryRow(runId, key)
+        .toVector
+        .sortBy(_.cohortValue)
+
+  private final class SeedRowWindow(config: Config, seed: Long)(using SimParams):
+    private val rawHhEvents   = scala.collection.mutable.Map.empty[Int, scala.collection.mutable.ArrayBuffer[HhOriginationRow]]
+    private val rawFirmEvents = scala.collection.mutable.Map.empty[Int, scala.collection.mutable.ArrayBuffer[FirmOriginationRow]]
+    private val hhOutcomes    = scala.collection.mutable.Map.empty[(Int, Int), HhMonthOutcome]
+    private val firmOutcomes  = scala.collection.mutable.Map.empty[(Int, Int), FirmMonthOutcome]
+
+    def observe(month: McSeedMonth): Vector[LoanRow] =
+      val monthHhEvents    = scala.collection.mutable.ArrayBuffer.empty[(HhOriginationRow, Int)]
+      val monthFirmEvents  = scala.collection.mutable.ArrayBuffer.empty[(FirmOriginationRow, Int)]
+      val monthHhOutcomes  = scala.collection.mutable.ArrayBuffer.empty[HhMonthOutcome]
+      val monthFirmOutcome = scala.collection.mutable.ArrayBuffer.empty[FirmMonthOutcome]
+
+      collectHouseholdMonth(config, seed, month, monthHhEvents, monthHhOutcomes)
+      collectFirmMonth(config, seed, month, monthFirmEvents, monthFirmOutcome)
+
+      monthHhEvents.foreach: (row, originationMonth) =>
+        rawHhEvents.getOrElseUpdate(originationMonth, scala.collection.mutable.ArrayBuffer.empty) += row
+      monthFirmEvents.foreach: (row, originationMonth) =>
+        rawFirmEvents.getOrElseUpdate(originationMonth, scala.collection.mutable.ArrayBuffer.empty) += row
+      monthHhOutcomes.foreach(outcome => hhOutcomes += ((outcome.householdId, outcome.month) -> outcome))
+      monthFirmOutcome.foreach(outcome => firmOutcomes += ((outcome.firmId, outcome.month) -> outcome))
+
+      flushReady(month.executionMonth.toInt, force = false)
+
+    def finish(): Vector[LoanRow] =
+      flushReady(config.months, force = true)
+
+    private def flushReady(currentMonth: Int, force: Boolean): Vector[LoanRow] =
+      val readyMonths = pendingOriginationMonths.filter(origin => force || origin + config.outcomeWindow <= currentMonth).sorted
+      if readyMonths.isEmpty then Vector.empty
+      else
+        val hhByKey   = hhOutcomes.toMap
+        val firmByKey = firmOutcomes.toMap
+        val rows      = readyMonths.flatMap: originationMonth =>
+          val hhRows   = rawHhEvents
+            .remove(originationMonth)
+            .fold(Vector.empty[HhOriginationRow])(_.toVector)
+            .map(row => LoanRow.Household(enrichHouseholdOutcome(config, row, originationMonth, hhByKey)))
+          val firmRows = rawFirmEvents
+            .remove(originationMonth)
+            .fold(Vector.empty[FirmOriginationRow])(_.toVector)
+            .map(row => LoanRow.Firm(enrichFirmOutcome(config, row, originationMonth, firmByKey)))
+          hhRows ++ firmRows
+        evictExpiredOutcomes()
+        rows.toVector
+
+    private def pendingOriginationMonths: Vector[Int] =
+      (rawHhEvents.keysIterator ++ rawFirmEvents.keysIterator).toVector.distinct
+
+    private def evictExpiredOutcomes(): Unit =
+      val retainFrom = pendingOriginationMonths.minOption.fold(Int.MaxValue)(_ + 1)
+      hhOutcomes.keysIterator.filter { case (_, month) => month < retainFrom }.toVector.foreach(hhOutcomes.remove)
+      firmOutcomes.keysIterator.filter { case (_, month) => month < retainFrom }.toVector.foreach(firmOutcomes.remove)
 
   private[diagnostics] val HouseholdHeader: String =
     Vector(
@@ -260,6 +447,12 @@ object LoanOriginationQualityExport:
   private[diagnostics] val SummaryHeader: String =
     "RunId;BorrowerType;CohortType;CohortValue;Rows;ApprovedRows;RejectedRows;ApprovedPrincipal;FutureBadRows;FutureBadRate;MeanRiskRatio;MeanBankCar;Interpretation"
 
+  private val HouseholdCohortTypes: Vector[String] =
+    Vector("IncomeDecile", "OpeningDistress", "TotalDsrBand", "OpeningBankCarBand")
+
+  private val FirmCohortTypes: Vector[String] =
+    Vector("Sector", "SizeClass", "TechState", "OpeningBankCarBand")
+
   def main(args: Array[String]): Unit =
     parseArgs(args.toVector) match
       case Left(_) if args.contains("--help") =>
@@ -278,17 +471,30 @@ object LoanOriginationQualityExport:
             result.paths.foreach(path => println(path.toString))
 
   def run(config: Config): Either[String, ExportResult] =
-    validate(config).flatMap: validConfig =>
-      val attempts = validConfig.seedRange.map(seed => runSeed(validConfig, seed))
-      attempts.collectFirst { case Left(err) => err } match
-        case Some(err) => Left(err)
-        case None      =>
-          val rawRows       = attempts.collect { case Right(rows) => rows }
-          val householdRows = rawRows.flatMap(_.householdRows)
-          val firmRows      = rawRows.flatMap(_.firmRows)
-          val summaryRows   = summarize(validConfig, householdRows, firmRows)
-          val paths         = writeArtifacts(validConfig, householdRows, firmRows, summaryRows)
-          Right(ExportResult(paths, householdRows, firmRows, summaryRows))
+    DiagnosticIo.unsafeRun(runZIO(config))
+
+  def runZIO(config: Config): ZIO[Any, String, ExportResult] =
+    ZIO
+      .fromEither(validate(config))
+      .flatMap: validConfig =>
+        val hhCsvPath      = validConfig.runRoot.resolve("loan-origination-quality-households.csv")
+        val firmCsvPath    = validConfig.runRoot.resolve("loan-origination-quality-firms.csv")
+        val rowOutputPaths = Vector(hhCsvPath, firmCsvPath)
+        for
+          summaryAccumulator <- McCsvFile.writeSplitFold(
+            hhCsvPath,
+            firmCsvPath,
+            loanRows(validConfig),
+            HouseholdRowsCsvSchema,
+            FirmRowsCsvSchema,
+            new LoanSummaryAccumulator,
+          ) {
+            case LoanRow.Household(row) => Left(row)
+            case LoanRow.Firm(row)      => Right(row)
+          }((acc, row) => acc.add(row))(DiagnosticIo.outputFailure)
+          summaryRows         = summaryAccumulator.summaryRows(validConfig.runId)
+          paths              <- writeArtifactsZIO(validConfig, rowOutputPaths, summaryAccumulator.reportStats, summaryRows)
+        yield ExportResult(paths, summaryRows)
 
   def parseArgs(args: Vector[String]): Either[String, Config] =
     def missingValue(flag: String): Left[String, Config] = Left(s"Missing value for $flag")
@@ -326,52 +532,45 @@ object LoanOriginationQualityExport:
       .flatMap(valid => Either.cond(valid.outcomeWindow >= 0, valid, "--outcome-window must be >= 0"))
       .flatMap(valid => Either.cond(valid.runId.trim.nonEmpty, valid, "--run-id must be non-empty"))
 
-  private def runSeed(config: Config, seed: Long): Either[String, SeedRawRows] =
+  private def loanRows(config: Config): ZStream[Any, String, LoanRow] =
+    McDiagnosticRunner
+      .runScenarioSeedStreams(
+        Vector(config.runId -> SimParams.defaults),
+        config.seedRange,
+        config.months,
+        _._1,
+        _._2,
+        traceFirmDecisions = true,
+      )((_, seed, months) => computeSeedRows(config, seed, months))
+
+  private def computeSeedRows(
+      config: Config,
+      seed: Long,
+      months: ZStream[Any, String, McSeedMonth],
+  ): ZStream[Any, String, LoanRow] =
     given SimParams = SimParams.defaults
-    val init        = WorldInit.initialize(InitRandomness.Contract.fromSeed(seed))
-    val initState   = FlowSimulation.SimState.fromInit(init)
-    val runtime     = Sfc.RuntimeState(initState.world, initState.firms, initState.households, initState.banks, initState.ledgerFinancialState)
-    val initErrors  = InitCheck.validate(runtime)
-    if initErrors.nonEmpty then Left(s"Seed $seed failed init checks: ${initErrors.mkString("; ")}")
-    else
-      val rawHhEvents             = scala.collection.mutable.ArrayBuffer.empty[(HhOriginationRow, Int)]
-      val rawFirmEvents           = scala.collection.mutable.ArrayBuffer.empty[(FirmOriginationRow, Int)]
-      val hhOutcomes              = scala.collection.mutable.ArrayBuffer.empty[HhMonthOutcome]
-      val firmOutcomes            = scala.collection.mutable.ArrayBuffer.empty[FirmMonthOutcome]
-      val steps                   = MonthDriver
-        .unfoldSteps(initState, traceFirmDecisions = true): state =>
-          Some(MonthRandomness.Contract.fromSeed(runtimeRootSeed(seed, state)))
-        .take(config.months)
-      var failure: Option[String] = None
+    val window      = new SeedRowWindow(config, seed)
 
-      while steps.hasNext && failure.isEmpty do
-        val output = steps.next()
-        output.sfcResult match
-          case Left(errors) =>
-            failure = Some(s"Seed $seed failed SFC at month ${output.executionMonth.toInt}: ${errors.mkString("; ")}")
-          case Right(())    =>
-            collectHouseholdMonth(config, seed, output, rawHhEvents, hhOutcomes)
-            collectFirmMonth(config, seed, output, rawFirmEvents, firmOutcomes)
-
-      failure match
-        case Some(err) => Left(err)
-        case None      =>
-          val hhByKey   = hhOutcomes.toVector.groupBy(outcome => (outcome.householdId, outcome.month)).view.mapValues(_.head).toMap
-          val firmByKey = firmOutcomes.toVector.groupBy(outcome => (outcome.firmId, outcome.month)).view.mapValues(_.head).toMap
-          val hhRows    = rawHhEvents.toVector.map((row, month) => enrichHouseholdOutcome(config, row, month, hhByKey))
-          val firmRows  = rawFirmEvents.toVector.map((row, month) => enrichFirmOutcome(config, row, month, firmByKey))
-          Right(SeedRawRows(hhRows, firmRows))
+    months
+      .mapZIO: month =>
+        ZIO
+          .attempt(window.observe(month))
+          .mapError(err => s"Seed $seed failed loan origination diagnostics at month ${month.executionMonth.toInt}: ${err.getMessage}")
+      .mapConcat(identity) ++
+      ZStream
+        .fromZIO(ZIO.attempt(window.finish()).mapError(err => s"Seed $seed failed loan origination diagnostics during final flush: ${err.getMessage}"))
+        .mapConcat(identity)
 
   private def collectHouseholdMonth(
       config: Config,
       seed: Long,
-      output: FlowSimulation.StepOutput,
+      output: McSeedMonth,
       rows: scala.collection.mutable.ArrayBuffer[(HhOriginationRow, Int)],
       outcomes: scala.collection.mutable.ArrayBuffer[HhMonthOutcome],
   )(using p: SimParams): Unit =
     val month             = output.executionMonth.toInt
-    val openingHouseholds = output.stateIn.households
-    val openingBalances   = output.stateIn.ledgerFinancialState.households
+    val openingHouseholds = output.openingState.households
+    val openingBalances   = output.openingState.ledgerFinancialState.households
     val closingHouseholds = output.householdSnapshotState.households
     val flows             = output.householdMonthlyFlows
     require(openingHouseholds.length == openingBalances.length, "Loan origination HH diagnostics require aligned opening household balances")
@@ -379,8 +578,8 @@ object LoanOriginationQualityExport:
     require(openingHouseholds.length == flows.length, "Loan origination HH diagnostics require aligned household flows")
 
     val incomeDeciles = incomeDecileByHousehold(flows)
-    val nBanks        = output.stateIn.banks.length
-    val bankStocks    = output.stateIn.ledgerFinancialState.banks.map(LedgerFinancialState.projectBankFinancialStocks)
+    val nBanks        = output.openingState.banks.length
+    val bankStocks    = output.openingState.ledgerFinancialState.banks.map(LedgerFinancialState.projectBankFinancialStocks)
 
     openingHouseholds
       .zip(openingBalances)
@@ -405,9 +604,9 @@ object LoanOriginationQualityExport:
         if householdCreditObserved(flow) then
           val bankId           = opening.bankId.toInt
           require(bankId >= 0 && bankId < nBanks, s"Household ${opening.id.toInt} references invalid bank id $bankId")
-          val bank             = output.stateIn.banks(bankId)
+          val bank             = output.openingState.banks(bankId)
           val stocks           = bankStocks(bankId)
-          val corpBondHoldings = CorporateBondOwnership.bankHolderFor(output.stateIn.ledgerFinancialState, bank.id)
+          val corpBondHoldings = CorporateBondOwnership.bankHolderFor(output.openingState.ledgerFinancialState, bank.id)
           val totalDebtService = flow.mortgageDebtService + flow.consumerDebtService
           rows += (
             HhOriginationRow(
@@ -456,16 +655,16 @@ object LoanOriginationQualityExport:
   private def collectFirmMonth(
       config: Config,
       seed: Long,
-      output: FlowSimulation.StepOutput,
+      output: McSeedMonth,
       rows: scala.collection.mutable.ArrayBuffer[(FirmOriginationRow, Int)],
       outcomes: scala.collection.mutable.ArrayBuffer[FirmMonthOutcome],
   )(using p: SimParams): Unit =
     val month           = output.executionMonth.toInt
-    val openingFirms    = output.stateIn.firms
-    val openingBalances = output.stateIn.ledgerFinancialState.firms
-    val closingFirms    = output.nextState.firms
-    val nBanks          = output.stateIn.banks.length
-    val bankStocks      = output.stateIn.ledgerFinancialState.banks.map(LedgerFinancialState.projectBankFinancialStocks)
+    val openingFirms    = output.openingState.firms
+    val openingBalances = output.openingState.ledgerFinancialState.firms
+    val closingFirms    = output.state.firms
+    val nBanks          = output.openingState.banks.length
+    val bankStocks      = output.openingState.ledgerFinancialState.banks.map(LedgerFinancialState.projectBankFinancialStocks)
     require(openingFirms.length == openingBalances.length, "Loan origination firm diagnostics require aligned opening firm balances")
 
     closingFirms.foreach: firm =>
@@ -488,9 +687,9 @@ object LoanOriginationQualityExport:
         val balances           = balanceById.getOrElse(trace.firmId, throw IllegalStateException(s"Missing opening firm balances ${trace.firmId.toInt}"))
         val bankId             = trace.bankId.toInt
         require(bankId >= 0 && bankId < nBanks, s"Firm ${trace.firmId.toInt} references invalid bank id $bankId")
-        val bank               = output.stateIn.banks(bankId)
+        val bank               = output.openingState.banks(bankId)
         val stocks             = bankStocks(bankId)
-        val corpBondHoldings   = CorporateBondOwnership.bankHolderFor(output.stateIn.ledgerFinancialState, bank.id)
+        val corpBondHoldings   = CorporateBondOwnership.bankHolderFor(output.openingState.ledgerFinancialState, bank.id)
         val monthlyDebtService = trace.principalRepaid + trace.firmLoanBefore * trace.lendingRate.monthly
         creditLegs.foreach: leg =>
           val approved = leg.bankApproval.contains(true) || leg.approvedPrincipal > PLN.Zero
@@ -575,209 +774,154 @@ object LoanOriginationQualityExport:
       householdRows: Vector[HhOriginationRow],
       firmRows: Vector[FirmOriginationRow],
   ): Vector[SummaryRow] =
-    val hhGroups   = Vector(
-      "IncomeDecile"       -> ((row: HhOriginationRow) => row.incomeDecile),
-      "OpeningDistress"    -> ((row: HhOriginationRow) => row.openingFinancialDistressState),
-      "TotalDsrBand"       -> ((row: HhOriginationRow) => dsrBand(row.totalDsr)),
-      "OpeningBankCarBand" -> ((row: HhOriginationRow) => carBand(row.bankCar)),
-    )
-    val firmGroups = Vector(
-      "Sector"             -> ((row: FirmOriginationRow) => row.sector),
-      "SizeClass"          -> ((row: FirmOriginationRow) => row.sizeClass),
-      "TechState"          -> ((row: FirmOriginationRow) => row.techState),
-      "OpeningBankCarBand" -> ((row: FirmOriginationRow) => carBand(row.bankCar)),
-    )
-    hhGroups.flatMap((name, key) => summarizeHouseholds(config.runId, name, householdRows, key)) ++
-      firmGroups.flatMap((name, key) => summarizeFirms(config.runId, name, firmRows, key))
+    val accumulator = new LoanSummaryAccumulator
+    householdRows.foreach(row => accumulator.add(LoanRow.Household(row)))
+    firmRows.foreach(row => accumulator.add(LoanRow.Firm(row)))
+    accumulator.summaryRows(config.runId)
 
-  private def summarizeHouseholds(
-      runId: String,
-      cohortType: String,
-      rows: Vector[HhOriginationRow],
-      key: HhOriginationRow => String,
-  ): Vector[SummaryRow] =
-    rows
-      .groupBy(key)
-      .toVector
-      .sortBy(_._1)
-      .map: (cohortValue, cohortRows) =>
-        val badRows = cohortRows.count(row => row.futureDefaultWithinWindow || row.futureBankruptcyWithinWindow)
-        SummaryRow(
-          runId = runId,
-          borrowerType = "Household",
-          cohortType = cohortType,
-          cohortValue = cohortValue,
-          rows = cohortRows.length,
-          approvedRows = cohortRows.count(_.approvedPrincipal > PLN.Zero),
-          rejectedRows = cohortRows.count(row => row.rejectedPrincipal > PLN.Zero || row.bankRejectedPrincipal > PLN.Zero),
-          approvedPrincipal = cohortRows.foldLeft(PLN.Zero)(_ + _.approvedPrincipal),
-          futureBadRows = badRows,
-          futureBadRate = if cohortRows.nonEmpty then Some(BigDecimal(badRows) / BigDecimal(cohortRows.length)) else None,
-          meanRiskRatio = mean(cohortRows.flatMap(_.totalDsr)),
-          meanBankCar = mean(cohortRows.map(_.bankCar)),
-          interpretation = "HH future bad rows mean later default/write-off or bankruptcy inside the configured observation window.",
-        )
-
-  private def summarizeFirms(
-      runId: String,
-      cohortType: String,
-      rows: Vector[FirmOriginationRow],
-      key: FirmOriginationRow => String,
-  ): Vector[SummaryRow] =
-    rows
-      .groupBy(key)
-      .toVector
-      .sortBy(_._1)
-      .map: (cohortValue, cohortRows) =>
-        val badRows = cohortRows.count(row => row.futureBankruptWithinWindow || row.sameMonthBankrupt)
-        SummaryRow(
-          runId = runId,
-          borrowerType = "Firm",
-          cohortType = cohortType,
-          cohortValue = cohortValue,
-          rows = cohortRows.length,
-          approvedRows = cohortRows.count(_.approvedPrincipal > PLN.Zero),
-          rejectedRows = cohortRows.count(_.bankRejected),
-          approvedPrincipal = cohortRows.foldLeft(PLN.Zero)(_ + _.approvedPrincipal),
-          futureBadRows = badRows,
-          futureBadRate = if cohortRows.nonEmpty then Some(BigDecimal(badRows) / BigDecimal(cohortRows.length)) else None,
-          meanRiskRatio = mean(cohortRows.flatMap(_.dscrProxy)),
-          meanBankCar = mean(cohortRows.map(_.bankCar)),
-          interpretation = "Firm future bad rows mean later bankruptcy inside the configured observation window; mean risk ratio is DSCR proxy.",
-        )
-
-  private def writeArtifacts(
+  private def writeArtifactsZIO(
       config: Config,
-      householdRows: Vector[HhOriginationRow],
-      firmRows: Vector[FirmOriginationRow],
+      rowOutputPaths: Vector[Path],
+      reportStats: ReportStats,
       summaryRows: Vector[SummaryRow],
-  ): Vector[Path] =
-    Files.createDirectories(config.runRoot)
-    val hhPath      = config.runRoot.resolve("loan-origination-quality-households.csv")
-    val firmPath    = config.runRoot.resolve("loan-origination-quality-firms.csv")
-    val summaryPath = config.runRoot.resolve("loan-origination-quality-summary.csv")
-    val reportPath  = config.runRoot.resolve("loan-origination-quality-report.md")
-    Files.writeString(hhPath, renderHouseholdRows(householdRows), StandardCharsets.UTF_8)
-    Files.writeString(firmPath, renderFirmRows(firmRows), StandardCharsets.UTF_8)
-    Files.writeString(summaryPath, renderSummaryRows(summaryRows), StandardCharsets.UTF_8)
-    Files.writeString(reportPath, renderReport(config, householdRows, firmRows, summaryRows), StandardCharsets.UTF_8)
-    Vector(hhPath, firmPath, summaryPath, reportPath)
+  ): ZIO[Any, String, Vector[Path]] =
+    val summaryCsvPath = config.runRoot.resolve("loan-origination-quality-summary.csv")
+    val reportMdPath   = config.runRoot.resolve("loan-origination-quality-report.md")
+    for
+      summaryPath <- McCsvFile.writeAll(summaryCsvPath, summaryRows, SummaryRowsCsvSchema)(DiagnosticIo.outputFailure)
+      reportPath  <- DiagnosticIo.writeText(reportMdPath, renderReport(config, reportStats, summaryRows))
+    yield rowOutputPaths ++ Vector(summaryPath, reportPath)
+
+  private[diagnostics] val HouseholdRowsCsvSchema: McCsvSchema[HhOriginationRow] =
+    McCsvSchema(
+      header = HouseholdHeader,
+      render = row =>
+        Vector(
+          text(row.runId),
+          row.seed.toString,
+          row.originationMonth.toString,
+          row.householdId.toString,
+          row.bankId.toString,
+          text(row.status),
+          row.incomeDecile,
+          row.openingFinancialDistressState,
+          row.closingFinancialDistressState,
+          row.openingDistressMonths.toString,
+          row.closingDistressMonths.toString,
+          row.wage.format(2),
+          row.openingDemandDeposit.format(2),
+          row.openingConsumerLoan.format(2),
+          row.openingMortgageLoan.format(2),
+          row.monthlyIncome.format(2),
+          row.mortgageDebtService.format(2),
+          row.consumerDebtService.format(2),
+          row.totalDebtService.format(2),
+          row.totalDsr.map(renderDecimal).getOrElse(""),
+          row.mortgageDsr.map(renderDecimal).getOrElse(""),
+          row.consumerDsr.map(renderDecimal).getOrElse(""),
+          row.creditCapacity.format(2),
+          row.creditAccessEligible.toString,
+          row.creditDemand.format(2),
+          row.approvedPrincipal.format(2),
+          row.rejectedPrincipal.format(2),
+          row.bankRejectedPrincipal.format(2),
+          renderDecimal(row.bankCar),
+          renderDecimal(row.bankLcr),
+          renderDecimal(row.bankNsfr),
+          row.sameMonthArrears.toString,
+          row.sameMonthDefault.toString,
+          row.futureArrearsWithinWindow.toString,
+          row.futureDefaultWithinWindow.toString,
+          row.futureBankruptcyWithinWindow.toString,
+          row.firstFutureDefaultMonth.fold("")(_.toString),
+          row.observedFutureMonths.toString,
+          row.futureWriteOffAmount.format(2),
+        ).mkString(";"),
+    )
+
+  private[diagnostics] val FirmRowsCsvSchema: McCsvSchema[FirmOriginationRow] =
+    McCsvSchema(
+      header = FirmHeader,
+      render = row =>
+        Vector(
+          text(row.runId),
+          row.seed.toString,
+          row.originationMonth.toString,
+          row.firmId.toString,
+          row.bankId.toString,
+          text(row.sector),
+          row.sizeClass,
+          row.techState,
+          row.decisionType,
+          row.creditPurpose,
+          row.bankApprovalObserved.toString,
+          row.bankApproved.toString,
+          row.bankRejected.toString,
+          row.observedCreditNeed.format(2),
+          row.approvedPrincipal.format(2),
+          row.cashBefore.format(2),
+          row.firmLoanBefore.format(2),
+          row.realizedPostTaxProfit.format(2),
+          row.grossInvestment.format(2),
+          row.principalRepaid.format(2),
+          row.monthlyDebtServiceProxy.format(2),
+          row.debtToCash.map(renderDecimal).getOrElse(""),
+          row.dscrProxy.map(renderDecimal).getOrElse(""),
+          row.workersBefore.toString,
+          row.workersAfter.toString,
+          row.foreignOwned.toString,
+          row.stateOwned.toString,
+          renderDecimal(row.bankCar),
+          renderDecimal(row.bankLcr),
+          renderDecimal(row.bankNsfr),
+          row.sameMonthBankrupt.toString,
+          row.futureBankruptWithinWindow.toString,
+          row.firstFutureBankruptcyMonth.fold("")(_.toString),
+          row.observedFutureMonths.toString,
+          text(row.bankruptcyReason),
+        ).mkString(";"),
+    )
+
+  private[diagnostics] val SummaryRowsCsvSchema: McCsvSchema[SummaryRow] =
+    McCsvSchema(
+      header = SummaryHeader,
+      render = row =>
+        Vector(
+          text(row.runId),
+          row.borrowerType,
+          row.cohortType,
+          text(row.cohortValue),
+          row.rows.toString,
+          row.approvedRows.toString,
+          row.rejectedRows.toString,
+          row.approvedPrincipal.format(2),
+          row.futureBadRows.toString,
+          row.futureBadRate.map(renderDecimal).getOrElse(""),
+          row.meanRiskRatio.map(renderDecimal).getOrElse(""),
+          row.meanBankCar.map(renderDecimal).getOrElse(""),
+          text(row.interpretation),
+        ).mkString(";"),
+    )
 
   private[diagnostics] def renderHouseholdRows(rows: Vector[HhOriginationRow]): String =
-    val body = rows.map: row =>
-      Vector(
-        text(row.runId),
-        row.seed.toString,
-        row.originationMonth.toString,
-        row.householdId.toString,
-        row.bankId.toString,
-        text(row.status),
-        row.incomeDecile,
-        row.openingFinancialDistressState,
-        row.closingFinancialDistressState,
-        row.openingDistressMonths.toString,
-        row.closingDistressMonths.toString,
-        row.wage.format(2),
-        row.openingDemandDeposit.format(2),
-        row.openingConsumerLoan.format(2),
-        row.openingMortgageLoan.format(2),
-        row.monthlyIncome.format(2),
-        row.mortgageDebtService.format(2),
-        row.consumerDebtService.format(2),
-        row.totalDebtService.format(2),
-        row.totalDsr.map(renderDecimal).getOrElse(""),
-        row.mortgageDsr.map(renderDecimal).getOrElse(""),
-        row.consumerDsr.map(renderDecimal).getOrElse(""),
-        row.creditCapacity.format(2),
-        row.creditAccessEligible.toString,
-        row.creditDemand.format(2),
-        row.approvedPrincipal.format(2),
-        row.rejectedPrincipal.format(2),
-        row.bankRejectedPrincipal.format(2),
-        renderDecimal(row.bankCar),
-        renderDecimal(row.bankLcr),
-        renderDecimal(row.bankNsfr),
-        row.sameMonthArrears.toString,
-        row.sameMonthDefault.toString,
-        row.futureArrearsWithinWindow.toString,
-        row.futureDefaultWithinWindow.toString,
-        row.futureBankruptcyWithinWindow.toString,
-        row.firstFutureDefaultMonth.fold("")(_.toString),
-        row.observedFutureMonths.toString,
-        row.futureWriteOffAmount.format(2),
-      ).mkString(";")
-    (HouseholdHeader +: body).mkString("", "\n", "\n")
+    renderCsv(HouseholdRowsCsvSchema, rows)
 
   private[diagnostics] def renderFirmRows(rows: Vector[FirmOriginationRow]): String =
-    val body = rows.map: row =>
-      Vector(
-        text(row.runId),
-        row.seed.toString,
-        row.originationMonth.toString,
-        row.firmId.toString,
-        row.bankId.toString,
-        text(row.sector),
-        row.sizeClass,
-        row.techState,
-        row.decisionType,
-        row.creditPurpose,
-        row.bankApprovalObserved.toString,
-        row.bankApproved.toString,
-        row.bankRejected.toString,
-        row.observedCreditNeed.format(2),
-        row.approvedPrincipal.format(2),
-        row.cashBefore.format(2),
-        row.firmLoanBefore.format(2),
-        row.realizedPostTaxProfit.format(2),
-        row.grossInvestment.format(2),
-        row.principalRepaid.format(2),
-        row.monthlyDebtServiceProxy.format(2),
-        row.debtToCash.map(renderDecimal).getOrElse(""),
-        row.dscrProxy.map(renderDecimal).getOrElse(""),
-        row.workersBefore.toString,
-        row.workersAfter.toString,
-        row.foreignOwned.toString,
-        row.stateOwned.toString,
-        renderDecimal(row.bankCar),
-        renderDecimal(row.bankLcr),
-        renderDecimal(row.bankNsfr),
-        row.sameMonthBankrupt.toString,
-        row.futureBankruptWithinWindow.toString,
-        row.firstFutureBankruptcyMonth.fold("")(_.toString),
-        row.observedFutureMonths.toString,
-        text(row.bankruptcyReason),
-      ).mkString(";")
-    (FirmHeader +: body).mkString("", "\n", "\n")
+    renderCsv(FirmRowsCsvSchema, rows)
 
   private[diagnostics] def renderSummaryRows(rows: Vector[SummaryRow]): String =
-    val body = rows.map: row =>
-      Vector(
-        text(row.runId),
-        row.borrowerType,
-        row.cohortType,
-        text(row.cohortValue),
-        row.rows.toString,
-        row.approvedRows.toString,
-        row.rejectedRows.toString,
-        row.approvedPrincipal.format(2),
-        row.futureBadRows.toString,
-        row.futureBadRate.map(renderDecimal).getOrElse(""),
-        row.meanRiskRatio.map(renderDecimal).getOrElse(""),
-        row.meanBankCar.map(renderDecimal).getOrElse(""),
-        text(row.interpretation),
-      ).mkString(";")
-    (SummaryHeader +: body).mkString("", "\n", "\n")
+    renderCsv(SummaryRowsCsvSchema, rows)
+
+  private def renderCsv[A](schema: McCsvSchema[A], rows: Vector[A]): String =
+    (schema.header +: rows.map(schema.render)).mkString("\n") + "\n"
 
   private def renderReport(
       config: Config,
-      householdRows: Vector[HhOriginationRow],
-      firmRows: Vector[FirmOriginationRow],
+      reportStats: ReportStats,
       summaryRows: Vector[SummaryRow],
   ): String =
-    val hhBad       = householdRows.count(row => row.futureDefaultWithinWindow || row.futureBankruptcyWithinWindow)
-    val firmBad     = firmRows.count(row => row.futureBankruptWithinWindow || row.sameMonthBankrupt)
-    val hhBadRate   = if householdRows.nonEmpty then renderDecimal(BigDecimal(hhBad) / BigDecimal(householdRows.length)) else "NA"
-    val firmBadRate = if firmRows.nonEmpty then renderDecimal(BigDecimal(firmBad) / BigDecimal(firmRows.length)) else "NA"
+    val hhBadRate   = reportStats.householdBadRate.map(renderDecimal).getOrElse("NA")
+    val firmBadRate = reportStats.firmBadRate.map(renderDecimal).getOrElse("NA")
     val topRows     = summaryRows.sortBy(row => row.futureBadRate.getOrElse(BigDecimal(-1)))(using Ordering.BigDecimal.reverse).take(10)
     val table       =
       if topRows.isEmpty then "_No origination rows emitted in this fixture._"
@@ -806,8 +950,8 @@ object LoanOriginationQualityExport:
       "",
       "## Quick Read",
       "",
-      s"- Household rows: `${householdRows.length}`, future bad rate `${hhBadRate}`.",
-      s"- Firm rows: `${firmRows.length}`, future bad rate `${firmBadRate}`.",
+      s"- Household rows: `${reportStats.householdRows}`, future bad rate `${hhBadRate}`.",
+      s"- Firm rows: `${reportStats.firmRows}`, future bad rate `${firmBadRate}`.",
       "",
       "## Highest Future-Bad Cohorts",
       "",
@@ -819,6 +963,22 @@ object LoanOriginationQualityExport:
 
   private def futureMonths(originationMonth: Int, config: Config): Vector[Int] =
     ((originationMonth + 1) to (originationMonth + config.outcomeWindow).min(config.months)).toVector
+
+  private def householdCohorts(row: HhOriginationRow): Vector[(String, String)] =
+    Vector(
+      "IncomeDecile"       -> row.incomeDecile,
+      "OpeningDistress"    -> row.openingFinancialDistressState,
+      "TotalDsrBand"       -> dsrBand(row.totalDsr),
+      "OpeningBankCarBand" -> carBand(row.bankCar),
+    )
+
+  private def firmCohorts(row: FirmOriginationRow): Vector[(String, String)] =
+    Vector(
+      "Sector"             -> row.sector,
+      "SizeClass"          -> row.sizeClass,
+      "TechState"          -> row.techState,
+      "OpeningBankCarBand" -> carBand(row.bankCar),
+    )
 
   private def householdCreditObserved(flow: Household.MonthlyFlow): Boolean =
     flow.consumerCreditDemand > PLN.Zero ||
@@ -937,10 +1097,6 @@ object LoanOriginationQualityExport:
   private def fixed(value: Multiplier): BigDecimal =
     (BigDecimal(value.toLong) / FixedPointBase.ScaleDecimal).setScale(6, RoundingMode.HALF_UP)
 
-  private def mean(values: Vector[BigDecimal]): Option[BigDecimal] =
-    if values.isEmpty then None
-    else Some((values.sum / BigDecimal(values.length)).setScale(6, RoundingMode.HALF_UP))
-
   private def renderDecimal(value: BigDecimal): String =
     value.setScale(6, RoundingMode.HALF_UP).bigDecimal.stripTrailingZeros.toPlainString
 
@@ -956,9 +1112,6 @@ object LoanOriginationQualityExport:
   private def knownFlag(flag: String): Boolean =
     flag == "--seed-start" || flag == "--seeds" || flag == "--months" ||
       flag == "--outcome-window" || flag == "--run-id" || flag == "--out"
-
-  private def runtimeRootSeed(seed: Long, state: FlowSimulation.SimState): Long =
-    seed * 10000L + state.completedMonth.toLong
 
   private val usage =
     """Usage: LoanOriginationQualityExport [--seed-start <long>] [--seeds <int>] [--months <int>] [--outcome-window <int>] [--out <path>] [--run-id <id>]

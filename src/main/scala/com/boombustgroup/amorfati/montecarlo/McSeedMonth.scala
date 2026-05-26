@@ -1,6 +1,6 @@
 package com.boombustgroup.amorfati.montecarlo
 
-import com.boombustgroup.amorfati.agents.Household
+import com.boombustgroup.amorfati.agents.{Firm, Household}
 import com.boombustgroup.amorfati.engine.SimulationMonth.ExecutionMonth
 import com.boombustgroup.amorfati.engine.flows.FlowSimulation
 
@@ -15,4 +15,5 @@ private[amorfati] final case class McSeedMonth(
     state: FlowSimulation.SimState,
     householdSnapshotState: FlowSimulation.HouseholdSnapshotState,
     householdMonthlyFlows: Vector[Household.MonthlyFlow],
+    firmDecisionTraces: Vector[Firm.DecisionTrace],
 )

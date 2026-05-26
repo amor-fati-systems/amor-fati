@@ -72,8 +72,8 @@ object McRunner:
   /** Canonical monthly seed stream for diagnostics. This is the same runtime
     * path used by [[runZIO]], without production-only CSV/snapshot taps.
     */
-  private[amorfati] def seedMonths(seed: Long, durationMonths: Int)(using SimParams): ZStream[Any, SimError, McSeedMonth] =
-    seedStream(seed, durationMonths, traceFirmDecisions = false).map: snapshot =>
+  private[amorfati] def seedMonths(seed: Long, durationMonths: Int, traceFirmDecisions: Boolean = false)(using SimParams): ZStream[Any, SimError, McSeedMonth] =
+    seedStream(seed, durationMonths, traceFirmDecisions).map: snapshot =>
       McSeedMonth(
         snapshot.executionMonth,
         snapshot.monthData,
@@ -81,6 +81,7 @@ object McRunner:
         snapshot.state,
         snapshot.householdSnapshotState,
         snapshot.householdMonthlyFlows,
+        snapshot.firmDecisionTraces,
       )
 
   private def simulateMonths(seed: Long, initState: FlowSimulation.SimState, durationMonths: Int, traceFirmDecisions: Boolean)(using p: SimParams) =
