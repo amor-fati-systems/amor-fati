@@ -108,13 +108,14 @@ jobs:
 
       - name: Check out HEAD of main
         if: ${{ steps.schedule_window.outputs.should_run == 'true' }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           ref: main
           fetch-depth: 0
           submodules: recursive
+          persist-credentials: false
 
-      - uses: cachix/install-nix-action@v31.10.6
+      - uses: cachix/install-nix-action@8aa03977d8d733052d78f4e008a241fd1dbf36b3
         if: ${{ steps.schedule_window.outputs.should_run == 'true' }}
 
       - name: Resolve diagnostics run metadata
