@@ -335,6 +335,11 @@ sbt scalafmtAll
 Use diagnostics when a model change needs a narrow view into one mechanism or
 one reporting surface.
 
+The scheduled and manual validation profile contract lives in
+[nightly-diagnostics.md](nightly-diagnostics.md). That document defines the
+`smoke`, `nightly`, and `extended` diagnostic profiles used by planned
+jar/Nix-based validation workflows.
+
 Bankruptcy probe:
 
 ```bash
