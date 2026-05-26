@@ -45,6 +45,8 @@ object PriceEquityEconomics:
       aggInventoryChange: PLN,
   )
 
+  type StepOutput = Output
+
   // ---------------------------------------------------------------------------
   // Sigma dynamics — Arthur-style increasing returns / learning-by-doing
   // ---------------------------------------------------------------------------
@@ -131,7 +133,7 @@ object PriceEquityEconomics:
       totalSystemLoans: PLN,
       firmStep: FirmEconomics.StepOutput,
       ledgerFinancialState: LedgerFinancialState,
-  )(using p: SimParams): Output =
+  )(using p: SimParams): StepOutput =
     val expectedSectorCount = p.sectorDefs.length
     if sectorMults.length != expectedSectorCount then
       throw IllegalArgumentException(

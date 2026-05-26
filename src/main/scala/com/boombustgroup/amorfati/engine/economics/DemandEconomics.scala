@@ -35,12 +35,14 @@ object DemandEconomics:
       fiscalRuleStatus: FiscalRules.RuleStatus, // fiscal rule compliance diagnostics
   )
 
+  type StepOutput = Output
+
   def compute(
       w: World,
       employed: Int,
       living: Vector[Firm.State],
       domesticCons: PLN,
-  )(using p: SimParams): Output =
+  )(using p: SimParams): StepOutput =
     val seedIn             = w.seedIn
     val rawGovPurchases    = computeGovPurchases(w, employed)
     val fiscalResult       = applyFiscalRules(w, employed, rawGovPurchases)

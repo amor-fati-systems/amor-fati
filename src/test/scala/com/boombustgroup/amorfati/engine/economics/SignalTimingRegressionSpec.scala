@@ -22,14 +22,14 @@ class SignalTimingRegressionSpec extends AnyFlatSpec with Matchers:
       households: Vector[Household.State],
       banks: Vector[Banking.BankState],
       ledgerFinancialState: LedgerFinancialState,
-      s1: FiscalConstraintEconomics.Output,
-      s2Pre: LaborEconomics.Output,
-      s2: LaborEconomics.Output,
-      s3: HouseholdIncomeEconomics.Output,
-      s4: DemandEconomics.Output,
+      s1: FiscalConstraintEconomics.StepOutput,
+      s2Pre: LaborEconomics.StepOutput,
+      s2: LaborEconomics.StepOutput,
+      s3: HouseholdIncomeEconomics.StepOutput,
+      s4: DemandEconomics.StepOutput,
       s5: FirmEconomics.StepOutput,
-      s6: HouseholdFinancialEconomics.Output,
-      s7: PriceEquityEconomics.Output,
+      s6: HouseholdFinancialEconomics.StepOutput,
+      s7: PriceEquityEconomics.StepOutput,
       s8: OpenEconEconomics.StepOutput,
       s9: BankingEconomics.StepOutput,
   )
@@ -174,7 +174,7 @@ class SignalTimingRegressionSpec extends AnyFlatSpec with Matchers:
   private def baseOpenEconRunStep(
       world: World,
       ledgerFinancialState: LedgerFinancialState,
-      s7: PriceEquityEconomics.Output,
+      s7: PriceEquityEconomics.StepOutput,
       seed: Long,
   ): OpenEconEconomics.StepOutput =
     OpenEconEconomics.runStep(
@@ -227,7 +227,7 @@ class SignalTimingRegressionSpec extends AnyFlatSpec with Matchers:
       ),
     )
 
-  private def withSameMonthEquityReturn(s7: PriceEquityEconomics.Output, equityReturn: Rate): PriceEquityEconomics.Output =
+  private def withSameMonthEquityReturn(s7: PriceEquityEconomics.StepOutput, equityReturn: Rate): PriceEquityEconomics.StepOutput =
     s7.copy(
       equityAfterForeignStock = s7.equityAfterForeignStock.copy(monthlyReturn = equityReturn),
     )

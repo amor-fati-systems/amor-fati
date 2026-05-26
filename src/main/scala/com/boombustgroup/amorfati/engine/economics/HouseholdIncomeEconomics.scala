@@ -40,6 +40,8 @@ object HouseholdIncomeEconomics:
       ledgerFinancialState: LedgerFinancialState,           // ledger after household financial stock updates
   )
 
+  type StepOutput = Output
+
   def compute(
       w: World,
       firms: Vector[Firm.State],
@@ -51,7 +53,7 @@ object HouseholdIncomeEconomics:
       newWage: PLN,
       rng: RandomStream,
       pensionIncome: PLN = PLN.Zero,
-  )(using p: SimParams): Output =
+  )(using p: SimParams): StepOutput =
     val importAdj =
       (p.forex.importPropensity * p.forex.baseExRate.ratioTo(w.forex.exchangeRate).pow(ImportErElasticity.toScalar)).toShare.clamp(
         Share.Zero,

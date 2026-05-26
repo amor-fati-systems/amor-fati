@@ -64,12 +64,14 @@ object LaborEconomics:
       regionalWages: Map[Region, PLN],
   )
 
+  type StepOutput = Output
+
   def compute(
       w: World,
       firms: Vector[Firm.State],
       households: Vector[Household.State],
-      s1: FiscalConstraintEconomics.Output,
-  )(using p: SimParams): Output =
+      s1: FiscalConstraintEconomics.StepOutput,
+  )(using p: SimParams): StepOutput =
     val living           = firms.filter(Firm.isAlive)
     val laborDemand      = living.map(f => Firm.workerCount(f)).sum
     val laborForce       = w.laborForcePopulation
@@ -125,11 +127,11 @@ object LaborEconomics:
     */
   def reconcilePostFirmStep(
       w: World,
-      s1: FiscalConstraintEconomics.Output,
-      pre: Output,
+      s1: FiscalConstraintEconomics.StepOutput,
+      pre: StepOutput,
       postLiving: Vector[Firm.State],
       postHouseholds: Vector[Household.State],
-  )(using p: SimParams): Output =
+  )(using p: SimParams): StepOutput =
     val postLaborDemand    = postLiving.map(Firm.workerCount).sum
     val postLaborForce     = pre.newDemographics.workingAgePop.max(1)
     val realizedEmployment = Household.countEmployed(postHouseholds)

@@ -55,13 +55,15 @@ object HouseholdFinancialEconomics:
       consumerPrincipal: PLN,           // consumer loan principal repayment
   )
 
+  type StepOutput = Output
+
   def compute(
       w: World,
       month: ExecutionMonth,
       employed: Int,
       hhAgg: Household.Aggregates,
       @annotation.unused rng: RandomStream,
-  )(using p: SimParams): Output =
+  )(using p: SimParams): StepOutput =
     val depositInterestPaid = hhAgg.totalDepositInterest
     val remittanceOutflow   = hhAgg.totalRemittances
 

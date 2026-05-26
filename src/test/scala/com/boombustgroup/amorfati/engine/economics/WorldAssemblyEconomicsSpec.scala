@@ -57,7 +57,7 @@ class WorldAssemblyEconomicsSpec extends AnyFlatSpec with Matchers:
   }
 
   it should "count automation-native firm entrants in transition diagnostics" in {
-    val transitions = WorldAssemblyEconomics.automationEntryTransitions(
+    val transitions = FirmEntryTransitions.automationEntryTransitions(
       firms = Vector(
         firmWithTech(0, TechState.Hybrid(4, Multiplier.One)),
         firmWithTech(1, TechState.Traditional(4)),
@@ -69,6 +69,31 @@ class WorldAssemblyEconomicsSpec extends AnyFlatSpec with Matchers:
 
     transitions.newHybrid shouldBe 1
     transitions.newFullAi shouldBe 1
+  }
+
+  "WorldObservables" should "keep deterministic monthly seasonality anchors" in {
+    WorldObservables.monthlySeasonalCos(monthInYear = 7, peakMonth = 7) shouldBe Coefficient.One
+    WorldObservables.monthlySeasonalCos(monthInYear = 1, peakMonth = 7) shouldBe Coefficient(-1)
+    WorldObservables.monthlySeasonalCos(monthInYear = 10, peakMonth = 7) shouldBe Coefficient.Zero
+  }
+
+  "StartupStaffing" should "sync startup filled-worker counts from household employment" in {
+    val baseFirm          = deterministicStep.nextState.firms.head
+    val startupFirm       = baseFirm.copy(
+      id = FirmId(0),
+      tech = TechState.Hybrid(0, Multiplier.One),
+      startupMonthsLeft = 2,
+      startupTargetWorkers = 2,
+      startupFilledWorkers = 0,
+    )
+    val staffedHouseholds = deterministicStep.nextState.households.zipWithIndex.map: (household, idx) =>
+      if idx < 3 then household.copy(status = HhStatus.Employed(startupFirm.id, startupFirm.sector, PLN(5000)))
+      else household.copy(status = HhStatus.Unemployed(1))
+
+    val synced = StartupStaffing.sync(Vector(startupFirm), staffedHouseholds).head
+
+    synced.startupFilledWorkers shouldBe 2
+    synced.tech shouldBe TechState.Hybrid(2, Multiplier.One)
   }
 
   it should "carry supported financial stocks through stage-owned ledger updates" in {

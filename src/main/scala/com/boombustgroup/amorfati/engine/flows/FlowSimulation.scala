@@ -366,18 +366,18 @@ object FlowSimulation:
     * boundaries.
     */
   private[engine] case class SignalBoundaryInputs(
-      labor: LaborEconomics.Output,
-      demand: DemandEconomics.Output,
+      labor: LaborEconomics.StepOutput,
+      demand: DemandEconomics.StepOutput,
   )
 
   /** Same-month payload narrowed for executed-batch -> SFC semantic projection.
     */
   private[engine] case class SemanticFlowInputs(
-      labor: LaborEconomics.Output,
-      hhIncome: HouseholdIncomeEconomics.Output,
+      labor: LaborEconomics.StepOutput,
+      hhIncome: HouseholdIncomeEconomics.StepOutput,
       firms: FirmEconomics.StepOutput,
-      hhFinancial: HouseholdFinancialEconomics.Output,
-      prices: PriceEquityEconomics.Output,
+      hhFinancial: HouseholdFinancialEconomics.StepOutput,
+      prices: PriceEquityEconomics.StepOutput,
       openEcon: OpenEconEconomics.StepOutput,
       banking: BankingEconomics.StepOutput,
   )
@@ -1103,8 +1103,8 @@ object FlowSimulation:
     )
 
   private def operationalSignals(
-      labor: LaborEconomics.Output,
-      demand: DemandEconomics.Output,
+      labor: LaborEconomics.StepOutput,
+      demand: DemandEconomics.StepOutput,
   ): OperationalSignals =
     OperationalSignals(
       sectorDemandMult = demand.sectorMults,

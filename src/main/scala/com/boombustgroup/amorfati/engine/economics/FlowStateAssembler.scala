@@ -1,0 +1,57 @@
+package com.boombustgroup.amorfati.engine.economics
+
+import com.boombustgroup.amorfati.engine.FlowState
+
+/** Maps monthly stage outputs into the diagnostic flow-state surface. */
+object FlowStateAssembler:
+
+  def build(in: WorldAssemblyEconomics.StepInput, informal: WorldInformalEconomy.Result): FlowState =
+    FlowState(
+      monthlyGdpProxy = in.s7.gdp,
+      sectorOutputs = in.s7.realizedSectorOutputs,
+      ioFlows = in.s5.totalIoPaid,
+      fdiProfitShifting = in.s5.sumProfitShifting,
+      fdiRepatriation = in.s5.sumFdiRepatriation,
+      fdiCitLoss = in.s8.external.fdiCitLoss,
+      diasporaRemittanceInflow = in.s6.diasporaInflow,
+      tourismExport = in.s6.tourismExport,
+      tourismImport = in.s6.tourismImport,
+      aggInventoryStock = in.s7.aggInventoryStock,
+      aggInventoryChange = in.s7.aggInventoryChange,
+      aggEnergyCost = in.s5.sumEnergyCost,
+      automationTechCapex = in.s5.automationTechCapex,
+      automationTechImports = in.s5.automationTechImports,
+      automationTechLoans = in.s5.automationTechLoans,
+      automationUpgradeFailures = in.s5.automationUpgradeFailures,
+      automationAiDebtTrap = in.s5.automationAiDebtTrap,
+      automationNewFullAi = in.s5.automationNewFullAi,
+      automationNewHybrid = in.s5.automationNewHybrid,
+      firmNewLoans = in.s5.sumNewLoans,
+      firmPrincipalRepaid = in.s5.sumFirmPrincipal,
+      firmGrossDefault = in.s5.nplNew,
+      firmNplLoss = in.s5.nplLoss,
+      firmInvestmentCreditDemand = in.s5.sumInvestmentCreditDemand,
+      firmInvestmentCreditApproved = in.s5.sumInvestmentCreditApproved,
+      firmInvestmentCreditRejected = in.s5.sumInvestmentCreditRejected,
+      firmTechCreditDemand = in.s5.sumTechCreditDemand,
+      firmTechCreditApproved = in.s5.sumTechCreditApproved,
+      firmTechCreditRejected = in.s5.sumTechCreditRejected,
+      firmTechSelectedCreditDemand = in.s5.sumTechSelectedCreditDemand,
+      firmTechSelectedCreditApproved = in.s5.sumTechSelectedCreditApproved,
+      firmTechSelectedCreditRejected = in.s5.sumTechSelectedCreditRejected,
+      firmTechCandidateCreditDemand = in.s5.sumTechCandidateCreditDemand,
+      firmTechCandidateCreditApproved = in.s5.sumTechCandidateCreditApproved,
+      firmTechCandidateCreditRejected = in.s5.sumTechCandidateCreditRejected,
+      firmCreditRejectedByReason = in.s5.sumCreditRejectedByReason,
+      firmBirths = 0,
+      firmDeaths = 0,
+      taxEvasionLoss = informal.taxEvasionLoss,
+      realizedTaxShadowShare = informal.realizedTaxShadowShare,
+      bailInLoss = in.s9.bailInLoss,
+      bfgLevyTotal = in.s9.bfgLevy,
+      bankCapital = in.s9.bankCapitalDiagnostics,
+      bankFailure = in.s9.bankFailureDiagnostics,
+      bankResolution = in.s9.bankResolutionDiagnostics,
+      bankReconciliation = in.s9.bankReconciliationDiagnostics,
+      bankEcl = in.s9.bankEclDiagnostics,
+    )

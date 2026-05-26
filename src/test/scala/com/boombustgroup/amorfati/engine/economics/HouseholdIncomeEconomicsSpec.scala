@@ -18,7 +18,7 @@ class HouseholdIncomeEconomicsSpec extends AnyFlatSpec with Matchers:
   private val s1   = FiscalConstraintEconomics.compute(w, init.banks, init.ledgerFinancialState, ExecutionMonth.First)
   private val s2   = LaborEconomics.compute(w, init.firms, init.households, s1)
 
-  private def compute(pensionIncome: PLN): HouseholdIncomeEconomics.Output =
+  private def compute(pensionIncome: PLN): HouseholdIncomeEconomics.StepOutput =
     HouseholdIncomeEconomics.compute(
       w,
       init.firms,
