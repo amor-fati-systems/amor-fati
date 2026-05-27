@@ -5,7 +5,7 @@ import com.boombustgroup.amorfati.agents.RegionalMigration
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.{MonthRandomness, World}
 import com.boombustgroup.amorfati.engine.ledger.LedgerFinancialState
-import com.boombustgroup.amorfati.engine.mechanisms.{FirmEntry, SectoralMobility}
+import com.boombustgroup.amorfati.engine.mechanisms.{FdiOwnershipTransitions, FirmEntry, SectoralMobility}
 import com.boombustgroup.amorfati.types.Share
 
 /** Post-month population transitions that complete firm/household state after
