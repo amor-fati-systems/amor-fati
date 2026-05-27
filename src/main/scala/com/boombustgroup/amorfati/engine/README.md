@@ -113,7 +113,6 @@ population/state transitions, and materializes the month-`t+1` engine boundary.
 | `WorldInformalEconomy.scala` | Computes tax evasion loss, realized shadow-tax share, and smoothed informal-economy cyclical state. |
 | `WorldObservables.scala` | Computes assembled-world observables such as deposit-facility usage, ETS price, and tourism seasonality. |
 | `FlowOfFundsDiagnostics.scala` | Computes the flow-of-funds residual from realized firm revenue and adjusted demand. |
-| `FirmEntryTransitions.scala` | Derives automation-native entrant diagnostics from newly created firms. |
 | `StartupStaffing.scala` | Assigns startup workers after firm entry and synchronizes startup filled-worker counts with household employment. |
 
 ## flows/
@@ -190,7 +189,7 @@ don't clear markets themselves.
 | `EuFunds.scala` | EU structural funds: Beta-curve absorption timing, co-financing, capital investment |
 | `Expectations.scala` | Inflation expectations: adaptive-anchoring hybrid, central bank credibility |
 | `FdiOwnershipTransitions.scala` | Stochastic FDI M&A mechanism: eligible domestic firms may become foreign-owned at the post-month transition boundary. |
-| `FirmEntry.scala` | Endogenous firm entry: profit-weighted sector choice, regulatory barriers, AI-native startups |
+| `FirmEntry.scala` | Endogenous firm entry: profit-weighted sector choice, regulatory barriers, AI-native startups, and entrant technology diagnostics |
 | `Macroprudential.scala` | CCyB (countercyclical capital buffer), credit-to-GDP gap, O-SII buffers |
 | `SectoralMobility.scala` | Cross-sector labor transitions: friction matrix, voluntary quits, wage penalties |
 | `TaxRevenue.scala` | Fiscal revenue: VAT, excise, customs, informal-economy evasion adjustments |

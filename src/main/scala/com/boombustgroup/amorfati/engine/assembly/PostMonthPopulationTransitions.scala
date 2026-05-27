@@ -37,7 +37,6 @@ object PostMonthPopulationTransitions:
       FirmEntry.LaggedEntrySignals.fromDecisionSignals(in.w.seedIn),
       randomness.firmEntry,
     )
-    val entryAutomationTransitions = FirmEntryTransitions.automationEntryTransitions(entryStep.firms, entryStep.newFirmIds)
 
     val startupStaffing = StartupStaffing.assign(in, entryStep.firms, in.s9.reassignedHouseholds, randomness.startupStaffing)
 
@@ -47,8 +46,8 @@ object PostMonthPopulationTransitions:
       firmBirths = entryStep.births,
       firmDeaths = in.s5.firmDeaths,
       netFirmBirths = entryStep.netBirths,
-      automationNewFullAi = world.flows.automationNewFullAi + entryAutomationTransitions.newFullAi,
-      automationNewHybrid = world.flows.automationNewHybrid + entryAutomationTransitions.newHybrid,
+      automationNewFullAi = world.flows.automationNewFullAi + entryStep.automationTransitions.newFullAi,
+      automationNewHybrid = world.flows.automationNewHybrid + entryStep.automationTransitions.newHybrid,
     )
     val finalCrossSectorHires = world.real.sectoralMobility.crossSectorHires + startupStaffing.crossSectorHires
     val finalReal             = world.real.copy(

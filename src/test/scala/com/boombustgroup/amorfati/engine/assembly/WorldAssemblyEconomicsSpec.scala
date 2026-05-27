@@ -17,9 +17,6 @@ class WorldAssemblyEconomicsSpec extends AnyFlatSpec with Matchers:
   private lazy val deterministicStep: FlowSimulation.StepOutput =
     RuntimeFlowsTestSupport.stepFromSeed()
 
-  private def firmWithTech(id: Int, tech: TechState): Firm.State =
-    deterministicStep.nextState.firms.head.copy(id = FirmId(id), tech = tech)
-
   "WorldAssemblyEconomics" should "produce valid world after simulation step" in {
     val result = deterministicStep
     val w      = result.nextState.world
@@ -54,21 +51,6 @@ class WorldAssemblyEconomicsSpec extends AnyFlatSpec with Matchers:
     w.gov.govCurrentSpend shouldBe result.calculus.govCurrentSpend
     w.gov.domesticBudgetDemand shouldBe (result.calculus.govCurrentSpend + result.calculus.govCapitalSpend)
     w.gov.domesticBudgetOutlays.should(be >= w.gov.domesticBudgetDemand)
-  }
-
-  it should "count automation-native firm entrants in transition diagnostics" in {
-    val transitions = FirmEntryTransitions.automationEntryTransitions(
-      firms = Vector(
-        firmWithTech(0, TechState.Hybrid(4, Multiplier.One)),
-        firmWithTech(1, TechState.Traditional(4)),
-        firmWithTech(2, TechState.Automated(Multiplier.One)),
-        firmWithTech(3, TechState.Hybrid(4, Multiplier.One)),
-      ),
-      newFirmIds = Set(FirmId(0), FirmId(1), FirmId(2)),
-    )
-
-    transitions.newHybrid shouldBe 1
-    transitions.newFullAi shouldBe 1
   }
 
   "WorldObservables" should "keep deterministic monthly seasonality anchors" in {
