@@ -101,15 +101,14 @@ case-class rename.
 
 Post-month state projection. This package is intentionally separate from
 `economics`: it does not decide market behavior or emit monetary flows. It
-takes the already-computed stage outputs, applies deterministic post-month
-population/state transitions, and materializes the month-`t+1` engine boundary.
+takes the already-computed stage outputs, invokes domain transition mechanisms,
+and materializes the month-`t+1` engine boundary.
 
 | File | Responsibility |
 |------|----------------|
 | `WorldAssemblyEconomics.scala` | Public `StepInput` / `PostResult` contract and top-level ordering for post-month assembly. |
 | `WorldStateAssembler.scala` | Builds the post-stage `World` value from explicit stage outputs, domain-mechanism projections, ledger diagnostics, and flow-of-funds diagnostics. |
 | `FlowStateAssembler.scala` | Maps stage outputs into `FlowState`, the diagnostic flow surface persisted on `World`. |
-| `PostMonthPopulationTransitions.scala` | Completes post-month population transitions by invoking domain mechanisms for FDI M&A, firm entry, startup staffing, and regional migration, then applying firm-flow birth/death diagnostics and firm ledger refresh. |
 | `FlowOfFundsDiagnostics.scala` | Computes the flow-of-funds residual from realized firm revenue and adjusted demand. |
 
 ## flows/
@@ -190,6 +189,7 @@ economics-stage market-clearing pipeline.
 | `FirmEntry.scala` | Endogenous firm entry: profit-weighted sector choice, regulatory barriers, AI-native startups, and entrant technology diagnostics |
 | `InformalEconomy.scala` | Shadow-economy tax evasion diagnostics and counter-cyclical informal-sector state dynamics. |
 | `Macroprudential.scala` | CCyB (countercyclical capital buffer), credit-to-GDP gap, O-SII buffers |
+| `PopulationLifecycleTransitions.scala` | Post-month agent-population lifecycle: FDI M&A, firm entry, startup staffing, regional migration, and lifecycle diagnostics. |
 | `SectoralMobility.scala` | Cross-sector labor transitions: friction matrix, voluntary quits, wage penalties |
 | `StartupStaffing.scala` | Startup lifecycle mechanism: assigns workers to newly entered firms and synchronizes startup filled-worker counts with household employment. |
 | `TaxRevenue.scala` | Fiscal revenue: VAT, excise, customs, informal-economy evasion adjustments |

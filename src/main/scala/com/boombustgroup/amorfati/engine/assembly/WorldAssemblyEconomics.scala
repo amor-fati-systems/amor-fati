@@ -5,7 +5,7 @@ import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.*
 import com.boombustgroup.amorfati.engine.economics.*
 import com.boombustgroup.amorfati.engine.ledger.LedgerFinancialState
-import com.boombustgroup.amorfati.engine.mechanisms.InformalEconomy
+import com.boombustgroup.amorfati.engine.mechanisms.{FirmEntry, InformalEconomy, PopulationLifecycleTransitions}
 import com.boombustgroup.amorfati.types.*
 
 /** Explicit post-month assembly boundary.
@@ -76,14 +76,50 @@ object WorldAssemblyEconomics:
   )(using p: SimParams): PostResult =
     val context        = AssemblyContext.from(step)
     val assembledWorld = WorldStateAssembler.assemble(context)
-    val population     = PostMonthPopulationTransitions.run(context.step, assembledWorld, randomness)
+    val population     = PopulationLifecycleTransitions.run(
+      populationLifecycleInput(step, assembledWorld),
+      fdiMaRng = randomness.fdiMa,
+      firmEntryRng = randomness.firmEntry,
+      startupStaffingRng = randomness.startupStaffing,
+      regionalMigrationRng = randomness.regionalMigration,
+    )
+    val finalWorld     = WorldStateAssembler.withPopulationLifecycle(assembledWorld, step, population)
+    val finalLedger    = step.s9.ledgerFinancialState.copy(
+      firms = LedgerFinancialState.refreshFirmPopulationBalances(
+        population.firmFinancialStocks,
+        step.s9.ledgerFinancialState.firms,
+        population.newFirmIds,
+      ),
+    )
 
     PostResult(
-      world = population.world,
+      world = finalWorld,
       firms = population.firms,
       households = population.households,
       banks = step.s9.banks,
       householdAggregates = population.householdAggregates,
-      ledgerFinancialState = population.ledgerFinancialState,
+      ledgerFinancialState = finalLedger,
       startupAbsorptionRate = population.startupAbsorptionRate,
+    )
+
+  private def populationLifecycleInput(
+      step: StepInput,
+      assembledWorld: World,
+  ): PopulationLifecycleTransitions.Input =
+    PopulationLifecycleTransitions.Input(
+      firms = step.s9.reassignedFirms,
+      firmFinancialBalances = step.s9.ledgerFinancialState.firms,
+      households = step.s9.reassignedHouseholds,
+      householdFinancialBalances = step.s9.ledgerFinancialState.households,
+      automationRatio = assembledWorld.real.automationRatio,
+      hybridRatio = assembledWorld.real.hybridRatio,
+      laggedEntrySignals = FirmEntry.LaggedEntrySignals.fromDecisionSignals(step.w.seedIn),
+      marketWage = step.s2.newWage,
+      reservationWage = step.s1.resWage,
+      importAdjustment = step.s3.importAdj,
+      regionalWages = step.s2.regionalWages,
+      remainingHireCapacity = step.s5.postFirmHireCapacity - step.s5.postFirmHires,
+      retrainingAttempts = step.s3.hhAgg.retrainingAttempts,
+      retrainingSuccesses = step.s3.hhAgg.retrainingSuccesses,
+      householdFlowTotals = step.s9.finalHhAgg,
     )

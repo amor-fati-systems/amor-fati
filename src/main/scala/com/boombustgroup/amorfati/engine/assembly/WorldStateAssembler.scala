@@ -4,7 +4,7 @@ import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.*
 import com.boombustgroup.amorfati.engine.ledger.BankReserveDiagnostics
 import com.boombustgroup.amorfati.engine.markets.EquityMarket
-import com.boombustgroup.amorfati.engine.mechanisms.{ClimatePolicy, SectoralMobility, TourismSeasonality}
+import com.boombustgroup.amorfati.engine.mechanisms.{ClimatePolicy, PopulationLifecycleTransitions, SectoralMobility, TourismSeasonality}
 import com.boombustgroup.amorfati.types.*
 
 /** Constructs the post-stage World value before population transitions finish
@@ -86,6 +86,36 @@ object WorldStateAssembler:
       ),
       pipeline = in.w.pipeline,
       flows = FlowStateAssembler.build(context),
+    )
+
+  def withPopulationLifecycle(
+      world: World,
+      in: WorldAssemblyEconomics.StepInput,
+      population: PopulationLifecycleTransitions.Result,
+  ): World =
+    val finalFlows            = world.flows.copy(
+      firmBirths = population.births,
+      firmDeaths = in.s5.firmDeaths,
+      netFirmBirths = population.netBirths,
+      automationNewFullAi = world.flows.automationNewFullAi + population.automationTransitions.newFullAi,
+      automationNewHybrid = world.flows.automationNewHybrid + population.automationTransitions.newHybrid,
+    )
+    val finalCrossSectorHires = world.real.sectoralMobility.crossSectorHires + population.crossSectorHires
+    val finalReal             = world.real.copy(
+      sectoralMobility = world.real.sectoralMobility.copy(
+        crossSectorHires = finalCrossSectorHires,
+        sectorMobilityRate = SectoralMobility.mobilityRate(finalCrossSectorHires, population.householdAggregates.employed),
+      ),
+    )
+    world.copy(
+      pipeline = in.w.pipeline.withSameMonthDiagnostics(
+        operationalHiringSlack = in.s2.operationalHiringSlack,
+        fiscalRuleSeverity = in.s4.fiscalRuleStatus.bindingRule,
+        govSpendingCutRatio = in.s4.fiscalRuleStatus.spendingCutRatio,
+      ),
+      flows = finalFlows,
+      real = finalReal,
+      regionalWages = in.s2.regionalWages,
     )
 
   private def finalizeEquity(in: WorldAssemblyEconomics.StepInput): EquityMarket.State =
