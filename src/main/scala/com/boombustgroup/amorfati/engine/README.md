@@ -109,7 +109,6 @@ population/state transitions, and materializes the month-`t+1` engine boundary.
 | `WorldStateAssembler.scala` | Builds the post-stage `World` value from explicit stage outputs, observables, informal-economy state, and flow-of-funds diagnostics. |
 | `FlowStateAssembler.scala` | Maps stage outputs into `FlowState`, the diagnostic flow surface persisted on `World`. |
 | `PostMonthPopulationTransitions.scala` | Completes post-month population transitions by invoking domain mechanisms for FDI M&A and firm entry, then applying startup staffing, regional migration, firm-flow birth/death diagnostics, and firm ledger refresh. |
-| `PostMonthPipelineState.scala` | Persists same-month pipeline fields that become visible before next-month signal extraction. |
 | `WorldInformalEconomy.scala` | Computes tax evasion loss, realized shadow-tax share, and smoothed informal-economy cyclical state. |
 | `WorldObservables.scala` | Computes assembled-world observables such as deposit-facility usage, ETS price, and tourism seasonality. |
 | `FlowOfFundsDiagnostics.scala` | Computes the flow-of-funds residual from realized firm revenue and adjusted demand. |

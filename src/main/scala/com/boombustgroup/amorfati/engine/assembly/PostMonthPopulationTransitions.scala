@@ -57,7 +57,11 @@ object PostMonthPopulationTransitions:
       ),
     )
     val finalWorld            = world.copy(
-      pipeline = PostMonthPipelineState.build(in),
+      pipeline = in.w.pipeline.withSameMonthDiagnostics(
+        operationalHiringSlack = in.s2.operationalHiringSlack,
+        fiscalRuleSeverity = in.s4.fiscalRuleStatus.bindingRule,
+        govSpendingCutRatio = in.s4.fiscalRuleStatus.spendingCutRatio,
+      ),
       flows = finalFlows,
       real = finalReal,
       regionalWages = in.s2.regionalWages,

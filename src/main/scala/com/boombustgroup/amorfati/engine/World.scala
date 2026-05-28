@@ -234,6 +234,17 @@ case class PipelineState(
       laggedExpectedInflation = signals.expectedInflation,
     )
 
+  def withSameMonthDiagnostics(
+      operationalHiringSlack: Share,
+      fiscalRuleSeverity: Int,
+      govSpendingCutRatio: Share,
+  ): PipelineState =
+    copy(
+      operationalHiringSlack = operationalHiringSlack,
+      fiscalRuleSeverity = fiscalRuleSeverity,
+      govSpendingCutRatio = govSpendingCutRatio,
+    )
+
 object PipelineState:
   def zero(sectorCount: Int): PipelineState =
     PipelineState(
