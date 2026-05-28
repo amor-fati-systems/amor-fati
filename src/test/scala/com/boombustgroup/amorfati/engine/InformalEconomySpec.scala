@@ -281,6 +281,26 @@ class InformalEconomySpec extends AnyFlatSpec with Matchers:
     result.nextTaxShadowShare shouldBe InformalEconomy.aggregateTaxShadowShare(result.cyclicalAdj)
   }
 
+  it should "not offset CIT evasion with negative aggregate-tax channel losses" in {
+    val result = InformalEconomy.compute(
+      InformalEconomy.Input(
+        citEvasion = PLN(100),
+        vatBeforeEvasion = PLN(800),
+        vatAfterEvasion = PLN(1000),
+        pitBeforeEvasion = PLN(350),
+        pitAfterEvasion = PLN(500),
+        exciseBeforeEvasion = PLN(250),
+        exciseAfterEvasion = PLN(300),
+        realizedTaxShadowShare = Share.Zero,
+        employed = 90,
+        workingAgePopulation = 100,
+        previousCyclicalAdjustment = Share.Zero,
+      ),
+    )
+
+    result.taxEvasionLoss shouldBe PLN(100)
+  }
+
   // ==========================================================================
   // EvasionToGdpRatio
   // ==========================================================================

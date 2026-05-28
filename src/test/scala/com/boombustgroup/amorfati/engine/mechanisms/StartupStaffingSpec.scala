@@ -3,6 +3,7 @@ package com.boombustgroup.amorfati.engine.mechanisms
 import com.boombustgroup.amorfati.agents.*
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.flows.RuntimeFlowsTestSupport
+import com.boombustgroup.amorfati.random.RandomStream
 import com.boombustgroup.amorfati.types.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -30,4 +31,25 @@ class StartupStaffingSpec extends AnyFlatSpec with Matchers:
 
     synced.startupFilledWorkers shouldBe 2
     synced.tech shouldBe TechState.Hybrid(2, Multiplier.One)
+  }
+
+  it should "report zero absorption in months without eligible startups" in {
+    val result = StartupStaffing.assign(
+      StartupStaffing.Input(
+        firms = Vector.empty,
+        households = deterministicStep.nextState.households,
+        householdFinancialStocks = Vector.empty,
+        marketWage = PLN.Zero,
+        reservationWage = PLN.Zero,
+        importAdjustment = Share.Zero,
+        regionalWages = Map.empty,
+        remainingHireCapacity = 0,
+        retrainingAttempts = 0,
+        retrainingSuccesses = 0,
+        householdFlowTotals = deterministicStep.nextState.householdAggregates,
+      ),
+      RandomStream.seeded(123L),
+    )
+
+    result.startupAbsorptionRate shouldBe Share.Zero
   }

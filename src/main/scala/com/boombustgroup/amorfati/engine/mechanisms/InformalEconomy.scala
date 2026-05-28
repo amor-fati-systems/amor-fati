@@ -32,9 +32,10 @@ object InformalEconomy:
     */
   def compute(in: Input)(using p: SimParams): Result =
     val taxEvasionLoss =
-      in.citEvasion + (in.vatBeforeEvasion - in.vatAfterEvasion) +
-        (in.pitBeforeEvasion - in.pitAfterEvasion) +
-        (in.exciseBeforeEvasion - in.exciseAfterEvasion)
+      in.citEvasion +
+        (in.vatBeforeEvasion - in.vatAfterEvasion).max(PLN.Zero) +
+        (in.pitBeforeEvasion - in.pitAfterEvasion).max(PLN.Zero) +
+        (in.exciseBeforeEvasion - in.exciseAfterEvasion).max(PLN.Zero)
 
     val cyclicalAdj = computeCyclicalAdjustment(
       employed = in.employed,

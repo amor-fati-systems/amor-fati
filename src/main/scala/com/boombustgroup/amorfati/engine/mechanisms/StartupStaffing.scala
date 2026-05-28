@@ -51,7 +51,7 @@ object StartupStaffing:
     val startupScan = scanStartups(in.firms)
     if startupScan.eligibleIds.isEmpty then
       val synced = syncWithStartupIndices(in.firms, in.households, startupScan.allStartupIndices, startupScan.allStartupIndices)
-      Result(synced.firms, in.households, in.householdFlowTotals, 0, Share.One)
+      Result(synced.firms, in.households, in.householdFlowTotals, 0, Share.Zero)
     else
       val maxHires              = Math.max(0, in.remainingHireCapacity)
       val searchResult          =
