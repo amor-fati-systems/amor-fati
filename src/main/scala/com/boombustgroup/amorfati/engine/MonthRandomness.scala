@@ -5,7 +5,7 @@ import com.boombustgroup.amorfati.random.{RandomStream, SeedDerivation}
 /** Explicit month-step randomness contract.
   *
   * Deterministic replay of one monthly step starts when both the state boundary
-  * and the month `rootSeed` are fixed. All stage and mechanism streams are
+  * and the month `rootSeed` are fixed. All stage and closing streams are
   * derived deterministically from that explicit seed and stay independent.
   */
 object MonthRandomness:

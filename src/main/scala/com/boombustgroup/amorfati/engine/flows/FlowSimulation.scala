@@ -453,7 +453,7 @@ object FlowSimulation:
         closed: MonthSemantics.ClosedMonth,
         seedOut: MonthSemantics.SeedOut,
     ): Program[MonthTraceCore] =
-      MonthWorkflow.pure(deriveTraceCore(pre, closed, seedOut))
+      MonthWorkflow.pure(MonthTraceBuilder.core(pre, closed, seedOut))
 
   /** Full month-step contract.
     *
@@ -513,10 +513,11 @@ object FlowSimulation:
       executionDeltaLedger = Sfc.ExecutionDeltaLedger.fromRaw(execution.deltaLedger),
       deltaLedgerNet = execution.netDelta,
     )
-    val monthTrace              = buildMonthTrace(
-      input = input,
-      outcome = outcome,
-      nextState = nextState,
+    val monthTrace              = MonthTraceBuilder.build(
+      executionMonth = input.executionMonth,
+      randomness = input.randomness,
+      core = outcome.traceCore,
+      endState = nextState,
       executedFlows = sfcFlows,
       sfcResult = sfcResult,
     )
@@ -1158,31 +1159,6 @@ object FlowSimulation:
   private def buildOperationalSignals(signalView: MonthSemantics.SignalView): MonthSemantics.Operational =
     MonthSemantics.operational(operationalSignals(signalView.labor, signalView.demand))
 
-  private def buildTimingInputs(
-      signalView: MonthSemantics.SignalView,
-      closing: MonthClosingResult,
-  ): MonthTimingInputs =
-    MonthTimingInputs(
-      labor = MonthTimingPayload.LaborSignals(
-        operationalHiringSlack = signalView.labor.operationalHiringSlack,
-      ),
-      demand = MonthTimingPayload.DemandSignals(
-        sectorDemandMult = signalView.demand.sectorMults,
-        sectorDemandPressure = signalView.demand.sectorDemandPressure,
-        sectorHiringSignal = signalView.demand.sectorHiringSignal,
-      ),
-      nominal = MonthTimingPayload.NominalSignals(
-        realizedInflation = closing.world.inflation,
-        expectedInflation = closing.world.mechanisms.expectations.expectedInflation,
-      ),
-      firmDynamics = MonthTimingPayload.FirmDynamics(
-        startupAbsorptionRate = closing.startupAbsorptionRate,
-        firmBirths = closing.world.flows.firmBirths,
-        firmDeaths = closing.world.flows.firmDeaths,
-        netFirmBirths = closing.world.flows.netFirmBirths,
-      ),
-    )
-
   private def buildClosedMonthBoundary(
       closingInput: MonthSemantics.ClosingInput,
       signalView: MonthSemantics.SignalView,
@@ -1200,7 +1176,7 @@ object FlowSimulation:
           closing.banks,
           closing.ledgerFinancialState,
         ),
-        timing = MonthTimingTrace.fromInputs(buildTimingInputs(signalView, closing)),
+        timing = MonthTraceBuilder.timingTrace(signalView, closing),
       ),
     )
 
@@ -1221,17 +1197,6 @@ object FlowSimulation:
           sectorHiringSignal = signalView.demand.sectorHiringSignal,
         ),
       ),
-    )
-
-  private def deriveTraceCore(
-      input: StepInput,
-      closed: MonthSemantics.ClosedMonth,
-      seedOut: MonthSemantics.SeedOut,
-  ): MonthTraceCore =
-    MonthTraceCore(
-      boundary = MonthBoundaryTrace.from(input.boundaryIn, closed.boundaryOut),
-      seedTransition = SeedTransitionTrace.from(input.seedIn, seedOut),
-      timing = closed.timing,
     )
 
   private def computeMonthOutcome(input: StepInput)(using p: SimParams): MonthOutcome =
@@ -1279,29 +1244,4 @@ object FlowSimulation:
       banks = closing.banks,
       householdAggregates = closing.householdAggregates,
       ledgerFinancialState = closing.ledgerFinancialState,
-    )
-
-  private def buildMonthTrace(
-      input: StepInput,
-      outcome: MonthOutcome,
-      nextState: SimState,
-      executedFlows: Sfc.SemanticFlows,
-      sfcResult: Sfc.SfcResult,
-  ): MonthTrace =
-    val projectedBoundary = outcome.traceCore.boundary.copy(
-      endSnapshot = MonthBoundarySnapshot.capture(
-        nextState.world,
-        nextState.firms,
-        nextState.households,
-        nextState.banks,
-        nextState.ledgerFinancialState,
-      ),
-    )
-    val projectedCore     = outcome.traceCore.copy(boundary = projectedBoundary)
-    MonthTrace.fromCore(
-      executionMonth = input.executionMonth,
-      randomness = input.randomness,
-      core = projectedCore,
-      executedFlows = executedFlows,
-      validations = Vector(MonthValidation.fromSfcResult(sfcResult)),
     )
