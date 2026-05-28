@@ -5,7 +5,7 @@ import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.random.RandomStream
 import com.boombustgroup.amorfati.types.Share
 
-/** FDI M&A ownership transitions at the post-month boundary. */
+/** FDI M&A ownership transitions at the month-closing boundary. */
 object FdiOwnershipTransitions:
 
   /** Monthly stochastic conversion of domestic firms to foreign ownership,

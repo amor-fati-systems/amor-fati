@@ -1,6 +1,6 @@
 package com.boombustgroup.amorfati.engine
 
-import com.boombustgroup.amorfati.engine.flows.FlowSimulation.{MonthPostBoundary, MonthlyCalculus, SemanticFlowInputs, SignalBoundaryInputs}
+import com.boombustgroup.amorfati.engine.flows.FlowSimulation.{ClosedMonthBoundary, MonthlyCalculus, SemanticFlowInputs, SignalBoundaryInputs}
 
 /** Tiny type-level timeline for one monthly engine step.
   *
@@ -118,11 +118,11 @@ object MonthSemantics:
     private[engine] inline def banking =
       unwrap(semanticProjection).banking
 
-  /** Realized post-month boundary before extracting the next seed. */
-  type ClosedMonth = At[MonthPostBoundary, Post]
+  /** Realized closed-month boundary before extracting the next seed. */
+  type ClosedMonth = At[ClosedMonthBoundary, Post]
 
-  inline def closedMonth(boundary: MonthPostBoundary): ClosedMonth =
-    wrap[MonthPostBoundary, Post](boundary)
+  inline def closedMonth(boundary: ClosedMonthBoundary): ClosedMonth =
+    wrap[ClosedMonthBoundary, Post](boundary)
 
   extension (closed: ClosedMonth)
     inline def closing =

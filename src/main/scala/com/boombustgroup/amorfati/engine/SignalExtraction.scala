@@ -9,7 +9,7 @@ enum MonthTraceStage:
   case DemandEconomics
   case PriceEquityEconomics
   case OpenEconEconomics
-  case WorldAssemblyEconomics
+  case MonthClosing
   case StartupStaffing
 
 /** Typed provenance for one extracted next-month signal. */
@@ -31,11 +31,11 @@ case class SeedOutProvenance(
     sectorHiringSignal: SignalProvenance[Vector[Multiplier]],
 )
 
-/** Explicit post-to-pre transition boundary for monthly execution.
+/** Explicit closed-to-next-pre transition boundary for monthly execution.
   *
   * This component owns the derivation of next-month [[DecisionSignals]] from
-  * realized month-`t` outcomes. World assembly may collect the realized inputs,
-  * but it should not own the extraction semantics itself.
+  * realized month-`t` outcomes. Month closing materializes the realized inputs,
+  * but it does not own the extraction semantics itself.
   */
 object SignalExtraction:
 
@@ -96,13 +96,13 @@ object SignalExtraction:
       ),
     )
 
-  /** Canonical extraction from the assembled post-month state.
+  /** Canonical extraction from the closed month state.
     *
     * This is the single bridge from realized month-`t` stock/flow outcomes to
     * the next month's decision seed. Callers that need next-boundary signals
     * should use this instead of rebuilding unemployment and demand inputs.
     */
-  def fromPostMonth(
+  def fromClosedMonth(
       world: World,
       households: Vector[Household.State],
       operationalHiringSlack: Share,
@@ -147,18 +147,18 @@ object SignalExtraction:
       provenance = SeedOutProvenance(
         unemploymentRate = SignalProvenance(
           seedOut.unemploymentRate,
-          MonthTraceStage.WorldAssemblyEconomics,
-          "finalHouseholds employment count -> assembledWorld.unemploymentRate",
+          MonthTraceStage.MonthClosing,
+          "finalHouseholds employment count -> closedWorld.unemploymentRate",
         ),
         inflation = SignalProvenance(
           seedOut.inflation,
           MonthTraceStage.PriceEquityEconomics,
-          "s7.newInfl -> assembledWorld.inflation",
+          "s7.newInfl -> closedWorld.inflation",
         ),
         expectedInflation = SignalProvenance(
           seedOut.expectedInflation,
           MonthTraceStage.OpenEconEconomics,
-          "s8.monetary.newExp.expectedInflation -> assembledWorld.mechanisms.expectations.expectedInflation",
+          "s8.monetary.newExp.expectedInflation -> closedWorld.mechanisms.expectations.expectedInflation",
         ),
         laggedHiringSlack = SignalProvenance(
           seedOut.laggedHiringSlack,

@@ -260,7 +260,7 @@ class SignalTimingRegressionSpec extends AnyFlatSpec with Matchers:
     )
 
   private def netBirths(in: MonthExecution): Int =
-    WorldAssemblyEconomics.computePostMonth(in, assemblyRandomness(1234L)).world.flows.netFirmBirths
+    MonthClosing.closeExecution(in, assemblyRandomness(1234L)).world.flows.netFirmBirths
 
   "DemandEconomics.compute" should "smooth sector hiring plans from lagged decision signals while keeping same-month pressure fixed" in {
     val weakLagged   = withSeedSignals(
@@ -284,7 +284,7 @@ class SignalTimingRegressionSpec extends AnyFlatSpec with Matchers:
     strongResult.sectorHiringSignal.head should be > weakResult.sectorHiringSignal.head
   }
 
-  "SignalExtraction.fromPostMonth" should "derive next-month decision inputs through one explicit post-to-pre boundary" in {
+  "SignalExtraction.fromClosedMonth" should "derive next-month decision inputs through one explicit closed-to-next-pre boundary" in {
     val base            = entrySensitiveInput
     val finalHouseholds = withUnemploymentShare(base.banking.reassignedHouseholds, base.banking.reassignedFirms, base.labor.newWage, BigDecimal("0.22"))
     val finalWorld      = base.openingWorld.copy(
@@ -294,7 +294,7 @@ class SignalTimingRegressionSpec extends AnyFlatSpec with Matchers:
         expectations = base.openingWorld.mechanisms.expectations.copy(expectedInflation = Rate.decimal(4, 2)),
       ),
     )
-    val extracted       = SignalExtraction.fromPostMonth(
+    val extracted       = SignalExtraction.fromClosedMonth(
       world = finalWorld,
       households = finalHouseholds,
       operationalHiringSlack = Share.One,
@@ -314,7 +314,7 @@ class SignalTimingRegressionSpec extends AnyFlatSpec with Matchers:
     extracted.seedOut.sectorDemandMult shouldBe base.demand.sectorMults
     extracted.seedOut.sectorDemandPressure shouldBe base.demand.sectorDemandPressure
     extracted.seedOut.sectorHiringSignal shouldBe base.demand.sectorHiringSignal
-    extracted.provenance.unemploymentRate.stage shouldBe MonthTraceStage.WorldAssemblyEconomics
+    extracted.provenance.unemploymentRate.stage shouldBe MonthTraceStage.MonthClosing
     extracted.provenance.startupAbsorptionRate.stage shouldBe MonthTraceStage.StartupStaffing
   }
 
@@ -401,7 +401,7 @@ class SignalTimingRegressionSpec extends AnyFlatSpec with Matchers:
     gainBoundaryResult.nonBank.newNbfi.lastTfiNetInflow should not equal lowerSameMonth.nonBank.newNbfi.lastTfiNetInflow
   }
 
-  "WorldAssemblyEconomics.computePostMonth" should "derive entry tight-demand unemployment from lagged decision signals instead of post-firm households" in {
+  "MonthClosing.closeExecution" should "derive entry tight-demand unemployment from lagged decision signals instead of post-firm households" in {
     val base       = entrySensitiveInput
     val lowUnemp   = base.copy(
       banking = base.banking.copy(
@@ -483,7 +483,7 @@ class SignalTimingRegressionSpec extends AnyFlatSpec with Matchers:
 
   it should "keep month closing distinct from the next-month seed boundary" in {
     val input  = entrySensitiveInput.copy(labor = entrySensitiveInput.labor.copy(operationalHiringSlack = Share.decimal(21, 2)))
-    val closed = WorldAssemblyEconomics.computePostMonth(input, assemblyRandomness(1234L))
+    val closed = MonthClosing.closeExecution(input, assemblyRandomness(1234L))
 
     closed.world.pipeline.operationalHiringSlack shouldBe Share.decimal(21, 2)
     closed.world.seedIn shouldBe input.openingWorld.seedIn

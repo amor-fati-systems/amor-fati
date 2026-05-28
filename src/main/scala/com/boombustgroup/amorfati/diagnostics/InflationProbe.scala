@@ -5,7 +5,7 @@ import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.{MonthExecution, MonthRandomness, SignalExtraction}
 import com.boombustgroup.amorfati.engine.SimulationMonth.ExecutionMonth
 import com.boombustgroup.amorfati.engine.World
-import com.boombustgroup.amorfati.engine.assembly.WorldAssemblyEconomics
+import com.boombustgroup.amorfati.engine.assembly.MonthClosing
 import com.boombustgroup.amorfati.engine.economics.*
 import com.boombustgroup.amorfati.engine.markets.{PriceLevel, RegionalClearing}
 import com.boombustgroup.amorfati.init.{InitRandomness, WorldInit}
@@ -234,9 +234,9 @@ object InflationProbe:
         openEconomy = s8,
         banking = s9,
       )
-      val closing        = WorldAssemblyEconomics.computePostMonth(monthExecution, contract.assembly.newStreams())
+      val closing        = MonthClosing.closeExecution(monthExecution, contract.assembly.newStreams())
       val seedOut        = SignalExtraction
-        .fromPostMonth(
+        .fromClosedMonth(
           world = closing.world,
           households = closing.households,
           operationalHiringSlack = monthExecution.labor.operationalHiringSlack,

@@ -11,9 +11,9 @@ import com.boombustgroup.amorfati.engine.mechanisms.{FirmEntry, InformalEconomy,
   * object owns only the month-closing contract and the top-level ordering of
   * month closing.
   */
-object WorldAssemblyEconomics:
+object MonthClosing:
 
-  def prepareClosingInput(execution: MonthExecution)(using p: SimParams): MonthClosingInput =
+  def prepareInput(execution: MonthExecution)(using p: SimParams): MonthClosingInput =
     MonthClosingInput(
       execution = execution,
       mechanisms = MonthClosingMechanisms(
@@ -25,13 +25,13 @@ object WorldAssemblyEconomics:
       agentLifecycle = populationLifecycleInput(execution),
     )
 
-  def computePostMonth(
+  def closeExecution(
       execution: MonthExecution,
       randomness: MonthRandomness.AssemblyStreams,
   )(using p: SimParams): MonthClosingResult =
-    closeMonth(prepareClosingInput(execution), randomness)
+    close(prepareInput(execution), randomness)
 
-  def closeMonth(
+  def close(
       closingInput: MonthClosingInput,
       randomness: MonthRandomness.AssemblyStreams,
   )(using p: SimParams): MonthClosingResult =

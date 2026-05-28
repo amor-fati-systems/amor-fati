@@ -6,7 +6,7 @@ import com.boombustgroup.amorfati.engine.economics.*
   *
   * This is not an opening state and not a next-month output. It is the
   * month-`t` execution surface consumed by flow emission, semantic projection,
-  * and post-month closing.
+  * and month closing.
   */
 final case class MonthExecution(
     openingWorld: World,

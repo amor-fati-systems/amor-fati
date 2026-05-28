@@ -9,14 +9,14 @@ import com.boombustgroup.amorfati.types.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-class WorldAssemblyEconomicsSpec extends AnyFlatSpec with Matchers:
+class MonthClosingSpec extends AnyFlatSpec with Matchers:
 
   private given p: SimParams = SimParams.defaults
 
   private lazy val deterministicStep: FlowSimulation.StepOutput =
     RuntimeFlowsTestSupport.stepFromSeed()
 
-  "WorldAssemblyEconomics" should "produce valid world after simulation step" in {
+  "MonthClosing" should "produce valid world after simulation step" in {
     val result = deterministicStep
     val w      = result.nextState.world
 
@@ -33,7 +33,7 @@ class WorldAssemblyEconomicsSpec extends AnyFlatSpec with Matchers:
     decimal(w.real.etsPrice).shouldBe(decimal(p.climate.etsBasePrice) +- BigDecimal("1e-10"))
   }
 
-  it should "preserve public-spending semantic aggregates on the assembled world" in {
+  it should "preserve public-spending semantic aggregates on the closed world" in {
     val result = deterministicStep
     val w      = result.nextState.world
 

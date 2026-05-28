@@ -58,7 +58,7 @@ class SignalExtractionSpec extends AnyFlatSpec with Matchers:
       ),
     )
 
-    result.provenance.unemploymentRate.stage shouldBe MonthTraceStage.WorldAssemblyEconomics
+    result.provenance.unemploymentRate.stage shouldBe MonthTraceStage.MonthClosing
     result.provenance.inflation.stage shouldBe MonthTraceStage.PriceEquityEconomics
     result.provenance.expectedInflation.stage shouldBe MonthTraceStage.OpenEconEconomics
     result.provenance.laggedHiringSlack.stage shouldBe MonthTraceStage.LaborEconomics

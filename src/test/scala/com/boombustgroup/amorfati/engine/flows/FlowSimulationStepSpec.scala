@@ -624,7 +624,7 @@ class FlowSimulationStepSpec extends AnyFlatSpec with Matchers:
     trace.executedFlows.totalIncome shouldBe result.calculus.totalIncome
     trace.executedFlows.currentAccount shouldBe result.nextState.world.bop.currentAccount
     trace.executedFlows.fofResidual shouldBe result.nextState.world.plumbing.fofResidual
-    trace.seedTransition.provenance.unemploymentRate.stage shouldBe MonthTraceStage.WorldAssemblyEconomics
+    trace.seedTransition.provenance.unemploymentRate.stage shouldBe MonthTraceStage.MonthClosing
     trace.seedTransition.provenance.inflation.stage shouldBe MonthTraceStage.PriceEquityEconomics
     trace.seedTransition.provenance.expectedInflation.stage shouldBe MonthTraceStage.OpenEconEconomics
     trace.seedTransition.provenance.laggedHiringSlack.stage shouldBe MonthTraceStage.LaborEconomics

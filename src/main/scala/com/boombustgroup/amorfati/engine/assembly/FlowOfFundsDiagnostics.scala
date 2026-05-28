@@ -5,7 +5,7 @@ import com.boombustgroup.amorfati.engine.MonthExecution
 import com.boombustgroup.amorfati.engine.economics.GdpAccounting
 import com.boombustgroup.amorfati.types.*
 
-/** Flow-of-funds diagnostics derived at the post-month boundary. */
+/** Flow-of-funds diagnostics derived at the month-closing boundary. */
 object FlowOfFundsDiagnostics:
 
   def residual(in: MonthExecution)(using p: SimParams): PLN =

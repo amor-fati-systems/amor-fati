@@ -4,7 +4,7 @@ The engine package orchestrates the monthly simulation loop. The month
 boundary is `FlowSimulation.SimState`, which carries `World` macro state,
 agent populations, household aggregates, and `LedgerFinancialState`.
 Domain logic is split across **economics** (9-stage computation pipeline),
-**assembly** (post-month state projection), **flows** (SFC-verified monetary
+**assembly** (month-closing state projection), **flows** (SFC-verified monetary
 flow emission via ledger), **ledger** (financial ownership contracts and
 projections), **markets** (clearing mechanisms), and **mechanisms** (domain
 rules that modify agent state outside market clearing).
@@ -13,7 +13,7 @@ rules that modify agent state outside market clearing).
 engine/
 ├── World.scala             # Immutable macro/runtime state container (9 nested types)
 ├── economics/              # 9-stage computation pipeline (calculus, no flows)
-├── assembly/               # Post-month World/agent/ledger projection
+├── assembly/               # Month-closing World/agent/ledger projection
 ├── flows/                  # SFC flow emission via verified ledger
 ├── ledger/                 # Ledger-owned financial state, ownership contracts, projections
 ├── markets/                # Market clearing & price formation
@@ -31,15 +31,15 @@ engine/
 | `ledger/RuntimeFlowProjection.scala` | Typed projection from executed runtime `deltaLedger` into the currently materialized persisted ledger slice. |
 | `ledger/BankReserveDiagnostics.scala` | Ledger-backed reserve diagnostics for active bank deposit-facility usage. |
 | `MonthSemantics.scala` | Tiny typed phase markers for the internal month step: pre-seed, same-month operational state, closed-month state, and next pre-seed extraction. |
-| `MonthExecution.scala` | Same-month result of the ordered economics pipeline; consumed by flow planning, semantic projection, and post-month closing. |
+| `MonthExecution.scala` | Same-month result of the ordered economics pipeline; consumed by flow planning, semantic projection, and month closing. |
 | `MonthClosing.scala` | Explicit closing input/result contracts: derived mechanisms, diagnostics, agent lifecycle input, and realized month-`t` closing state. |
 | `MonthWorkflow.scala` | Minimal identity-monad DSL used to express the deterministic month transition as a typed `for`-comprehension without adding runtime effects. |
 | `MonthRandomness.scala` | Explicit month-step randomness contract: one root seed split into named stage and assembly streams for deterministic replay and auditability. |
 | `MonthDriver.scala` | Shared month-by-month unfold driver over the explicit `FlowSimulation.step` boundary. |
 | `OperationalSignals.scala` | Explicit same-month signal surface for month-`t` operational execution, kept distinct from persisted start-of-month `DecisionSignals`. |
-| `SignalExtraction.scala` | Explicit post-to-pre boundary: derives next-month `DecisionSignals` and typed seed provenance from realized month-`t` outcomes. |
+| `SignalExtraction.scala` | Explicit closed-to-next-pre boundary: derives next-month `DecisionSignals` and typed seed provenance from realized month-`t` outcomes. |
 | `MonthTrace.scala` | Boundary-focused audit artifact with a stable month core (`boundary`, `seedTransition`, `randomness`, validations) plus extensible typed timing envelopes. |
-| `assembly/WorldAssemblyEconomics.scala` | Explicit month-closing boundary. Consumes `MonthClosingInput` and assembly randomness, then returns the realized month-`t` closing state before next seed extraction. |
+| `assembly/MonthClosing.scala` | Explicit month-closing boundary. Consumes `MonthClosingInput` and assembly randomness, then returns the realized month-`t` closing state before next seed extraction. |
 
 ## Month Step Boundary
 
@@ -72,7 +72,7 @@ Read it as a month transition:
 - `randomness` is the explicit month-level randomness surface; fixing `stateIn` and `randomness.rootSeed` fixes replay for one step.
 - `MonthOutcome` is built through the `MonthWorkflow` identity DSL as `pre -> same-month boundary views -> closed month -> seedOut/next-pre`; the same-month views are `SignalView`, `FlowPlan`, `ClosingInput`, and `SemanticProjection`.
 - `operationalSignals` is the explicit same-month surface created inside the step.
-- `signalExtraction` is the dedicated `post -> pre` boundary.
+- `signalExtraction` is the dedicated `closed -> next-pre` boundary.
 - `trace` is the emitted audit artifact for month `t`.
 - `nextState` is the typed month `t+1` boundary state. Supported public-fund cash balances are materialized from executed runtime deltas before this boundary is exposed; remaining ledger-backed families still use explicit economics-stage closing state until their runtime emissions become holder-resolved closing-stock sources.
 - `MonthDriver.unfoldSteps` is the first-class month driver: callers own the explicit randomness schedule, while the engine owns the `stateIn -> step -> nextState` unfold.
@@ -102,14 +102,14 @@ case-class rename.
 
 ## assembly/
 
-Post-month state projection. This package is intentionally separate from
+Month-closing state projection. This package is intentionally separate from
 `economics`: it does not decide market behavior or emit monetary flows. It
 takes the already-computed stage outputs, invokes domain transition mechanisms,
 and materializes the month-`t+1` engine boundary.
 
 | File | Responsibility |
 |------|----------------|
-| `WorldAssemblyEconomics.scala` | Month-closing contract and top-level ordering for assembling the realized month-`t` world before next-month seed extraction. |
+| `MonthClosing.scala` | Month-closing contract and top-level ordering for assembling the realized month-`t` world before next-month seed extraction. |
 | `WorldStateAssembler.scala` | Builds the closed month-`t` `World` from explicit closing input, domain-mechanism projections, lifecycle results, ledger diagnostics, and flow-of-funds diagnostics. |
 | `FlowStateAssembler.scala` | Maps closing input and lifecycle results into `FlowState`, the diagnostic flow surface persisted on `World`. |
 | `FlowOfFundsDiagnostics.scala` | Computes the flow-of-funds residual from realized firm revenue and adjusted demand. |
@@ -188,7 +188,7 @@ economics-stage market-clearing pipeline.
 | `ClimatePolicy.scala` | EU ETS price path and carbon surcharge helpers shared by firm costs and world diagnostics. |
 | `EuFunds.scala` | EU structural funds: Beta-curve absorption timing, co-financing, capital investment |
 | `Expectations.scala` | Inflation expectations: adaptive-anchoring hybrid, central bank credibility |
-| `FdiOwnershipTransitions.scala` | Stochastic FDI M&A mechanism: eligible domestic firms may become foreign-owned at the post-month transition boundary. |
+| `FdiOwnershipTransitions.scala` | Stochastic FDI M&A mechanism: eligible domestic firms may become foreign-owned at the month-closing transition boundary. |
 | `FirmEntry.scala` | Endogenous firm entry: profit-weighted sector choice, regulatory barriers, AI-native startups, and entrant technology diagnostics |
 | `InformalEconomy.scala` | Shadow-economy tax evasion diagnostics and counter-cyclical informal-sector state dynamics. |
 | `Macroprudential.scala` | CCyB (countercyclical capital buffer), credit-to-GDP gap, O-SII buffers |

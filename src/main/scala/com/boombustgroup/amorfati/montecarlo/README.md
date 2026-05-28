@@ -641,7 +641,7 @@ of being capitalized into ordinary consumer-loan stock.
 
 Snapshot rows are taken at the household-income/liquidity settlement boundary
 for the selected execution month, before later firm-entry, migration, and
-post-month assembly reshuffling. This keeps per-household
+month-closing lifecycle reshuffling. This keeps per-household
 `LiquidityShortfallFinancing` aligned with the monthly aggregate
 `HouseholdLiquidity_ShortfallFinancing` before the standard Monte Carlo
 Poland-scale multiplier is applied to macro timeseries PLN columns. Raw

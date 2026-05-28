@@ -5,7 +5,7 @@ import com.boombustgroup.amorfati.agents.*
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.*
 import com.boombustgroup.amorfati.engine.SimulationMonth.{CompletedMonth, ExecutionMonth}
-import com.boombustgroup.amorfati.engine.assembly.WorldAssemblyEconomics
+import com.boombustgroup.amorfati.engine.assembly.MonthClosing
 import com.boombustgroup.amorfati.engine.economics.*
 import com.boombustgroup.amorfati.engine.ledger.{CorporateBondOwnership, GovernmentBondCircuit, LedgerFinancialState, RuntimeFlowProjection}
 import com.boombustgroup.amorfati.engine.markets.CorporateBondMarket
@@ -396,7 +396,7 @@ object FlowSimulation:
   /** Realized month-`t` closing boundary plus the narrow payload needed to
     * build [[MonthTrace]].
     */
-  case class MonthPostBoundary(
+  case class ClosedMonthBoundary(
       closing: MonthClosingResult,
       boundaryOut: MonthBoundarySnapshot,
       timing: MonthTimingTrace,
@@ -443,7 +443,7 @@ object FlowSimulation:
         closingInput: MonthSemantics.ClosingInput,
         signalView: MonthSemantics.SignalView,
     )(using SimParams): Program[MonthSemantics.ClosedMonth] =
-      MonthWorkflow.pure(closeMonthBoundary(closingInput, signalView, pre.randomness.assembly.newStreams()))
+      MonthWorkflow.pure(buildClosedMonthBoundary(closingInput, signalView, pre.randomness.assembly.newStreams()))
 
     def seedOut(signalView: MonthSemantics.SignalView, closed: MonthSemantics.ClosedMonth): Program[MonthSemantics.SeedOut] =
       MonthWorkflow.pure(extractSeedOut(signalView, closed))
@@ -815,7 +815,7 @@ object FlowSimulation:
         labor = s2,
         demand = s4,
       ),
-      closing = WorldAssemblyEconomics.prepareClosingInput(execution),
+      closing = MonthClosing.prepareInput(execution),
       semanticProjection = SemanticFlowInputs(
         labor = s2,
         hhIncome = s3,
@@ -1183,15 +1183,15 @@ object FlowSimulation:
       ),
     )
 
-  private def closeMonthBoundary(
+  private def buildClosedMonthBoundary(
       closingInput: MonthSemantics.ClosingInput,
       signalView: MonthSemantics.SignalView,
       randomness: MonthRandomness.AssemblyStreams,
   )(using p: SimParams): MonthSemantics.ClosedMonth =
-    val closing = WorldAssemblyEconomics.closeMonth(closingInput.monthClosingInput, randomness)
+    val closing = MonthClosing.close(closingInput.monthClosingInput, randomness)
     // This stays at month `t`: the boundary seed is still `seedIn` here.
     MonthSemantics.closedMonth(
-      MonthPostBoundary(
+      ClosedMonthBoundary(
         closing = closing,
         boundaryOut = MonthBoundarySnapshot.capture(
           closing.world,
@@ -1210,7 +1210,7 @@ object FlowSimulation:
     MonthSemantics.seedOut(
       // Seed extraction is the only place that derives the next boundary
       // signal from realized month-`t` outcomes.
-      SignalExtraction.fromPostMonth(
+      SignalExtraction.fromClosedMonth(
         world = closing.world,
         households = closing.households,
         operationalHiringSlack = signalView.labor.operationalHiringSlack,
