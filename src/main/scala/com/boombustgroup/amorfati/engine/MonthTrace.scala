@@ -6,8 +6,6 @@ import com.boombustgroup.amorfati.engine.SimulationMonth.ExecutionMonth
 import com.boombustgroup.amorfati.engine.ledger.LedgerFinancialState
 import com.boombustgroup.amorfati.types.*
 
-import scala.reflect.ClassTag
-
 /** Minimal month-level audit artifact for timing-sensitive execution.
   *
   * The trace is intentionally narrower than event sourcing: it captures a
@@ -25,12 +23,6 @@ case class MonthTrace(
 )
 
 object MonthTrace:
-  def timingEnvelope(
-      key: MonthTimingEnvelopeKey,
-      payload: MonthTimingPayload,
-  ): MonthTimingEnvelope =
-    MonthTimingEnvelope(key, payload)
-
   def fromCore(
       executionMonth: ExecutionMonth,
       randomness: MonthRandomness.Contract,
@@ -165,10 +157,30 @@ case class MonthTimingInputs(
 )
 
 /** One typed timing envelope attached to the month trace interior. */
-case class MonthTimingEnvelope(
-    key: MonthTimingEnvelopeKey,
-    payload: MonthTimingPayload,
-)
+sealed trait MonthTimingEnvelope:
+  def key: MonthTimingEnvelopeKey
+  def payload: MonthTimingPayload
+
+object MonthTimingEnvelope:
+  case class Labor(
+      override val payload: MonthTimingPayload.LaborSignals,
+  ) extends MonthTimingEnvelope:
+    override val key: MonthTimingEnvelopeKey = MonthTimingEnvelopeKey.Labor
+
+  case class Demand(
+      override val payload: MonthTimingPayload.DemandSignals,
+  ) extends MonthTimingEnvelope:
+    override val key: MonthTimingEnvelopeKey = MonthTimingEnvelopeKey.Demand
+
+  case class Nominal(
+      override val payload: MonthTimingPayload.NominalSignals,
+  ) extends MonthTimingEnvelope:
+    override val key: MonthTimingEnvelopeKey = MonthTimingEnvelopeKey.Nominal
+
+  case class Firm(
+      override val payload: MonthTimingPayload.FirmDynamics,
+  ) extends MonthTimingEnvelope:
+    override val key: MonthTimingEnvelopeKey = MonthTimingEnvelopeKey.Firm
 
 /** Extensible same-month timing interior for audit and testing. */
 case class MonthTimingTrace(
@@ -188,34 +200,40 @@ case class MonthTimingTrace(
   def envelope(key: MonthTimingEnvelopeKey): Option[MonthTimingEnvelope] =
     envelopes.find(_.key == key)
 
-  def payload[A <: MonthTimingPayload](key: MonthTimingEnvelopeKey)(using ct: ClassTag[A]): Option[A] =
-    envelope(key).flatMap: env =>
-      if ct.runtimeClass.isInstance(env.payload) then Some(env.payload.asInstanceOf[A]) else None
-
-  def requirePayload[A <: MonthTimingPayload](key: MonthTimingEnvelopeKey)(using ct: ClassTag[A]): A =
-    payload[A](key).getOrElse:
-      throw new IllegalStateException(s"MonthTimingTrace missing payload ${ct.runtimeClass.getSimpleName} at envelope $key")
+  def payload(key: MonthTimingEnvelopeKey): Option[MonthTimingPayload] =
+    envelope(key).map(_.payload)
 
   def laborSignals: MonthTimingPayload.LaborSignals =
-    requirePayload[MonthTimingPayload.LaborSignals](MonthTimingEnvelopeKey.Labor)
+    envelopes
+      .collectFirst { case MonthTimingEnvelope.Labor(payload) => payload }
+      .getOrElse(missingPayload("LaborSignals", MonthTimingEnvelopeKey.Labor))
 
   def demandSignals: MonthTimingPayload.DemandSignals =
-    requirePayload[MonthTimingPayload.DemandSignals](MonthTimingEnvelopeKey.Demand)
+    envelopes
+      .collectFirst { case MonthTimingEnvelope.Demand(payload) => payload }
+      .getOrElse(missingPayload("DemandSignals", MonthTimingEnvelopeKey.Demand))
 
   def nominalSignals: MonthTimingPayload.NominalSignals =
-    requirePayload[MonthTimingPayload.NominalSignals](MonthTimingEnvelopeKey.Nominal)
+    envelopes
+      .collectFirst { case MonthTimingEnvelope.Nominal(payload) => payload }
+      .getOrElse(missingPayload("NominalSignals", MonthTimingEnvelopeKey.Nominal))
 
   def firmDynamics: MonthTimingPayload.FirmDynamics =
-    requirePayload[MonthTimingPayload.FirmDynamics](MonthTimingEnvelopeKey.Firm)
+    envelopes
+      .collectFirst { case MonthTimingEnvelope.Firm(payload) => payload }
+      .getOrElse(missingPayload("FirmDynamics", MonthTimingEnvelopeKey.Firm))
+
+  private def missingPayload(label: String, key: MonthTimingEnvelopeKey): Nothing =
+    throw new IllegalStateException(s"MonthTimingTrace missing payload $label at envelope $key")
 
 object MonthTimingTrace:
   def fromInputs(inputs: MonthTimingInputs): MonthTimingTrace =
     MonthTimingTrace(
       Vector(
-        MonthTrace.timingEnvelope(MonthTimingEnvelopeKey.Labor, inputs.labor),
-        MonthTrace.timingEnvelope(MonthTimingEnvelopeKey.Demand, inputs.demand),
-        MonthTrace.timingEnvelope(MonthTimingEnvelopeKey.Nominal, inputs.nominal),
-        MonthTrace.timingEnvelope(MonthTimingEnvelopeKey.Firm, inputs.firmDynamics),
+        MonthTimingEnvelope.Labor(inputs.labor),
+        MonthTimingEnvelope.Demand(inputs.demand),
+        MonthTimingEnvelope.Nominal(inputs.nominal),
+        MonthTimingEnvelope.Firm(inputs.firmDynamics),
       ),
     )
 

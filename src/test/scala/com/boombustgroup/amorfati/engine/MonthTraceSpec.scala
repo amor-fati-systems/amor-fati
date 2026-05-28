@@ -14,8 +14,8 @@ class MonthTraceSpec extends AnyFlatSpec with Matchers:
     val err = intercept[IllegalArgumentException]:
       MonthTimingTrace(
         Vector(
-          MonthTimingEnvelope(MonthTimingEnvelopeKey.Labor, MonthTimingPayload.LaborSignals(Share.decimal(4, 1))),
-          MonthTimingEnvelope(MonthTimingEnvelopeKey.Labor, MonthTimingPayload.LaborSignals(Share.decimal(6, 1))),
+          MonthTimingEnvelope.Labor(MonthTimingPayload.LaborSignals(Share.decimal(4, 1))),
+          MonthTimingEnvelope.Labor(MonthTimingPayload.LaborSignals(Share.decimal(6, 1))),
         ),
       )
 
