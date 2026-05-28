@@ -443,7 +443,7 @@ object FlowSimulation:
         closingInput: MonthSemantics.ClosingInput,
         signalView: MonthSemantics.SignalView,
     )(using SimParams): Program[MonthSemantics.ClosedMonth] =
-      MonthWorkflow.pure(buildClosedMonthBoundary(closingInput, signalView, pre.randomness.assembly.newStreams()))
+      MonthWorkflow.pure(buildClosedMonthBoundary(closingInput, signalView, pre.randomness.closing.newStreams()))
 
     def seedOut(signalView: MonthSemantics.SignalView, closed: MonthSemantics.ClosedMonth): Program[MonthSemantics.SeedOut] =
       MonthWorkflow.pure(extractSeedOut(signalView, closed))
@@ -1186,7 +1186,7 @@ object FlowSimulation:
   private def buildClosedMonthBoundary(
       closingInput: MonthSemantics.ClosingInput,
       signalView: MonthSemantics.SignalView,
-      randomness: MonthRandomness.AssemblyStreams,
+      randomness: MonthRandomness.ClosingStreams,
   )(using p: SimParams): MonthSemantics.ClosedMonth =
     val closing = MonthClosing.close(closingInput.monthClosingInput, randomness)
     // This stays at month `t`: the boundary seed is still `seedIn` here.

@@ -66,8 +66,8 @@ object SignalExtraction:
       demand: DemandOutcomes,
   )
 
-  /** Canonical builder used by both world assembly and typed month-boundary
-    * code so seed extraction always reads the same realized fields.
+  /** Canonical builder used by both month closing and typed month-boundary code
+    * so seed extraction always reads the same realized fields.
     */
   private def inputFromRealizedOutcomes(
       unemploymentRate: Share,

@@ -194,8 +194,8 @@ class SignalTimingRegressionSpec extends AnyFlatSpec with Matchers:
       ),
     )
 
-  private def assemblyRandomness(seed: Long): MonthRandomness.AssemblyStreams =
-    MonthRandomness.Contract.fromSeed(seed).assembly.newStreams()
+  private def closingRandomness(seed: Long): MonthRandomness.ClosingStreams =
+    MonthRandomness.Contract.fromSeed(seed).closing.newStreams()
 
   private def allEmployed(
       households: Vector[Household.State],
@@ -260,7 +260,7 @@ class SignalTimingRegressionSpec extends AnyFlatSpec with Matchers:
     )
 
   private def netBirths(in: MonthExecution): Int =
-    MonthClosing.closeExecution(in, assemblyRandomness(1234L)).world.flows.netFirmBirths
+    MonthClosing.closeExecution(in, closingRandomness(1234L)).world.flows.netFirmBirths
 
   "DemandEconomics.compute" should "smooth sector hiring plans from lagged decision signals while keeping same-month pressure fixed" in {
     val weakLagged   = withSeedSignals(
@@ -483,7 +483,7 @@ class SignalTimingRegressionSpec extends AnyFlatSpec with Matchers:
 
   it should "keep month closing distinct from the next-month seed boundary" in {
     val input  = entrySensitiveInput.copy(labor = entrySensitiveInput.labor.copy(operationalHiringSlack = Share.decimal(21, 2)))
-    val closed = MonthClosing.closeExecution(input, assemblyRandomness(1234L))
+    val closed = MonthClosing.closeExecution(input, closingRandomness(1234L))
 
     closed.world.pipeline.operationalHiringSlack shouldBe Share.decimal(21, 2)
     closed.world.seedIn shouldBe input.openingWorld.seedIn

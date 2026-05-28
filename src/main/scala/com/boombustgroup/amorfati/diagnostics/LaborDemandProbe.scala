@@ -291,7 +291,7 @@ object LaborDemandProbe:
         openEconomy = s8,
         banking = s9,
       )
-      val closing        = MonthClosing.closeExecution(monthExecution, contract.assembly.newStreams())
+      val closing        = MonthClosing.closeExecution(monthExecution, contract.closing.newStreams())
       val seedOut        = SignalExtraction
         .fromClosedMonth(
           world = closing.world,

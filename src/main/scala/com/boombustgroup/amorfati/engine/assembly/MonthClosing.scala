@@ -27,13 +27,13 @@ object MonthClosing:
 
   def closeExecution(
       execution: MonthExecution,
-      randomness: MonthRandomness.AssemblyStreams,
+      randomness: MonthRandomness.ClosingStreams,
   )(using p: SimParams): MonthClosingResult =
     close(prepareInput(execution), randomness)
 
   def close(
       closingInput: MonthClosingInput,
-      randomness: MonthRandomness.AssemblyStreams,
+      randomness: MonthRandomness.ClosingStreams,
   )(using p: SimParams): MonthClosingResult =
     val execution   = closingInput.execution
     val lifecycle   = PopulationLifecycleTransitions.run(

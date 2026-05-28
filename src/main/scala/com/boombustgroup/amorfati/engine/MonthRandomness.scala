@@ -36,7 +36,7 @@ object MonthRandomness:
       bankingEconomics: RandomStream,
   )
 
-  case class AssemblyStreams(
+  case class ClosingStreams(
       fdiMa: RandomStream,
       firmEntry: RandomStream,
       startupStaffing: RandomStream,
@@ -68,7 +68,7 @@ object MonthRandomness:
         bankingEconomics = bankingEconomics.newStream(),
       )
 
-  case class AssemblySeeds(
+  case class ClosingSeeds(
       fdiMa: StreamSeed,
       firmEntry: StreamSeed,
       startupStaffing: StreamSeed,
@@ -82,8 +82,8 @@ object MonthRandomness:
         regionalMigration,
       )
 
-    def newStreams(): AssemblyStreams =
-      AssemblyStreams(
+    def newStreams(): ClosingStreams =
+      ClosingStreams(
         fdiMa = fdiMa.newStream(),
         firmEntry = firmEntry.newStream(),
         startupStaffing = startupStaffing.newStream(),
@@ -93,10 +93,10 @@ object MonthRandomness:
   case class Contract(
       rootSeed: Long,
       stages: StageSeeds,
-      assembly: AssemblySeeds,
+      closing: ClosingSeeds,
   ):
     def all: Vector[StreamSeed] =
-      stages.all ++ assembly.all
+      stages.all ++ closing.all
 
   object Contract:
     def fromSeed(rootSeed: Long): Contract =
@@ -109,7 +109,7 @@ object MonthRandomness:
           openEconEconomics = deriveStream(rootSeed, StreamKey.OpenEconEconomics),
           bankingEconomics = deriveStream(rootSeed, StreamKey.BankingEconomics),
         ),
-        assembly = AssemblySeeds(
+        closing = ClosingSeeds(
           fdiMa = deriveStream(rootSeed, StreamKey.FdiMa),
           firmEntry = deriveStream(rootSeed, StreamKey.FirmEntry),
           startupStaffing = deriveStream(rootSeed, StreamKey.StartupStaffing),

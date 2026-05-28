@@ -39,7 +39,7 @@ engine/
 | `OperationalSignals.scala` | Explicit same-month signal surface for month-`t` operational execution, kept distinct from persisted start-of-month `DecisionSignals`. |
 | `SignalExtraction.scala` | Explicit closed-to-next-pre boundary: derives next-month `DecisionSignals` and typed seed provenance from realized month-`t` outcomes. |
 | `MonthTrace.scala` | Boundary-focused audit artifact with a stable month core (`boundary`, `seedTransition`, `randomness`, validations) plus extensible typed timing envelopes. |
-| `assembly/MonthClosing.scala` | Explicit month-closing boundary. Consumes `MonthClosingInput` and assembly randomness, then returns the realized month-`t` closing state before next seed extraction. |
+| `assembly/MonthClosing.scala` | Explicit month-closing boundary. Consumes `MonthClosingInput` and closing randomness, then returns the realized month-`t` closing state before next seed extraction. |
 
 ## Month Step Boundary
 
