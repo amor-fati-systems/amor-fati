@@ -5,6 +5,7 @@ import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.*
 import com.boombustgroup.amorfati.engine.economics.*
 import com.boombustgroup.amorfati.engine.ledger.LedgerFinancialState
+import com.boombustgroup.amorfati.engine.mechanisms.InformalEconomy
 import com.boombustgroup.amorfati.types.*
 
 /** Explicit post-month assembly boundary.
@@ -30,7 +31,7 @@ object WorldAssemblyEconomics:
 
   private[assembly] final case class AssemblyContext(
       step: StepInput,
-      informal: WorldInformalEconomy.Result,
+      informal: InformalEconomy.Result,
       fofResidual: PLN,
       observables: WorldObservables.Values,
   )
@@ -39,9 +40,24 @@ object WorldAssemblyEconomics:
     def from(step: StepInput)(using p: SimParams): AssemblyContext =
       AssemblyContext(
         step = step,
-        informal = WorldInformalEconomy.compute(step),
+        informal = InformalEconomy.compute(informalInput(step)),
         fofResidual = FlowOfFundsDiagnostics.residual(step),
         observables = WorldObservables.compute(step),
+      )
+
+    private def informalInput(step: StepInput): InformalEconomy.Input =
+      InformalEconomy.Input(
+        citEvasion = step.s5.sumCitEvasion,
+        vatBeforeEvasion = step.s9.vat,
+        vatAfterEvasion = step.s9.vatAfterEvasion,
+        pitBeforeEvasion = step.s3.pitRevenue,
+        pitAfterEvasion = step.s9.pitAfterEvasion,
+        exciseBeforeEvasion = step.s9.exciseRevenue,
+        exciseAfterEvasion = step.s9.exciseAfterEvasion,
+        realizedTaxShadowShare = step.s9.realizedTaxShadowShare,
+        employed = step.s2.employed,
+        workingAgePopulation = step.s2.newDemographics.workingAgePop,
+        previousCyclicalAdjustment = step.w.mechanisms.informalCyclicalAdj,
       )
 
   /** Assembled month-`t` state before the next-month decision seed is applied.

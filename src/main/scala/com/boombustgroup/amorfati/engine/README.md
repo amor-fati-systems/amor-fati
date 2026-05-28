@@ -109,7 +109,6 @@ population/state transitions, and materializes the month-`t+1` engine boundary.
 | `WorldStateAssembler.scala` | Builds the post-stage `World` value from explicit stage outputs, observables, informal-economy state, and flow-of-funds diagnostics. |
 | `FlowStateAssembler.scala` | Maps stage outputs into `FlowState`, the diagnostic flow surface persisted on `World`. |
 | `PostMonthPopulationTransitions.scala` | Completes post-month population transitions by invoking domain mechanisms for FDI M&A, firm entry, startup staffing, and regional migration, then applying firm-flow birth/death diagnostics and firm ledger refresh. |
-| `WorldInformalEconomy.scala` | Computes tax evasion loss, realized shadow-tax share, and smoothed informal-economy cyclical state. |
 | `WorldObservables.scala` | Computes assembled-world observables such as deposit-facility usage, ETS price, and tourism seasonality. |
 | `FlowOfFundsDiagnostics.scala` | Computes the flow-of-funds residual from realized firm revenue and adjusted demand. |
 
@@ -188,6 +187,7 @@ economics-stage market-clearing pipeline.
 | `Expectations.scala` | Inflation expectations: adaptive-anchoring hybrid, central bank credibility |
 | `FdiOwnershipTransitions.scala` | Stochastic FDI M&A mechanism: eligible domestic firms may become foreign-owned at the post-month transition boundary. |
 | `FirmEntry.scala` | Endogenous firm entry: profit-weighted sector choice, regulatory barriers, AI-native startups, and entrant technology diagnostics |
+| `InformalEconomy.scala` | Shadow-economy tax evasion diagnostics and counter-cyclical informal-sector state dynamics. |
 | `Macroprudential.scala` | CCyB (countercyclical capital buffer), credit-to-GDP gap, O-SII buffers |
 | `SectoralMobility.scala` | Cross-sector labor transitions: friction matrix, voluntary quits, wage penalties |
 | `StartupStaffing.scala` | Startup lifecycle mechanism: assigns workers to newly entered firms and synchronizes startup filled-worker counts with household employment. |
