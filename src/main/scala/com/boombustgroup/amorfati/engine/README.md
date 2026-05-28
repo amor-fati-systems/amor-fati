@@ -6,8 +6,8 @@ agent populations, household aggregates, and `LedgerFinancialState`.
 Domain logic is split across **economics** (9-stage computation pipeline),
 **assembly** (post-month state projection), **flows** (SFC-verified monetary
 flow emission via ledger), **ledger** (financial ownership contracts and
-projections), **markets** (clearing mechanisms), and **mechanisms** (policy /
-regulatory rules).
+projections), **markets** (clearing mechanisms), and **mechanisms** (domain
+rules that modify agent state outside market clearing).
 
 ```
 engine/
@@ -17,7 +17,7 @@ engine/
 ├── flows/                  # SFC flow emission via verified ledger
 ├── ledger/                 # Ledger-owned financial state, ownership contracts, projections
 ├── markets/                # Market clearing & price formation
-└── mechanisms/             # Policy rules & regulatory instruments
+└── mechanisms/             # Domain rules outside market clearing
 ```
 
 ## Core files
@@ -108,11 +108,10 @@ population/state transitions, and materializes the month-`t+1` engine boundary.
 | `WorldAssemblyEconomics.scala` | Public `StepInput` / `PostResult` contract and top-level ordering for post-month assembly. |
 | `WorldStateAssembler.scala` | Builds the post-stage `World` value from explicit stage outputs, observables, informal-economy state, and flow-of-funds diagnostics. |
 | `FlowStateAssembler.scala` | Maps stage outputs into `FlowState`, the diagnostic flow surface persisted on `World`. |
-| `PostMonthPopulationTransitions.scala` | Completes post-month population transitions by invoking domain mechanisms for FDI M&A and firm entry, then applying startup staffing, regional migration, firm-flow birth/death diagnostics, and firm ledger refresh. |
+| `PostMonthPopulationTransitions.scala` | Completes post-month population transitions by invoking domain mechanisms for FDI M&A, firm entry, startup staffing, and regional migration, then applying firm-flow birth/death diagnostics and firm ledger refresh. |
 | `WorldInformalEconomy.scala` | Computes tax evasion loss, realized shadow-tax share, and smoothed informal-economy cyclical state. |
 | `WorldObservables.scala` | Computes assembled-world observables such as deposit-facility usage, ETS price, and tourism seasonality. |
 | `FlowOfFundsDiagnostics.scala` | Computes the flow-of-funds residual from realized firm revenue and adjusted demand. |
-| `StartupStaffing.scala` | Assigns startup workers after firm entry and synchronizes startup filled-worker counts with household employment. |
 
 ## flows/
 
@@ -180,8 +179,8 @@ equilibrium prices, quantities, or flows given current state.
 
 ## mechanisms/
 
-Policy instruments and regulatory rules that modify agent behavior but
-don't clear markets themselves.
+Domain mechanisms that modify agent behavior or state outside the main
+economics-stage market-clearing pipeline.
 
 | File | Domain |
 |------|--------|
@@ -191,6 +190,7 @@ don't clear markets themselves.
 | `FirmEntry.scala` | Endogenous firm entry: profit-weighted sector choice, regulatory barriers, AI-native startups, and entrant technology diagnostics |
 | `Macroprudential.scala` | CCyB (countercyclical capital buffer), credit-to-GDP gap, O-SII buffers |
 | `SectoralMobility.scala` | Cross-sector labor transitions: friction matrix, voluntary quits, wage penalties |
+| `StartupStaffing.scala` | Startup lifecycle mechanism: assigns workers to newly entered firms and synchronizes startup filled-worker counts with household employment. |
 | `TaxRevenue.scala` | Fiscal revenue: VAT, excise, customs, informal-economy evasion adjustments |
 | `YieldCurve.scala` | Interbank term structure: WIRON overnight → WIBOR 1M/3M/6M with term premia |
 

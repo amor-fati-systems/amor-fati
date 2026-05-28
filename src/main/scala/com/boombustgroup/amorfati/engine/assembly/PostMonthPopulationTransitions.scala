@@ -5,7 +5,7 @@ import com.boombustgroup.amorfati.agents.RegionalMigration
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.{MonthRandomness, World}
 import com.boombustgroup.amorfati.engine.ledger.LedgerFinancialState
-import com.boombustgroup.amorfati.engine.mechanisms.{FdiOwnershipTransitions, FirmEntry, SectoralMobility}
+import com.boombustgroup.amorfati.engine.mechanisms.{FdiOwnershipTransitions, FirmEntry, SectoralMobility, StartupStaffing}
 import com.boombustgroup.amorfati.types.Share
 
 /** Post-month population transitions that complete firm/household state after
@@ -38,7 +38,22 @@ object PostMonthPopulationTransitions:
       randomness.firmEntry,
     )
 
-    val startupStaffing = StartupStaffing.assign(in, entryStep.firms, in.s9.reassignedHouseholds, randomness.startupStaffing)
+    val startupStaffing = StartupStaffing.assign(
+      StartupStaffing.Input(
+        firms = entryStep.firms,
+        households = in.s9.reassignedHouseholds,
+        householdFinancialStocks = in.s9.ledgerFinancialState.households.map(LedgerFinancialState.projectHouseholdFinancialStocks),
+        marketWage = in.s2.newWage,
+        reservationWage = in.s1.resWage,
+        importAdjustment = in.s3.importAdj,
+        regionalWages = in.s2.regionalWages,
+        remainingHireCapacity = in.s5.postFirmHireCapacity - in.s5.postFirmHires,
+        retrainingAttempts = in.s3.hhAgg.retrainingAttempts,
+        retrainingSuccesses = in.s3.hhAgg.retrainingSuccesses,
+        householdFlowTotals = in.s9.finalHhAgg,
+      ),
+      randomness.startupStaffing,
+    )
 
     val postMigHh             = RegionalMigration(startupStaffing.households, in.s2.regionalWages, randomness.regionalMigration).households
     val finalFirms            = StartupStaffing.sync(startupStaffing.firms, postMigHh)

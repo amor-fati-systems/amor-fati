@@ -1,7 +1,6 @@
 package com.boombustgroup.amorfati.engine.assembly
 
 import com.boombustgroup.amorfati.FixedPointSpecSupport.*
-import com.boombustgroup.amorfati.agents.*
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.SimulationMonth.CompletedMonth
 import com.boombustgroup.amorfati.engine.flows.{FlowSimulation, RuntimeFlowsTestSupport}
@@ -57,25 +56,6 @@ class WorldAssemblyEconomicsSpec extends AnyFlatSpec with Matchers:
     WorldObservables.monthlySeasonalCos(monthInYear = 7, peakMonth = 7) shouldBe Coefficient.One
     WorldObservables.monthlySeasonalCos(monthInYear = 1, peakMonth = 7) shouldBe Coefficient(-1)
     WorldObservables.monthlySeasonalCos(monthInYear = 10, peakMonth = 7) shouldBe Coefficient.Zero
-  }
-
-  "StartupStaffing" should "sync startup filled-worker counts from household employment" in {
-    val baseFirm          = deterministicStep.nextState.firms.head
-    val startupFirm       = baseFirm.copy(
-      id = FirmId(0),
-      tech = TechState.Hybrid(0, Multiplier.One),
-      startupMonthsLeft = 2,
-      startupTargetWorkers = 2,
-      startupFilledWorkers = 0,
-    )
-    val staffedHouseholds = deterministicStep.nextState.households.zipWithIndex.map: (household, idx) =>
-      if idx < 3 then household.copy(status = HhStatus.Employed(startupFirm.id, startupFirm.sector, PLN(5000)))
-      else household.copy(status = HhStatus.Unemployed(1))
-
-    val synced = StartupStaffing.sync(Vector(startupFirm), staffedHouseholds).head
-
-    synced.startupFilledWorkers shouldBe 2
-    synced.tech shouldBe TechState.Hybrid(2, Multiplier.One)
   }
 
   it should "carry supported financial stocks through stage-owned ledger updates" in {

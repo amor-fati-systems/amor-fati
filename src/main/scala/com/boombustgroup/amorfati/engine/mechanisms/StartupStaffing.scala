@@ -1,14 +1,27 @@
-package com.boombustgroup.amorfati.engine.assembly
+package com.boombustgroup.amorfati.engine.mechanisms
 
 import com.boombustgroup.amorfati.agents.*
 import com.boombustgroup.amorfati.config.SimParams
-import com.boombustgroup.amorfati.engine.ledger.LedgerFinancialState
 import com.boombustgroup.amorfati.engine.markets.LaborMarket
 import com.boombustgroup.amorfati.random.RandomStream
 import com.boombustgroup.amorfati.types.*
 
 /** Startup hiring and state synchronization for newly entered firms. */
 object StartupStaffing:
+
+  final case class Input(
+      firms: Vector[Firm.State],
+      households: Vector[Household.State],
+      householdFinancialStocks: Vector[Household.FinancialStocks],
+      marketWage: PLN,
+      reservationWage: PLN,
+      importAdjustment: Share,
+      regionalWages: Map[Region, PLN],
+      remainingHireCapacity: Int,
+      retrainingAttempts: Int,
+      retrainingSuccesses: Int,
+      householdFlowTotals: Household.Aggregates,
+  )
 
   final case class Result(
       firms: Vector[Firm.State],
@@ -32,20 +45,19 @@ object StartupStaffing:
   )
 
   def assign(
-      in: WorldAssemblyEconomics.StepInput,
-      firms: Vector[Firm.State],
-      households: Vector[Household.State],
+      in: Input,
       rng: RandomStream,
   )(using p: SimParams): Result =
-    val startupScan = scanStartups(firms)
+    val startupScan = scanStartups(in.firms)
     if startupScan.eligibleIds.isEmpty then
-      val synced = syncWithStartupIndices(firms, households, startupScan.allStartupIndices, startupScan.allStartupIndices)
-      Result(synced.firms, households, in.s9.finalHhAgg, 0, Share.One)
+      val synced = syncWithStartupIndices(in.firms, in.households, startupScan.allStartupIndices, startupScan.allStartupIndices)
+      Result(synced.firms, in.households, in.householdFlowTotals, 0, Share.One)
     else
-      val maxHires              = Math.max(0, in.s5.postFirmHireCapacity - in.s5.postFirmHires)
-      val searchResult          = LaborMarket.jobSearch(households, firms, in.s2.newWage, rng, in.s2.regionalWages, startupScan.eligibleIds, Some(maxHires))
-      val postWages             = LaborMarket.updateWages(searchResult.households, firms, in.s2.newWage)
-      val synced                = syncWithStartupIndices(firms, postWages, startupScan.allStartupIndices, startupScan.eligibleStartupIndices)
+      val maxHires              = Math.max(0, in.remainingHireCapacity)
+      val searchResult          =
+        LaborMarket.jobSearch(in.households, in.firms, in.marketWage, rng, in.regionalWages, startupScan.eligibleIds, Some(maxHires))
+      val postWages             = LaborMarket.updateWages(searchResult.households, in.firms, in.marketWage)
+      val synced                = syncWithStartupIndices(in.firms, postWages, startupScan.allStartupIndices, startupScan.eligibleStartupIndices)
       val startupHires          = Math.max(0, synced.filled - startupScan.filledBefore)
       val startupAbsorptionRate =
         if startupScan.openingsBefore > 0 then Share.fraction(startupHires, startupScan.openingsBefore)
@@ -53,14 +65,14 @@ object StartupStaffing:
       val hhAgg                 = Household
         .computeAggregates(
           postWages,
-          in.s9.ledgerFinancialState.households.map(LedgerFinancialState.projectHouseholdFinancialStocks),
-          in.s2.newWage,
-          in.s1.resWage,
-          in.s3.importAdj,
-          in.s3.hhAgg.retrainingAttempts,
-          in.s3.hhAgg.retrainingSuccesses,
+          in.householdFinancialStocks,
+          in.marketWage,
+          in.reservationWage,
+          in.importAdjustment,
+          in.retrainingAttempts,
+          in.retrainingSuccesses,
         )
-        .withFlowTotalsFrom(in.s9.finalHhAgg)
+        .withFlowTotalsFrom(in.householdFlowTotals)
       Result(synced.firms, postWages, hhAgg, searchResult.crossSectorHires, startupAbsorptionRate)
 
   def sync(
