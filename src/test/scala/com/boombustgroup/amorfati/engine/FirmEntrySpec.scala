@@ -394,6 +394,27 @@ class FirmEntrySpec extends AnyFlatSpec with Matchers:
         )
       .toVector
 
+  "FirmEntry automation diagnostics" should "count automation-native new entrants" in {
+    val firms = mkFirms(4).zipWithIndex.map: (firm, index) =>
+      val tech = index match
+        case 0 => TechState.Hybrid(4, Multiplier.One)
+        case 1 => TechState.Traditional(4)
+        case 2 => TechState.Automated(Multiplier.One)
+        case _ => TechState.Hybrid(4, Multiplier.One)
+      firm.copy(tech = tech)
+
+    val transitions = FirmEntry.automationEntryTransitions(firms, Set(FirmId(0), FirmId(1), FirmId(2)))
+
+    transitions.newHybrid shouldBe 1
+    transitions.newFullAi shouldBe 1
+  }
+
+  it should "include entrant automation diagnostics on process results" in {
+    val result = runEntry(mkFirms(100), BigDecimal("0.20"), RandomStream.seeded(42), sectorDemandPressure = ExpansionDemandPressure)
+
+    result.automationTransitions shouldBe FirmEntry.automationEntryTransitions(result.firms, result.newFirmIds)
+  }
+
   private def mkDeadFirm(id: Int, sector: Int = 2): Firm.State =
     TestFirmState(
       id = FirmId(id),

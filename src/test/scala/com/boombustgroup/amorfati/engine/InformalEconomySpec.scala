@@ -258,6 +258,49 @@ class InformalEconomySpec extends AnyFlatSpec with Matchers:
     total shouldBe PLN(500)
   }
 
+  "InformalEconomy.compute" should "compute tax loss and next shadow-economy state" in {
+    val result = InformalEconomy.compute(
+      InformalEconomy.Input(
+        citEvasion = PLN(100),
+        vatBeforeEvasion = PLN(1000),
+        vatAfterEvasion = PLN(800),
+        pitBeforeEvasion = PLN(500),
+        pitAfterEvasion = PLN(350),
+        exciseBeforeEvasion = PLN(300),
+        exciseAfterEvasion = PLN(250),
+        realizedTaxShadowShare = InformalEconomy.aggregateTaxShadowShare(Share.Zero),
+        employed = 90,
+        workingAgePopulation = 100,
+        previousCyclicalAdjustment = Share.Zero,
+      ),
+    )
+
+    result.taxEvasionLoss shouldBe PLN(500)
+    result.realizedTaxShadowShare shouldBe InformalEconomy.aggregateTaxShadowShare(Share.Zero)
+    result.cyclicalAdj shouldBe Share.decimal(2, 3)
+    result.nextTaxShadowShare shouldBe InformalEconomy.aggregateTaxShadowShare(result.cyclicalAdj)
+  }
+
+  it should "not offset CIT evasion with negative aggregate-tax channel losses" in {
+    val result = InformalEconomy.compute(
+      InformalEconomy.Input(
+        citEvasion = PLN(100),
+        vatBeforeEvasion = PLN(800),
+        vatAfterEvasion = PLN(1000),
+        pitBeforeEvasion = PLN(350),
+        pitAfterEvasion = PLN(500),
+        exciseBeforeEvasion = PLN(250),
+        exciseAfterEvasion = PLN(300),
+        realizedTaxShadowShare = Share.Zero,
+        employed = 90,
+        workingAgePopulation = 100,
+        previousCyclicalAdjustment = Share.Zero,
+      ),
+    )
+
+    result.taxEvasionLoss shouldBe PLN(100)
+  }
+
   // ==========================================================================
   // EvasionToGdpRatio
   // ==========================================================================

@@ -32,13 +32,13 @@ object BankingEconomics:
   case class StepInput(
       w: World,                                   // current world state (pre-step)
       ledgerFinancialState: LedgerFinancialState, // ledger-backed financial state
-      s1: FiscalConstraintEconomics.Output,       // fiscal constraint (month, lending base rate, res wage)
-      s2: LaborEconomics.Output,                  // labor/demographics (employment, wage, immigration)
-      s3: HouseholdIncomeEconomics.Output,        // household income (consumption, PIT, debt service)
-      s4: DemandEconomics.Output,                 // demand (sector multipliers, gov purchases)
+      s1: FiscalConstraintEconomics.StepOutput,   // fiscal constraint (month, lending base rate, res wage)
+      s2: LaborEconomics.StepOutput,              // labor/demographics (employment, wage, immigration)
+      s3: HouseholdIncomeEconomics.StepOutput,    // household income (consumption, PIT, debt service)
+      s4: DemandEconomics.StepOutput,             // demand (sector multipliers, gov purchases)
       s5: FirmEconomics.StepOutput,               // firm processing (loans, NPL, bonds, I-O firms)
-      s6: HouseholdFinancialEconomics.Output,     // household financial flows (remittances, tourism, consumer credit)
-      s7: PriceEquityEconomics.Output,            // price/equity (inflation, GDP, equity state, macropru)
+      s6: HouseholdFinancialEconomics.StepOutput, // household financial flows (remittances, tourism, consumer credit)
+      s7: PriceEquityEconomics.StepOutput,        // price/equity (inflation, GDP, equity state, macropru)
       s8: OpenEconEconomics.StepOutput,           // open economy (NBP rate, bond yield, QE, FX, BoP)
       banks: Vector[Banking.BankState],           // explicit bank population
       depositRng: RandomStream,                   // deterministic RNG for deposit flight decisions

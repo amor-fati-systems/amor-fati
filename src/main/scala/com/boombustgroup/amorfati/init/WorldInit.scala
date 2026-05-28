@@ -87,7 +87,7 @@ object WorldInit:
     val initGovCurrentSpend = p.fiscal.govBaseSpending * (Share.One - p.fiscal.govInvestShare)
     val initGovCapitalSpend = p.fiscal.govBaseSpending * p.fiscal.govInvestShare
 
-    // --- World assembly ---
+    // --- Initial world construction ---
     val initHhAgg = Household.Aggregates(
       employed = initEmployed,
       unemployed = initUnemployed,

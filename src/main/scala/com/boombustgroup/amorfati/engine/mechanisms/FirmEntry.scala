@@ -49,12 +49,15 @@ object FirmEntry:
   private val StartupMaxWorkers        = 8                         // entrant startup team cap
   private val HalfWeight               = Share.decimal(5, 1)
 
+  case class AutomationEntryTransitions(newFullAi: Int, newHybrid: Int)
+
   case class Result(
-      firms: Vector[Firm.State],                     // post-entry firm population (may be longer than input if net creation occurred)
-      financialStocks: Vector[Firm.FinancialStocks], // ledger-owned firm financial stocks aligned with `firms`
-      births: Int,                                   // total new entrants (recycled + net new)
-      netBirths: Int,                                // net new firms appended to vector
-      newFirmIds: Set[FirmId],                       // recycled or appended slots that now contain a newly created firm
+      firms: Vector[Firm.State],                        // post-entry firm population (may be longer than input if net creation occurred)
+      financialStocks: Vector[Firm.FinancialStocks],    // ledger-owned firm financial stocks aligned with `firms`
+      births: Int,                                      // total new entrants (recycled + net new)
+      netBirths: Int,                                   // net new firms appended to vector
+      newFirmIds: Set[FirmId],                          // recycled or appended slots that now contain a newly created firm
+      automationTransitions: AutomationEntryTransitions, // technology diagnostics for new entrants
   )
 
   case class LaggedEntrySignals(
@@ -103,7 +106,21 @@ object FirmEntry:
     val (finalFirms, finalStocks, netNewIds) =
       netCreation(recycledFirms, recycledStocks, living.length, laggedSignals, totalAdoption, livingIds, sectorWeights, rng)
     val newFirmIds                           = recycledIds ++ netNewIds
-    Result(finalFirms, finalStocks, newFirmIds.size, netNewIds.size, newFirmIds)
+    Result(finalFirms, finalStocks, newFirmIds.size, netNewIds.size, newFirmIds, automationEntryTransitions(finalFirms, newFirmIds))
+
+  def automationEntryTransitions(firms: Vector[Firm.State], newFirmIds: Set[FirmId]): AutomationEntryTransitions =
+    var newFullAi = 0
+    var newHybrid = 0
+    var i         = 0
+    while i < firms.length do
+      val firm = firms(i)
+      if newFirmIds.contains(firm.id) then
+        firm.tech match
+          case _: TechState.Automated => newFullAi += 1
+          case _: TechState.Hybrid    => newHybrid += 1
+          case _                      =>
+      i += 1
+    AutomationEntryTransitions(newFullAi, newHybrid)
 
   private def recycleDeadSlots(
       firms: Vector[Firm.State],

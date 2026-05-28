@@ -191,7 +191,7 @@ The monthly calculus stages are:
 | s7 | `PriceEquityEconomics` | inflation, equity market, GDP proxy, macroprudential, EU funds |
 | s8 | `OpenEconEconomics` | BoP, forex, GVC, Taylor rule, bond yields, insurance, NBFI |
 | s9 | `BankingEconomics` | bank P&L, provisioning, CAR, resolution, interbank, BFG levy, M1/M2/M3 |
-| final | `WorldAssemblyEconomics` | aggregation, informal economy, observables, SFC status, next state |
+| final | `MonthClosing` | aggregation, informal economy, lifecycle transitions, SFC status, next state |
 
 ### Flow Emission And Accounting Boundary
 
@@ -209,7 +209,7 @@ The model distinguishes:
 
 - `pre` decision inputs persisted at the beginning of a month;
 - same-month operational signals computed inside a month;
-- post-month realized outcomes;
+- closed-month realized outcomes;
 - extracted next-month `DecisionSignals`.
 
 This contract is implemented through `MonthSemantics`, `OperationalSignals`,

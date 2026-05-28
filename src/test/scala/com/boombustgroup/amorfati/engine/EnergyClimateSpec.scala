@@ -7,6 +7,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import com.boombustgroup.amorfati.Generators
 import org.scalatest.matchers.should.Matchers
 import com.boombustgroup.amorfati.agents.{BankruptReason, Firm, TechState}
+import com.boombustgroup.amorfati.engine.mechanisms.ClimatePolicy
 import com.boombustgroup.amorfati.types.*
 
 class EnergyClimateSpec extends AnyFlatSpec with Matchers:
@@ -128,6 +129,12 @@ class EnergyClimateSpec extends AnyFlatSpec with Matchers:
   it should "equal base price at month 0" in {
     val etsPrice = decimal(p.climate.etsBasePrice) * powDecimal(BigDecimal(1) + decimal(p.climate.etsPriceDrift) / BigDecimal(12), 0)
     etsPrice shouldBe decimal(p.climate.etsBasePrice)
+  }
+
+  it should "use the shared ClimatePolicy path" in {
+    ClimatePolicy.etsPrice(previousCompletedMonths = 0) shouldBe p.climate.etsBasePrice
+    ClimatePolicy.etsPrice(previousCompletedMonths = 12) should be > p.climate.etsBasePrice
+    ClimatePolicy.carbonSurcharge(SectorIdx(1), previousCompletedMonths = 12) should be > Multiplier.Zero
   }
 
   // ==========================================================================

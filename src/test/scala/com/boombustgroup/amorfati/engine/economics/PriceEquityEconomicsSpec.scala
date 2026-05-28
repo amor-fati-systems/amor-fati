@@ -34,7 +34,7 @@ class PriceEquityEconomicsSpec extends AnyFlatSpec with Matchers:
   private val s5          =
     FirmEconomics.runStep(w, init.firms, init.households, init.banks, init.ledgerFinancialState, s1, s2, s3, s4, RandomStream.seeded(43))
 
-  private def runPriceStep(world: com.boombustgroup.amorfati.engine.World, firmStep: FirmEconomics.StepOutput): PriceEquityEconomics.Output =
+  private def runPriceStep(world: com.boombustgroup.amorfati.engine.World, firmStep: FirmEconomics.StepOutput): PriceEquityEconomics.StepOutput =
     PriceEquityEconomics.compute(
       w = world,
       month = s1.m,

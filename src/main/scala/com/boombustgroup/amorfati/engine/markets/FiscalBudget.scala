@@ -108,7 +108,7 @@ object FiscalBudget:
     def domesticBudgetDemand: PLN = govCurrentSpend + govCapitalSpend
 
     /** Central-budget outlays before separate social-fund subventions are added
-      * in SFC/world assembly. Excludes the total EU project envelope.
+      * in SFC/month-closing projection. Excludes the total EU project envelope.
       */
     def domesticBudgetOutlays: PLN =
       unempBenefitSpend + socialTransferSpend + govCurrentSpend + govCapitalSpend + debtServiceSpend + euCofinancing

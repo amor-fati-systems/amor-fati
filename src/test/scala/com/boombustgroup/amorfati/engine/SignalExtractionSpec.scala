@@ -58,7 +58,7 @@ class SignalExtractionSpec extends AnyFlatSpec with Matchers:
       ),
     )
 
-    result.provenance.unemploymentRate.stage shouldBe MonthTraceStage.WorldAssemblyEconomics
+    result.provenance.unemploymentRate.stage shouldBe MonthTraceStage.MonthClosing
     result.provenance.inflation.stage shouldBe MonthTraceStage.PriceEquityEconomics
     result.provenance.expectedInflation.stage shouldBe MonthTraceStage.OpenEconEconomics
     result.provenance.laggedHiringSlack.stage shouldBe MonthTraceStage.LaborEconomics
@@ -67,7 +67,7 @@ class SignalExtractionSpec extends AnyFlatSpec with Matchers:
     result.provenance.sectorDemandPressure.stage shouldBe MonthTraceStage.DemandEconomics
     result.provenance.sectorHiringSignal.stage shouldBe MonthTraceStage.DemandEconomics
     result.provenance.startupAbsorptionRate.value shouldBe Share.decimal(55, 2)
-    result.provenance.startupAbsorptionRate.source shouldBe "WorldAssemblyEconomics.applyStartupStaffing.startupAbsorptionRate"
+    result.provenance.startupAbsorptionRate.source shouldBe "StartupStaffing.assign.startupAbsorptionRate"
     result.provenance.sectorDemandPressure.source shouldBe "s4.sectorDemandPressure"
     result.provenance.sectorHiringSignal.source shouldBe "s4.sectorHiringSignal"
   }

@@ -330,7 +330,7 @@ object Household:
     * exports.
     */
   case class MonthlyFlow(
-      householdId: HhId,                                   // household identifier for joining with post-month state
+      householdId: HhId,                                   // household identifier for joining with closed-month state
       openingDemandDeposit: PLN,                           // opening liquid deposit before the household month step
       openingConsumerLoan: PLN,                            // opening unsecured consumer-loan principal
       monthlyIncome: PLN,                                  // net monthly household income after PIT and transfers

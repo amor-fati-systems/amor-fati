@@ -43,5 +43,26 @@ object GdpAccounting:
       i += 1
     outputs.iterator.map(output => priceLevel * output).toVector
 
+  /** Computes per-sector outputs from pre-aggregated real sector capacities.
+    *
+    * Use this when `sectorCapReal` already contains sector-level real
+    * capacities. It applies the sector multiplier and price level to return
+    * price-level adjusted PLN outputs. In contrast, [[realizedSectorOutputs]]
+    * starts from firm-level states and aggregates alive-firm output into
+    * sectors first.
+    */
+  def capacityWeightedSectorOutputs(
+      priceLevel: PriceIndex,
+      sectorCapReal: Vector[PLN],
+      sectorMultiplier: Int => Multiplier,
+  ): Vector[PLN] =
+    val outputs = Vector.newBuilder[PLN]
+    outputs.sizeHint(sectorCapReal.length)
+    var i       = 0
+    while i < sectorCapReal.length do
+      outputs += priceLevel * (sectorCapReal(i) * sectorMultiplier(i))
+      i += 1
+    outputs.result()
+
   def outputBasedMonthlyGdp(sectorOutputs: Vector[PLN], inventoryChange: PLN): PLN =
     (sectorOutputs.sumPln + inventoryChange).max(PLN.Zero)

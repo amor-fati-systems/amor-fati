@@ -4,6 +4,7 @@ import com.boombustgroup.amorfati.agents.*
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.SimulationMonth.ExecutionMonth
 import com.boombustgroup.amorfati.engine.World
+import com.boombustgroup.amorfati.engine.mechanisms.TourismSeasonality
 import com.boombustgroup.amorfati.random.RandomStream
 import com.boombustgroup.amorfati.types.*
 
@@ -24,21 +25,6 @@ object HouseholdFinancialEconomics:
   private def trendFactor(annualGrowth: Rate, elapsedMonths: Int): Multiplier =
     annualGrowth.monthly.growthMultiplier.pow(Scalar(elapsedMonths))
 
-  private def monthlySeasonalCos(monthInYear: Int, peakMonth: Int): Coefficient =
-    Math.floorMod(monthInYear - peakMonth, 12) match
-      case 0  => Coefficient.One
-      case 1  => Coefficient.decimal(8660254038L, 10)
-      case 2  => Coefficient.decimal(5, 1)
-      case 3  => Coefficient.Zero
-      case 4  => Coefficient.decimal(-5, 1)
-      case 5  => Coefficient.decimal(-8660254038L, 10)
-      case 6  => Coefficient(-1)
-      case 7  => Coefficient.decimal(-8660254038L, 10)
-      case 8  => Coefficient.decimal(-5, 1)
-      case 9  => Coefficient.Zero
-      case 10 => Coefficient.decimal(5, 1)
-      case _  => Coefficient.decimal(8660254038L, 10)
-
   case class Output(
       depositInterestPaid: PLN,         // total deposit interest paid to households
       remittanceOutflow: PLN,           // total household remittance outflow
@@ -55,13 +41,15 @@ object HouseholdFinancialEconomics:
       consumerPrincipal: PLN,           // consumer loan principal repayment
   )
 
+  type StepOutput = Output
+
   def compute(
       w: World,
       month: ExecutionMonth,
       employed: Int,
       hhAgg: Household.Aggregates,
       @annotation.unused rng: RandomStream,
-  )(using p: SimParams): Output =
+  )(using p: SimParams): StepOutput =
     val depositInterestPaid = hhAgg.totalDepositInterest
     val remittanceOutflow   = hhAgg.totalRemittances
 
@@ -81,7 +69,7 @@ object HouseholdFinancialEconomics:
       val monthInt       = month.toInt
       val elapsedMonths  = month.previousCompleted.toInt
       val monthInYear    = month.monthInYear
-      val seasonalFactor = (p.tourism.seasonality * monthlySeasonalCos(monthInYear, p.tourism.peakMonth)).growthMultiplier
+      val seasonalFactor = TourismSeasonality.factor(monthInYear, p.tourism.peakMonth, p.tourism.seasonality)
       val inboundErAdj   = w.forex.exchangeRate.ratioTo(p.forex.baseExRate).pow(p.tourism.erElasticity.toScalar)
       val outboundErAdj  = p.forex.baseExRate.ratioTo(w.forex.exchangeRate).pow(p.tourism.erElasticity.toScalar)
       val trendAdj       = trendFactor(p.tourism.growthRate, elapsedMonths)

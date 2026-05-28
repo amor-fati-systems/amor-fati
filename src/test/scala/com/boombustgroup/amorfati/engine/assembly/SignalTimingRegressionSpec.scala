@@ -1,10 +1,11 @@
-package com.boombustgroup.amorfati.engine.economics
+package com.boombustgroup.amorfati.engine.assembly
 
 import com.boombustgroup.amorfati.FixedPointSpecSupport.*
 import com.boombustgroup.amorfati.agents.*
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.SimulationMonth.ExecutionMonth
-import com.boombustgroup.amorfati.engine.{DecisionSignals, MonthRandomness, MonthTraceStage, OperationalSignals, SignalExtraction, World}
+import com.boombustgroup.amorfati.engine.{DecisionSignals, MonthExecution, MonthRandomness, MonthTraceStage, OperationalSignals, SignalExtraction, World}
+import com.boombustgroup.amorfati.engine.economics.*
 import com.boombustgroup.amorfati.engine.ledger.LedgerFinancialState
 import com.boombustgroup.amorfati.init.{InitRandomness, WorldInit}
 import com.boombustgroup.amorfati.random.RandomStream
@@ -22,14 +23,14 @@ class SignalTimingRegressionSpec extends AnyFlatSpec with Matchers:
       households: Vector[Household.State],
       banks: Vector[Banking.BankState],
       ledgerFinancialState: LedgerFinancialState,
-      s1: FiscalConstraintEconomics.Output,
-      s2Pre: LaborEconomics.Output,
-      s2: LaborEconomics.Output,
-      s3: HouseholdIncomeEconomics.Output,
-      s4: DemandEconomics.Output,
+      s1: FiscalConstraintEconomics.StepOutput,
+      s2Pre: LaborEconomics.StepOutput,
+      s2: LaborEconomics.StepOutput,
+      s3: HouseholdIncomeEconomics.StepOutput,
+      s4: DemandEconomics.StepOutput,
       s5: FirmEconomics.StepOutput,
-      s6: HouseholdFinancialEconomics.Output,
-      s7: PriceEquityEconomics.Output,
+      s6: HouseholdFinancialEconomics.StepOutput,
+      s7: PriceEquityEconomics.StepOutput,
       s8: OpenEconEconomics.StepOutput,
       s9: BankingEconomics.StepOutput,
   )
@@ -108,18 +109,18 @@ class SignalTimingRegressionSpec extends AnyFlatSpec with Matchers:
 
     PipelineFixture(world, init.firms, init.households, init.banks, ledgerFinancialState, s1, s2Pre, s2, s3, s4, s5, s6, s7, s8, s9)
 
-  private def baseStepInput: WorldAssemblyEconomics.StepInput =
-    WorldAssemblyEconomics.StepInput(
-      baseline.world,
-      baseline.s1,
-      baseline.s2,
-      baseline.s3,
-      baseline.s4,
-      baseline.s5,
-      baseline.s6,
-      baseline.s7,
-      baseline.s8,
-      baseline.s9,
+  private def baseMonthExecution: MonthExecution =
+    MonthExecution(
+      openingWorld = baseline.world,
+      fiscal = baseline.s1,
+      labor = baseline.s2,
+      householdIncome = baseline.s3,
+      demand = baseline.s4,
+      firm = baseline.s5,
+      householdFinancial = baseline.s6,
+      priceEquity = baseline.s7,
+      openEconomy = baseline.s8,
+      banking = baseline.s9,
     )
 
   private def multiplierVector(value: BigDecimal): Vector[Multiplier] =
@@ -174,7 +175,7 @@ class SignalTimingRegressionSpec extends AnyFlatSpec with Matchers:
   private def baseOpenEconRunStep(
       world: World,
       ledgerFinancialState: LedgerFinancialState,
-      s7: PriceEquityEconomics.Output,
+      s7: PriceEquityEconomics.StepOutput,
       seed: Long,
   ): OpenEconEconomics.StepOutput =
     OpenEconEconomics.runStep(
@@ -193,8 +194,8 @@ class SignalTimingRegressionSpec extends AnyFlatSpec with Matchers:
       ),
     )
 
-  private def assemblyRandomness(seed: Long): MonthRandomness.AssemblyStreams =
-    MonthRandomness.Contract.fromSeed(seed).assembly.newStreams()
+  private def closingRandomness(seed: Long): MonthRandomness.ClosingStreams =
+    MonthRandomness.Contract.fromSeed(seed).closing.newStreams()
 
   private def allEmployed(
       households: Vector[Household.State],
@@ -227,16 +228,16 @@ class SignalTimingRegressionSpec extends AnyFlatSpec with Matchers:
       ),
     )
 
-  private def withSameMonthEquityReturn(s7: PriceEquityEconomics.Output, equityReturn: Rate): PriceEquityEconomics.Output =
+  private def withSameMonthEquityReturn(s7: PriceEquityEconomics.StepOutput, equityReturn: Rate): PriceEquityEconomics.StepOutput =
     s7.copy(
       equityAfterForeignStock = s7.equityAfterForeignStock.copy(monthlyReturn = equityReturn),
     )
 
-  private def entrySensitiveInput: WorldAssemblyEconomics.StepInput =
-    val base = baseStepInput
+  private def entrySensitiveInput: MonthExecution =
+    val base = baseMonthExecution
     base.copy(
-      w = withSeedSignals(
-        base.w,
+      openingWorld = withSeedSignals(
+        base.openingWorld,
         _.copy(
           unemploymentRate = Share.decimal(15, 2),
           inflation = Rate.decimal(3, 2),
@@ -246,20 +247,20 @@ class SignalTimingRegressionSpec extends AnyFlatSpec with Matchers:
           sectorDemandPressure = multiplierVector(BigDecimal("1.05")),
         ),
       ),
-      s2 = base.s2.copy(operationalHiringSlack = Share.One),
-      s7 = base.s7.copy(newInfl = Rate.decimal(3, 2)),
-      s8 = base.s8.copy(
-        monetary = base.s8.monetary.copy(
-          newExp = base.s8.monetary.newExp.copy(expectedInflation = Rate.decimal(25, 3)),
+      labor = base.labor.copy(operationalHiringSlack = Share.One),
+      priceEquity = base.priceEquity.copy(newInfl = Rate.decimal(3, 2)),
+      openEconomy = base.openEconomy.copy(
+        monetary = base.openEconomy.monetary.copy(
+          newExp = base.openEconomy.monetary.newExp.copy(expectedInflation = Rate.decimal(25, 3)),
         ),
       ),
-      s9 = base.s9.copy(
-        reassignedHouseholds = withUnemploymentShare(base.s9.reassignedHouseholds, base.s9.reassignedFirms, base.s2.newWage, BigDecimal("0.15")),
+      banking = base.banking.copy(
+        reassignedHouseholds = withUnemploymentShare(base.banking.reassignedHouseholds, base.banking.reassignedFirms, base.labor.newWage, BigDecimal("0.15")),
       ),
     )
 
-  private def netBirths(in: WorldAssemblyEconomics.StepInput): Int =
-    WorldAssemblyEconomics.computePostMonth(in, assemblyRandomness(1234L)).world.flows.netFirmBirths
+  private def netBirths(in: MonthExecution): Int =
+    MonthClosing.closeExecution(in, closingRandomness(1234L)).world.flows.netFirmBirths
 
   "DemandEconomics.compute" should "smooth sector hiring plans from lagged decision signals while keeping same-month pressure fixed" in {
     val weakLagged   = withSeedSignals(
@@ -283,25 +284,25 @@ class SignalTimingRegressionSpec extends AnyFlatSpec with Matchers:
     strongResult.sectorHiringSignal.head should be > weakResult.sectorHiringSignal.head
   }
 
-  "SignalExtraction.fromPostMonth" should "derive next-month decision inputs through one explicit post-to-pre boundary" in {
+  "SignalExtraction.fromClosedMonth" should "derive next-month decision inputs through one explicit closed-to-next-pre boundary" in {
     val base            = entrySensitiveInput
-    val finalHouseholds = withUnemploymentShare(base.s9.reassignedHouseholds, base.s9.reassignedFirms, base.s2.newWage, BigDecimal("0.22"))
-    val finalWorld      = base.w.copy(
-      social = base.w.social.copy(demographics = base.s2.newDemographics),
+    val finalHouseholds = withUnemploymentShare(base.banking.reassignedHouseholds, base.banking.reassignedFirms, base.labor.newWage, BigDecimal("0.22"))
+    val finalWorld      = base.openingWorld.copy(
+      social = base.openingWorld.social.copy(demographics = base.labor.newDemographics),
       inflation = Rate.decimal(-1, 2),
-      mechanisms = base.w.mechanisms.copy(
-        expectations = base.w.mechanisms.expectations.copy(expectedInflation = Rate.decimal(4, 2)),
+      mechanisms = base.openingWorld.mechanisms.copy(
+        expectations = base.openingWorld.mechanisms.expectations.copy(expectedInflation = Rate.decimal(4, 2)),
       ),
     )
-    val extracted       = SignalExtraction.fromPostMonth(
+    val extracted       = SignalExtraction.fromClosedMonth(
       world = finalWorld,
       households = finalHouseholds,
       operationalHiringSlack = Share.One,
       startupAbsorptionRate = Share.decimal(35, 2),
       demand = SignalExtraction.DemandOutcomes(
-        sectorDemandMult = base.s4.sectorMults,
-        sectorDemandPressure = base.s4.sectorDemandPressure,
-        sectorHiringSignal = base.s4.sectorHiringSignal,
+        sectorDemandMult = base.demand.sectorMults,
+        sectorDemandPressure = base.demand.sectorDemandPressure,
+        sectorHiringSignal = base.demand.sectorHiringSignal,
       ),
     )
 
@@ -310,10 +311,10 @@ class SignalTimingRegressionSpec extends AnyFlatSpec with Matchers:
     extracted.seedOut.expectedInflation shouldBe Rate.decimal(4, 2)
     extracted.seedOut.laggedHiringSlack shouldBe Share.One
     extracted.seedOut.startupAbsorptionRate shouldBe Share.decimal(35, 2)
-    extracted.seedOut.sectorDemandMult shouldBe base.s4.sectorMults
-    extracted.seedOut.sectorDemandPressure shouldBe base.s4.sectorDemandPressure
-    extracted.seedOut.sectorHiringSignal shouldBe base.s4.sectorHiringSignal
-    extracted.provenance.unemploymentRate.stage shouldBe MonthTraceStage.WorldAssemblyEconomics
+    extracted.seedOut.sectorDemandMult shouldBe base.demand.sectorMults
+    extracted.seedOut.sectorDemandPressure shouldBe base.demand.sectorDemandPressure
+    extracted.seedOut.sectorHiringSignal shouldBe base.demand.sectorHiringSignal
+    extracted.provenance.unemploymentRate.stage shouldBe MonthTraceStage.MonthClosing
     extracted.provenance.startupAbsorptionRate.stage shouldBe MonthTraceStage.StartupStaffing
   }
 
@@ -400,61 +401,61 @@ class SignalTimingRegressionSpec extends AnyFlatSpec with Matchers:
     gainBoundaryResult.nonBank.newNbfi.lastTfiNetInflow should not equal lowerSameMonth.nonBank.newNbfi.lastTfiNetInflow
   }
 
-  "WorldAssemblyEconomics.computePostMonth" should "derive entry tight-demand unemployment from lagged decision signals instead of post-firm households" in {
+  "MonthClosing.closeExecution" should "derive entry tight-demand unemployment from lagged decision signals instead of post-firm households" in {
     val base       = entrySensitiveInput
     val lowUnemp   = base.copy(
-      s9 = base.s9.copy(
-        reassignedHouseholds = withUnemploymentShare(base.s9.reassignedHouseholds, base.s9.reassignedFirms, base.s2.newWage, BigDecimal("0.04")),
+      banking = base.banking.copy(
+        reassignedHouseholds = withUnemploymentShare(base.banking.reassignedHouseholds, base.banking.reassignedFirms, base.labor.newWage, BigDecimal("0.04")),
       ),
     )
     val highUnemp  = base.copy(
-      s9 = base.s9.copy(
-        reassignedHouseholds = withUnemploymentShare(base.s9.reassignedHouseholds, base.s9.reassignedFirms, base.s2.newWage, BigDecimal("0.15")),
+      banking = base.banking.copy(
+        reassignedHouseholds = withUnemploymentShare(base.banking.reassignedHouseholds, base.banking.reassignedFirms, base.labor.newWage, BigDecimal("0.15")),
       ),
     )
     val lowLagged  = base.copy(
-      w = withSeedSignals(base.w, _.copy(unemploymentRate = Share.decimal(4, 2))),
+      openingWorld = withSeedSignals(base.openingWorld, _.copy(unemploymentRate = Share.decimal(4, 2))),
     )
     val highLagged = base.copy(
-      w = withSeedSignals(base.w, _.copy(unemploymentRate = Share.decimal(15, 2))),
+      openingWorld = withSeedSignals(base.openingWorld, _.copy(unemploymentRate = Share.decimal(15, 2))),
     )
 
     netBirths(highUnemp) shouldBe netBirths(lowUnemp)
     netBirths(lowLagged) should be > netBirths(highLagged)
   }
 
-  it should "ignore assembled month-t inflation when entry uses lagged nominal signals" in {
+  it should "ignore closed month-t inflation when entry uses lagged nominal signals" in {
     val base           = entrySensitiveInput
-    val deflation      = base.copy(s7 = base.s7.copy(newInfl = Rate.decimal(-2, 2)))
-    val positive       = base.copy(s7 = base.s7.copy(newInfl = Rate.decimal(3, 2)))
-    val negativeLagged = base.copy(w = withSeedSignals(base.w, _.copy(inflation = Rate.decimal(-2, 2))))
-    val positiveLagged = base.copy(w = withSeedSignals(base.w, _.copy(inflation = Rate.decimal(3, 2))))
+    val deflation      = base.copy(priceEquity = base.priceEquity.copy(newInfl = Rate.decimal(-2, 2)))
+    val positive       = base.copy(priceEquity = base.priceEquity.copy(newInfl = Rate.decimal(3, 2)))
+    val negativeLagged = base.copy(openingWorld = withSeedSignals(base.openingWorld, _.copy(inflation = Rate.decimal(-2, 2))))
+    val positiveLagged = base.copy(openingWorld = withSeedSignals(base.openingWorld, _.copy(inflation = Rate.decimal(3, 2))))
 
     netBirths(positive) shouldBe netBirths(deflation)
     netBirths(positiveLagged) should be > netBirths(negativeLagged)
   }
 
-  it should "ignore assembled month-t expected inflation when entry uses lagged nominal signals" in {
+  it should "ignore closed month-t expected inflation when entry uses lagged nominal signals" in {
     val base           = entrySensitiveInput
     val negativeExp    = base.copy(
-      s8 = base.s8.copy(
-        monetary = base.s8.monetary.copy(
-          newExp = base.s8.monetary.newExp.copy(expectedInflation = Rate.decimal(-1, 2)),
+      openEconomy = base.openEconomy.copy(
+        monetary = base.openEconomy.monetary.copy(
+          newExp = base.openEconomy.monetary.newExp.copy(expectedInflation = Rate.decimal(-1, 2)),
         ),
       ),
     )
     val positiveExp    = base.copy(
-      s8 = base.s8.copy(
-        monetary = base.s8.monetary.copy(
-          newExp = base.s8.monetary.newExp.copy(expectedInflation = Rate.decimal(25, 3)),
+      openEconomy = base.openEconomy.copy(
+        monetary = base.openEconomy.monetary.copy(
+          newExp = base.openEconomy.monetary.newExp.copy(expectedInflation = Rate.decimal(25, 3)),
         ),
       ),
     )
     val laggedNegative = base.copy(
-      w = withSeedSignals(base.w, _.copy(expectedInflation = Rate.decimal(-1, 2))),
+      openingWorld = withSeedSignals(base.openingWorld, _.copy(expectedInflation = Rate.decimal(-1, 2))),
     )
     val laggedPositive = base.copy(
-      w = withSeedSignals(base.w, _.copy(expectedInflation = Rate.decimal(25, 3))),
+      openingWorld = withSeedSignals(base.openingWorld, _.copy(expectedInflation = Rate.decimal(25, 3))),
     )
 
     netBirths(positiveExp) shouldBe netBirths(negativeExp)
@@ -463,10 +464,10 @@ class SignalTimingRegressionSpec extends AnyFlatSpec with Matchers:
 
   it should "derive entry labor tightness from lagged decision signals instead of refreshed same-month slack" in {
     val base        = entrySensitiveInput
-    val tight       = base.copy(s2 = base.s2.copy(operationalHiringSlack = Share.decimal(10, 2)))
-    val loose       = base.copy(s2 = base.s2.copy(operationalHiringSlack = Share.One))
-    val tightLagged = base.copy(w = withSeedSignals(base.w, _.copy(laggedHiringSlack = Share.decimal(10, 2))))
-    val looseLagged = base.copy(w = withSeedSignals(base.w, _.copy(laggedHiringSlack = Share.One)))
+    val tight       = base.copy(labor = base.labor.copy(operationalHiringSlack = Share.decimal(10, 2)))
+    val loose       = base.copy(labor = base.labor.copy(operationalHiringSlack = Share.One))
+    val tightLagged = base.copy(openingWorld = withSeedSignals(base.openingWorld, _.copy(laggedHiringSlack = Share.decimal(10, 2))))
+    val looseLagged = base.copy(openingWorld = withSeedSignals(base.openingWorld, _.copy(laggedHiringSlack = Share.One)))
 
     netBirths(loose) shouldBe netBirths(tight)
     netBirths(looseLagged) should be > netBirths(tightLagged)
@@ -474,21 +475,21 @@ class SignalTimingRegressionSpec extends AnyFlatSpec with Matchers:
 
   it should "source startup absorption from lagged decision signals" in {
     val base   = entrySensitiveInput
-    val weak   = base.copy(w = base.w.copy(pipeline = base.w.pipeline.copy(startupAbsorptionRate = Share.decimal(10, 2))))
-    val strong = base.copy(w = base.w.copy(pipeline = base.w.pipeline.copy(startupAbsorptionRate = Share.One)))
+    val weak   = base.copy(openingWorld = base.openingWorld.copy(pipeline = base.openingWorld.pipeline.copy(startupAbsorptionRate = Share.decimal(10, 2))))
+    val strong = base.copy(openingWorld = base.openingWorld.copy(pipeline = base.openingWorld.pipeline.copy(startupAbsorptionRate = Share.One)))
 
     netBirths(strong) should be > netBirths(weak)
   }
 
-  it should "keep post-month assembly distinct from the next-month seed boundary" in {
-    val input = entrySensitiveInput.copy(s2 = entrySensitiveInput.s2.copy(operationalHiringSlack = Share.decimal(21, 2)))
-    val post  = WorldAssemblyEconomics.computePostMonth(input, assemblyRandomness(1234L))
+  it should "keep month closing distinct from the next-month seed boundary" in {
+    val input  = entrySensitiveInput.copy(labor = entrySensitiveInput.labor.copy(operationalHiringSlack = Share.decimal(21, 2)))
+    val closed = MonthClosing.closeExecution(input, closingRandomness(1234L))
 
-    post.world.pipeline.operationalHiringSlack shouldBe Share.decimal(21, 2)
-    post.world.seedIn shouldBe input.w.seedIn
-    post.world.pipeline.sectorDemandMult shouldBe input.w.pipeline.sectorDemandMult
-    post.world.pipeline.sectorDemandPressure shouldBe input.w.pipeline.sectorDemandPressure
-    post.world.pipeline.sectorHiringSignal shouldBe input.w.pipeline.sectorHiringSignal
+    closed.world.pipeline.operationalHiringSlack shouldBe Share.decimal(21, 2)
+    closed.world.seedIn shouldBe input.openingWorld.seedIn
+    closed.world.pipeline.sectorDemandMult shouldBe input.openingWorld.pipeline.sectorDemandMult
+    closed.world.pipeline.sectorDemandPressure shouldBe input.openingWorld.pipeline.sectorDemandPressure
+    closed.world.pipeline.sectorHiringSignal shouldBe input.openingWorld.pipeline.sectorHiringSignal
   }
 
   it should "keep explicit OperationalSignals aligned with post-reconcile labor slack" in {

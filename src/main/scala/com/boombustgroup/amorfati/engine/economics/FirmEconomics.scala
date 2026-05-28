@@ -284,10 +284,10 @@ object FirmEconomics:
       households: Vector[Household.State],
       banks: Vector[Banking.BankState],
       ledgerFinancialState: LedgerFinancialState,
-      s1: FiscalConstraintEconomics.Output,
-      s2: LaborEconomics.Output,
-      s3: HouseholdIncomeEconomics.Output,
-      s4: DemandEconomics.Output,
+      s1: FiscalConstraintEconomics.StepOutput,
+      s2: LaborEconomics.StepOutput,
+      s3: HouseholdIncomeEconomics.StepOutput,
+      s4: DemandEconomics.StepOutput,
       rng: RandomStream,
       traceDecisions: Boolean = false,
   )(using p: SimParams): StepOutput =
@@ -355,10 +355,10 @@ object FirmEconomics:
       households: Vector[Household.State],        // opening household states before firm-stage labor matching
       banks: Vector[Banking.BankState],           // opening bank states used for lending conditions
       ledgerFinancialState: LedgerFinancialState, // opening ledger-owned financial stocks
-      s1: FiscalConstraintEconomics.Output,       // fiscal/lending-base outputs from stage 1
-      s2: LaborEconomics.Output,                  // labor-market outputs from stage 2
-      s3: HouseholdIncomeEconomics.Output,        // household income and balance outputs from stage 3
-      s4: DemandEconomics.Output,                 // demand and sector pressure outputs from stage 4
+      s1: FiscalConstraintEconomics.StepOutput,   // fiscal/lending-base outputs from stage 1
+      s2: LaborEconomics.StepOutput,              // labor-market outputs from stage 2
+      s3: HouseholdIncomeEconomics.StepOutput,    // household income and balance outputs from stage 3
+      s4: DemandEconomics.StepOutput,             // demand and sector pressure outputs from stage 4
       traceDecisions: Boolean,                    // whether to collect per-firm decision traces
   )
 

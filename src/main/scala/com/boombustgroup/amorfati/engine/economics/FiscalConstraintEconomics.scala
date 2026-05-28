@@ -27,7 +27,9 @@ object FiscalConstraintEconomics:
   ):
     def m: ExecutionMonth = month
 
-  def compute(w: World, banks: Vector[Banking.BankState], ledgerFinancialState: LedgerFinancialState, month: ExecutionMonth)(using p: SimParams): Output =
+  type StepOutput = Output
+
+  def compute(w: World, banks: Vector[Banking.BankState], ledgerFinancialState: LedgerFinancialState, month: ExecutionMonth)(using p: SimParams): StepOutput =
     val bankAgg = Banking.aggregateFromBankStocks(banks, ledgerFinancialState.banks.map(LedgerFinancialState.projectBankFinancialStocks))
 
     val (baseMinWage, updatedMinWagePriceLevel) =

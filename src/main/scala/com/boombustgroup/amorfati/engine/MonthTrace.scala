@@ -67,7 +67,7 @@ object MonthBoundaryTrace:
   ): MonthBoundaryTrace =
     MonthBoundaryTrace(startSnapshot, endSnapshot)
 
-/** Explicit post-to-pre boundary observed by the trace. */
+/** Explicit closed-to-next-pre boundary observed by the trace. */
 case class SeedTransitionTrace(
     seedIn: DecisionSignals,
     seedOut: DecisionSignals,
