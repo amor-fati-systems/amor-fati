@@ -1,7 +1,6 @@
 package com.boombustgroup.amorfati.engine
 
-import com.boombustgroup.amorfati.engine.assembly.WorldAssemblyEconomics
-import com.boombustgroup.amorfati.engine.flows.FlowSimulation.{MonthlyCalculus, PostMonth, SemanticFlowInputs, SignalBoundaryInputs}
+import com.boombustgroup.amorfati.engine.flows.FlowSimulation.{MonthPostBoundary, MonthlyCalculus, SemanticFlowInputs, SignalBoundaryInputs}
 
 /** Tiny type-level timeline for one monthly engine step.
   *
@@ -19,8 +18,7 @@ object MonthSemantics:
   /** Same-month artifacts used during the execution of month `t`. */
   sealed trait SameMonth extends Phase
 
-  /** Post-assembly state after month `t` has been realized, before reuse as
-    * input.
+  /** Closed state after month `t` has been realized, before reuse as input.
     */
   sealed trait Post extends Phase
 
@@ -82,15 +80,15 @@ object MonthSemantics:
     inline def calculus: MonthlyCalculus =
       unwrap(flowPlan)
 
-  /** Same-month payload narrowed for post-month world assembly. */
-  type PostInputs = At[WorldAssemblyEconomics.StepInput, SameMonth]
+  /** Same-month closing payload consumed by the month-closing phase. */
+  type ClosingInput = At[MonthClosingInput, SameMonth]
 
-  private[engine] inline def postInputs(input: WorldAssemblyEconomics.StepInput): PostInputs =
-    wrap[WorldAssemblyEconomics.StepInput, SameMonth](input)
+  private[engine] inline def closingInput(input: MonthClosingInput): ClosingInput =
+    wrap[MonthClosingInput, SameMonth](input)
 
-  extension (postInputs: PostInputs)
-    private[engine] inline def assemblyInput: WorldAssemblyEconomics.StepInput =
-      unwrap(postInputs)
+  extension (closingInput: ClosingInput)
+    private[engine] inline def monthClosingInput: MonthClosingInput =
+      unwrap(closingInput)
 
   /** Same-month payload narrowed for executed-flow semantic projection. */
   type SemanticProjection = At[SemanticFlowInputs, SameMonth]
@@ -120,21 +118,21 @@ object MonthSemantics:
     private[engine] inline def banking =
       unwrap(semanticProjection).banking
 
-  /** Realized post-month assembly before extracting the next seed. */
-  type PostAssembly = At[PostMonth, Post]
+  /** Realized post-month boundary before extracting the next seed. */
+  type ClosedMonth = At[MonthPostBoundary, Post]
 
-  inline def postAssembly(postMonth: PostMonth): PostAssembly =
-    wrap[PostMonth, Post](postMonth)
+  inline def closedMonth(boundary: MonthPostBoundary): ClosedMonth =
+    wrap[MonthPostBoundary, Post](boundary)
 
-  extension (post: PostAssembly)
-    inline def assembled =
-      unwrap(post).assembled
+  extension (closed: ClosedMonth)
+    inline def closing =
+      unwrap(closed).closing
 
     inline def boundaryOut =
-      unwrap(post).boundaryOut
+      unwrap(closed).boundaryOut
 
     inline def timing =
-      unwrap(post).timing
+      unwrap(closed).timing
 
   /** Extracted next-month seed plus provenance. */
   type SeedOut = At[SignalExtraction.Output, NextPre]

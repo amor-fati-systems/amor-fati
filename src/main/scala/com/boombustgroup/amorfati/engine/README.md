@@ -30,13 +30,16 @@ engine/
 | `ledger/RuntimeMechanismSurvivability.scala` | Audit contract classifying each runtime-emitted `FlowMechanism` as round-trippable stock, execution-delta-only, or unsupported/metric-only. |
 | `ledger/RuntimeFlowProjection.scala` | Typed projection from executed runtime `deltaLedger` into the currently materialized persisted ledger slice. |
 | `ledger/BankReserveDiagnostics.scala` | Ledger-backed reserve diagnostics for active bank deposit-facility usage. |
-| `MonthSemantics.scala` | Tiny typed phase markers for the internal month step: pre-seed, same-month operational state, post-assembly state, and next pre-seed extraction. |
+| `MonthSemantics.scala` | Tiny typed phase markers for the internal month step: pre-seed, same-month operational state, closed-month state, and next pre-seed extraction. |
+| `MonthExecution.scala` | Same-month result of the ordered economics pipeline; consumed by flow planning, semantic projection, and post-month closing. |
+| `MonthClosing.scala` | Explicit closing input/result contracts: derived mechanisms, diagnostics, agent lifecycle input, and realized month-`t` closing state. |
+| `MonthWorkflow.scala` | Minimal identity-monad DSL used to express the deterministic month transition as a typed `for`-comprehension without adding runtime effects. |
 | `MonthRandomness.scala` | Explicit month-step randomness contract: one root seed split into named stage and assembly streams for deterministic replay and auditability. |
 | `MonthDriver.scala` | Shared month-by-month unfold driver over the explicit `FlowSimulation.step` boundary. |
 | `OperationalSignals.scala` | Explicit same-month signal surface for month-`t` operational execution, kept distinct from persisted start-of-month `DecisionSignals`. |
 | `SignalExtraction.scala` | Explicit post-to-pre boundary: derives next-month `DecisionSignals` and typed seed provenance from realized month-`t` outcomes. |
 | `MonthTrace.scala` | Boundary-focused audit artifact with a stable month core (`boundary`, `seedTransition`, `randomness`, validations) plus extensible typed timing envelopes. |
-| `assembly/WorldAssemblyEconomics.scala` | Explicit post-month assembly boundary. Consumes stage outputs and assembly randomness, then returns the next `World`, agent populations, household aggregates, and ledger-owned financial state. |
+| `assembly/WorldAssemblyEconomics.scala` | Explicit month-closing boundary. Consumes `MonthClosingInput` and assembly randomness, then returns the realized month-`t` closing state before next seed extraction. |
 
 ## Month Step Boundary
 
@@ -67,7 +70,7 @@ Read it as a month transition:
 
 - `stateIn.world.seedIn` is the persisted `pre` input surface.
 - `randomness` is the explicit month-level randomness surface; fixing `stateIn` and `randomness.rootSeed` fixes replay for one step.
-- `MonthOutcome` is the internal bridge across the same-month boundary views `SignalView`, `FlowPlan`, `PostInputs`, and `SemanticProjection`; `operationalSignals` is derived from `SignalView`, and the typed trace core is derived from those boundaries.
+- `MonthOutcome` is built through the `MonthWorkflow` identity DSL as `pre -> same-month boundary views -> closed month -> seedOut/next-pre`; the same-month views are `SignalView`, `FlowPlan`, `ClosingInput`, and `SemanticProjection`.
 - `operationalSignals` is the explicit same-month surface created inside the step.
 - `signalExtraction` is the dedicated `post -> pre` boundary.
 - `trace` is the emitted audit artifact for month `t`.
@@ -106,9 +109,9 @@ and materializes the month-`t+1` engine boundary.
 
 | File | Responsibility |
 |------|----------------|
-| `WorldAssemblyEconomics.scala` | Public `StepInput` / `PostResult` contract and top-level ordering for post-month assembly. |
-| `WorldStateAssembler.scala` | Builds the post-stage `World` value from explicit stage outputs, domain-mechanism projections, ledger diagnostics, and flow-of-funds diagnostics. |
-| `FlowStateAssembler.scala` | Maps stage outputs into `FlowState`, the diagnostic flow surface persisted on `World`. |
+| `WorldAssemblyEconomics.scala` | Month-closing contract and top-level ordering for assembling the realized month-`t` world before next-month seed extraction. |
+| `WorldStateAssembler.scala` | Builds the closed month-`t` `World` from explicit closing input, domain-mechanism projections, lifecycle results, ledger diagnostics, and flow-of-funds diagnostics. |
+| `FlowStateAssembler.scala` | Maps closing input and lifecycle results into `FlowState`, the diagnostic flow surface persisted on `World`. |
 | `FlowOfFundsDiagnostics.scala` | Computes the flow-of-funds residual from realized firm revenue and adjusted demand. |
 
 ## flows/
@@ -120,7 +123,7 @@ exactness, each month.
 
 | File | Responsibility |
 |------|----------------|
-| `FlowSimulation.scala` | Sole pipeline entry point for one month. `step(state, randomness)` is the explicit month boundary: it computes narrow same-month groups for flow emission, signal timing, post-month assembly, and SFC projection, assembles `MonthOutcome`, records monetary flows, emits `MonthTrace`, and returns typed `nextState` for month `t+1`. |
+| `FlowSimulation.scala` | Sole pipeline entry point for one month. `step(state, randomness)` is the explicit month boundary: it computes narrow same-month groups for flow emission, signal timing, month closing, and SFC projection, assembles `MonthOutcome`, records monetary flows, emits `MonthTrace`, and returns typed `nextState` for month `t+1`. |
 | `FlowMechanism.scala` | Enum of ~80 named flow mechanisms (e.g. `HhTotalIncome`, `HhConsumption`, `BankBfgLevy`). Each flow in the system maps to exactly one mechanism. |
 | `ZusFlows.scala` | ZUS/FUS pensions: contributions (HH → FUS), pensions (FUS → HH), gov subvention covering deficit |
 | `NfzFlows.scala` | NFZ (National Health Fund): 9% składka zdrowotna, healthcare spending, gov subvention |

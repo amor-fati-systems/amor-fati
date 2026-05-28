@@ -383,37 +383,77 @@ object FlowSimulation:
       banking: BankingEconomics.StepOutput,
   )
 
-  /** Same-month groups computed once, then immediately retyped into
-    * downstream-specific month boundary views.
+  /** Downstream-specific same-month boundary views derived from one economics
+    * execution.
     */
-  private case class StageOutputs(
+  private case class SameMonthBoundaryViews(
       flowPlan: MonthlyCalculus,
       signals: SignalBoundaryInputs,
-      postAssembly: WorldAssemblyEconomics.StepInput,
+      closing: MonthClosingInput,
       semanticProjection: SemanticFlowInputs,
   )
 
-  /** Post-assembly view of month `t`: assembled world plus the narrow payload
-    * needed to build [[MonthTrace]].
+  /** Realized month-`t` closing boundary plus the narrow payload needed to
+    * build [[MonthTrace]].
     */
-  case class PostMonth(
-      assembled: WorldAssemblyEconomics.PostResult,
+  case class MonthPostBoundary(
+      closing: MonthClosingResult,
       boundaryOut: MonthBoundarySnapshot,
       timing: MonthTimingTrace,
   )
 
-  /** Full typed boundary carried through one step: pre-step seed, narrow
-    * same-month groups, post-month assembly, then the extracted seed for
-    * `t + 1`.
+  /** Full typed boundary carried through one step: pre-step seed, same-month
+    * boundary views, closed month, then the extracted seed for `t + 1`.
     */
   case class MonthOutcome(
       operational: MonthSemantics.Operational,
       flowPlan: MonthSemantics.FlowPlan,
       semanticProjection: MonthSemantics.SemanticProjection,
-      post: MonthSemantics.PostAssembly,
+      closed: MonthSemantics.ClosedMonth,
       seedOut: MonthSemantics.SeedOut,
       traceCore: MonthTraceCore,
   )
+
+  private object MonthStepDsl:
+    import MonthWorkflow.Program
+
+    def pre(input: StepInput): Program[StepInput] =
+      MonthWorkflow.pure(input)
+
+    def sameMonth(input: StepInput)(using SimParams): Program[SameMonthBoundaryViews] =
+      MonthWorkflow.pure(computeSameMonthBoundaryViews(input))
+
+    def signalView(boundaries: SameMonthBoundaryViews): Program[MonthSemantics.SignalView] =
+      MonthWorkflow.pure(MonthSemantics.signalView(boundaries.signals))
+
+    def flowPlan(boundaries: SameMonthBoundaryViews): Program[MonthSemantics.FlowPlan] =
+      MonthWorkflow.pure(MonthSemantics.flowPlan(boundaries.flowPlan))
+
+    def closingInput(boundaries: SameMonthBoundaryViews): Program[MonthSemantics.ClosingInput] =
+      MonthWorkflow.pure(MonthSemantics.closingInput(boundaries.closing))
+
+    def semanticProjection(boundaries: SameMonthBoundaryViews): Program[MonthSemantics.SemanticProjection] =
+      MonthWorkflow.pure(MonthSemantics.semanticProjection(boundaries.semanticProjection))
+
+    def operational(signalView: MonthSemantics.SignalView): Program[MonthSemantics.Operational] =
+      MonthWorkflow.pure(buildOperationalSignals(signalView))
+
+    def closedMonth(
+        pre: StepInput,
+        closingInput: MonthSemantics.ClosingInput,
+        signalView: MonthSemantics.SignalView,
+    )(using SimParams): Program[MonthSemantics.ClosedMonth] =
+      MonthWorkflow.pure(closeMonthBoundary(closingInput, signalView, pre.randomness.assembly.newStreams()))
+
+    def seedOut(signalView: MonthSemantics.SignalView, closed: MonthSemantics.ClosedMonth): Program[MonthSemantics.SeedOut] =
+      MonthWorkflow.pure(extractSeedOut(signalView, closed))
+
+    def traceCore(
+        pre: StepInput,
+        closed: MonthSemantics.ClosedMonth,
+        seedOut: MonthSemantics.SeedOut,
+    ): Program[MonthTraceCore] =
+      MonthWorkflow.pure(deriveTraceCore(pre, closed, seedOut))
 
   /** Full month-step contract.
     *
@@ -505,7 +545,7 @@ object FlowSimulation:
   /** Public API: compute calculus only (for tests that need MonthlyCalculus).
     */
   def computeCalculus(state: SimState, randomness: MonthRandomness.Contract)(using p: SimParams): MonthlyCalculus =
-    computeStageOutputs(stepInput(state, randomness, traceFirmDecisions = false)).flowPlan
+    computeSameMonthBoundaryViews(stepInput(state, randomness, traceFirmDecisions = false)).flowPlan
 
   private def stepInput(
       stateIn: SimState,
@@ -521,14 +561,14 @@ object FlowSimulation:
       traceFirmDecisions = traceFirmDecisions,
     )
 
-  /** Compute same-month groups by chaining all Economics. Uses old pipeline
-    * steps for HH/Demand/Firm/PriceEquity (pure calculus). Uses self-contained
-    * OpenEconEconomics for monetary/external. Runs BankingEconomics exactly
-    * once, then narrows the results into flow, signal, post-assembly, and SFC
-    * projection views so later boundaries do not depend on one broad transport
-    * bag.
+  /** Computes the same-month execution by chaining all Economics. Uses old
+    * pipeline steps for HH/Demand/Firm/PriceEquity (pure calculus). Uses
+    * self-contained OpenEconEconomics for monetary/external. Runs
+    * BankingEconomics exactly once, then narrows the result into flow, signal,
+    * closing, and SFC projection views so later boundaries do not depend on one
+    * broad transport bag.
     */
-  private def computeStageOutputs(input: StepInput)(using p: SimParams): StageOutputs =
+  private def computeSameMonthBoundaryViews(input: StepInput)(using p: SimParams): SameMonthBoundaryViews =
     val randomness        = input.randomness.stages
     val stateIn           = input.stateIn
     val ledger            = stateIn.ledgerFinancialState
@@ -757,24 +797,25 @@ object FlowSimulation:
       govBondYield = s8.monetary.newBondYield,
       corpBondYield = s8.corpBonds.newCorpBonds.corpBondYield,
     )
-    StageOutputs(
+    val execution         = MonthExecution(
+      openingWorld = w,
+      fiscal = s1,
+      labor = s2,
+      householdIncome = s3,
+      demand = s4,
+      firm = s5,
+      householdFinancial = s6,
+      priceEquity = s7,
+      openEconomy = s8,
+      banking = s9,
+    )
+    SameMonthBoundaryViews(
       flowPlan = calc,
       signals = SignalBoundaryInputs(
         labor = s2,
         demand = s4,
       ),
-      postAssembly = WorldAssemblyEconomics.StepInput(
-        w = w,
-        s1 = s1,
-        s2 = s2,
-        s3 = s3,
-        s4 = s4,
-        s5 = s5,
-        s6 = s6,
-        s7 = s7,
-        s8 = s8,
-        s9 = s9,
-      ),
+      closing = WorldAssemblyEconomics.prepareClosingInput(execution),
       semanticProjection = SemanticFlowInputs(
         labor = s2,
         hhIncome = s3,
@@ -1119,7 +1160,7 @@ object FlowSimulation:
 
   private def buildTimingInputs(
       signalView: MonthSemantics.SignalView,
-      assembled: WorldAssemblyEconomics.PostResult,
+      closing: MonthClosingResult,
   ): MonthTimingInputs =
     MonthTimingInputs(
       labor = MonthTimingPayload.LaborSignals(
@@ -1131,49 +1172,49 @@ object FlowSimulation:
         sectorHiringSignal = signalView.demand.sectorHiringSignal,
       ),
       nominal = MonthTimingPayload.NominalSignals(
-        realizedInflation = assembled.world.inflation,
-        expectedInflation = assembled.world.mechanisms.expectations.expectedInflation,
+        realizedInflation = closing.world.inflation,
+        expectedInflation = closing.world.mechanisms.expectations.expectedInflation,
       ),
       firmDynamics = MonthTimingPayload.FirmDynamics(
-        startupAbsorptionRate = assembled.startupAbsorptionRate,
-        firmBirths = assembled.world.flows.firmBirths,
-        firmDeaths = assembled.world.flows.firmDeaths,
-        netFirmBirths = assembled.world.flows.netFirmBirths,
+        startupAbsorptionRate = closing.startupAbsorptionRate,
+        firmBirths = closing.world.flows.firmBirths,
+        firmDeaths = closing.world.flows.firmDeaths,
+        netFirmBirths = closing.world.flows.netFirmBirths,
       ),
     )
 
-  private def assemblePostMonth(
-      postInputs: MonthSemantics.PostInputs,
+  private def closeMonthBoundary(
+      closingInput: MonthSemantics.ClosingInput,
       signalView: MonthSemantics.SignalView,
       randomness: MonthRandomness.AssemblyStreams,
-  )(using p: SimParams): MonthSemantics.PostAssembly =
-    val assembled = WorldAssemblyEconomics.computePostMonth(postInputs.assemblyInput, randomness)
+  )(using p: SimParams): MonthSemantics.ClosedMonth =
+    val closing = WorldAssemblyEconomics.closeMonth(closingInput.monthClosingInput, randomness)
     // This stays at month `t`: the boundary seed is still `seedIn` here.
-    MonthSemantics.postAssembly(
-      PostMonth(
-        assembled = assembled,
+    MonthSemantics.closedMonth(
+      MonthPostBoundary(
+        closing = closing,
         boundaryOut = MonthBoundarySnapshot.capture(
-          assembled.world,
-          assembled.firms,
-          assembled.households,
-          assembled.banks,
-          assembled.ledgerFinancialState,
+          closing.world,
+          closing.firms,
+          closing.households,
+          closing.banks,
+          closing.ledgerFinancialState,
         ),
-        timing = MonthTimingTrace.fromInputs(buildTimingInputs(signalView, assembled)),
+        timing = MonthTimingTrace.fromInputs(buildTimingInputs(signalView, closing)),
       ),
     )
 
-  private def extractSeedOut(signalView: MonthSemantics.SignalView, post: MonthSemantics.PostAssembly): MonthSemantics.SeedOut =
-    val assembled = post.assembled
+  private def extractSeedOut(signalView: MonthSemantics.SignalView, closed: MonthSemantics.ClosedMonth): MonthSemantics.SeedOut =
+    val closing = closed.closing
 
     MonthSemantics.seedOut(
       // Seed extraction is the only place that derives the next boundary
       // signal from realized month-`t` outcomes.
       SignalExtraction.fromPostMonth(
-        world = assembled.world,
-        households = assembled.households,
+        world = closing.world,
+        households = closing.households,
         operationalHiringSlack = signalView.labor.operationalHiringSlack,
-        startupAbsorptionRate = assembled.startupAbsorptionRate,
+        startupAbsorptionRate = closing.startupAbsorptionRate,
         demand = SignalExtraction.DemandOutcomes(
           sectorDemandMult = signalView.demand.sectorMults,
           sectorDemandPressure = signalView.demand.sectorDemandPressure,
@@ -1184,60 +1225,60 @@ object FlowSimulation:
 
   private def deriveTraceCore(
       input: StepInput,
-      post: MonthSemantics.PostAssembly,
+      closed: MonthSemantics.ClosedMonth,
       seedOut: MonthSemantics.SeedOut,
   ): MonthTraceCore =
     MonthTraceCore(
-      boundary = MonthBoundaryTrace.from(input.boundaryIn, post.boundaryOut),
+      boundary = MonthBoundaryTrace.from(input.boundaryIn, closed.boundaryOut),
       seedTransition = SeedTransitionTrace.from(input.seedIn, seedOut),
-      timing = post.timing,
+      timing = closed.timing,
     )
 
   private def computeMonthOutcome(input: StepInput)(using p: SimParams): MonthOutcome =
-    // Keep the month-step pipeline explicit:
-    // `seedIn/pre -> same-month groups -> post-month assembly -> seedOut/next-pre`.
-    val stageOutputs       = computeStageOutputs(input)
-    val signalView         = MonthSemantics.signalView(stageOutputs.signals)
-    val flowPlan           = MonthSemantics.flowPlan(stageOutputs.flowPlan)
-    val postInputs         = MonthSemantics.postInputs(stageOutputs.postAssembly)
-    val semanticProjection = MonthSemantics.semanticProjection(stageOutputs.semanticProjection)
-    val operational        = buildOperationalSignals(signalView)
-    val post               = assemblePostMonth(postInputs, signalView, input.randomness.assembly.newStreams())
-    val seedOut            = extractSeedOut(signalView, post)
-    val traceCore          = deriveTraceCore(input, post, seedOut)
-
-    MonthOutcome(
-      operational = operational,
-      flowPlan = flowPlan,
-      semanticProjection = semanticProjection,
-      post = post,
-      seedOut = seedOut,
-      traceCore = traceCore,
-    )
+    MonthWorkflow.run:
+      for
+        pre                <- MonthStepDsl.pre(input)
+        sameMonth          <- MonthStepDsl.sameMonth(pre)
+        signalView         <- MonthStepDsl.signalView(sameMonth)
+        flowPlan           <- MonthStepDsl.flowPlan(sameMonth)
+        closingInput       <- MonthStepDsl.closingInput(sameMonth)
+        semanticProjection <- MonthStepDsl.semanticProjection(sameMonth)
+        operational        <- MonthStepDsl.operational(signalView)
+        closed             <- MonthStepDsl.closedMonth(pre, closingInput, signalView)
+        seedOut            <- MonthStepDsl.seedOut(signalView, closed)
+        traceCore          <- MonthStepDsl.traceCore(pre, closed, seedOut)
+      yield MonthOutcome(
+        operational = operational,
+        flowPlan = flowPlan,
+        semanticProjection = semanticProjection,
+        closed = closed,
+        seedOut = seedOut,
+        traceCore = traceCore,
+      )
 
   private def advanceState(
       input: StepInput,
       outcome: MonthOutcome,
   ): SimState =
-    val assembled   = outcome.post.assembled
+    val closing     = outcome.closed.closing
     val nextSeed    = outcome.seedOut.nextSeed
-    val nextWorld   = assembled.world.copy(pipeline = assembled.world.pipeline.withDecisionSignals(nextSeed))
+    val nextWorld   = closing.world.copy(pipeline = closing.world.pipeline.withDecisionSignals(nextSeed))
     val currentSeed = input.seedIn.decisionSignals
 
     // `advanceState` is the only legal `post -> next-pre` transition:
-    // post-month assembly still sees the old seed, next state applies `seedOut`.
+    // closed month still sees the old seed; next state applies `seedOut`.
     require(currentSeed == input.stateIn.world.seedIn, "StepInput seedIn must match stateIn.world.seedIn")
-    require(assembled.world.seedIn == currentSeed, "PostMonth world must remain on the pre-step seed until advanceState runs")
+    require(closing.world.seedIn == currentSeed, "ClosedMonth world must remain on the pre-step seed until advanceState runs")
     require(nextWorld.seedIn == nextSeed, "advanceState must be the transition that applies SeedOut to the next boundary")
 
     new SimState(
       completedMonth = input.executionMonth.completed,
       world = nextWorld,
-      firms = assembled.firms,
-      households = assembled.households,
-      banks = assembled.banks,
-      householdAggregates = assembled.householdAggregates,
-      ledgerFinancialState = assembled.ledgerFinancialState,
+      firms = closing.firms,
+      households = closing.households,
+      banks = closing.banks,
+      householdAggregates = closing.householdAggregates,
+      ledgerFinancialState = closing.ledgerFinancialState,
     )
 
   private def buildMonthTrace(

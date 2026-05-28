@@ -7,121 +7,101 @@ import com.boombustgroup.amorfati.engine.markets.EquityMarket
 import com.boombustgroup.amorfati.engine.mechanisms.{ClimatePolicy, PopulationLifecycleTransitions, SectoralMobility, TourismSeasonality}
 import com.boombustgroup.amorfati.types.*
 
-/** Constructs the post-stage World value before population transitions finish
-  * the month.
+/** Constructs the realized month-`t` World from closing inputs and completed
+  * population lifecycle transitions.
   */
 object WorldStateAssembler:
 
-  def assemble(context: WorldAssemblyEconomics.AssemblyContext)(using p: SimParams): World =
-    val in                    = context.step
-    val elapsedMonths         = in.s1.m.previousCompleted.toInt
-    val tourismSeasonalFactor = TourismSeasonality.factor(in.s1.m.monthInYear, p.tourism.peakMonth, p.tourism.seasonality)
-    val depositFacilityUsage  = BankReserveDiagnostics.depositFacilityUsage(in.s9.banks, in.s9.ledgerFinancialState)
-    val productivityNext      = in.w.real.productivityIndex * p.firm.productivityGrowth.monthly.growthMultiplier
+  private[assembly] def assemble(
+      closingInput: MonthClosingInput,
+      lifecycle: PopulationLifecycleTransitions.Result,
+  )(using p: SimParams): World =
+    val in                    = closingInput.execution
+    val informal              = closingInput.mechanisms.informalEconomy
+    val diagnostics           = closingInput.diagnostics
+    val elapsedMonths         = in.fiscal.m.previousCompleted.toInt
+    val tourismSeasonalFactor = TourismSeasonality.factor(in.fiscal.m.monthInYear, p.tourism.peakMonth, p.tourism.seasonality)
+    val depositFacilityUsage  = BankReserveDiagnostics.depositFacilityUsage(in.banking.banks, in.banking.ledgerFinancialState)
+    val productivityNext      = in.openingWorld.real.productivityIndex * p.firm.productivityGrowth.monthly.growthMultiplier
     val social                = SocialState(
-      jst = in.s9.newJst,
-      zus = in.s2.newZus,
-      nfz = in.s2.newNfz,
-      ppk = in.s9.finalPpk,
-      demographics = in.s2.newDemographics,
-      earmarked = in.s2.newEarmarked,
+      jst = in.banking.newJst,
+      zus = in.labor.newZus,
+      nfz = in.labor.newNfz,
+      ppk = in.banking.finalPpk,
+      demographics = in.labor.newDemographics,
+      earmarked = in.labor.newEarmarked,
     )
-    val crossSectorHires      = in.s5.postFirmCrossSectorHires + in.s3.hhAgg.crossSectorHires
+    val crossSectorHires      = in.firm.postFirmCrossSectorHires + in.householdIncome.hhAgg.crossSectorHires + lifecycle.crossSectorHires
     World(
-      inflation = in.s7.newInfl,
-      priceLevel = in.s7.newPrice,
-      currentSigmas = in.s7.newSigmas,
-      gov = in.s9.newGovWithYield.copy(
-        policy = in.s9.newGovWithYield.policy.copy(
-          minWageLevel = in.s1.baseMinWage,
-          minWagePriceLevel = in.s1.updatedMinWagePriceLevel,
+      inflation = in.priceEquity.newInfl,
+      priceLevel = in.priceEquity.newPrice,
+      currentSigmas = in.priceEquity.newSigmas,
+      gov = in.banking.newGovWithYield.copy(
+        policy = in.banking.newGovWithYield.policy.copy(
+          minWageLevel = in.fiscal.baseMinWage,
+          minWagePriceLevel = in.fiscal.updatedMinWagePriceLevel,
         ),
       ),
-      nbp = in.s9.finalNbp,
-      bankingSector = in.s9.bankingMarket,
-      forex = in.s8.external.newForex,
-      bop = in.s8.external.newBop,
-      householdMarket = HouseholdMarketState.fromAggregates(in.s9.finalHhAgg),
+      nbp = in.banking.finalNbp,
+      bankingSector = in.banking.bankingMarket,
+      forex = in.openEconomy.external.newForex,
+      bop = in.openEconomy.external.newBop,
+      householdMarket = HouseholdMarketState.fromAggregates(in.banking.finalHhAgg),
       social = social,
       financialMarkets = FinancialMarketsState(
         equity = finalizeEquity(in),
-        corporateBonds = in.s8.corpBonds.newCorpBonds,
-        insurance = in.s9.finalInsurance,
-        nbfi = in.s9.finalNbfi,
-        quasiFiscal = in.s9.newQuasiFiscal,
+        corporateBonds = in.openEconomy.corpBonds.newCorpBonds,
+        insurance = in.banking.finalInsurance,
+        nbfi = in.banking.finalNbfi,
+        quasiFiscal = in.banking.newQuasiFiscal,
       ),
       external = ExternalState(
-        gvc = in.s8.external.newGvc,
-        immigration = in.s2.newImmig,
+        gvc = in.openEconomy.external.newGvc,
+        immigration = in.labor.newImmig,
         tourismSeasonalFactor = tourismSeasonalFactor,
       ),
       real = RealState(
-        housing = in.s9.housingAfterFlows,
+        housing = in.banking.housingAfterFlows,
         sectoralMobility = SectoralMobility.State(
           crossSectorHires = crossSectorHires,
-          voluntaryQuits = in.s3.hhAgg.voluntaryQuits,
-          sectorMobilityRate = SectoralMobility.mobilityRate(crossSectorHires, in.s9.finalHhAgg.employed),
+          voluntaryQuits = in.householdIncome.hhAgg.voluntaryQuits,
+          sectorMobilityRate = SectoralMobility.mobilityRate(crossSectorHires, lifecycle.householdAggregates.employed),
         ),
-        grossInvestment = in.s5.sumGrossInvestment,
-        aggGreenInvestment = in.s5.sumGreenInvestment,
-        aggGreenCapital = in.s7.aggGreenCapital,
+        grossInvestment = in.firm.sumGrossInvestment,
+        aggGreenInvestment = in.firm.sumGreenInvestment,
+        aggGreenCapital = in.priceEquity.aggGreenCapital,
         etsPrice = ClimatePolicy.etsPrice(elapsedMonths),
         productivityIndex = productivityNext,
-        automationRatio = in.s7.autoR,
-        hybridRatio = in.s7.hybR,
+        automationRatio = in.priceEquity.autoR,
+        hybridRatio = in.priceEquity.hybR,
       ),
       mechanisms = MechanismsState(
-        macropru = in.s7.newMacropru,
-        expectations = in.s8.monetary.newExp,
-        bfgFundBalance = in.w.mechanisms.bfgFundBalance + in.s9.bfgLevy,
-        informalCyclicalAdj = context.informal.cyclicalAdj,
-        nextTaxShadowShare = context.informal.nextTaxShadowShare,
+        macropru = in.priceEquity.newMacropru,
+        expectations = in.openEconomy.monetary.newExp,
+        bfgFundBalance = in.openingWorld.mechanisms.bfgFundBalance + in.banking.bfgLevy,
+        informalCyclicalAdj = informal.cyclicalAdj,
+        nextTaxShadowShare = informal.nextTaxShadowShare,
       ),
       plumbing = MonetaryPlumbingState(
-        reserveInterestTotal = in.s8.banking.totalReserveInterest,
-        standingFacilityNet = in.s8.banking.totalStandingFacilityIncome,
-        interbankInterestNet = in.s8.banking.totalInterbankInterest,
+        reserveInterestTotal = in.openEconomy.banking.totalReserveInterest,
+        standingFacilityNet = in.openEconomy.banking.totalStandingFacilityIncome,
+        interbankInterestNet = in.openEconomy.banking.totalInterbankInterest,
         depositFacilityUsage = depositFacilityUsage,
-        fofResidual = context.fofResidual,
+        fofResidual = diagnostics.flowOfFundsResidual,
       ),
-      pipeline = in.w.pipeline,
-      flows = FlowStateAssembler.build(context),
+      pipeline = in.openingWorld.pipeline.withSameMonthDiagnostics(
+        operationalHiringSlack = in.labor.operationalHiringSlack,
+        fiscalRuleSeverity = in.demand.fiscalRuleStatus.bindingRule,
+        govSpendingCutRatio = in.demand.fiscalRuleStatus.spendingCutRatio,
+      ),
+      flows = FlowStateAssembler.build(closingInput, lifecycle),
+      regionalWages = in.labor.regionalWages,
     )
 
-  def withPopulationLifecycle(
-      world: World,
-      in: WorldAssemblyEconomics.StepInput,
-      population: PopulationLifecycleTransitions.Result,
-  ): World =
-    val finalFlows            = world.flows.copy(
-      firmBirths = population.births,
-      firmDeaths = in.s5.firmDeaths,
-      netFirmBirths = population.netBirths,
-      automationNewFullAi = world.flows.automationNewFullAi + population.automationTransitions.newFullAi,
-      automationNewHybrid = world.flows.automationNewHybrid + population.automationTransitions.newHybrid,
-    )
-    val finalCrossSectorHires = world.real.sectoralMobility.crossSectorHires + population.crossSectorHires
-    val finalReal             = world.real.copy(
-      sectoralMobility = world.real.sectoralMobility.copy(
-        crossSectorHires = finalCrossSectorHires,
-        sectorMobilityRate = SectoralMobility.mobilityRate(finalCrossSectorHires, population.householdAggregates.employed),
-      ),
-    )
-    world.copy(
-      pipeline = in.w.pipeline.withSameMonthDiagnostics(
-        operationalHiringSlack = in.s2.operationalHiringSlack,
-        fiscalRuleSeverity = in.s4.fiscalRuleStatus.bindingRule,
-        govSpendingCutRatio = in.s4.fiscalRuleStatus.spendingCutRatio,
-      ),
-      flows = finalFlows,
-      real = finalReal,
-      regionalWages = in.s2.regionalWages,
-    )
-
-  private def finalizeEquity(in: WorldAssemblyEconomics.StepInput): EquityMarket.State =
-    in.s7.equityAfterForeignStock.copy(
+  private def finalizeEquity(in: MonthExecution): EquityMarket.State =
+    in.priceEquity.equityAfterForeignStock.copy(
       lastWealthEffect = PLN.Zero,
-      lastDomesticDividends = in.s7.netDomesticDividends,
-      lastForeignDividends = in.s7.foreignDividendOutflow,
-      lastDividendTax = in.s7.dividendTax,
+      lastDomesticDividends = in.priceEquity.netDomesticDividends,
+      lastForeignDividends = in.priceEquity.foreignDividendOutflow,
+      lastDividendTax = in.priceEquity.dividendTax,
     )

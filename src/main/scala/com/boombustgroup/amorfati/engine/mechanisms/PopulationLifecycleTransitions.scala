@@ -12,14 +12,20 @@ import com.boombustgroup.amorfati.types.*
   */
 object PopulationLifecycleTransitions:
 
-  final case class Input(
+  final case class AgentStocks(
       firms: Vector[Firm.State],
       firmFinancialBalances: Vector[LedgerFinancialState.FirmBalances],
       households: Vector[Household.State],
       householdFinancialBalances: Vector[LedgerFinancialState.HouseholdBalances],
+  )
+
+  final case class EntryContext(
       automationRatio: Share,
       hybridRatio: Share,
       laggedEntrySignals: FirmEntry.LaggedEntrySignals,
+  )
+
+  final case class StartupStaffingContext(
       marketWage: PLN,
       reservationWage: PLN,
       importAdjustment: Share,
@@ -28,6 +34,17 @@ object PopulationLifecycleTransitions:
       retrainingAttempts: Int,
       retrainingSuccesses: Int,
       householdFlowTotals: Household.Aggregates,
+  )
+
+  final case class RegionalMigrationContext(
+      regionalWages: Map[Region, PLN],
+  )
+
+  final case class Input(
+      stocks: AgentStocks,
+      entry: EntryContext,
+      startupStaffing: StartupStaffingContext,
+      regionalMigration: RegionalMigrationContext,
   )
 
   final case class Result(
@@ -50,35 +67,35 @@ object PopulationLifecycleTransitions:
       startupStaffingRng: RandomStream,
       regionalMigrationRng: RandomStream,
   )(using p: SimParams): Result =
-    val postFdiFirms               = FdiOwnershipTransitions(in.firms, fdiMaRng)
-    val postFdiFirmFinancialStocks = in.firmFinancialBalances.map(LedgerFinancialState.projectFirmFinancialStocks)
+    val postFdiFirms               = FdiOwnershipTransitions(in.stocks.firms, fdiMaRng)
+    val postFdiFirmFinancialStocks = in.stocks.firmFinancialBalances.map(LedgerFinancialState.projectFirmFinancialStocks)
     val entryStep                  = FirmEntry.process(
       postFdiFirms,
       postFdiFirmFinancialStocks,
-      in.automationRatio,
-      in.hybridRatio,
-      in.laggedEntrySignals,
+      in.entry.automationRatio,
+      in.entry.hybridRatio,
+      in.entry.laggedEntrySignals,
       firmEntryRng,
     )
 
     val startupStaffing = StartupStaffing.assign(
       StartupStaffing.Input(
         firms = entryStep.firms,
-        households = in.households,
-        householdFinancialStocks = in.householdFinancialBalances.map(LedgerFinancialState.projectHouseholdFinancialStocks),
-        marketWage = in.marketWage,
-        reservationWage = in.reservationWage,
-        importAdjustment = in.importAdjustment,
-        regionalWages = in.regionalWages,
-        remainingHireCapacity = in.remainingHireCapacity,
-        retrainingAttempts = in.retrainingAttempts,
-        retrainingSuccesses = in.retrainingSuccesses,
-        householdFlowTotals = in.householdFlowTotals,
+        households = in.stocks.households,
+        householdFinancialStocks = in.stocks.householdFinancialBalances.map(LedgerFinancialState.projectHouseholdFinancialStocks),
+        marketWage = in.startupStaffing.marketWage,
+        reservationWage = in.startupStaffing.reservationWage,
+        importAdjustment = in.startupStaffing.importAdjustment,
+        regionalWages = in.startupStaffing.regionalWages,
+        remainingHireCapacity = in.startupStaffing.remainingHireCapacity,
+        retrainingAttempts = in.startupStaffing.retrainingAttempts,
+        retrainingSuccesses = in.startupStaffing.retrainingSuccesses,
+        householdFlowTotals = in.startupStaffing.householdFlowTotals,
       ),
       startupStaffingRng,
     )
 
-    val postMigrationHouseholds = RegionalMigration(startupStaffing.households, in.regionalWages, regionalMigrationRng).households
+    val postMigrationHouseholds = RegionalMigration(startupStaffing.households, in.regionalMigration.regionalWages, regionalMigrationRng).households
     val finalFirms              = StartupStaffing.sync(startupStaffing.firms, postMigrationHouseholds)
 
     Result(

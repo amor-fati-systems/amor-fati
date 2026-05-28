@@ -3,7 +3,7 @@ package com.boombustgroup.amorfati.diagnostics
 import com.boombustgroup.amorfati.types.sumPln
 import com.boombustgroup.amorfati.agents.*
 import com.boombustgroup.amorfati.config.SimParams
-import com.boombustgroup.amorfati.engine.{MonthRandomness, OperationalSignals, SignalExtraction, World}
+import com.boombustgroup.amorfati.engine.{MonthExecution, MonthRandomness, OperationalSignals, SignalExtraction, World}
 import com.boombustgroup.amorfati.engine.SimulationMonth.ExecutionMonth
 import com.boombustgroup.amorfati.engine.assembly.WorldAssemblyEconomics
 import com.boombustgroup.amorfati.engine.economics.*
@@ -279,35 +279,35 @@ object LaborDemandProbe:
       printSectorTable("  sector deltas after FirmEconomics:", beforeAll, afterFirm)
       printChangeSummaries("  firm-level positive worker changes:", changes)
 
-      val assemblyInput = WorldAssemblyEconomics.StepInput(
-        world,
-        s1,
-        s2Post,
-        s3,
-        s4,
-        s5,
-        s6,
-        s7,
-        s8,
-        s9,
+      val monthExecution = MonthExecution(
+        openingWorld = world,
+        fiscal = s1,
+        labor = s2Post,
+        householdIncome = s3,
+        demand = s4,
+        firm = s5,
+        householdFinancial = s6,
+        priceEquity = s7,
+        openEconomy = s8,
+        banking = s9,
       )
-      val assembled     = WorldAssemblyEconomics.computePostMonth(assemblyInput, contract.assembly.newStreams())
-      val seedOut       = SignalExtraction
+      val closing        = WorldAssemblyEconomics.computePostMonth(monthExecution, contract.assembly.newStreams())
+      val seedOut        = SignalExtraction
         .fromPostMonth(
-          world = assembled.world,
-          households = assembled.households,
-          operationalHiringSlack = assemblyInput.s2.operationalHiringSlack,
-          startupAbsorptionRate = assembled.startupAbsorptionRate,
+          world = closing.world,
+          households = closing.households,
+          operationalHiringSlack = monthExecution.labor.operationalHiringSlack,
+          startupAbsorptionRate = closing.startupAbsorptionRate,
           demand = SignalExtraction.DemandOutcomes(
-            sectorDemandMult = assemblyInput.s4.sectorMults,
-            sectorDemandPressure = assemblyInput.s4.sectorDemandPressure,
-            sectorHiringSignal = assemblyInput.s4.sectorHiringSignal,
+            sectorDemandMult = monthExecution.demand.sectorMults,
+            sectorDemandPressure = monthExecution.demand.sectorDemandPressure,
+            sectorHiringSignal = monthExecution.demand.sectorHiringSignal,
           ),
         )
         .seedOut
 
-      world = assembled.world.copy(pipeline = assembled.world.pipeline.withDecisionSignals(seedOut))
-      firms = assembled.firms
-      hhs = assembled.households
-      banks = assembled.banks
-      ledgerFinancialState = assembled.ledgerFinancialState
+      world = closing.world.copy(pipeline = closing.world.pipeline.withDecisionSignals(seedOut))
+      firms = closing.firms
+      hhs = closing.households
+      banks = closing.banks
+      ledgerFinancialState = closing.ledgerFinancialState
