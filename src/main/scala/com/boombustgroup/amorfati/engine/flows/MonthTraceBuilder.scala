@@ -11,6 +11,9 @@ import com.boombustgroup.amorfati.engine.SimulationMonth.ExecutionMonth
   */
 object MonthTraceBuilder:
 
+  /** Creates the timing-envelope trace from same-month signals and realized
+    * closed-month values.
+    */
   def timingTrace(
       signalView: MonthSemantics.SignalView,
       closing: MonthClosingResult,
@@ -38,6 +41,9 @@ object MonthTraceBuilder:
       ),
     )
 
+  /** Builds the reusable trace core at the explicit pre -> closed-month
+    * boundary, before SFC execution details are attached.
+    */
   def core(
       pre: FlowSimulation.StepInput,
       closed: MonthSemantics.ClosedMonth,
@@ -49,6 +55,9 @@ object MonthTraceBuilder:
       timing = closed.timing,
     )
 
+  /** Finalizes the full month trace with the projected end snapshot, executed
+    * semantic flows, and validation results.
+    */
   def build(
       executionMonth: ExecutionMonth,
       randomness: MonthRandomness.Contract,
