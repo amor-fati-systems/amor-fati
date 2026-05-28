@@ -26,7 +26,7 @@ class WorldAssemblyEconomicsSpec extends AnyFlatSpec with Matchers:
     w.external.tourismSeasonalFactor.should(not be Multiplier.Zero)
   }
 
-  it should "keep ETS observables at the base price in the first execution month" in {
+  it should "keep ETS price at the base price in the first execution month" in {
     val result = deterministicStep
     val w      = result.nextState.world
 
@@ -50,12 +50,6 @@ class WorldAssemblyEconomicsSpec extends AnyFlatSpec with Matchers:
     w.gov.govCurrentSpend shouldBe result.calculus.govCurrentSpend
     w.gov.domesticBudgetDemand shouldBe (result.calculus.govCurrentSpend + result.calculus.govCapitalSpend)
     w.gov.domesticBudgetOutlays.should(be >= w.gov.domesticBudgetDemand)
-  }
-
-  "WorldObservables" should "keep deterministic monthly seasonality anchors" in {
-    WorldObservables.monthlySeasonalCos(monthInYear = 7, peakMonth = 7) shouldBe Coefficient.One
-    WorldObservables.monthlySeasonalCos(monthInYear = 1, peakMonth = 7) shouldBe Coefficient(-1)
-    WorldObservables.monthlySeasonalCos(monthInYear = 10, peakMonth = 7) shouldBe Coefficient.Zero
   }
 
   it should "carry supported financial stocks through stage-owned ledger updates" in {

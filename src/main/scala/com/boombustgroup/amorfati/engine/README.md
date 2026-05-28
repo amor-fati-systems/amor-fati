@@ -29,6 +29,7 @@ engine/
 | `ledger/AssetOwnershipContract.scala` | Audit contract for supported persisted owner/asset pairs, unsupported stock-like families, and non-persisted runtime shells. |
 | `ledger/RuntimeMechanismSurvivability.scala` | Audit contract classifying each runtime-emitted `FlowMechanism` as round-trippable stock, execution-delta-only, or unsupported/metric-only. |
 | `ledger/RuntimeFlowProjection.scala` | Typed projection from executed runtime `deltaLedger` into the currently materialized persisted ledger slice. |
+| `ledger/BankReserveDiagnostics.scala` | Ledger-backed reserve diagnostics for active bank deposit-facility usage. |
 | `MonthSemantics.scala` | Tiny typed phase markers for the internal month step: pre-seed, same-month operational state, post-assembly state, and next pre-seed extraction. |
 | `MonthRandomness.scala` | Explicit month-step randomness contract: one root seed split into named stage and assembly streams for deterministic replay and auditability. |
 | `MonthDriver.scala` | Shared month-by-month unfold driver over the explicit `FlowSimulation.step` boundary. |
@@ -106,10 +107,9 @@ population/state transitions, and materializes the month-`t+1` engine boundary.
 | File | Responsibility |
 |------|----------------|
 | `WorldAssemblyEconomics.scala` | Public `StepInput` / `PostResult` contract and top-level ordering for post-month assembly. |
-| `WorldStateAssembler.scala` | Builds the post-stage `World` value from explicit stage outputs, observables, informal-economy state, and flow-of-funds diagnostics. |
+| `WorldStateAssembler.scala` | Builds the post-stage `World` value from explicit stage outputs, domain-mechanism projections, ledger diagnostics, and flow-of-funds diagnostics. |
 | `FlowStateAssembler.scala` | Maps stage outputs into `FlowState`, the diagnostic flow surface persisted on `World`. |
 | `PostMonthPopulationTransitions.scala` | Completes post-month population transitions by invoking domain mechanisms for FDI M&A, firm entry, startup staffing, and regional migration, then applying firm-flow birth/death diagnostics and firm ledger refresh. |
-| `WorldObservables.scala` | Computes assembled-world observables such as deposit-facility usage, ETS price, and tourism seasonality. |
 | `FlowOfFundsDiagnostics.scala` | Computes the flow-of-funds residual from realized firm revenue and adjusted demand. |
 
 ## flows/
@@ -183,6 +183,7 @@ economics-stage market-clearing pipeline.
 
 | File | Domain |
 |------|--------|
+| `ClimatePolicy.scala` | EU ETS price path and carbon surcharge helpers shared by firm costs and world diagnostics. |
 | `EuFunds.scala` | EU structural funds: Beta-curve absorption timing, co-financing, capital investment |
 | `Expectations.scala` | Inflation expectations: adaptive-anchoring hybrid, central bank credibility |
 | `FdiOwnershipTransitions.scala` | Stochastic FDI M&A mechanism: eligible domestic firms may become foreign-owned at the post-month transition boundary. |
@@ -192,6 +193,7 @@ economics-stage market-clearing pipeline.
 | `SectoralMobility.scala` | Cross-sector labor transitions: friction matrix, voluntary quits, wage penalties |
 | `StartupStaffing.scala` | Startup lifecycle mechanism: assigns workers to newly entered firms and synchronizes startup filled-worker counts with household employment. |
 | `TaxRevenue.scala` | Fiscal revenue: VAT, excise, customs, informal-economy evasion adjustments |
+| `TourismSeasonality.scala` | 12-month tourism seasonal profile used consistently by tourism flows and world state. |
 | `YieldCurve.scala` | Interbank term structure: WIRON overnight → WIBOR 1M/3M/6M with term premia |
 
 ## How to extend

@@ -2,8 +2,9 @@ package com.boombustgroup.amorfati.engine.assembly
 
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.*
+import com.boombustgroup.amorfati.engine.ledger.BankReserveDiagnostics
 import com.boombustgroup.amorfati.engine.markets.EquityMarket
-import com.boombustgroup.amorfati.engine.mechanisms.SectoralMobility
+import com.boombustgroup.amorfati.engine.mechanisms.{ClimatePolicy, SectoralMobility, TourismSeasonality}
 import com.boombustgroup.amorfati.types.*
 
 /** Constructs the post-stage World value before population transitions finish
@@ -12,9 +13,12 @@ import com.boombustgroup.amorfati.types.*
 object WorldStateAssembler:
 
   def assemble(context: WorldAssemblyEconomics.AssemblyContext)(using p: SimParams): World =
-    val in               = context.step
-    val productivityNext = in.w.real.productivityIndex * p.firm.productivityGrowth.monthly.growthMultiplier
-    val social           = SocialState(
+    val in                    = context.step
+    val elapsedMonths         = in.s1.m.previousCompleted.toInt
+    val tourismSeasonalFactor = TourismSeasonality.factor(in.s1.m.monthInYear, p.tourism.peakMonth, p.tourism.seasonality)
+    val depositFacilityUsage  = BankReserveDiagnostics.depositFacilityUsage(in.s9.banks, in.s9.ledgerFinancialState)
+    val productivityNext      = in.w.real.productivityIndex * p.firm.productivityGrowth.monthly.growthMultiplier
+    val social                = SocialState(
       jst = in.s9.newJst,
       zus = in.s2.newZus,
       nfz = in.s2.newNfz,
@@ -22,7 +26,7 @@ object WorldStateAssembler:
       demographics = in.s2.newDemographics,
       earmarked = in.s2.newEarmarked,
     )
-    val crossSectorHires = in.s5.postFirmCrossSectorHires + in.s3.hhAgg.crossSectorHires
+    val crossSectorHires      = in.s5.postFirmCrossSectorHires + in.s3.hhAgg.crossSectorHires
     World(
       inflation = in.s7.newInfl,
       priceLevel = in.s7.newPrice,
@@ -49,7 +53,7 @@ object WorldStateAssembler:
       external = ExternalState(
         gvc = in.s8.external.newGvc,
         immigration = in.s2.newImmig,
-        tourismSeasonalFactor = context.observables.tourismSeasonalFactor,
+        tourismSeasonalFactor = tourismSeasonalFactor,
       ),
       real = RealState(
         housing = in.s9.housingAfterFlows,
@@ -61,7 +65,7 @@ object WorldStateAssembler:
         grossInvestment = in.s5.sumGrossInvestment,
         aggGreenInvestment = in.s5.sumGreenInvestment,
         aggGreenCapital = in.s7.aggGreenCapital,
-        etsPrice = context.observables.etsPrice,
+        etsPrice = ClimatePolicy.etsPrice(elapsedMonths),
         productivityIndex = productivityNext,
         automationRatio = in.s7.autoR,
         hybridRatio = in.s7.hybR,
@@ -77,7 +81,7 @@ object WorldStateAssembler:
         reserveInterestTotal = in.s8.banking.totalReserveInterest,
         standingFacilityNet = in.s8.banking.totalStandingFacilityIncome,
         interbankInterestNet = in.s8.banking.totalInterbankInterest,
-        depositFacilityUsage = context.observables.depositFacilityUsage,
+        depositFacilityUsage = depositFacilityUsage,
         fofResidual = context.fofResidual,
       ),
       pipeline = in.w.pipeline,

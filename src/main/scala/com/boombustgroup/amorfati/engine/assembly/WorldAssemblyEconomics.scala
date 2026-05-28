@@ -33,7 +33,6 @@ object WorldAssemblyEconomics:
       step: StepInput,
       informal: InformalEconomy.Result,
       fofResidual: PLN,
-      observables: WorldObservables.Values,
   )
 
   private[assembly] object AssemblyContext:
@@ -42,7 +41,6 @@ object WorldAssemblyEconomics:
         step = step,
         informal = InformalEconomy.compute(informalInput(step)),
         fofResidual = FlowOfFundsDiagnostics.residual(step),
-        observables = WorldObservables.compute(step),
       )
 
     private def informalInput(step: StepInput): InformalEconomy.Input =

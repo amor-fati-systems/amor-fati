@@ -3,6 +3,7 @@ package com.boombustgroup.amorfati.agents
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.SimulationMonth.ExecutionMonth
 import com.boombustgroup.amorfati.engine.{OperationalSignals, World}
+import com.boombustgroup.amorfati.engine.mechanisms.ClimatePolicy
 import com.boombustgroup.amorfati.fp.FixedPointBase
 import com.boombustgroup.amorfati.types.*
 
@@ -1826,16 +1827,14 @@ object Firm:
     */
   private def energyAndEtsCost(firm: State, revenue: PLN, month: ExecutionMonth, commodityPrice: PriceIndex)(using p: SimParams): PLN =
     val baseEnergy: PLN      = revenue * p.climate.energyCostShares(firm.sector.toInt)
-    val monthsElapsed        = month.previousCompleted
-    val etsGrowth            = (Scalar.One + p.climate.etsPriceDrift.monthly.toScalar).pow(monthsElapsed.toInt)
-    val carbonSurcharge      = p.climate.carbonIntensity(firm.sector.toInt) * (etsGrowth - Scalar.One)
+    val carbonSurcharge      = ClimatePolicy.carbonSurcharge(firm.sector, month.previousCompleted.toInt)
     val greenDiscount: Share = if firm.greenCapital > PLN.Zero then
       val targetGK = capitalPlanningWorkers(firm) * p.climate.greenKLRatios(firm.sector.toInt)
       if targetGK > PLN.Zero then p.climate.greenMaxDiscount * firm.greenCapital.ratioTo(targetGK).toShare.clamp(Share.Zero, Share.One)
       else Share.Zero
     else Share.Zero
     val discountedEnergy     = commodityPrice * (baseEnergy * (Share.One - greenDiscount))
-    discountedEnergy * (Multiplier.One + carbonSurcharge.max(Scalar.Zero).toMultiplier)
+    discountedEnergy * (Multiplier.One + carbonSurcharge)
 
   /** Monthly P&L: revenue minus all cost categories, CIT on positive profit. */
   private[amorfati] def computePnL(
