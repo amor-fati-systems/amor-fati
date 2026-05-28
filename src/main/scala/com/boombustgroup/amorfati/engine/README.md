@@ -34,7 +34,7 @@ engine/
 | `MonthExecution.scala` | Same-month result of the ordered economics pipeline; consumed by flow planning, semantic projection, and month closing. |
 | `MonthClosing.scala` | Explicit closing input/result contracts: derived mechanisms, diagnostics, agent lifecycle input, and realized month-`t` closing state. |
 | `MonthWorkflow.scala` | Minimal identity-monad DSL used to express the deterministic month transition as a typed `for`-comprehension without adding runtime effects. |
-| `MonthRandomness.scala` | Explicit month-step randomness contract: one root seed split into named stage and assembly streams for deterministic replay and auditability. |
+| `MonthRandomness.scala` | Explicit month-step randomness contract: one root seed split into named stage and closing streams for deterministic replay and auditability. |
 | `MonthDriver.scala` | Shared month-by-month unfold driver over the explicit `FlowSimulation.step` boundary. |
 | `OperationalSignals.scala` | Explicit same-month signal surface for month-`t` operational execution, kept distinct from persisted start-of-month `DecisionSignals`. |
 | `SignalExtraction.scala` | Explicit closed-to-next-pre boundary: derives next-month `DecisionSignals` and typed seed provenance from realized month-`t` outcomes. |
@@ -123,7 +123,8 @@ exactness, each month.
 
 | File | Responsibility |
 |------|----------------|
-| `FlowSimulation.scala` | Sole pipeline entry point for one month. `step(state, randomness)` is the explicit month boundary: it computes narrow same-month groups for flow emission, signal timing, month closing, and SFC projection, assembles `MonthOutcome`, records monetary flows, emits `MonthTrace`, and returns typed `nextState` for month `t+1`. |
+| `FlowSimulation.scala` | Sole pipeline entry point for one month. `step(state, randomness)` is the explicit month boundary: it computes narrow same-month groups for flow emission, signal timing, month closing, and SFC projection, assembles `MonthOutcome`, records monetary flows, delegates trace construction, and returns typed `nextState` for month `t+1`. |
+| `MonthTraceBuilder.scala` | Builds the month audit trace from explicit step boundaries: start/end snapshots, seed transition, timing envelopes, executed SFC flows, and validation results. |
 | `FlowMechanism.scala` | Enum of ~80 named flow mechanisms (e.g. `HhTotalIncome`, `HhConsumption`, `BankBfgLevy`). Each flow in the system maps to exactly one mechanism. |
 | `ZusFlows.scala` | ZUS/FUS pensions: contributions (HH → FUS), pensions (FUS → HH), gov subvention covering deficit |
 | `NfzFlows.scala` | NFZ (National Health Fund): 9% składka zdrowotna, healthcare spending, gov subvention |
