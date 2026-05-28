@@ -43,5 +43,18 @@ object GdpAccounting:
       i += 1
     outputs.iterator.map(output => priceLevel * output).toVector
 
+  def capacityWeightedSectorOutputs(
+      priceLevel: PriceIndex,
+      sectorCapReal: Vector[PLN],
+      sectorMultiplier: Int => Multiplier,
+  ): Vector[PLN] =
+    val outputs = Vector.newBuilder[PLN]
+    outputs.sizeHint(sectorCapReal.length)
+    var i       = 0
+    while i < sectorCapReal.length do
+      outputs += priceLevel * (sectorCapReal(i) * sectorMultiplier(i))
+      i += 1
+    outputs.result()
+
   def outputBasedMonthlyGdp(sectorOutputs: Vector[PLN], inventoryChange: PLN): PLN =
     (sectorOutputs.sumPln + inventoryChange).max(PLN.Zero)
