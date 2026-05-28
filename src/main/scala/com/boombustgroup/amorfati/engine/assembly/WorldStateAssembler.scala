@@ -11,12 +11,8 @@ import com.boombustgroup.amorfati.types.*
   */
 object WorldStateAssembler:
 
-  def assemble(
-      in: WorldAssemblyEconomics.StepInput,
-      fofResidual: PLN,
-      informal: WorldInformalEconomy.Result,
-      observables: WorldObservables.Values,
-  )(using p: SimParams): World =
+  def assemble(context: WorldAssemblyEconomics.AssemblyContext)(using p: SimParams): World =
+    val in               = context.step
     val productivityNext = in.w.real.productivityIndex * p.firm.productivityGrowth.monthly.growthMultiplier
     val social           = SocialState(
       jst = in.s9.newJst,
@@ -53,7 +49,7 @@ object WorldStateAssembler:
       external = ExternalState(
         gvc = in.s8.external.newGvc,
         immigration = in.s2.newImmig,
-        tourismSeasonalFactor = observables.tourismSeasonalFactor,
+        tourismSeasonalFactor = context.observables.tourismSeasonalFactor,
       ),
       real = RealState(
         housing = in.s9.housingAfterFlows,
@@ -65,7 +61,7 @@ object WorldStateAssembler:
         grossInvestment = in.s5.sumGrossInvestment,
         aggGreenInvestment = in.s5.sumGreenInvestment,
         aggGreenCapital = in.s7.aggGreenCapital,
-        etsPrice = observables.etsPrice,
+        etsPrice = context.observables.etsPrice,
         productivityIndex = productivityNext,
         automationRatio = in.s7.autoR,
         hybridRatio = in.s7.hybR,
@@ -74,18 +70,18 @@ object WorldStateAssembler:
         macropru = in.s7.newMacropru,
         expectations = in.s8.monetary.newExp,
         bfgFundBalance = in.w.mechanisms.bfgFundBalance + in.s9.bfgLevy,
-        informalCyclicalAdj = informal.cyclicalAdj,
-        nextTaxShadowShare = informal.nextTaxShadowShare,
+        informalCyclicalAdj = context.informal.cyclicalAdj,
+        nextTaxShadowShare = context.informal.nextTaxShadowShare,
       ),
       plumbing = MonetaryPlumbingState(
         reserveInterestTotal = in.s8.banking.totalReserveInterest,
         standingFacilityNet = in.s8.banking.totalStandingFacilityIncome,
         interbankInterestNet = in.s8.banking.totalInterbankInterest,
-        depositFacilityUsage = observables.depositFacilityUsage,
-        fofResidual = fofResidual,
+        depositFacilityUsage = context.observables.depositFacilityUsage,
+        fofResidual = context.fofResidual,
       ),
       pipeline = in.w.pipeline,
-      flows = FlowStateAssembler.build(in, informal),
+      flows = FlowStateAssembler.build(context),
     )
 
   private def finalizeEquity(in: WorldAssemblyEconomics.StepInput): EquityMarket.State =

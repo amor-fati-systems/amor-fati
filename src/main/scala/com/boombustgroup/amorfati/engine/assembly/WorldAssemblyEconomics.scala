@@ -28,6 +28,22 @@ object WorldAssemblyEconomics:
       s9: BankingEconomics.StepOutput,            // bank update (balance sheets, tax revenue, housing flows)
   )
 
+  private[assembly] final case class AssemblyContext(
+      step: StepInput,
+      informal: WorldInformalEconomy.Result,
+      fofResidual: PLN,
+      observables: WorldObservables.Values,
+  )
+
+  private[assembly] object AssemblyContext:
+    def from(step: StepInput)(using p: SimParams): AssemblyContext =
+      AssemblyContext(
+        step = step,
+        informal = WorldInformalEconomy.compute(step),
+        fofResidual = FlowOfFundsDiagnostics.residual(step),
+        observables = WorldObservables.compute(step),
+      )
+
   /** Assembled month-`t` state before the next-month decision seed is applied.
     */
   case class PostResult(
@@ -44,14 +60,9 @@ object WorldAssemblyEconomics:
       step: StepInput,
       randomness: MonthRandomness.AssemblyStreams,
   )(using p: SimParams): PostResult =
-    val informal       = WorldInformalEconomy.compute(step)
-    val assembledWorld = WorldStateAssembler.assemble(
-      in = step,
-      fofResidual = FlowOfFundsDiagnostics.residual(step),
-      informal = informal,
-      observables = WorldObservables.compute(step),
-    )
-    val population     = PostMonthPopulationTransitions.run(step, assembledWorld, randomness)
+    val context        = AssemblyContext.from(step)
+    val assembledWorld = WorldStateAssembler.assemble(context)
+    val population     = PostMonthPopulationTransitions.run(context.step, assembledWorld, randomness)
 
     PostResult(
       world = population.world,

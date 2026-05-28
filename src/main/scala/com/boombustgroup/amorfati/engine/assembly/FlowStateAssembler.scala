@@ -5,7 +5,9 @@ import com.boombustgroup.amorfati.engine.FlowState
 /** Maps monthly stage outputs into the diagnostic flow-state surface. */
 object FlowStateAssembler:
 
-  def build(in: WorldAssemblyEconomics.StepInput, informal: WorldInformalEconomy.Result): FlowState =
+  def build(context: WorldAssemblyEconomics.AssemblyContext): FlowState =
+    val in       = context.step
+    val informal = context.informal
     FlowState(
       monthlyGdpProxy = in.s7.gdp,
       sectorOutputs = in.s7.realizedSectorOutputs,
