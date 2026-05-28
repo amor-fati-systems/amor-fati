@@ -9,7 +9,6 @@ import com.boombustgroup.amorfati.engine.{
   MonthRandomness,
   MonthSemantics,
   MonthTimingEnvelopeKey,
-  MonthTimingPayload,
   MonthTraceStage,
   SimulationMonth,
 }
@@ -589,7 +588,7 @@ class FlowSimulationStepSpec extends AnyFlatSpec with Matchers:
     val result = stepWithSeed(state)
     val trace  = result.trace
 
-    val demandSignals = trace.timing.requirePayload[MonthTimingPayload.DemandSignals](MonthTimingEnvelopeKey.Demand)
+    val demandSignals = trace.timing.demandSignals
 
     trace.executionMonth shouldBe result.executionMonth
     trace.seedTransition.seedIn shouldBe init.world.seedIn
