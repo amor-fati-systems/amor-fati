@@ -7,7 +7,7 @@ import com.boombustgroup.amorfati.engine.*
 import com.boombustgroup.amorfati.engine.SimulationMonth.{CompletedMonth, ExecutionMonth}
 import com.boombustgroup.amorfati.engine.assembly.MonthClosing
 import com.boombustgroup.amorfati.engine.economics.*
-import com.boombustgroup.amorfati.engine.ledger.{CorporateBondOwnership, GovernmentBondCircuit, LedgerFinancialState, RuntimeFlowProjection}
+import com.boombustgroup.amorfati.engine.ledger.{CorporateBondOwnership, GovernmentBondCircuit, LedgerFinancialState}
 import com.boombustgroup.amorfati.engine.markets.CorporateBondMarket
 import com.boombustgroup.amorfati.types.*
 import com.boombustgroup.ledger.*
@@ -484,14 +484,16 @@ object FlowSimulation:
     val outcome                 = computeMonthOutcome(input)
     val flows                   = emitAllBatches(outcome.flowPlan.calculus)
     val execution               = RuntimeFlowExecutor.executeOrThrow(flows)
-    val semanticNextState       = advanceState(input, outcome)
-    val runtimeProjection       = RuntimeFlowProjection.materializeSupportedState(
-      opening = stateIn.ledgerFinancialState,
-      semanticClosing = semanticNextState.ledgerFinancialState,
-      deltaLedger = execution.deltaLedger,
-      topology = execution.topology,
+    val nextState               = NextStateAdvancer.advance(
+      NextStateAdvancer.Input(
+        stateIn = input.stateIn,
+        executionMonth = input.executionMonth,
+        seedIn = input.seedIn,
+        closed = outcome.closed,
+        seedOut = outcome.seedOut,
+        execution = execution,
+      ),
     )
-    val nextState               = semanticNextState.copy(ledgerFinancialState = runtimeProjection.ledgerFinancialState)
     val sfcFlows                = buildSfcFlows(outcome.semanticProjection, flows, nextState.world.plumbing.fofResidual)
     val sfcResult               = Sfc.validate(
       prev = runtimeState(stateIn.world, stateIn.firms, stateIn.households, stateIn.banks, stateIn.ledgerFinancialState),
@@ -1196,28 +1198,3 @@ object FlowSimulation:
         seedOut = seedOut,
         traceCore = traceCore,
       )
-
-  private def advanceState(
-      input: StepInput,
-      outcome: MonthOutcome,
-  ): SimState =
-    val closing     = outcome.closed.closing
-    val nextSeed    = outcome.seedOut.nextSeed
-    val nextWorld   = closing.world.copy(pipeline = closing.world.pipeline.withDecisionSignals(nextSeed))
-    val currentSeed = input.seedIn.decisionSignals
-
-    // `advanceState` is the only legal `post -> next-pre` transition:
-    // closed month still sees the old seed; next state applies `seedOut`.
-    require(currentSeed == input.stateIn.world.seedIn, "StepInput seedIn must match stateIn.world.seedIn")
-    require(closing.world.seedIn == currentSeed, "ClosedMonth world must remain on the pre-step seed until advanceState runs")
-    require(nextWorld.seedIn == nextSeed, "advanceState must be the transition that applies SeedOut to the next boundary")
-
-    new SimState(
-      completedMonth = input.executionMonth.completed,
-      world = nextWorld,
-      firms = closing.firms,
-      households = closing.households,
-      banks = closing.banks,
-      householdAggregates = closing.householdAggregates,
-      ledgerFinancialState = closing.ledgerFinancialState,
-    )

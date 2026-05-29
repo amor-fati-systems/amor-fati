@@ -490,7 +490,7 @@ class FlowSimulationStepSpec extends AnyFlatSpec with Matchers:
     result.trace.seedTransition.seedOut shouldBe seedOut.nextSeed
   }
 
-  it should "accept an explicit month-step randomness contract with named stage and assembly streams" in {
+  it should "accept an explicit month-step randomness contract with named stage and closing streams" in {
     val state      = stateFromSeed()
     val contract   = monthRandomness(1234L)
     val fromSeed   = FlowSimulation.step(state, contract)
