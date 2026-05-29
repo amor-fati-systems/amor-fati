@@ -63,7 +63,7 @@ class NbfiFlowsSpec extends AnyFlatSpec with Matchers:
     batch.targetIndices.toVector shouldBe Vector(summon[RuntimeLedgerTopology].banks.aggregate)
     totalTransferred(batches) shouldBe PLN(125000)
 
-    val evidence = FlowSimulation.ExecutedFlowEvidence.from(batches)
+    val evidence = SfcSemanticProjection.ExecutedFlowEvidence.from(batches)
     evidence.nbfiDepositDrain shouldBe PLN(-125000)
   }
 
@@ -79,7 +79,7 @@ class NbfiFlowsSpec extends AnyFlatSpec with Matchers:
     batch.targetIndices.toVector shouldBe Vector(summon[RuntimeLedgerTopology].households.investors)
     totalTransferred(batches) shouldBe PLN(80000)
 
-    val evidence = FlowSimulation.ExecutedFlowEvidence.from(batches)
+    val evidence = SfcSemanticProjection.ExecutedFlowEvidence.from(batches)
     evidence.nbfiDepositDrain shouldBe PLN(80000)
   }
 

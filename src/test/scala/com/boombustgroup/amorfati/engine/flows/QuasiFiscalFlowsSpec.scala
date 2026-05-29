@@ -100,7 +100,7 @@ class QuasiFiscalFlowsSpec extends AnyFlatSpec with Matchers:
     repaymentDeposit.targetIndices.toVector shouldBe Vector(summon[RuntimeLedgerTopology].banks.aggregate)
     repaymentDeposit.asset shouldBe AssetType.DemandDeposit
 
-    val evidence = FlowSimulation.ExecutedFlowEvidence.from(batches)
+    val evidence = SfcSemanticProjection.ExecutedFlowEvidence.from(batches)
     evidence.quasiFiscalBondIssuance shouldBe input.bankBondIssuance + input.nbpBondAbsorption
     evidence.quasiFiscalBondAmortization shouldBe input.bankBondAmortization + input.nbpBondAmortization
     evidence.quasiFiscalNbpAbsorption shouldBe input.nbpBondAbsorption

@@ -33,9 +33,9 @@ class FlowSimulationExecutedEvidenceSpec extends AnyFlatSpec with Matchers:
     val expectedJstRevenueMechanisms                =
       Vector(FlowMechanism.JstRevenue, FlowMechanism.JstGovSubvention)
 
-    FlowSimulation.ExecutedFlowEvidence.CentralGovernmentSpendingMechanisms shouldBe expectedCentralGovernmentSpendingMechanisms
-    FlowSimulation.ExecutedFlowEvidence.SocialFundGovSubventionMechanisms shouldBe expectedSocialFundGovSubventionMechanisms
-    FlowSimulation.ExecutedFlowEvidence.JstRevenueMechanisms shouldBe expectedJstRevenueMechanisms
+    SfcSemanticProjection.ExecutedFlowEvidence.CentralGovernmentSpendingMechanisms shouldBe expectedCentralGovernmentSpendingMechanisms
+    SfcSemanticProjection.ExecutedFlowEvidence.SocialFundGovSubventionMechanisms shouldBe expectedSocialFundGovSubventionMechanisms
+    SfcSemanticProjection.ExecutedFlowEvidence.JstRevenueMechanisms shouldBe expectedJstRevenueMechanisms
 
     val govSpendingMechanisms              = expectedCentralGovernmentSpendingMechanisms ++ expectedSocialFundGovSubventionMechanisms
     val emittedGovSpending                 = mechanismsTotal(result.flows, govSpendingMechanisms)
@@ -107,8 +107,8 @@ class FlowSimulationExecutedEvidenceSpec extends AnyFlatSpec with Matchers:
     )
     given RuntimeLedgerTopology  = topology
 
-    val batches  = FlowSimulation.emitAllBatches(calculus)
-    val evidence = FlowSimulation.ExecutedFlowEvidence.from(batches)
+    val batches  = MonthFlowEmitter.emitAllBatches(calculus)
+    val evidence = SfcSemanticProjection.ExecutedFlowEvidence.from(batches)
 
     evidence.nbfiDepositDrain shouldBe PLN(-777000)
     evidence.amount(FlowMechanism.NbfiOrigination) shouldBe PLN(555000)
@@ -128,8 +128,8 @@ class FlowSimulationExecutedEvidenceSpec extends AnyFlatSpec with Matchers:
     )
     given RuntimeLedgerTopology  = topology
 
-    val batches  = FlowSimulation.emitAllBatches(calculus)
-    val evidence = FlowSimulation.ExecutedFlowEvidence.from(batches)
+    val batches  = MonthFlowEmitter.emitAllBatches(calculus)
+    val evidence = SfcSemanticProjection.ExecutedFlowEvidence.from(batches)
 
     evidence.quasiFiscalBondIssuance shouldBe PLN(1000000)
     evidence.quasiFiscalBondAmortization shouldBe PLN(300000)

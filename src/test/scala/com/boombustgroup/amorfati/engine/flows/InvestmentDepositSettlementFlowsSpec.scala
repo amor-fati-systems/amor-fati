@@ -28,7 +28,7 @@ class InvestmentDepositSettlementFlowsSpec extends AnyFlatSpec with Matchers:
     batch.to shouldBe EntitySector.Firms
     totalTransferred(batches) shouldBe PLN(250000)
 
-    val evidence = FlowSimulation.ExecutedFlowEvidence.from(batches)
+    val evidence = SfcSemanticProjection.ExecutedFlowEvidence.from(batches)
     evidence.investNetDepositFlow shouldBe PLN(250000)
   }
 
@@ -43,7 +43,7 @@ class InvestmentDepositSettlementFlowsSpec extends AnyFlatSpec with Matchers:
     batch.to shouldBe EntitySector.Banks
     totalTransferred(batches) shouldBe PLN(125000)
 
-    val evidence = FlowSimulation.ExecutedFlowEvidence.from(batches)
+    val evidence = SfcSemanticProjection.ExecutedFlowEvidence.from(batches)
     evidence.investNetDepositFlow shouldBe PLN(-125000)
   }
 
