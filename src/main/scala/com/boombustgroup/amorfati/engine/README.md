@@ -123,9 +123,10 @@ exactness, each month.
 
 | File | Responsibility |
 |------|----------------|
-| `FlowSimulation.scala` | Sole pipeline entry point for one month. `step(state, randomness)` is the explicit month boundary: it computes narrow same-month groups for flow emission, signal timing, month closing, and SFC projection, assembles `MonthOutcome`, delegates runtime execution and trace construction, and returns typed `nextState` for month `t+1`. |
+| `FlowSimulation.scala` | Sole pipeline entry point for one month. `step(state, randomness)` is the explicit month boundary: it computes narrow same-month groups for flow emission, signal timing, month closing, and SFC projection, assembles `MonthOutcome`, delegates runtime execution, next-state advancement, and trace construction, and returns typed `nextState` for month `t+1`. |
 | `MonthTraceBuilder.scala` | Builds the month audit trace from explicit step boundaries: start/end snapshots, seed transition, timing envelopes, executed SFC flows, and validation results. |
 | `RuntimeFlowExecutor.scala` | Executes emitted runtime batches through the ledger interpreter, captures delta-ledger evidence, and maps execution failures consistently. |
+| `NextStateAdvancer.scala` | Owns the closed-month -> next-pre transition: applies extracted `SeedOut`, enforces seed timing invariants, and materializes runtime-supported ledger deltas into the next `SimState`. |
 | `FlowMechanism.scala` | Enum of ~80 named flow mechanisms (e.g. `HhTotalIncome`, `HhConsumption`, `BankBfgLevy`). Each flow in the system maps to exactly one mechanism. |
 | `ZusFlows.scala` | ZUS/FUS pensions: contributions (HH → FUS), pensions (FUS → HH), gov subvention covering deficit |
 | `NfzFlows.scala` | NFZ (National Health Fund): 9% składka zdrowotna, healthcare spending, gov subvention |
