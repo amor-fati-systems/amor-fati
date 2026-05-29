@@ -53,23 +53,14 @@ object FlowSimulation:
         ledgerFinancialState = init.ledgerFinancialState,
       )
 
+  /** Runtime ledger execution evidence produced by [[RuntimeFlowExecutor]]. */
+  type ExecutionResult = RuntimeFlowExecutor.Result
+
   /** Household micro snapshot boundary aligned with household-income flows.
     */
   case class HouseholdSnapshotState(
       households: Vector[Household.State],
       ledgerFinancialState: LedgerFinancialState,
-  )
-
-  /** Executed aggregate batch deltas on top of an empty runtime ledger shell.
-    *
-    * This is not a closing stock snapshot. `deltaLedger` stores the net monthly
-    * delta per synthetic runtime slot, and `netDelta` is the conservation check
-    * over that delta space.
-    */
-  case class ExecutionResult(
-      topology: RuntimeLedgerTopology,
-      deltaLedger: Map[(EntitySector, AssetType, Int), Long],
-      netDelta: Long,
   )
 
   /** All calculus results needed to feed flow mechanisms. */
@@ -492,10 +483,7 @@ object FlowSimulation:
     val input                   = stepInput(stateIn, randomness, traceFirmDecisions)
     val outcome                 = computeMonthOutcome(input)
     val flows                   = emitAllBatches(outcome.flowPlan.calculus)
-    val execution               = executeBatches(flows).fold(
-      err => throw new IllegalStateException(s"Ledger batch execution failed: $err"),
-      identity,
-    )
+    val execution               = RuntimeFlowExecutor.executeOrThrow(flows)
     val semanticNextState       = advanceState(input, outcome)
     val runtimeProjection       = RuntimeFlowProjection.materializeSupportedState(
       opening = stateIn.ledgerFinancialState,
@@ -827,18 +815,6 @@ object FlowSimulation:
         banking = s9,
       ),
     )
-
-  private def executeBatches(flows: Vector[BatchedFlow])(using topology: RuntimeLedgerTopology): Either[String, ExecutionResult] =
-    val state = topology.emptyExecutionState()
-    ImperativeInterpreter
-      .planAndApplyAll(state, flows)
-      .map: _ =>
-        val deltaLedger = state.snapshot
-        ExecutionResult(
-          topology = topology,
-          deltaLedger = deltaLedger,
-          netDelta = topology.netDelta(deltaLedger),
-        )
 
   private def runtimeState(
       w: World,
