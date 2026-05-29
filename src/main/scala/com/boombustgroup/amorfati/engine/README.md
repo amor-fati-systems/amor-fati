@@ -3,7 +3,7 @@
 The engine package orchestrates the monthly simulation loop. The month
 boundary is `FlowSimulation.SimState`, which carries `World` macro state,
 agent populations, household aggregates, and `LedgerFinancialState`.
-Domain logic is split across **economics** (9-stage computation pipeline),
+Domain logic is split across **economics** (same-month calculus pipeline),
 **assembly** (month-closing state projection), **flows** (SFC-verified monetary
 flow emission via ledger), **ledger** (financial ownership contracts and
 projections), **markets** (clearing mechanisms), and **mechanisms** (domain
@@ -12,7 +12,7 @@ rules that modify agent state outside market clearing).
 ```
 engine/
 ├── World.scala             # Immutable macro/runtime state container (9 nested types)
-├── economics/              # 9-stage computation pipeline (calculus, no flows)
+├── economics/              # Same-month calculus pipeline, no monetary flow emission
 ├── assembly/               # Month-closing World/agent/ledger projection
 ├── flows/                  # SFC flow emission via verified ledger
 ├── ledger/                 # Ledger-owned financial state, ownership contracts, projections
@@ -79,23 +79,23 @@ Read it as a month transition:
 
 ## economics/
 
-The 9-stage computation pipeline, executed in fixed order each month. Each
-module is a pure function producing calculus (quantities, rates, decisions)
-without emitting monetary flows. `FlowSimulation` wires them together.
+The same-month calculus pipeline is executed in fixed order each month. Each
+module is a pure function producing quantities, rates, and decisions without
+emitting monetary flows. `MonthCalculusRunner` wires them together.
 
-| File | Stage | Domain                                                                                                                                        |
-|------|-------|-----------------------------------------------------------------------------------------------------------------------------------------------|
-| `FiscalConstraintEconomics.scala` | s1 | Minimum wage indexation, reservation wage, lending base rate                                                                                  |
-| `LaborEconomics.scala` | s2 | Phillips curve + expectations + union rigidity wages, employment, demographics, immigration                                                   |
-| `HouseholdIncomeEconomics.scala` | s3 | Individual HH income, consumption, saving, portfolio; labor separations, wage updates, bank-specific rates, equity returns, sectoral mobility |
-| `DemandEconomics.scala` | s4 | Sector demand allocation: HH consumption, government purchases, investment, exports; capacity constraints and spillover                       |
-| `FirmEconomics.scala` | s5 | Production, I-O intermediate market, CAPEX, financing splits (equity/bonds/loans), labor matching, NPL detection                              |
-| `HouseholdFinancialEconomics.scala` | s6 | Mortgage debt service, deposit interest, diaspora remittances, tourism, consumer credit aggregation                                           |
-| `PriceEquityEconomics.scala` | s7 | Inflation, GPW equity, sigma dynamics, GDP, macroprudential, EU funds                                                                        |
-| `OpenEconEconomics.scala` | s8 | BoP/forex, GVC trade, Taylor rule, bond yields, interbank, corporate bonds, insurance, NBFI                                                   |
-| `BankingEconomics.scala` | s9 | Bank P&L, provisioning, CAR, multi-bank resolution, bail-in, interbank, BFG levy, monetary aggregates (M1/M2/M3)                              |
+| File | Domain |
+|------|--------|
+| `FiscalConstraintEconomics.scala` | Minimum wage indexation, reservation wage, lending base rate |
+| `LaborEconomics.scala` | Phillips curve + expectations + union rigidity wages, employment, demographics, immigration |
+| `HouseholdIncomeEconomics.scala` | Individual HH income, consumption, saving, portfolio; labor separations, wage updates, bank-specific rates, equity returns, sectoral mobility |
+| `DemandEconomics.scala` | Sector demand allocation: HH consumption, government purchases, investment, exports; capacity constraints and spillover |
+| `FirmEconomics.scala` | Production, I-O intermediate market, CAPEX, financing splits (equity/bonds/loans), labor matching, NPL detection |
+| `HouseholdFinancialEconomics.scala` | Mortgage debt service, deposit interest, diaspora remittances, tourism, consumer credit aggregation |
+| `PriceEquityEconomics.scala` | Inflation, GPW equity, sigma dynamics, GDP, macroprudential, EU funds |
+| `OpenEconEconomics.scala` | BoP/forex, GVC trade, Taylor rule, bond yields, interbank, corporate bonds, insurance, NBFI |
+| `BankingEconomics.scala` | Bank P&L, provisioning, CAR, multi-bank resolution, bail-in, interbank, BFG levy, monetary aggregates (M1/M2/M3) |
 
-Each stage exposes a `StepOutput` boundary type. Stages that historically named
+Each module exposes a `StepOutput` boundary type. Stages that historically named
 their payload `Output` keep `type StepOutput = Output` aliases, so pipeline
 boundaries can use one semantic naming convention without forcing a noisy
 case-class rename.
@@ -123,7 +123,8 @@ exactness, each month.
 
 | File | Responsibility |
 |------|----------------|
-| `FlowSimulation.scala` | Sole pipeline entry point for one month. `step(state, randomness)` is the explicit month boundary: it computes narrow same-month groups for flow emission, signal timing, month closing, and SFC projection, assembles `MonthOutcome`, delegates flow emission, runtime execution, SFC projection, next-state advancement, and trace construction, and returns typed `nextState` for month `t+1`. |
+| `FlowSimulation.scala` | Sole pipeline entry point for one month. `step(state, randomness)` is the explicit month boundary: it assembles `MonthOutcome`, delegates same-month calculus, flow emission, runtime execution, SFC projection, next-state advancement, and trace construction, and returns typed `nextState` for month `t+1`. |
+| `MonthCalculusRunner.scala` | Runs ordered same-month economics and builds the narrow month-`t` boundary views consumed by flow emission, signal timing, month closing, and SFC projection. |
 | `MonthFlowEmitter.scala` | Translates `MonthlyCalculus` into named runtime ledger batches without doing economics or validation. |
 | `SfcSemanticProjection.scala` | Converts executed runtime batches plus narrow semantic views into `Sfc.SemanticFlows` and runs the SFC validation boundary. |
 | `MonthTraceBuilder.scala` | Builds the month audit trace from explicit step boundaries: start/end snapshots, seed transition, timing envelopes, executed SFC flows, and validation results. |
@@ -209,7 +210,7 @@ economics-stage market-clearing pipeline.
 **Adding a new market** (e.g., derivatives, crypto):
 1. Create `markets/NewMarket.scala` with a `step(...)` or `update(...)` function.
 2. Add state to `World.scala` if the market carries state across months.
-3. Wire the call into the appropriate economics stage (usually s5–s8).
+3. Wire the call into the appropriate economics boundary, usually firm, price/equity, or open-economy execution.
 4. If flows affect bank capital, deposits, or government — add a `FlowMechanism` entry and corresponding `*Flows.scala`.
 
 **Adding a new mechanism** (e.g., carbon tax, capital controls):

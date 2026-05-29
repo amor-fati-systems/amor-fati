@@ -43,20 +43,20 @@ Those CSV outputs are the primary numeric evidence surface for these rules.
 
 ## Timing Contract
 
-One model month follows the deterministic economics pipeline below, then emits
-runtime ledger flows and validates SFC identities.
+One model month follows the deterministic same-month economics pipeline below,
+then emits runtime ledger flows and validates SFC identities.
 
-| Stage | Module | Rule surface |
-| --- | --- | --- |
-| s1 | `engine/economics/FiscalConstraintEconomics.scala` | minimum wage, reservation wage, lending base rate |
-| s2 | `engine/economics/LaborEconomics.scala` | wage clearing, employment, immigration, demographics |
-| s3 | `engine/economics/HouseholdIncomeEconomics.scala` and `agents/Household.scala` | household income, consumption, saving, credit, retraining, bankruptcy |
-| s4 | `engine/economics/DemandEconomics.scala` | sector demand, government purchases, fiscal-rule constraint |
-| s5 | `engine/economics/FirmEconomics.scala` and `agents/Firm.scala` | production, pricing markup contribution, technology, labor, investment, defaults, entry |
-| s6 | `engine/economics/HouseholdFinancialEconomics.scala` | mortgages, deposit interest, remittances, tourism, consumer credit aggregation |
-| s7 | `engine/economics/PriceEquityEconomics.scala` | GDP proxy, inflation, equity, macroprudential, EU funds |
-| s8 | `engine/economics/OpenEconEconomics.scala` | external sector, NBP rate, bond yield, QE, insurance, NBFI |
-| s9 | `engine/economics/BankingEconomics.scala` and `agents/Banking.scala` | bank P&L, rates, interbank, bond waterfall, failure and resolution |
+| Module | Rule surface |
+| --- | --- |
+| `engine/economics/FiscalConstraintEconomics.scala` | minimum wage, reservation wage, lending base rate |
+| `engine/economics/LaborEconomics.scala` | wage clearing, employment, immigration, demographics |
+| `engine/economics/HouseholdIncomeEconomics.scala` and `agents/Household.scala` | household income, consumption, saving, credit, retraining, bankruptcy |
+| `engine/economics/DemandEconomics.scala` | sector demand, government purchases, fiscal-rule constraint |
+| `engine/economics/FirmEconomics.scala` and `agents/Firm.scala` | production, pricing markup contribution, technology, labor, investment, defaults, entry |
+| `engine/economics/HouseholdFinancialEconomics.scala` | mortgages, deposit interest, remittances, tourism, consumer credit aggregation |
+| `engine/economics/PriceEquityEconomics.scala` | GDP proxy, inflation, equity, macroprudential, EU funds |
+| `engine/economics/OpenEconEconomics.scala` | external sector, NBP rate, bond yield, QE, insurance, NBFI |
+| `engine/economics/BankingEconomics.scala` and `agents/Banking.scala` | bank P&L, rates, interbank, bond waterfall, failure and resolution |
 
 ## Rule-To-Output Map
 
