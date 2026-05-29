@@ -38,8 +38,14 @@ object NextStateAdvancer:
     val nextWorld   = closing.world.copy(pipeline = closing.world.pipeline.withDecisionSignals(nextSeed))
     val currentSeed = input.seedIn.decisionSignals
 
+    val expectedExecutionMonth = input.stateIn.completedMonth.next
+
     // This is the only legal closed-month -> next-pre transition: the closed
     // month still sees the old seed, while the next boundary applies SeedOut.
+    require(
+      input.executionMonth == expectedExecutionMonth,
+      s"NextStateAdvancer input.executionMonth ${input.executionMonth.toInt} must equal input.stateIn.completedMonth.next ${expectedExecutionMonth.toInt} before constructing FlowSimulation.SimState",
+    )
     require(currentSeed == input.stateIn.world.seedIn, "StepInput seedIn must match stateIn.world.seedIn")
     require(closing.world.seedIn == currentSeed, "ClosedMonth world must remain on the pre-step seed until NextStateAdvancer runs")
     require(nextWorld.seedIn == nextSeed, "NextStateAdvancer must be the transition that applies SeedOut to the next boundary")

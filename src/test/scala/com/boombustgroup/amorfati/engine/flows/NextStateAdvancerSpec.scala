@@ -1,7 +1,16 @@
 package com.boombustgroup.amorfati.engine.flows
 
 import com.boombustgroup.amorfati.config.SimParams
-import com.boombustgroup.amorfati.engine.{DecisionSignals, MonthBoundarySnapshot, MonthClosingResult, MonthSemantics, MonthTimingTrace, SignalExtraction, World}
+import com.boombustgroup.amorfati.engine.{
+  DecisionSignals,
+  MonthBoundarySnapshot,
+  MonthClosingResult,
+  MonthSemantics,
+  MonthTimingTrace,
+  SignalExtraction,
+  SimulationMonth,
+  World,
+}
 import com.boombustgroup.amorfati.types.{PLN, Share}
 import com.boombustgroup.ledger.{AssetType, BatchedFlow, EntitySector}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -38,6 +47,18 @@ class NextStateAdvancerSpec extends AnyFlatSpec with Matchers:
     err.getMessage.should(include("StepInput seedIn"))
   }
 
+  it should "reject an execution month that does not follow the opening completed month" in {
+    val state    = stateFromSeed()
+    val nextSeed = state.world.seedIn.copy(laggedHiringSlack = Share.decimal(42, 2))
+
+    val err = intercept[IllegalArgumentException]:
+      NextStateAdvancer.advance(input(state, nextSeed, executionMonth = Some(state.completedMonth.next.next)))
+
+    err.getMessage.should(include("input.executionMonth"))
+    err.getMessage.should(include("input.stateIn.completedMonth.next"))
+    err.getMessage.should(include("FlowSimulation.SimState"))
+  }
+
   it should "reject a closed month that already applied the next seed" in {
     val state       = stateFromSeed()
     val nextSeed    = state.world.seedIn.copy(laggedHiringSlack = Share.decimal(42, 2))
@@ -52,13 +73,14 @@ class NextStateAdvancerSpec extends AnyFlatSpec with Matchers:
   private def input(
       state: FlowSimulation.SimState,
       nextSeed: DecisionSignals,
+      executionMonth: Option[SimulationMonth.ExecutionMonth] = None,
       seedIn: Option[MonthSemantics.SeedIn] = None,
       closed: Option[MonthSemantics.ClosedMonth] = None,
       execution: Option[RuntimeFlowExecutor.Result] = None,
   ): NextStateAdvancer.Input =
     NextStateAdvancer.Input(
       stateIn = state,
-      executionMonth = state.completedMonth.next,
+      executionMonth = executionMonth.getOrElse(state.completedMonth.next),
       seedIn = seedIn.getOrElse(MonthSemantics.seedIn(state.world.seedIn)),
       closed = closed.getOrElse(closedMonth(state)),
       seedOut = seedOut(nextSeed),
