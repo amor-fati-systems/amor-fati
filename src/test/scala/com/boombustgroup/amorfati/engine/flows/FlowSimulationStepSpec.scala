@@ -201,7 +201,7 @@ class FlowSimulationStepSpec extends AnyFlatSpec with Matchers:
     mechanismTotal(result.flows, FlowMechanism.GovSocialTransfer) shouldBe result.calculus.totalSocialTransfers
 
     val emittedJstRevenue =
-      mechanismsTotal(result.flows, FlowSimulation.ExecutedFlowEvidence.JstRevenueMechanisms)
+      mechanismsTotal(result.flows, SfcSemanticProjection.ExecutedFlowEvidence.JstRevenueMechanisms)
     emittedJstRevenue shouldBe nextJst.revenue
     mechanismTotal(result.flows, FlowMechanism.JstSpending) shouldBe nextJst.spending
     emittedJstRevenue should not equal staleJstRevenue
@@ -210,8 +210,8 @@ class FlowSimulationStepSpec extends AnyFlatSpec with Matchers:
     val emittedGovSpending =
       mechanismsTotal(
         result.flows,
-        FlowSimulation.ExecutedFlowEvidence.CentralGovernmentSpendingMechanisms ++
-          FlowSimulation.ExecutedFlowEvidence.SocialFundGovSubventionMechanisms,
+        SfcSemanticProjection.ExecutedFlowEvidence.CentralGovernmentSpendingMechanisms ++
+          SfcSemanticProjection.ExecutedFlowEvidence.SocialFundGovSubventionMechanisms,
       )
 
     result.trace.executedFlows.govSpending shouldBe emittedGovSpending
@@ -242,8 +242,8 @@ class FlowSimulationStepSpec extends AnyFlatSpec with Matchers:
     val expectedGovSpending =
       mechanismsTotal(
         result.flows,
-        FlowSimulation.ExecutedFlowEvidence.CentralGovernmentSpendingMechanisms ++
-          FlowSimulation.ExecutedFlowEvidence.SocialFundGovSubventionMechanisms,
+        SfcSemanticProjection.ExecutedFlowEvidence.CentralGovernmentSpendingMechanisms ++
+          SfcSemanticProjection.ExecutedFlowEvidence.SocialFundGovSubventionMechanisms,
       )
 
     result.trace.executedFlows.govSpending shouldBe expectedGovSpending

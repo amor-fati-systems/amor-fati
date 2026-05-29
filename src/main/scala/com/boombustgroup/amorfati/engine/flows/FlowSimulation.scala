@@ -203,146 +203,11 @@ object FlowSimulation:
     * here.
     */
   def emitAllBatches(c: MonthlyCalculus)(using p: SimParams, topology: RuntimeLedgerTopology): Vector[BatchedFlow] =
-    Vector.concat(
-      // Tier 1: Social funds
-      ZusFlows.emitBatches(ZusFlows.ZusInput(c.zus)),
-      NfzFlows.emitBatches(NfzFlows.NfzInput(c.nfz)),
-      PpkFlows.emitBatches(PpkFlows.PpkInput(c.ppk)),
-      GovBondFlows.emitBatches(c.govBondRuntimeMovements),
-      EarmarkedFlows.emitBatches(EarmarkedFlows.Input(c.earmarked)),
-      JstFlows.emitBatches(JstFlows.Input(c.firmTax, c.totalIncome, c.gdp, c.livingFirms, c.pitRevenue)),
-      // Tier 2: Agents
-      HouseholdFlows.emitBatches(
-        HouseholdFlows.Input(
-          c.consumption,
-          c.totalRent,
-          c.pitRevenue,
-          c.totalDepositInterest,
-          c.totalRemittances,
-          c.approvedCcOrigination,
-          c.liquidityShortfallFinancing,
-          c.totalCcPrincipal,
-          (c.totalCcDebtService - c.totalCcPrincipal).max(PLN.Zero),
-          c.totalCcDefault,
-        ),
-      ),
-      FirmFlows.emitBatches(
-        FirmFlows.Input(
-          c.totalIncome,
-          c.firmTax,
-          c.firmPrincipal,
-          c.firmNewLoans,
-          c.firmInterestIncome,
-          c.firmCapex,
-          c.firmEquityIssuance,
-          c.firmIoPayments,
-          c.firmNplLoss,
-          c.firmProfitShifting,
-          c.firmFdiRepatriation,
-          c.firmGrossInvestment,
-        ),
-      ),
-      InvestmentDepositSettlementFlows.emitBatches(InvestmentDepositSettlementFlows.Input(c.investNetDepositFlow)),
-      GovBudgetFlows.emitBatches(
-        GovBudgetFlows.Input(
-          vatRevenue = c.govVatRevenue,
-          exciseRevenue = c.govExciseRevenue,
-          customsDutyRevenue = c.govCustomsDutyRevenue,
-          govCurrentSpend = c.govCurrentSpend,
-          debtService = c.govDebtService,
-          unempBenefitSpend = c.totalUnempBenefits,
-          socialTransferSpend = c.totalSocialTransfers,
-          euCofinancing = c.govEuCofinancing,
-          govCapitalSpend = c.govCapitalSpend,
-          debtServiceRecipients = Some(c.govDebtServiceRecipients),
-        ),
-      ),
-      InsuranceFlows.emitBatches(
-        InsuranceFlows.Input(
-          employed = c.employed,
-          wage = c.wage,
-          unempRate = c.unemploymentRate,
-          currentLifeReserves = c.insuranceCurrentLifeReserves,
-          currentNonLifeReserves = c.insuranceCurrentNonLifeReserves,
-          prevGovBondHoldings = c.insurancePrevGovBonds,
-          prevCorpBondHoldings = c.insurancePrevCorpBonds,
-          corpBondDefaultLoss = c.insuranceCorpBondDefaultLoss,
-          prevEquityHoldings = c.insurancePrevEquity,
-          govBondYield = c.govBondYield,
-          corpBondYield = c.corpBondYield,
-          equityReturn = c.equityReturn,
-        ),
-      ),
-      // Tier 3: Financial markets
-      EquityFlows.emitBatches(
-        EquityFlows.Input(
-          c.equityDomDividends,
-          c.equityForDividends,
-          c.equityDivTax,
-          c.equityGovDividends,
-        ),
-      ),
-      EquityFlows.emitRevaluationBatches(c.equityRevaluation),
-      CorpBondFlows.emitBatches(
-        CorpBondFlows.Input(
-          coupon = c.corpBondCoupon,
-          defaultAmount = c.corpBondDefaultAmount,
-          issuance = c.corpBondIssuance,
-          amortization = c.corpBondAmortization,
-          couponRecipients = Some(c.corpBondCouponRecipients),
-          defaultRecipients = Some(c.corpBondDefaultRecipients),
-          issuanceRecipients = Some(c.corpBondIssuanceRecipients),
-          amortizationRecipients = Some(c.corpBondAmortizationRecipients),
-        ),
-      ),
-      MortgageFlows.emitBatches(MortgageFlows.Input(c.mortgageOrigination, c.mortgageRepayment, c.mortgageInterest, c.mortgageDefault)),
-      OpenEconFlows.emitBatches(
-        OpenEconFlows.Input(
-          exports = c.exports,
-          imports = c.totalImports,
-          tourismExport = c.tourismExport,
-          tourismImport = c.tourismImport,
-          fdi = c.fdi,
-          portfolioFlows = c.portfolioFlows,
-          carryTradeFlow = c.carryTradeFlow,
-          primaryIncome = c.primaryIncome,
-          euFunds = c.euFunds,
-          diasporaInflow = c.diasporaInflow,
-          capitalFlightOutflow = c.capitalFlightOutflow,
-        ),
-      ),
-      BankingFlows.emitBatches(
-        BankingFlows.Input(
-          firmInterestIncome = c.firmInterestIncome,
-          firmNplLoss = c.firmNplLoss,
-          mortgageNplLoss = c.mortgageDefault * (Share.One - p.housing.mortgageRecovery),
-          consumerNplLoss = (c.totalCcDefault - c.liquidityShortfallFinancing).max(PLN.Zero) * (Share.One - p.household.ccNplRecovery),
-          govBondIncome = c.bankGovBondIncome,
-          reserveInterest = c.bankReserveInterest,
-          standingFacilityIncome = c.bankStandingFacility,
-          interbankInterest = c.bankInterbankInterest,
-          corpBondCoupon = c.bankCorpBondCoupon,
-          corpBondDefaultLoss = c.bankCorpBondLoss,
-          bfgLevy = c.bankBfgLevy,
-          unrealizedBondLoss = c.bankUnrealizedLoss,
-          bailInLoss = c.bankBailIn,
-          nbpRemittance = c.bankNbpRemittance,
-          fxReserveSettlement = c.bankFxReserveSettlement,
-          standingFacilityBackstop = c.bankStandingFacilityBackstop,
-        ),
-      ),
-      NbfiFlows.emitBatches(NbfiFlows.Input(c.nbfiDepositDrain, c.nbfiOrigination, c.nbfiRepayment, c.nbfiDefaultAmount)),
-      QuasiFiscalFlows.emitBatches(
-        QuasiFiscalFlows.Input(
-          bankBondIssuance = c.qfBankBondIssuance,
-          nbpBondAbsorption = c.qfNbpBondAbsorption,
-          bankBondAmortization = c.qfBankBondAmortization,
-          nbpBondAmortization = c.qfNbpBondAmortization,
-          lending = c.qfLending,
-          repayment = c.qfRepayment,
-        ),
-      ),
-    )
+    MonthFlowEmitter.emitAllBatches(c)
+
+  type ExecutedFlowEvidence = SfcSemanticProjection.ExecutedFlowEvidence
+  val ExecutedFlowEvidence: SfcSemanticProjection.ExecutedFlowEvidence.type =
+    SfcSemanticProjection.ExecutedFlowEvidence
 
   /** Typed month-`t` boundary input used internally by [[step]]. */
   case class StepInput(
@@ -482,7 +347,7 @@ object FlowSimulation:
     given RuntimeLedgerTopology = RuntimeLedgerTopology.fromState(stateIn)
     val input                   = stepInput(stateIn, randomness, traceFirmDecisions)
     val outcome                 = computeMonthOutcome(input)
-    val flows                   = emitAllBatches(outcome.flowPlan.calculus)
+    val flows                   = MonthFlowEmitter.emitAllBatches(outcome.flowPlan.calculus)
     val execution               = RuntimeFlowExecutor.executeOrThrow(flows)
     val nextState               = NextStateAdvancer.advance(
       NextStateAdvancer.Input(
@@ -494,14 +359,13 @@ object FlowSimulation:
         execution = execution,
       ),
     )
-    val sfcFlows                = buildSfcFlows(outcome.semanticProjection, flows, nextState.world.plumbing.fofResidual)
-    val sfcResult               = Sfc.validate(
-      prev = runtimeState(stateIn.world, stateIn.firms, stateIn.households, stateIn.banks, stateIn.ledgerFinancialState),
-      curr = runtimeState(nextState.world, nextState.firms, nextState.households, nextState.banks, nextState.ledgerFinancialState),
+    val sfcFlows                = SfcSemanticProjection.semanticFlows(outcome.semanticProjection, flows, nextState.world.plumbing.fofResidual)
+    val sfcResult               = SfcSemanticProjection.validate(
+      stateIn = stateIn,
+      nextState = nextState,
       flows = sfcFlows,
       batches = flows,
-      executionDeltaLedger = Sfc.ExecutionDeltaLedger.fromRaw(execution.deltaLedger),
-      deltaLedgerNet = execution.netDelta,
+      execution = execution,
     )
     val monthTrace              = MonthTraceBuilder.build(
       executionMonth = input.executionMonth,
@@ -818,15 +682,6 @@ object FlowSimulation:
       ),
     )
 
-  private def runtimeState(
-      w: World,
-      firms: Vector[Firm.State],
-      households: Vector[Household.State],
-      banks: Vector[Banking.BankState],
-      ledgerFinancialState: LedgerFinancialState,
-  ): Sfc.RuntimeState =
-    Sfc.RuntimeState(w, firms, households, banks, ledgerFinancialState)
-
   private def corpBondCouponRecipients(coupon: CorporateBondMarket.CouponResult): CorpBondFlows.HolderBreakdown =
     CorpBondFlows.HolderBreakdown(
       banks = coupon.bank,
@@ -888,240 +743,6 @@ object FlowSimulation:
           insurance = PLN.fromRaw(allocated(3)),
           nbfi = PLN.fromRaw(allocated(4)),
         )
-
-  private[flows] case class ExecutedFlowEvidence(
-      totals: Map[MechanismId, Long],
-      signedTotals: Map[MechanismId, Long],
-  ):
-    def amount(mechanism: MechanismId): PLN =
-      PLN.fromRaw(totals.getOrElse(mechanism, 0L))
-
-    def signedAmount(mechanism: MechanismId): PLN =
-      PLN.fromRaw(signedTotals.getOrElse(mechanism, 0L))
-
-    def sum(mechanisms: MechanismId*): PLN =
-      PLN.fromRaw(mechanisms.iterator.map(m => totals.getOrElse(m, 0L)).sum)
-
-    def sumAll(mechanisms: Iterable[MechanismId]): PLN =
-      PLN.fromRaw(mechanisms.iterator.map(m => totals.getOrElse(m, 0L)).sum)
-
-    def govSpending: PLN =
-      sumAll(ExecutedFlowEvidence.CentralGovernmentSpendingMechanisms) +
-        sumAll(ExecutedFlowEvidence.SocialFundGovSubventionMechanisms)
-
-    def jstRevenue: PLN =
-      sumAll(ExecutedFlowEvidence.JstRevenueMechanisms)
-
-    def jstDepositChange: PLN =
-      jstRevenue - amount(FlowMechanism.JstSpending)
-
-    def insuranceNetDepositChange: PLN =
-      sum(FlowMechanism.InsLifeClaim, FlowMechanism.InsNonLifeClaim) -
-        sum(FlowMechanism.InsLifePremium, FlowMechanism.InsNonLifePremium)
-
-    def investNetDepositFlow: PLN =
-      signedAmount(FlowMechanism.InvestmentDepositSettlement)
-
-    def nbfiDepositDrain: PLN =
-      signedAmount(FlowMechanism.TfiDepositDrain)
-
-    /** Total BGK/PFR bond issuance. This intentionally includes both the
-      * commercial-bank leg and the separately addressable NBP absorption leg.
-      */
-    def quasiFiscalBondIssuance: PLN =
-      amount(FlowMechanism.QuasiFiscalBondIssuance) + amount(FlowMechanism.QuasiFiscalNbpAbsorption)
-
-    /** Total BGK/PFR bond amortization across bank and NBP holders. */
-    def quasiFiscalBondAmortization: PLN =
-      amount(FlowMechanism.QuasiFiscalBondAmortization) + amount(FlowMechanism.QuasiFiscalNbpBondAmortization)
-
-    /** NBP's purchase share of BGK/PFR issuance. Callers that already use
-      * `quasiFiscalBondIssuance` must not add this again.
-      */
-    def quasiFiscalNbpAbsorption: PLN =
-      amount(FlowMechanism.QuasiFiscalNbpAbsorption)
-
-    /** NBP holder leg of BGK/PFR bond amortization. Callers that already use
-      * `quasiFiscalBondAmortization` must not add this again.
-      */
-    def quasiFiscalNbpBondAmortization: PLN =
-      amount(FlowMechanism.QuasiFiscalNbpBondAmortization)
-
-    def quasiFiscalLending: PLN =
-      amount(FlowMechanism.QuasiFiscalLending)
-
-    def quasiFiscalRepayment: PLN =
-      amount(FlowMechanism.QuasiFiscalRepayment)
-
-    def quasiFiscalDepositChange: PLN =
-      signedAmount(FlowMechanism.QuasiFiscalLendingDeposit) +
-        signedAmount(FlowMechanism.QuasiFiscalRepaymentDeposit)
-
-  private[flows] object ExecutedFlowEvidence:
-    val CentralGovernmentSpendingMechanisms: Vector[MechanismId] =
-      Vector(
-        FlowMechanism.GovPurchases,
-        FlowMechanism.GovDebtService,
-        FlowMechanism.GovUnempBenefit,
-        FlowMechanism.GovSocialTransfer,
-        FlowMechanism.GovEuCofin,
-        FlowMechanism.GovCapitalInvestment,
-        FlowMechanism.JstGovSubvention,
-      )
-
-    val SocialFundGovSubventionMechanisms: Vector[MechanismId] =
-      Vector(
-        FlowMechanism.ZusGovSubvention,
-        FlowMechanism.NfzGovSubvention,
-        FlowMechanism.FpGovSubvention,
-        FlowMechanism.PfronGovSubvention,
-        FlowMechanism.FgspGovSubvention,
-      )
-
-    val JstRevenueMechanisms: Vector[MechanismId] =
-      Vector(FlowMechanism.JstRevenue, FlowMechanism.JstGovSubvention)
-
-    def from(batches: Vector[BatchedFlow]): ExecutedFlowEvidence =
-      val (totals, signedTotals): (Map[MechanismId, Long], Map[MechanismId, Long]) =
-        batches.foldLeft(
-          Map.empty[MechanismId, Long].withDefaultValue(0L),
-          Map.empty[MechanismId, Long].withDefaultValue(0L),
-        ):
-          case ((totalsAcc, signedAcc), batch) =>
-            val amount       = RuntimeLedgerTopology.totalTransferred(batch)
-            val signedAmount =
-              batch.mechanism match
-                case FlowMechanism.BankInterbankInterest | FlowMechanism.BankStandingFacility =>
-                  (batch.from, batch.to) match
-                    case (EntitySector.NBP, EntitySector.Banks) => amount
-                    case (EntitySector.Banks, EntitySector.NBP) => -amount
-                    case _                                      => amount
-                case FlowMechanism.InvestmentDepositSettlement                                =>
-                  (batch.from, batch.to) match
-                    case (EntitySector.Banks, EntitySector.Firms) => amount
-                    case (EntitySector.Firms, EntitySector.Banks) => -amount
-                    case _                                        =>
-                      throw new IllegalArgumentException(
-                        s"InvestmentDepositSettlement batch has unsupported direction ${batch.from}->${batch.to}",
-                      )
-                case FlowMechanism.TfiDepositDrain                                            =>
-                  (batch.from, batch.to) match
-                    case (EntitySector.Banks, EntitySector.Households) => amount
-                    case (EntitySector.Households, EntitySector.Banks) => -amount
-                    case _                                             =>
-                      throw new IllegalArgumentException(
-                        s"TfiDepositDrain batch has unsupported direction ${batch.from}->${batch.to}",
-                      )
-                case FlowMechanism.QuasiFiscalLendingDeposit                                  =>
-                  (batch.from, batch.to) match
-                    case (EntitySector.Banks, EntitySector.Firms) => amount
-                    case _                                        =>
-                      throw new IllegalArgumentException(
-                        s"QuasiFiscalLendingDeposit batch has unsupported direction ${batch.from}->${batch.to}",
-                      )
-                case FlowMechanism.QuasiFiscalRepaymentDeposit                                =>
-                  (batch.from, batch.to) match
-                    case (EntitySector.Firms, EntitySector.Banks) => -amount
-                    case _                                        =>
-                      throw new IllegalArgumentException(
-                        s"QuasiFiscalRepaymentDeposit batch has unsupported direction ${batch.from}->${batch.to}",
-                      )
-                case _                                                                        => amount
-
-            (
-              totalsAcc.updated(batch.mechanism, totalsAcc(batch.mechanism) + amount),
-              signedAcc.updated(batch.mechanism, signedAcc(batch.mechanism) + signedAmount),
-            )
-
-      ExecutedFlowEvidence(totals, signedTotals)
-
-  private def buildSfcFlows(
-      semanticProjection: MonthSemantics.SemanticProjection,
-      batches: Vector[BatchedFlow],
-      fofResidual: PLN,
-  )(using p: SimParams): Sfc.SemanticFlows =
-    val firms    = semanticProjection.firms
-    val openEcon = semanticProjection.openEcon
-    val banking  = semanticProjection.banking
-    val evidence = ExecutedFlowEvidence.from(batches)
-    // Runtime-covered legs are sourced from executed flow evidence. Remaining
-    // month-semantics reads are diagnostics or stock projections without a
-    // first-class emitted mechanism yet.
-    Sfc.SemanticFlows(
-      govSpending = evidence.govSpending,
-      govRevenue = evidence.sum(GovBudgetFlows.CentralGovernmentRevenueMechanisms*),
-      nplLoss = evidence.amount(FlowMechanism.BankNplLoss),
-      interestIncome = evidence.amount(FlowMechanism.BankFirmInterest),
-      totalIncome = evidence.amount(FlowMechanism.HhTotalIncome),
-      totalConsumption = evidence.amount(FlowMechanism.HhConsumption),
-      newLoans = evidence.amount(FlowMechanism.FirmNewLoan),
-      nplRecovery = firms.nplNew * p.banking.loanRecovery,
-      currentAccount = openEcon.external.newBop.currentAccount,
-      valuationEffect = openEcon.external.oeValuationEffect,
-      bankBondIncome = evidence.amount(FlowMechanism.BankGovBondIncome),
-      qePurchase = evidence.amount(FlowMechanism.NbpQeGovBondPurchase),
-      newBondIssuance = banking.actualBondChange,
-      depositInterestPaid = evidence.amount(FlowMechanism.HhDepositInterest),
-      reserveInterest = evidence.amount(FlowMechanism.BankReserveInterest),
-      standingFacilityIncome = evidence.signedAmount(FlowMechanism.BankStandingFacility),
-      interbankInterest = evidence.signedAmount(FlowMechanism.BankInterbankInterest),
-      jstDepositChange = evidence.jstDepositChange,
-      jstSpending = evidence.amount(FlowMechanism.JstSpending),
-      jstRevenue = evidence.jstRevenue,
-      zusContributions = evidence.amount(FlowMechanism.ZusContribution),
-      zusPensionPayments = evidence.amount(FlowMechanism.ZusPension),
-      zusGovSubvention = evidence.amount(FlowMechanism.ZusGovSubvention),
-      nfzContributions = evidence.amount(FlowMechanism.NfzContribution),
-      nfzSpending = evidence.amount(FlowMechanism.NfzSpending),
-      nfzGovSubvention = evidence.amount(FlowMechanism.NfzGovSubvention),
-      dividendIncome = evidence.amount(FlowMechanism.EquityDomDividend),
-      foreignDividendOutflow = evidence.amount(FlowMechanism.EquityForDividend),
-      dividendTax = evidence.amount(FlowMechanism.EquityDividendTax),
-      mortgageInterestIncome = evidence.amount(FlowMechanism.MortgageInterest),
-      mortgageNplLoss = evidence.amount(FlowMechanism.BankMortgageNplLoss),
-      mortgageOrigination = evidence.amount(FlowMechanism.MortgageOrigination),
-      mortgagePrincipalRepaid = evidence.amount(FlowMechanism.MortgageRepayment),
-      mortgageDefaultAmount = evidence.amount(FlowMechanism.MortgageDefault),
-      remittanceOutflow = evidence.amount(FlowMechanism.HhRemittance),
-      fofResidual = fofResidual,
-      consumerDebtService = evidence.amount(FlowMechanism.HhCcDebtService) + evidence.amount(FlowMechanism.HhCcInterest),
-      consumerNplLoss = evidence.amount(FlowMechanism.BankCcNplLoss),
-      consumerOrigination = evidence.amount(FlowMechanism.HhCcOrigination) + evidence.amount(FlowMechanism.HhLiquidityShortfallFinancing),
-      consumerLiquidityShortfallFinancing = evidence.amount(FlowMechanism.HhLiquidityShortfallFinancing),
-      consumerPrincipalRepaid = evidence.amount(FlowMechanism.HhCcDebtService),
-      consumerDefaultAmount = evidence.amount(FlowMechanism.HhCcDefault),
-      corpBondCouponIncome = evidence.amount(FlowMechanism.BankCorpBondCoupon),
-      corpBondDefaultLoss = evidence.amount(FlowMechanism.BankCorpBondLoss),
-      corpBondIssuance = evidence.amount(FlowMechanism.CorpBondIssuance),
-      corpBondAmortization = evidence.amount(FlowMechanism.CorpBondAmortization),
-      corpBondDefaultAmount = evidence.amount(FlowMechanism.CorpBondDefault),
-      insNetDepositChange = evidence.insuranceNetDepositChange,
-      nbfiDepositDrain = evidence.nbfiDepositDrain,
-      nbfiOrigination = evidence.amount(FlowMechanism.NbfiOrigination),
-      nbfiRepayment = evidence.amount(FlowMechanism.NbfiRepayment),
-      nbfiDefaultAmount = evidence.amount(FlowMechanism.NbfiDefault),
-      fdiProfitShifting = evidence.amount(FlowMechanism.FirmProfitShifting),
-      fdiRepatriation = evidence.amount(FlowMechanism.FirmFdiRepatriation),
-      diasporaInflow = evidence.amount(FlowMechanism.DiasporaInflow),
-      tourismExport = evidence.amount(FlowMechanism.TourismExport),
-      tourismImport = evidence.amount(FlowMechanism.TourismImport),
-      bfgLevy = evidence.amount(FlowMechanism.BankBfgLevy),
-      bailInLoss = evidence.amount(FlowMechanism.BankBailIn),
-      bankCapitalDestruction = banking.multiCapDestruction,
-      interbankContagionLoss = banking.interbankContagionLoss,
-      investNetDepositFlow = evidence.investNetDepositFlow,
-      firmPrincipalRepaid = evidence.amount(FlowMechanism.FirmLoanRepayment),
-      unrealizedBondLoss = evidence.amount(FlowMechanism.BankUnrealizedLoss),
-      htmRealizedLoss = banking.htmRealizedLoss,
-      eclProvisionChange = banking.eclProvisionChange,
-      quasiFiscalBondIssuance = evidence.quasiFiscalBondIssuance,
-      quasiFiscalBondAmortization = evidence.quasiFiscalBondAmortization,
-      quasiFiscalNbpBondAmortization = evidence.quasiFiscalNbpBondAmortization,
-      quasiFiscalNbpAbsorption = evidence.quasiFiscalNbpAbsorption,
-      quasiFiscalLending = evidence.quasiFiscalLending,
-      quasiFiscalRepayment = evidence.quasiFiscalRepayment,
-      quasiFiscalDepositChange = evidence.quasiFiscalDepositChange,
-    )
 
   private def operationalSignals(
       labor: LaborEconomics.StepOutput,

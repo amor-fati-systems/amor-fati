@@ -2,7 +2,7 @@ package com.boombustgroup.amorfati.engine.flows
 
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.types.*
-import com.boombustgroup.ledger.EntitySector
+import com.boombustgroup.ledger.{AssetType, BatchedFlow, EntitySector}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -33,9 +33,9 @@ class FlowSimulationExecutedEvidenceSpec extends AnyFlatSpec with Matchers:
     val expectedJstRevenueMechanisms                =
       Vector(FlowMechanism.JstRevenue, FlowMechanism.JstGovSubvention)
 
-    FlowSimulation.ExecutedFlowEvidence.CentralGovernmentSpendingMechanisms shouldBe expectedCentralGovernmentSpendingMechanisms
-    FlowSimulation.ExecutedFlowEvidence.SocialFundGovSubventionMechanisms shouldBe expectedSocialFundGovSubventionMechanisms
-    FlowSimulation.ExecutedFlowEvidence.JstRevenueMechanisms shouldBe expectedJstRevenueMechanisms
+    SfcSemanticProjection.ExecutedFlowEvidence.CentralGovernmentSpendingMechanisms shouldBe expectedCentralGovernmentSpendingMechanisms
+    SfcSemanticProjection.ExecutedFlowEvidence.SocialFundGovSubventionMechanisms shouldBe expectedSocialFundGovSubventionMechanisms
+    SfcSemanticProjection.ExecutedFlowEvidence.JstRevenueMechanisms shouldBe expectedJstRevenueMechanisms
 
     val govSpendingMechanisms              = expectedCentralGovernmentSpendingMechanisms ++ expectedSocialFundGovSubventionMechanisms
     val emittedGovSpending                 = mechanismsTotal(result.flows, govSpendingMechanisms)
@@ -97,6 +97,25 @@ class FlowSimulationExecutedEvidenceSpec extends AnyFlatSpec with Matchers:
     result.trace.executedFlows.insNetDepositChange shouldBe insuranceClaims - insurancePremiums
   }
 
+  it should "reject unsupported signed bank-income flow directions" in {
+    val batch = BatchedFlow.Broadcast(
+      from = EntitySector.Government,
+      fromIndex = 0,
+      to = EntitySector.Banks,
+      amounts = Array(100L),
+      targetIndices = Array(0),
+      asset = AssetType.Cash,
+      mechanism = FlowMechanism.BankInterbankInterest,
+    )
+
+    val err = intercept[IllegalArgumentException]:
+      SfcSemanticProjection.ExecutedFlowEvidence.from(Vector(batch))
+
+    err.getMessage.should(include("FlowMechanism.BankInterbankInterest"))
+    err.getMessage.should(include("unsupported direction"))
+    err.getMessage.should(include("Government->Banks"))
+  }
+
   it should "route deterministic NBFI and TFI calculus values into executed evidence" in {
     val (baseCalculus, topology) = calculusTopologyFromSeed()
     val calculus                 = baseCalculus.copy(
@@ -107,8 +126,8 @@ class FlowSimulationExecutedEvidenceSpec extends AnyFlatSpec with Matchers:
     )
     given RuntimeLedgerTopology  = topology
 
-    val batches  = FlowSimulation.emitAllBatches(calculus)
-    val evidence = FlowSimulation.ExecutedFlowEvidence.from(batches)
+    val batches  = MonthFlowEmitter.emitAllBatches(calculus)
+    val evidence = SfcSemanticProjection.ExecutedFlowEvidence.from(batches)
 
     evidence.nbfiDepositDrain shouldBe PLN(-777000)
     evidence.amount(FlowMechanism.NbfiOrigination) shouldBe PLN(555000)
@@ -128,8 +147,8 @@ class FlowSimulationExecutedEvidenceSpec extends AnyFlatSpec with Matchers:
     )
     given RuntimeLedgerTopology  = topology
 
-    val batches  = FlowSimulation.emitAllBatches(calculus)
-    val evidence = FlowSimulation.ExecutedFlowEvidence.from(batches)
+    val batches  = MonthFlowEmitter.emitAllBatches(calculus)
+    val evidence = SfcSemanticProjection.ExecutedFlowEvidence.from(batches)
 
     evidence.quasiFiscalBondIssuance shouldBe PLN(1000000)
     evidence.quasiFiscalBondAmortization shouldBe PLN(300000)

@@ -123,7 +123,9 @@ exactness, each month.
 
 | File | Responsibility |
 |------|----------------|
-| `FlowSimulation.scala` | Sole pipeline entry point for one month. `step(state, randomness)` is the explicit month boundary: it computes narrow same-month groups for flow emission, signal timing, month closing, and SFC projection, assembles `MonthOutcome`, delegates runtime execution, next-state advancement, and trace construction, and returns typed `nextState` for month `t+1`. |
+| `FlowSimulation.scala` | Sole pipeline entry point for one month. `step(state, randomness)` is the explicit month boundary: it computes narrow same-month groups for flow emission, signal timing, month closing, and SFC projection, assembles `MonthOutcome`, delegates flow emission, runtime execution, SFC projection, next-state advancement, and trace construction, and returns typed `nextState` for month `t+1`. |
+| `MonthFlowEmitter.scala` | Translates `MonthlyCalculus` into named runtime ledger batches without doing economics or validation. |
+| `SfcSemanticProjection.scala` | Converts executed runtime batches plus narrow semantic views into `Sfc.SemanticFlows` and runs the SFC validation boundary. |
 | `MonthTraceBuilder.scala` | Builds the month audit trace from explicit step boundaries: start/end snapshots, seed transition, timing envelopes, executed SFC flows, and validation results. |
 | `RuntimeFlowExecutor.scala` | Executes emitted runtime batches through the ledger interpreter, captures delta-ledger evidence, and maps execution failures consistently. |
 | `NextStateAdvancer.scala` | Owns the closed-month -> next-pre transition: applies extracted `SeedOut`, enforces seed timing invariants, and materializes runtime-supported ledger deltas into the next `SimState`. |
@@ -219,9 +221,9 @@ economics-stage market-clearing pipeline.
 1. Add a case to the `FlowMechanism` enum in `FlowMechanism.scala`.
 2. Add the mechanism to `FlowMechanism.emittedRuntimeMechanisms`.
 3. Create or extend the appropriate `*Flows.scala` to emit the flow.
-4. Wire the batch emission call in `FlowSimulation.emitAllBatches(...)` or the relevant aggregation point.
+4. Wire the batch emission call in `MonthFlowEmitter.emitAllBatches(...)` or the relevant aggregation point.
 5. Update `RuntimeMechanismSurvivability.scala` with the mechanism's audit class and ensure representative branch coverage exercises it.
-6. Update the SFC validation projection so exact stock-flow identities cover the new flow.
+6. Update `SfcSemanticProjection.scala` so exact stock-flow identities cover the new flow.
 
 **SFC rule:** Any flow that modifies bank capital, deposits, government
 debt, NFA, bond holdings, or interbank positions **must** be reflected in
