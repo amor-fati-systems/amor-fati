@@ -2,7 +2,7 @@ package com.boombustgroup.amorfati.engine.flows
 
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.types.*
-import com.boombustgroup.ledger.EntitySector
+import com.boombustgroup.ledger.{AssetType, BatchedFlow, EntitySector}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -95,6 +95,25 @@ class FlowSimulationExecutedEvidenceSpec extends AnyFlatSpec with Matchers:
       mechanismTotal(result.flows, FlowMechanism.InsNonLifeClaim)
 
     result.trace.executedFlows.insNetDepositChange shouldBe insuranceClaims - insurancePremiums
+  }
+
+  it should "reject unsupported signed bank-income flow directions" in {
+    val batch = BatchedFlow.Broadcast(
+      from = EntitySector.Government,
+      fromIndex = 0,
+      to = EntitySector.Banks,
+      amounts = Array(100L),
+      targetIndices = Array(0),
+      asset = AssetType.Cash,
+      mechanism = FlowMechanism.BankInterbankInterest,
+    )
+
+    val err = intercept[IllegalArgumentException]:
+      SfcSemanticProjection.ExecutedFlowEvidence.from(Vector(batch))
+
+    err.getMessage.should(include("FlowMechanism.BankInterbankInterest"))
+    err.getMessage.should(include("unsupported direction"))
+    err.getMessage.should(include("Government->Banks"))
   }
 
   it should "route deterministic NBFI and TFI calculus values into executed evidence" in {

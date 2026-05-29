@@ -223,12 +223,15 @@ object SfcSemanticProjection:
             val amount       = RuntimeLedgerTopology.totalTransferred(batch)
             val signedAmount =
               batch.mechanism match
-                case FlowMechanism.BankInterbankInterest | FlowMechanism.BankStandingFacility =>
+                case mechanism @ (FlowMechanism.BankInterbankInterest | FlowMechanism.BankStandingFacility) =>
                   (batch.from, batch.to) match
                     case (EntitySector.NBP, EntitySector.Banks) => amount
                     case (EntitySector.Banks, EntitySector.NBP) => -amount
-                    case _                                      => amount
-                case FlowMechanism.InvestmentDepositSettlement                                =>
+                    case _                                      =>
+                      throw new IllegalArgumentException(
+                        s"${bankIncomeMechanismLabel(mechanism)} batch has unsupported direction ${batch.from}->${batch.to}",
+                      )
+                case FlowMechanism.InvestmentDepositSettlement                                              =>
                   (batch.from, batch.to) match
                     case (EntitySector.Banks, EntitySector.Firms) => amount
                     case (EntitySector.Firms, EntitySector.Banks) => -amount
@@ -236,7 +239,7 @@ object SfcSemanticProjection:
                       throw new IllegalArgumentException(
                         s"InvestmentDepositSettlement batch has unsupported direction ${batch.from}->${batch.to}",
                       )
-                case FlowMechanism.TfiDepositDrain                                            =>
+                case FlowMechanism.TfiDepositDrain                                                          =>
                   (batch.from, batch.to) match
                     case (EntitySector.Banks, EntitySector.Households) => amount
                     case (EntitySector.Households, EntitySector.Banks) => -amount
@@ -244,21 +247,21 @@ object SfcSemanticProjection:
                       throw new IllegalArgumentException(
                         s"TfiDepositDrain batch has unsupported direction ${batch.from}->${batch.to}",
                       )
-                case FlowMechanism.QuasiFiscalLendingDeposit                                  =>
+                case FlowMechanism.QuasiFiscalLendingDeposit                                                =>
                   (batch.from, batch.to) match
                     case (EntitySector.Banks, EntitySector.Firms) => amount
                     case _                                        =>
                       throw new IllegalArgumentException(
                         s"QuasiFiscalLendingDeposit batch has unsupported direction ${batch.from}->${batch.to}",
                       )
-                case FlowMechanism.QuasiFiscalRepaymentDeposit                                =>
+                case FlowMechanism.QuasiFiscalRepaymentDeposit                                              =>
                   (batch.from, batch.to) match
                     case (EntitySector.Firms, EntitySector.Banks) => -amount
                     case _                                        =>
                       throw new IllegalArgumentException(
                         s"QuasiFiscalRepaymentDeposit batch has unsupported direction ${batch.from}->${batch.to}",
                       )
-                case _                                                                        => amount
+                case _                                                                                      => amount
 
             (
               totalsAcc.updated(batch.mechanism, totalsAcc(batch.mechanism) + amount),
@@ -266,3 +269,7 @@ object SfcSemanticProjection:
             )
 
       ExecutedFlowEvidence(totals, signedTotals)
+
+    private def bankIncomeMechanismLabel(mechanism: MechanismId): String =
+      if mechanism == FlowMechanism.BankInterbankInterest then "FlowMechanism.BankInterbankInterest"
+      else "FlowMechanism.BankStandingFacility"
