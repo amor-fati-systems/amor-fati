@@ -21,7 +21,7 @@ class LaborEconomicsSpec extends AnyFlatSpec with Matchers:
   private val firms      = initResult.firms
   private val households = initResult.households
 
-  private val s1 = FiscalConstraintEconomics.Output(
+  private val s1 = FiscalConstraintEconomics.StepOutput(
     month = ExecutionMonth.First,
     lendingBaseRate = world.nbp.referenceRate,
     resWage = world.householdMarket.reservationWage,

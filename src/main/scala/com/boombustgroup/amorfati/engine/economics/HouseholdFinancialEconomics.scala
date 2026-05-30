@@ -25,7 +25,7 @@ object HouseholdFinancialEconomics:
   private def trendFactor(annualGrowth: Rate, elapsedMonths: Int): Multiplier =
     annualGrowth.monthly.growthMultiplier.pow(Scalar(elapsedMonths))
 
-  case class Output(
+  case class StepOutput(
       depositInterestPaid: PLN,         // total deposit interest paid to households
       remittanceOutflow: PLN,           // total household remittance outflow
       diasporaInflow: PLN,              // diaspora remittance inflow (NBP BoP)
@@ -41,7 +41,10 @@ object HouseholdFinancialEconomics:
       consumerPrincipal: PLN,           // consumer loan principal repayment
   )
 
-  type StepOutput = Output
+  /** Compatibility alias for older type references; new code should use
+    * [[StepOutput]].
+    */
+  type Output = StepOutput
 
   def compute(
       w: World,
@@ -93,7 +96,7 @@ object HouseholdFinancialEconomics:
     val consumerNplLoss             = consumerLoanDefaultAmt * (Share.One - p.household.ccNplRecovery)
     val consumerPrincipal           = hhAgg.totalConsumerPrincipal
 
-    Output(
+    StepOutput(
       depositInterestPaid,
       remittanceOutflow,
       diasporaInflow,

@@ -46,7 +46,7 @@ object LaborEconomics:
       val unemploymentRate = Share.fraction(unemployed, laborForcePopulation)
       (p.monetary.nairu - unemploymentRate).max(Share.Zero).toCoefficient * p.labor.tightLaborWageSensitivity
 
-  case class Output(
+  case class StepOutput(
       newWage: PLN,
       employed: Int,
       laborDemand: Int,
@@ -64,7 +64,10 @@ object LaborEconomics:
       regionalWages: Map[Region, PLN],
   )
 
-  type StepOutput = Output
+  /** Compatibility alias for older type references; new code should use
+    * [[StepOutput]].
+    */
+  type Output = StepOutput
 
   def compute(
       w: World,
@@ -103,7 +106,7 @@ object LaborEconomics:
       newDemographics.retirees,
     )
 
-    Output(
+    StepOutput(
       newWage = cleared.wage,
       employed = cleared.employed,
       laborDemand = laborDemand,

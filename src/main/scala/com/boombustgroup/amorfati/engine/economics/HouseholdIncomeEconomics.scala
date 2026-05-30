@@ -25,7 +25,7 @@ object HouseholdIncomeEconomics:
   // ---- Calibration constants ----
   private val ImportErElasticity = Coefficient.decimal(5, 1) // exchange rate elasticity of import propensity
 
-  case class Output(
+  case class StepOutput(
       totalIncome: PLN,                                     // aggregate household income (wages + benefits + transfers)
       consumption: PLN,                                     // aggregate household consumption spending
       importCons: PLN,                                      // import component of household consumption (forex demand)
@@ -40,7 +40,10 @@ object HouseholdIncomeEconomics:
       ledgerFinancialState: LedgerFinancialState,           // ledger after household financial stock updates
   )
 
-  type StepOutput = Output
+  /** Compatibility alias for older type references; new code should use
+    * [[StepOutput]].
+    */
+  type Output = StepOutput
 
   def compute(
       w: World,
@@ -113,7 +116,7 @@ object HouseholdIncomeEconomics:
         )
       else agg
 
-    Output(
+    StepOutput(
       aggWithPensions.totalIncome,
       aggWithPensions.consumption,
       aggWithPensions.importConsumption,
