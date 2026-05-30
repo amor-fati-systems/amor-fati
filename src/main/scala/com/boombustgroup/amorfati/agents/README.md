@@ -12,7 +12,7 @@ carry behavioral state, operational diagnostics, and legacy unsupported metrics.
 
 | File | Agent | State | Key SFC identities |
 |------|-------|-------|-------------------|
-| `Banking.scala` | 10 banking-sector rows: named bank archetypes plus residual Other banks (Poland 2026-04-30 baseline) | Per-row behavior, capital, NPL/risk buckets, LCR/NSFR inputs; deposits, loans, bonds, reserves, interbank positions are ledger projections | BankCapital, BankDeposits, BondClearing, InterbankNetting |
+| `Banking.scala` | 10 banking-sector rows: named bank archetypes plus residual Other banks (Poland 2026-04-30 baseline) | Public banking facade and domain types; implementation is split under `banking/` by credit, interbank, resolution, bond portfolio, capital, defaults, and regulatory metrics | BankCapital, BankDeposits, BondClearing, InterbankNetting |
 | `Firm.scala` | Heterogeneous firms (6 sectors) | Technology state (Traditional/Hybrid/Automated), capital stock, inventory, green capital, labor and production state; cash/debt/equity are ledger projections | BankCapital (NPL), FlowOfFunds, CorpBondStock |
 | `Household.scala` | Individual households | Skill, health, MPC, employment status, housing and demographic state; savings, debt, consumer credit, and equity wealth are ledger projections | BankDeposits, ConsumerCredit |
 | `Immigration.scala` | Immigrant workers | Stock, monthly inflow/outflow, remittance outflow | BankDeposits (remittance → deposit outflow), Nfa |
@@ -35,6 +35,18 @@ carry behavioral state, operational diagnostics, and legacy unsupported metrics.
 | `Region.scala` | Enum | 6 NUTS-1 regions (Central, South, East, Northwest, Southwest, North) — wage multipliers, base unemployment, housing cost, population share, friction matrix, migration probabilities |
 | `RegionalMigration.scala` | Module | Inter-regional household relocation: wage-gap–driven migration probability, friction-weighted target selection |
 | `StateOwned.scala` | Module | SOE behavioral modifiers: dividend multiplier, firing reduction, investment multiplier, energy passthrough, per-sector SOE share (GUS) |
+
+## Banking Modules
+
+| File | Boundary |
+|------|----------|
+| `banking/BankCreditApproval.scala` | Firm-bank assignment, lending/deposit pricing, and auditable credit approval gates |
+| `banking/BankInterbankMarket.scala` | Interbank rate/clearing plus reserve, standing-facility, and interbank-interest plumbing |
+| `banking/BankFailureResolution.scala` | Failure triggers, BFG levy, bail-in, P&A resolution, healthiest-survivor routing |
+| `banking/BankBondPortfolio.scala` | Government-bond issuance/redemption allocation, buyer sales, and HTM forced-sale reclassification |
+| `banking/BankCapitalWaterfall.scala` | Per-bank retained-income and loss waterfall for regulatory capital |
+| `banking/BankRegulatoryMetrics.scala` | Aggregate bank balance sheet, CAR, NPL, HQLA, LCR, NSFR, monetary aggregate metrics |
+| `banking/BankDefaultConfigs.scala` | Default Poland-facing bank archetype configuration |
 
 ## How to extend
 
