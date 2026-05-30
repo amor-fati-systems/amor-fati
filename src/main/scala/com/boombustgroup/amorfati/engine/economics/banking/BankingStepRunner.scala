@@ -437,7 +437,7 @@ object BankingStepRunner:
       .withFlowTotalsFrom(in.s3.hhAgg)
 
   /** Compute raw bond waterfall inputs — requests only, no final allocations.
-    * Actual allocations happen in processInterbankAndFailures via sellToBuyer.
+    * Actual allocations happen in runMultiBankStage via sellToBuyer.
     */
   private[banking] def computeWaterfallInputs(
       in: StepInput,
@@ -710,7 +710,7 @@ object BankingStepRunner:
     val updatedBanks      = updatedRows.map(_.bank)
     val updatedBankStocks = updatedRows.map(_.financialStocks)
 
-    processInterbankAndFailures(
+    runMultiBankStage(
       in,
       updatedBanks,
       updatedBankStocks,
@@ -726,10 +726,10 @@ object BankingStepRunner:
       settledBankCorpBonds,
     )
 
-  /** Interbank clearing, bond allocation, QE, failure check, bail-in,
-    * resolution, reassignment.
+  /** Runs the multi-bank settlement and resolution boundary after per-bank
+    * balance-sheet updates.
     */
-  private[banking] def processInterbankAndFailures(
+  private[banking] def runMultiBankStage(
       in: StepInput,
       updatedBanks: Vector[Banking.BankState],
       updatedBankStocks: Vector[Banking.BankFinancialStocks],
@@ -744,80 +744,46 @@ object BankingStepRunner:
       mortgageFlows: HousingMarket.MortgageFlows,
       settledBankCorpBonds: Vector[PLN],
   )(using p: SimParams): MultiBankResult =
-    val prevBankAgg    =
+    val prevBankAgg =
       Banking.aggregateFromBankStocks(
         in.banks,
         in.ledgerFinancialState.banks.map(LedgerFinancialState.projectBankFinancialStocks),
         bankCorpBondHoldings(in.ledgerFinancialState),
       )
-    val ibRate         = Banking.interbankRate(updatedBanks, updatedBankStocks, in.w.nbp.referenceRate)
-    // Liquidity hoarding: reduce interbank lending when system NPL is high
-    val hoarding       = InterbankContagion.hoardingFactor(prevBankAgg.nplRatio)
-    val afterInterbank = Banking.clearInterbank(updatedBanks, updatedBankStocks, bankConfigs, hoarding)
-    val nbpSettlement  = applyNbpReserveSettlement(
-      afterInterbank.banks,
-      afterInterbank.financialStocks,
-      perBankReserveInt,
-      perBankStandingFac,
-      perBankInterbankInt,
-      in.s8.monetary.fxPlnInjection,
-    )
-    if nbpSettlement.residual != PLN.Zero then
-      throw IllegalStateException(
-        s"NBP reserve settlement left unallocated FX residual ${nbpSettlement.residual} after reserve-side settlement.",
-      )
-    // HTM forced reclassification: LCR-stressed banks reclassify HTM→AFS, realizing hidden losses
-    val htmResult      = Banking.processHtmForcedSale(nbpSettlement.banks, nbpSettlement.financialStocks, in.s8.monetary.newBondYield)
-    val afterHtm       = htmResult.banks
-    val afterHtmStocks = htmResult.financialStocks
-    val waterfall      = runBondWaterfall(in, wf, afterHtm, afterHtmStocks)
 
-    val bankCorpBondHoldingsAfterSettlement = Banking.bankCorpBondHoldingsFromVector(settledBankCorpBonds)
-    val failureDetection                    = runFailureDetection(in, waterfall, bankCorpBondHoldingsAfterSettlement)
-    val bailIn                              = runBailIn(failureDetection)
-    val resolution                          = runBankResolution(failureDetection, bailIn, settledBankCorpBonds)
-    val curve                               =
-      val exp = in.w.mechanisms.expectations
-      Some(
-        YieldCurve.compute(
-          ibRate,
-          nplRatio = prevBankAgg.nplRatio,
-          credibility = exp.credibility,
-          expectedInflation = exp.expectedInflation,
-          targetInflation = p.monetary.targetInfl,
-        ),
-      )
-    val finalBankingMarket                  = Banking.MarketState(
-      interbankRate = ibRate,
-      configs = bankConfigs,
-      interbankCurve = curve,
-    )
-    val bankCapitalTerms                    = computeBankCapitalTerms(prevBankAgg, resolution.banks, in, mortgageFlows)
-    val reconciled                          = reconcileAggregateExactness(
-      banks = resolution.banks,
-      financialStocks = resolution.financialStocks,
-      bankCorpBondHoldings = resolution.bankCorpBondHoldings,
-      prevBankAgg = prevBankAgg,
+    val settlement            = runInterbankSettlement(
       in = in,
+      updatedBanks = updatedBanks,
+      updatedBankStocks = updatedBankStocks,
+      bankConfigs = bankConfigs,
+      prevBankAgg = prevBankAgg,
+      reserveInterest = perBankReserveInt,
+      standingFacilityIncome = perBankStandingFac,
+      interbankInterest = perBankInterbankInt,
+    )
+    val waterfall             = runBondWaterfall(in, wf, settlement.banks, settlement.financialStocks)
+    val finalBankingMarket    = bankingMarketAfterSettlement(settlement, bankConfigs, prevBankAgg, in)
+    val resolved              = runFailureResolutionPipeline(
+      in = in,
+      prevBankAgg = prevBankAgg,
+      waterfall = waterfall,
+      settledBankCorpBonds = settledBankCorpBonds,
       jstDepositChange = jstDepositChange,
       investNetDepositFlow = investNetDepositFlow,
       quasiFiscalDepositChange = quasiFiscalDepositChange,
       mortgageFlows = mortgageFlows,
-      bailInLoss = bailIn.loss,
-      multiCapDestruction = failureDetection.capitalDestruction,
-      interbankContagionLoss = failureDetection.contagion.totalLoss,
-      htmRealizedLoss = htmResult.totalRealizedLoss,
-      bankCapitalTerms = bankCapitalTerms,
+      htmRealizedLoss = settlement.htmRealizedLoss,
     )
-    val finalResolution                     = reconcileResolution(failureDetection, bailIn, resolution, reconciled)
-    val finalFailureBanks                   = finalResolution.banks
-    val finalFailureStocks                  = finalResolution.financialStocks
-    val finalCorpBondHoldings               = finalResolution.bankCorpBondHoldings
-    val finalCorpBondLookup                 = Banking.bankCorpBondHoldingsFromVector(finalCorpBondHoldings)
-    val invariantMismatches                 = math.abs(finalResolution.newFailures - finalResolution.failureEvents.length)
-    val failureDiagnostics                  =
+    val finalResolution       = resolved.finalResolution
+    val failureDetection      = resolved.failureDetection
+    val finalFailureBanks     = finalResolution.banks
+    val finalFailureStocks    = finalResolution.financialStocks
+    val finalCorpBondHoldings = finalResolution.bankCorpBondHoldings
+    val finalCorpBondLookup   = Banking.bankCorpBondHoldingsFromVector(finalCorpBondHoldings)
+    val invariantMismatches   = math.abs(finalResolution.newFailures - finalResolution.failureEvents.length)
+    val failureDiagnostics    =
       BankFailureDiagnostics.fromEvents(finalResolution.failureEvents, finalResolution.allFailedFallbackUsed, invariantMismatches)
-    val resolutionDiagnostics               =
+    val resolutionDiagnostics =
       BankResolutionDiagnostics.fromState(
         banks = finalFailureBanks,
         newFailures = finalResolution.newFailures,
@@ -825,10 +791,10 @@ object BankingStepRunner:
         resolvedBanks = finalResolution.resolvedBankCount,
         allFailedFallbackUsed = finalResolution.allFailedFallbackUsed,
       )
-    val anyFailureForMobility               = failureDetection.anyFailed || reconciled.newFailuresDelta > 0
-    val eclGdpGrowthMonthly                 = eclGdpGrowth(in)
-    val eclMigrationRate                    = EclStaging.migrationRate(in.w.unemploymentRate(in.s2.employed), eclReferenceUnemployment(in), eclGdpGrowthMonthly)
-    val eclDiagnostics                      = computeBankEclDiagnostics(in.banks, finalFailureBanks, eclMigrationRate, eclGdpGrowthMonthly)
+    val anyFailureForMobility = failureDetection.anyFailed || resolved.aggregateReconciliation.newFailuresDelta > 0
+    val eclGdpGrowthMonthly   = eclGdpGrowth(in)
+    val eclMigrationRate      = EclStaging.migrationRate(in.w.unemploymentRate(in.s2.employed), eclReferenceUnemployment(in), eclGdpGrowthMonthly)
+    val eclDiagnostics        = computeBankEclDiagnostics(in.banks, finalFailureBanks, eclMigrationRate, eclGdpGrowthMonthly)
 
     // Repair stale failed-bank routing every month; mobility validates survivor bankIds.
     val reassignedFirms =
@@ -871,13 +837,13 @@ object BankingStepRunner:
       interbankContagionLoss = failureDetection.contagion.totalLoss,
       newFailures = finalResolution.newFailures,
       capitalReconciliationResidual = finalResolution.capitalReconciliationResidual,
-      bankCapitalTerms = bankCapitalTerms,
+      bankCapitalTerms = resolved.bankCapitalTerms,
       bankFailureDiagnostics = failureDiagnostics,
       bankResolutionDiagnostics = resolutionDiagnostics,
       bankReconciliationDiagnostics = finalResolution.bankReconciliationDiagnostics,
       bankEclDiagnostics = eclDiagnostics,
       resolvedBank = Banking.aggregateFromBankStocks(finalFailureBanks, finalFailureStocks, finalCorpBondLookup),
-      htmRealizedLoss = htmResult.totalRealizedLoss,
+      htmRealizedLoss = settlement.htmRealizedLoss,
       finalNbp = waterfall.finalNbp,
       finalNbpFinancialStocks = waterfall.finalNbpFinancialStocks,
       finalPpk = waterfall.finalPpk,
@@ -887,10 +853,115 @@ object BankingStepRunner:
       finalNbfi = waterfall.finalNbfi,
       finalNbfiBalances = waterfall.finalNbfiBalances,
       actualBondChange = wf.actualBondChange,
-      standingFacilityBackstop = nbpSettlement.standingFacilityBackstop,
+      standingFacilityBackstop = settlement.standingFacilityBackstop,
       foreignBondHoldings = waterfall.foreignBondHoldings,
       bidToCover = waterfall.bidToCover,
       govBondRuntimeMovements = waterfall.govBondRuntimeMovements,
+    )
+
+  /** Clears the interbank market, settles reserve-side NBP flows, and applies
+    * HTM forced-sale reclassification before the government-bond waterfall.
+    */
+  private[banking] def runInterbankSettlement(
+      in: StepInput,
+      updatedBanks: Vector[Banking.BankState],
+      updatedBankStocks: Vector[Banking.BankFinancialStocks],
+      bankConfigs: Vector[Banking.Config],
+      prevBankAgg: Banking.Aggregate,
+      reserveInterest: Banking.PerBankAmounts,
+      standingFacilityIncome: Banking.PerBankAmounts,
+      interbankInterest: Banking.PerBankAmounts,
+  )(using p: SimParams): InterbankSettlementResult =
+    val interbankRate  = Banking.interbankRate(updatedBanks, updatedBankStocks, in.w.nbp.referenceRate)
+    val hoarding       = InterbankContagion.hoardingFactor(prevBankAgg.nplRatio)
+    val afterInterbank = Banking.clearInterbank(updatedBanks, updatedBankStocks, bankConfigs, hoarding)
+    val nbpSettlement  = applyNbpReserveSettlement(
+      afterInterbank.banks,
+      afterInterbank.financialStocks,
+      reserveInterest,
+      standingFacilityIncome,
+      interbankInterest,
+      in.s8.monetary.fxPlnInjection,
+    )
+    if nbpSettlement.residual != PLN.Zero then
+      throw IllegalStateException(
+        s"NBP reserve settlement left unallocated FX residual ${nbpSettlement.residual} after reserve-side settlement.",
+      )
+    val htmResult      = Banking.processHtmForcedSale(nbpSettlement.banks, nbpSettlement.financialStocks, in.s8.monetary.newBondYield)
+
+    InterbankSettlementResult(
+      banks = htmResult.banks,
+      financialStocks = htmResult.financialStocks,
+      interbankRate = interbankRate,
+      standingFacilityBackstop = nbpSettlement.standingFacilityBackstop,
+      htmRealizedLoss = htmResult.totalRealizedLoss,
+    )
+
+  private def bankingMarketAfterSettlement(
+      settlement: InterbankSettlementResult,
+      bankConfigs: Vector[Banking.Config],
+      prevBankAgg: Banking.Aggregate,
+      in: StepInput,
+  )(using p: SimParams): Banking.MarketState =
+    val exp = in.w.mechanisms.expectations
+    Banking.MarketState(
+      interbankRate = settlement.interbankRate,
+      configs = bankConfigs,
+      interbankCurve = Some(
+        YieldCurve.compute(
+          settlement.interbankRate,
+          nplRatio = prevBankAgg.nplRatio,
+          credibility = exp.credibility,
+          expectedInflation = exp.expectedInflation,
+          targetInflation = p.monetary.targetInfl,
+        ),
+      ),
+    )
+
+  /** Runs the failure-resolution subpipeline after bond allocation has produced
+    * the settled bank portfolios used for failure checks and exactness repair.
+    */
+  private[banking] def runFailureResolutionPipeline(
+      in: StepInput,
+      prevBankAgg: Banking.Aggregate,
+      waterfall: BondWaterfallResult,
+      settledBankCorpBonds: Vector[PLN],
+      jstDepositChange: PLN,
+      investNetDepositFlow: PLN,
+      quasiFiscalDepositChange: PLN,
+      mortgageFlows: HousingMarket.MortgageFlows,
+      htmRealizedLoss: PLN,
+  )(using p: SimParams): FailureResolutionPipelineResult =
+    val bankCorpBondHoldingsAfterSettlement = Banking.bankCorpBondHoldingsFromVector(settledBankCorpBonds)
+    val failureDetection                    = runFailureDetection(in, waterfall, bankCorpBondHoldingsAfterSettlement)
+    val bailIn                              = runBailIn(failureDetection)
+    val bankResolution                      = runBankResolution(failureDetection, bailIn, settledBankCorpBonds)
+    val bankCapitalTerms                    = computeBankCapitalTerms(prevBankAgg, bankResolution.banks, in, mortgageFlows)
+    val aggregateReconciliation             = reconcileAggregateExactness(
+      banks = bankResolution.banks,
+      financialStocks = bankResolution.financialStocks,
+      bankCorpBondHoldings = bankResolution.bankCorpBondHoldings,
+      prevBankAgg = prevBankAgg,
+      in = in,
+      jstDepositChange = jstDepositChange,
+      investNetDepositFlow = investNetDepositFlow,
+      quasiFiscalDepositChange = quasiFiscalDepositChange,
+      mortgageFlows = mortgageFlows,
+      bailInLoss = bailIn.loss,
+      multiCapDestruction = failureDetection.capitalDestruction,
+      interbankContagionLoss = failureDetection.contagion.totalLoss,
+      htmRealizedLoss = htmRealizedLoss,
+      bankCapitalTerms = bankCapitalTerms,
+    )
+    val finalResolution                     = reconcileResolution(failureDetection, bailIn, bankResolution, aggregateReconciliation)
+
+    FailureResolutionPipelineResult(
+      failureDetection = failureDetection,
+      bailIn = bailIn,
+      bankResolution = bankResolution,
+      aggregateReconciliation = aggregateReconciliation,
+      finalResolution = finalResolution,
+      bankCapitalTerms = bankCapitalTerms,
     )
 
   /** Detects primary failures, applies interbank contagion losses, and then

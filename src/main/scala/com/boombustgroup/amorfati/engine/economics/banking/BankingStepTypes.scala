@@ -56,6 +56,14 @@ private[banking] final case class BondWaterfallResult(
     govBondRuntimeMovements: GovBondRuntimeMovements,
 )
 
+private[banking] final case class InterbankSettlementResult(
+    banks: Vector[Banking.BankState],
+    financialStocks: Vector[Banking.BankFinancialStocks],
+    interbankRate: Rate,
+    standingFacilityBackstop: PLN,
+    htmRealizedLoss: PLN,
+)
+
 private[banking] final case class FailureDetectionResult(
     banks: Vector[Banking.BankState],
     financialStocks: Vector[Banking.BankFinancialStocks],
@@ -97,6 +105,15 @@ private[banking] final case class ReconciledResolutionResult(
     allFailedFallbackUsed: Boolean,
     bankReconciliationDiagnostics: BankReconciliationDiagnostics,
     capitalReconciliationResidual: PLN,
+)
+
+private[banking] final case class FailureResolutionPipelineResult(
+    failureDetection: FailureDetectionResult,
+    bailIn: BailInStageResult,
+    bankResolution: BankResolutionStageResult,
+    aggregateReconciliation: AggregateReconciliationResult,
+    finalResolution: ReconciledResolutionResult,
+    bankCapitalTerms: BankCapitalTerms,
 )
 
 private[banking] final case class PerBankHhFlows(
