@@ -81,7 +81,8 @@ unnecessary unless the decision is revisited.
 #576 reduces to an inventory and guardrail: enumerate every site that writes
 `BankState.capital`, classify each site against the waterfall categories above,
 and add a regression check that fails when a new writer appears without a
-category. The live inventory is `BankCapitalSemantics.writeSites`.
+category. The live inventory is
+`engine.economics.banking.BankCapitalSemantics.writeSites`.
 
 #577 reduces to diagnostic wording: keep `BankBalanceSheetBenchmarkExport`
 reading `BankState.capital`, and keep
@@ -108,5 +109,5 @@ capital is not a supported ledger-owned stock.
 - `Sfc.MonthlyFlows.bankCapitalDestruction`
 - `Sfc.SfcIdentity.BankCapital`
 - `BankingEconomics.capitalDestructionDelta`
-- `BankCapitalSemantics.writeSites`
+- `engine.economics.banking.BankCapitalSemantics.writeSites`
 - `BankBalanceSheetBenchmarkExport`

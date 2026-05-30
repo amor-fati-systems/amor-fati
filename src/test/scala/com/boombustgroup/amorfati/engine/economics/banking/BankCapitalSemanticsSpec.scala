@@ -1,6 +1,6 @@
-package com.boombustgroup.amorfati.engine.economics
+package com.boombustgroup.amorfati.engine.economics.banking
 
-import com.boombustgroup.amorfati.engine.economics.BankCapitalSemantics.*
+import com.boombustgroup.amorfati.engine.economics.banking.BankCapitalSemantics.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 

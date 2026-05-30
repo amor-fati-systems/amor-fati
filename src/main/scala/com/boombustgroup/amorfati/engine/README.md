@@ -93,7 +93,7 @@ emitting monetary flows. `MonthCalculusRunner` wires them together.
 | `HouseholdFinancialEconomics.scala` | Mortgage debt service, deposit interest, diaspora remittances, tourism, consumer credit aggregation |
 | `PriceEquityEconomics.scala` | Inflation, GPW equity, sigma dynamics, GDP, macroprudential, EU funds |
 | `OpenEconEconomics.scala` | BoP/forex, GVC trade, Taylor rule, bond yields, interbank, corporate bonds, insurance, NBFI |
-| `BankingEconomics.scala` | Bank P&L, provisioning, CAR, multi-bank resolution, bail-in, interbank, BFG levy, monetary aggregates (M1/M2/M3) |
+| `BankingEconomics.scala` / `banking/BankingStepRunner.scala` | Bank P&L, provisioning, CAR, multi-bank resolution, bail-in, interbank, BFG levy, monetary aggregates (M1/M2/M3) |
 
 Each module exposes a `StepOutput` boundary type. Modules that historically
 named their payload `Output` keep `type Output = StepOutput` aliases for
