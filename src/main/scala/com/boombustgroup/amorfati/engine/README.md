@@ -81,7 +81,9 @@ Read it as a month transition:
 
 The same-month calculus pipeline is executed in fixed order each month. Each
 module is a pure function producing quantities, rates, and decisions without
-emitting monetary flows. `MonthCalculusRunner` wires them together.
+emitting monetary flows. `MonthCalculusRunner` wires them together through the
+same `MonthWorkflow` identity DSL, so the operational order is visible as a
+typed `for`-comprehension rather than an implicit block of local values.
 
 | File | Domain |
 |------|--------|
@@ -123,7 +125,7 @@ exactness, each month.
 | File | Responsibility |
 |------|----------------|
 | `FlowSimulation.scala` | Sole pipeline entry point for one month. `step(state, randomness)` is the explicit month boundary: it assembles `MonthOutcome`, delegates same-month calculus, flow emission, runtime execution, SFC projection, next-state advancement, and trace construction, and returns typed `nextState` for month `t+1`. |
-| `MonthCalculusRunner.scala` | Runs ordered same-month economics and builds the narrow month-`t` boundary views consumed by flow emission, signal timing, month closing, and SFC projection. |
+| `MonthCalculusRunner.scala` | Runs ordered same-month economics through `MonthWorkflow` and builds the narrow month-`t` boundary views consumed by flow emission, signal timing, month closing, and SFC projection. |
 | `MonthFlowEmitter.scala` | Translates `MonthlyCalculus` into named runtime ledger batches without doing economics or validation. |
 | `SfcSemanticProjection.scala` | Converts executed runtime batches plus narrow semantic views into `Sfc.SemanticFlows` and runs the SFC validation boundary. |
 | `MonthTraceBuilder.scala` | Builds the month audit trace from explicit step boundaries: start/end snapshots, seed transition, timing envelopes, executed SFC flows, and validation results. |
