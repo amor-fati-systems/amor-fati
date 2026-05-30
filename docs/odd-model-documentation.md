@@ -178,20 +178,20 @@ The high-level order is fixed:
 
 ### Economics Pipeline
 
-The monthly calculus stages are:
+The monthly calculus boundary is:
 
-| Stage | Module | Domain |
-| --- | --- | --- |
-| s1 | `FiscalConstraintEconomics` | minimum wage indexation, reservation wage, lending base rate |
-| s2 | `LaborEconomics` | labor market, wages, employment, demographics, immigration, payroll base |
-| s3 | `HouseholdIncomeEconomics` | household income, consumption, saving, portfolios, separations, mobility |
-| s4 | `DemandEconomics` | demand allocation across consumption, government purchases, investment, exports |
-| s5 | `FirmEconomics` | production, I-O intermediate market, capex, financing, labor, NPL detection |
-| s6 | `HouseholdFinancialEconomics` | mortgages, deposit interest, remittances, tourism, consumer credit |
-| s7 | `PriceEquityEconomics` | inflation, equity market, GDP proxy, macroprudential, EU funds |
-| s8 | `OpenEconEconomics` | BoP, forex, GVC, Taylor rule, bond yields, insurance, NBFI |
-| s9 | `BankingEconomics` | bank P&L, provisioning, CAR, resolution, interbank, BFG levy, M1/M2/M3 |
-| final | `MonthClosing` | aggregation, informal economy, lifecycle transitions, SFC status, next state |
+| Module | Domain |
+| --- | --- |
+| `FiscalConstraintEconomics` | minimum wage indexation, reservation wage, lending base rate |
+| `LaborEconomics` | labor market, wages, employment, demographics, immigration, payroll base |
+| `HouseholdIncomeEconomics` | household income, consumption, saving, portfolios, separations, mobility |
+| `DemandEconomics` | demand allocation across consumption, government purchases, investment, exports |
+| `FirmEconomics` | production, I-O intermediate market, capex, financing, labor, NPL detection |
+| `HouseholdFinancialEconomics` | mortgages, deposit interest, remittances, tourism, consumer credit |
+| `PriceEquityEconomics` | inflation, equity market, GDP proxy, macroprudential, EU funds |
+| `OpenEconEconomics` | BoP, forex, GVC, Taylor rule, bond yields, insurance, NBFI |
+| `BankingEconomics` | bank P&L, provisioning, CAR, resolution, interbank, BFG levy, M1/M2/M3 |
+| `MonthClosing` | aggregation, informal economy, lifecycle transitions, SFC status, next state |
 
 ### Flow Emission And Accounting Boundary
 

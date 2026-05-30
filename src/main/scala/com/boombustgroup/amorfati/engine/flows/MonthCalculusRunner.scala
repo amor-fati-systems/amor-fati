@@ -1,0 +1,388 @@
+package com.boombustgroup.amorfati.engine.flows
+
+import com.boombustgroup.amorfati.agents.*
+import com.boombustgroup.amorfati.config.SimParams
+import com.boombustgroup.amorfati.engine.MonthExecution
+import com.boombustgroup.amorfati.engine.assembly.MonthClosing
+import com.boombustgroup.amorfati.engine.economics.*
+import com.boombustgroup.amorfati.engine.ledger.{CorporateBondOwnership, GovernmentBondCircuit, LedgerFinancialState}
+import com.boombustgroup.amorfati.engine.markets.CorporateBondMarket
+import com.boombustgroup.amorfati.types.*
+import com.boombustgroup.ledger.*
+
+import scala.IArray
+
+/** Runs the deterministic same-month economics boundary.
+  *
+  * This is the one insertion point for the ordered same-month economics
+  * boundary. It returns only month-`t` views: flow plan, operational signals,
+  * closing input, and SFC semantic projection. Closed-month state and next-pre
+  * seed extraction remain outside this runner.
+  */
+private[flows] object MonthCalculusRunner:
+  import FlowSimulation.{MonthlyCalculus, SameMonthBoundaryViews, SemanticFlowInputs, SignalBoundaryInputs, StepInput}
+
+  private final case class StageRun(
+      openingLedger: LedgerFinancialState,
+      openingBanks: Vector[Banking.BankState],
+      execution: MonthExecution,
+      laborPre: LaborEconomics.StepOutput,
+      payroll: SocialSecurity.PayrollBase,
+      nBankruptFirms: Int,
+      avgFirmWorkers: Int,
+  )
+
+  def run(input: StepInput)(using p: SimParams): SameMonthBoundaryViews =
+    val stages   = runEconomicsStages(input)
+    val flowPlan = buildFlowPlan(stages)
+    buildBoundaryViews(stages.execution, flowPlan)
+
+  private def runEconomicsStages(input: StepInput)(using p: SimParams): StageRun =
+    val randomness         = input.randomness.stages
+    val stateIn            = input.stateIn
+    val ledger             = stateIn.ledgerFinancialState
+    val w                  = stateIn.world
+    val firms              = stateIn.firms
+    val households         = stateIn.households
+    val banks              = stateIn.banks
+    val fiscal             = FiscalConstraintEconomics.compute(w, banks, ledger, input.executionMonth)
+    val laborPre           = LaborEconomics.compute(w, firms, households, fiscal)
+    val payroll            = SocialSecurity.payrollBase(households)
+    val payrollZus         = SocialSecurity.zusStep(payroll, laborPre.newDemographics.retirees)
+    val householdIncome    = HouseholdIncomeEconomics.compute(
+      w,
+      firms,
+      households,
+      banks,
+      ledger,
+      fiscal.lendingBaseRate,
+      fiscal.resWage,
+      laborPre.newWage,
+      randomness.householdIncomeEconomics.newStream(),
+      pensionIncome = payrollZus.pensionPayments,
+    )
+    val demand             = DemandEconomics.compute(w, laborPre.employed, laborPre.living, householdIncome.domesticCons)
+    val firm               = FirmEconomics.runStep(
+      w,
+      firms,
+      households,
+      banks,
+      ledger,
+      fiscal,
+      laborPre,
+      householdIncome,
+      demand,
+      randomness.firmEconomics.newStream(),
+      traceDecisions = input.traceFirmDecisions,
+    )
+    val postLivingFirms    = firm.ioFirms.filter(Firm.isAlive)
+    val nBankruptFirms     = firm.firmDeaths
+    val avgFirmWorkers     = if laborPre.living.nonEmpty then laborPre.employed / laborPre.living.length else 0
+    val payrollNfz         = SocialSecurity.nfzStep(payroll, laborPre.newDemographics.workingAgePop, laborPre.newDemographics.retirees)
+    val payrollPpk         = SocialSecurity.ppkStep(payroll)
+    val payrollEarmarked   = EarmarkedFunds.step(payroll, householdIncome.hhAgg.totalUnempBenefits, nBankruptFirms, avgFirmWorkers)
+    val laborReconciled    = LaborEconomics.reconcilePostFirmStep(w, fiscal, laborPre, postLivingFirms, firm.households)
+    // Labor reconciliation refreshes employment/wage state after the firm step,
+    // but social funds are pinned to the opening-boundary payroll for month t.
+    val labor              = laborReconciled.copy(
+      newZus = payrollZus,
+      newNfz = payrollNfz,
+      newPpk = payrollPpk,
+      newEarmarked = payrollEarmarked,
+    )
+    val householdFinancial =
+      HouseholdFinancialEconomics.compute(w, fiscal.m, labor.employed, householdIncome.hhAgg, randomness.householdFinancialEconomics.newStream())
+    val priceEquity        = PriceEquityEconomics.compute(
+      w = w,
+      month = fiscal.m,
+      wageGrowth = labor.wageGrowth,
+      avgDemandMult = demand.avgDemandMult,
+      sectorMults = demand.sectorMults,
+      totalSystemLoans = ledger.banks.map(_.firmLoan).sumPln,
+      firmStep = firm,
+      ledgerFinancialState = ledger,
+    )
+    val openEconomy        = OpenEconEconomics.runStep(
+      OpenEconEconomics.StepInput(
+        w,
+        ledger,
+        fiscal,
+        labor,
+        householdIncome,
+        demand,
+        firm,
+        householdFinancial,
+        priceEquity,
+        banks,
+        randomness.openEconEconomics.newStream(),
+      ),
+    )
+    val bankingDepositRng  = randomness.bankingEconomics.newStream()
+    val banking            = BankingEconomics.runStep(
+      BankingEconomics.StepInput(
+        w,
+        ledger,
+        fiscal,
+        labor,
+        householdIncome,
+        demand,
+        firm,
+        householdFinancial,
+        priceEquity,
+        openEconomy,
+        banks,
+        bankingDepositRng,
+      ),
+    )
+    val execution          = MonthExecution(
+      openingWorld = w,
+      fiscal = fiscal,
+      labor = labor,
+      householdIncome = householdIncome,
+      demand = demand,
+      firm = firm,
+      householdFinancial = householdFinancial,
+      priceEquity = priceEquity,
+      openEconomy = openEconomy,
+      banking = banking,
+    )
+
+    StageRun(
+      openingLedger = ledger,
+      openingBanks = banks,
+      execution = execution,
+      laborPre = laborPre,
+      payroll = payroll,
+      nBankruptFirms = nBankruptFirms,
+      avgFirmWorkers = avgFirmWorkers,
+    )
+
+  private def buildFlowPlan(stages: StageRun)(using p: SimParams): MonthlyCalculus =
+    val ledger             = stages.openingLedger
+    val banks              = stages.openingBanks
+    val execution          = stages.execution
+    val w                  = execution.openingWorld
+    val fiscal             = execution.fiscal
+    val laborPre           = stages.laborPre
+    val labor              = execution.labor
+    val householdIncome    = execution.householdIncome
+    val firm               = execution.firm
+    val householdFinancial = execution.householdFinancial
+    val priceEquity        = execution.priceEquity
+    val openEconomy        = execution.openEconomy
+    val banking            = execution.banking
+    val prevBankAgg        = Banking.aggregateFromBankStocks(
+      banks,
+      ledger.banks.map(LedgerFinancialState.projectBankFinancialStocks),
+      bankId => CorporateBondOwnership.bankHolderFor(ledger, bankId),
+    )
+    val agg                = householdIncome.hhAgg
+    val h                  = banking.housingAfterFlows
+    val externalFlowBop    = openEconomy.external.flowBop
+    val openingCorpBonds   = CorporateBondOwnership.stockStateFromLedger(ledger)
+    val corpBondCoupon     = CorporateBondMarket.computeCoupon(w.financialMarkets.corporateBonds, openingCorpBonds)
+    val corpBondIssuance   = CorporateBondMarket.processIssuance(CorporateBondMarket.StockState.zero, firm.actualBondIssuance)
+    val laborForce         = labor.newDemographics.workingAgePop.max(1)
+    val unemploymentRate   = Share.One - Share.fraction(Math.max(0, Math.min(labor.employed, laborForce)), laborForce)
+    val equityRevaluation  = equityRevaluationInput(ledger, banking.ledgerFinancialState)
+
+    MonthlyCalculus(
+      month = fiscal.month,
+      resWage = fiscal.resWage,
+      lendingBaseRate = fiscal.lendingBaseRate,
+      baseMinWage = fiscal.baseMinWage,
+      minWagePriceLevel = fiscal.updatedMinWagePriceLevel,
+      wage = labor.newWage,
+      employed = labor.employed,
+      payroll = stages.payroll,
+      zus = labor.newZus,
+      ppk = labor.newPpk,
+      earmarked = labor.newEarmarked,
+      unemploymentRate = unemploymentRate,
+      laborDemand = labor.laborDemand,
+      livingFirms = firm.ioFirms.count(Firm.isAlive),
+      retirees = laborPre.newDemographics.retirees,
+      workingAgePop = laborPre.newDemographics.workingAgePop,
+      nfz = labor.newNfz,
+      nBankruptFirms = stages.nBankruptFirms,
+      avgFirmWorkers = stages.avgFirmWorkers,
+      totalIncome = householdIncome.totalIncome,
+      consumption = agg.consumption,
+      domesticConsumption = householdIncome.domesticCons,
+      importConsumption = householdIncome.importCons,
+      totalRent = agg.totalRent,
+      pitRevenue = banking.pitAfterEvasion,
+      totalDepositInterest = agg.totalDepositInterest,
+      totalRemittances = agg.totalRemittances,
+      totalUnempBenefits = agg.totalUnempBenefits,
+      totalSocialTransfers = agg.totalSocialTransfers,
+      totalCcOrigination = agg.totalConsumerOrigination,
+      approvedCcOrigination = agg.totalConsumerApprovedOrigination,
+      liquidityShortfallFinancing = agg.totalLiquidityShortfallFinancing,
+      totalCcDebtService = agg.totalConsumerDebtService,
+      totalCcPrincipal = agg.totalConsumerPrincipal,
+      totalCcDefault = agg.totalConsumerDefault,
+      govCurrentSpend = banking.newGovWithYield.govCurrentSpend,
+      firmTax = firm.sumTax,
+      firmNewLoans = firm.sumNewLoans,
+      firmPrincipal = firm.sumFirmPrincipal,
+      firmInterestIncome = firm.intIncome,
+      firmCapex = firm.sumCapex,
+      firmEquityIssuance = firm.sumEquityIssuance,
+      firmIoPayments = firm.totalIoPaid,
+      firmNplLoss = firm.nplLoss,
+      firmProfitShifting = firm.sumProfitShifting,
+      firmFdiRepatriation = firm.sumFdiRepatriation,
+      firmGrossInvestment = firm.sumGrossInvestment,
+      investNetDepositFlow = banking.investNetDepositFlow,
+      gdp = priceEquity.gdp,
+      inflation = priceEquity.newInfl,
+      equityDomDividends = priceEquity.netDomesticDividends,
+      equityForDividends = priceEquity.foreignDividendOutflow,
+      equityDivTax = priceEquity.dividendTax,
+      equityGovDividends = priceEquity.stateOwnedGovDividends,
+      equityReturn = priceEquity.equityAfterForeignStock.monthlyReturn,
+      exports = externalFlowBop.exports,
+      totalImports = externalFlowBop.totalImports,
+      tourismExport = householdFinancial.tourismExport,
+      tourismImport = householdFinancial.tourismImport,
+      fdi = externalFlowBop.fdi,
+      portfolioFlows = externalFlowBop.portfolioFlows,
+      carryTradeFlow = externalFlowBop.carryTradeFlow,
+      capitalFlightOutflow = externalFlowBop.capitalFlightOutflow,
+      primaryIncome = externalFlowBop.primaryIncome,
+      euFunds = externalFlowBop.euFundsMonthly,
+      diasporaInflow = householdFinancial.diasporaInflow,
+      corpBondCoupon = openEconomy.corpBonds.corpBondCoupon,
+      corpBondDefaultAmount = firm.totalBondDefault,
+      corpBondIssuance = firm.actualBondIssuance,
+      corpBondAmortization = openEconomy.corpBonds.corpBondAmort,
+      corpBondCouponRecipients = corpBondCouponRecipients(corpBondCoupon),
+      corpBondDefaultRecipients = allocateCorpBondReduction(firm.totalBondDefault, openingCorpBonds),
+      corpBondIssuanceRecipients = corpBondStockRecipients(corpBondIssuance),
+      corpBondAmortizationRecipients = allocateCorpBondReduction(openEconomy.corpBonds.corpBondAmort, openingCorpBonds),
+      mortgageOrigination = h.lastOrigination,
+      mortgageRepayment = h.lastRepayment,
+      mortgageInterest = h.mortgageInterestIncome,
+      mortgageDefault = h.lastDefault,
+      bankGovBondIncome = prevBankAgg.govBondHoldings * openEconomy.monetary.newBondYield.monthly,
+      bankReserveInterest = openEconomy.banking.totalReserveInterest,
+      bankStandingFacility = openEconomy.banking.totalStandingFacilityIncome,
+      bankStandingFacilityBackstop = banking.standingFacilityBackstop,
+      bankInterbankInterest = openEconomy.banking.totalInterbankInterest,
+      bankCorpBondCoupon = openEconomy.corpBonds.corpBondBankCoupon,
+      bankCorpBondLoss = openEconomy.corpBonds.corpBondBankDefaultLoss,
+      bankFxReserveSettlement = openEconomy.monetary.fxPlnInjection,
+      bankBfgLevy = banking.bfgLevy,
+      bankUnrealizedLoss = banking.unrealizedBondLoss,
+      bankBailIn = banking.bailInLoss,
+      bankNbpRemittance = openEconomy.banking.nbpRemittance,
+      equityRevaluation = equityRevaluation,
+      nbfiDepositDrain = openEconomy.nonBank.nbfiDepositDrain,
+      nbfiOrigination = banking.finalNbfi.lastNbfiOrigination,
+      nbfiRepayment = banking.finalNbfi.lastNbfiRepayment,
+      nbfiDefaultAmount = banking.finalNbfi.lastNbfiDefaultAmount,
+      qfBankBondIssuance = banking.newQuasiFiscal.monthlyBankBondIssuance,
+      qfNbpBondAbsorption = banking.newQuasiFiscal.monthlyNbpBondAbsorption,
+      qfBankBondAmortization = banking.newQuasiFiscal.monthlyBankBondAmortization,
+      qfNbpBondAmortization = banking.newQuasiFiscal.monthlyNbpBondAmortization,
+      qfLending = banking.newQuasiFiscal.monthlyLending,
+      qfRepayment = banking.newQuasiFiscal.monthlyLoanRepayment,
+      govVatRevenue = banking.vatAfterEvasion,
+      govExciseRevenue = banking.exciseAfterEvasion,
+      govCustomsDutyRevenue = banking.customsDutyRevenue,
+      govDebtService = openEconomy.banking.monthlyDebtService,
+      govDebtServiceRecipients = GovBudgetFlows.DebtServiceRecipients.fromCircuit(GovernmentBondCircuit.from(ledger), openEconomy.banking.monthlyDebtService),
+      govBondRuntimeMovements = banking.govBondRuntimeMovements,
+      govEuCofinancing = banking.newGovWithYield.euCofinancing,
+      govCapitalSpend = banking.newGovWithYield.govCapitalSpend,
+      insuranceCurrentLifeReserves = ledger.insurance.lifeReserve,
+      insuranceCurrentNonLifeReserves = ledger.insurance.nonLifeReserve,
+      insurancePrevGovBonds = ledger.insurance.govBondHoldings,
+      insurancePrevCorpBonds = ledger.insurance.corpBondHoldings,
+      insuranceCorpBondDefaultLoss = openEconomy.corpBonds.corpBondInsuranceDefaultLoss,
+      insurancePrevEquity = ledger.insurance.equityHoldings,
+      govBondYield = openEconomy.monetary.newBondYield,
+      corpBondYield = openEconomy.corpBonds.newCorpBonds.corpBondYield,
+    )
+
+  private def buildBoundaryViews(execution: MonthExecution, flowPlan: MonthlyCalculus)(using p: SimParams): SameMonthBoundaryViews =
+    SameMonthBoundaryViews(
+      flowPlan = flowPlan,
+      signals = SignalBoundaryInputs(
+        labor = execution.labor,
+        demand = execution.demand,
+      ),
+      closing = MonthClosing.prepareInput(execution),
+      semanticProjection = SemanticFlowInputs(
+        labor = execution.labor,
+        hhIncome = execution.householdIncome,
+        firms = execution.firm,
+        hhFinancial = execution.householdFinancial,
+        prices = execution.priceEquity,
+        openEcon = execution.openEconomy,
+        banking = execution.banking,
+      ),
+    )
+
+  private def corpBondCouponRecipients(coupon: CorporateBondMarket.CouponResult): CorpBondFlows.HolderBreakdown =
+    CorpBondFlows.HolderBreakdown(
+      banks = coupon.bank,
+      ppk = coupon.ppk,
+      other = coupon.other,
+      insurance = coupon.insurance,
+      nbfi = coupon.nbfi,
+    )
+
+  private def corpBondStockRecipients(stock: CorporateBondMarket.StockState): CorpBondFlows.HolderBreakdown =
+    CorpBondFlows.HolderBreakdown(
+      banks = stock.bankHoldings,
+      ppk = stock.ppkHoldings,
+      other = stock.otherHoldings,
+      insurance = stock.insuranceHoldings,
+      nbfi = stock.nbfiHoldings,
+    )
+
+  private def equityRevaluationInput(
+      opening: LedgerFinancialState,
+      closing: LedgerFinancialState,
+  ): EquityFlows.RevaluationInput =
+    val householdDeltas = Array.fill(opening.households.length)(PLN.Zero)
+    var i               = 0
+    while i < opening.households.length do
+      val closingEquity = if i < closing.households.length then closing.households(i).equity else PLN.Zero
+      householdDeltas(i) = closingEquity - opening.households(i).equity
+      i += 1
+
+    EquityFlows.RevaluationInput(
+      // Runtime topology is keyed to opening households; entrants become
+      // holder-addressable at the next month boundary.
+      householdDeltas = IArray.unsafeFromArray(householdDeltas),
+      insuranceDelta = closing.insurance.equityHoldings - opening.insurance.equityHoldings,
+      fundsDelta = closing.funds.nbfi.equityHoldings - opening.funds.nbfi.equityHoldings,
+      foreignDelta = closing.foreign.equityHoldings - opening.foreign.equityHoldings,
+    )
+
+  private def allocateCorpBondReduction(
+      amount: PLN,
+      opening: CorporateBondMarket.StockState,
+  ): CorpBondFlows.HolderBreakdown =
+    if amount <= PLN.Zero then CorpBondFlows.HolderBreakdown.zero
+    else
+      val weights = Array(
+        opening.bankHoldings.distributeRaw,
+        opening.ppkHoldings.distributeRaw,
+        opening.otherHoldings.distributeRaw,
+        opening.insuranceHoldings.distributeRaw,
+        opening.nbfiHoldings.distributeRaw,
+      )
+      if weights.forall(_ <= 0L) then CorpBondFlows.HolderBreakdown.copyToOther(amount)
+      else
+        val allocated = Distribute.distribute(amount.distributeRaw, weights)
+        CorpBondFlows.HolderBreakdown(
+          banks = PLN.fromRaw(allocated(0)),
+          ppk = PLN.fromRaw(allocated(1)),
+          other = PLN.fromRaw(allocated(2)),
+          insurance = PLN.fromRaw(allocated(3)),
+          nbfi = PLN.fromRaw(allocated(4)),
+        )
