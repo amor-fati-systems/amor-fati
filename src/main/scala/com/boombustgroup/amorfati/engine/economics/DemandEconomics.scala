@@ -24,7 +24,7 @@ object DemandEconomics:
   private val PressureSignalSmoothing = Share.decimal(65, 2)      // persistent sector order-book pressure; avoids startup repricing spikes
   private val HiringSignalSmoothing   = Share.decimal(65, 2)      // persistence in sector hiring plans; avoids month-to-month whipsaw
 
-  case class Output(
+  case class StepOutput(
       govPurchases: PLN,                        // total government purchases this month
       sectorMults: Vector[Multiplier],          // per-sector demand multiplier (0 = no demand, 1 = full capacity)
       sectorDemandPressure: Vector[Multiplier], // persistent demand/capacity pressure used for hiring and pricing
@@ -35,7 +35,10 @@ object DemandEconomics:
       fiscalRuleStatus: FiscalRules.RuleStatus, // fiscal rule compliance diagnostics
   )
 
-  type StepOutput = Output
+  /** Compatibility alias for older type references; new code should use
+    * [[StepOutput]].
+    */
+  type Output = StepOutput
 
   def compute(
       w: World,
@@ -56,7 +59,7 @@ object DemandEconomics:
     val sectorHiringSignal = smoothHiringSignal(seedIn.sectorHiringSignal, sectorPressure)
     val sectorMults        = applySpillover(rawPressure, sectorCapReal, w.priceLevel)
     val avgDemandMult      = computeAvgDemandMult(sectorMults, sectorCapReal, w)
-    Output(govPurchases, sectorMults, sectorPressure, sectorHiringSignal, avgDemandMult, sectorCapReal, laggedInvestDemand, fiscalResult.status)
+    StepOutput(govPurchases, sectorMults, sectorPressure, sectorHiringSignal, avgDemandMult, sectorCapReal, laggedInvestDemand, fiscalResult.status)
 
   /** Government purchases: base spending x price level plus a small automatic
     * stabilizer tied to labor-market slack. Revenue windfalls are not

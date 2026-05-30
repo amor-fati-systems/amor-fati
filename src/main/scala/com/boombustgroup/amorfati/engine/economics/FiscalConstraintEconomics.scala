@@ -18,7 +18,7 @@ object FiscalConstraintEconomics:
 
   private val ExpectationsBlendWeight = Share.decimal(5, 1)
 
-  case class Output(
+  case class StepOutput(
       month: ExecutionMonth,
       baseMinWage: PLN,
       updatedMinWagePriceLevel: PriceIndex,
@@ -27,7 +27,10 @@ object FiscalConstraintEconomics:
   ):
     def m: ExecutionMonth = month
 
-  type StepOutput = Output
+  /** Compatibility alias for older type references; new code should use
+    * [[StepOutput]].
+    */
+  type Output = StepOutput
 
   def compute(w: World, banks: Vector[Banking.BankState], ledgerFinancialState: LedgerFinancialState, month: ExecutionMonth)(using p: SimParams): StepOutput =
     val bankAgg = Banking.aggregateFromBankStocks(banks, ledgerFinancialState.banks.map(LedgerFinancialState.projectBankFinancialStocks))
@@ -59,4 +62,4 @@ object FiscalConstraintEconomics:
     val lendingBaseRate =
       rawLendingBaseRate * ExpectationsBlendWeight + w.mechanisms.expectations.expectedRate * (Share.One - ExpectationsBlendWeight)
 
-    Output(month, baseMinWage, updatedMinWagePriceLevel, resWage, lendingBaseRate)
+    StepOutput(month, baseMinWage, updatedMinWagePriceLevel, resWage, lendingBaseRate)

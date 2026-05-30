@@ -95,10 +95,9 @@ emitting monetary flows. `MonthCalculusRunner` wires them together.
 | `OpenEconEconomics.scala` | BoP/forex, GVC trade, Taylor rule, bond yields, interbank, corporate bonds, insurance, NBFI |
 | `BankingEconomics.scala` | Bank P&L, provisioning, CAR, multi-bank resolution, bail-in, interbank, BFG levy, monetary aggregates (M1/M2/M3) |
 
-Each module exposes a `StepOutput` boundary type. Stages that historically named
-their payload `Output` keep `type StepOutput = Output` aliases, so pipeline
-boundaries can use one semantic naming convention without forcing a noisy
-case-class rename.
+Each module exposes a `StepOutput` boundary type. Modules that historically
+named their payload `Output` keep `type Output = StepOutput` aliases for
+transitional type references, but new engine code should refer to `StepOutput`.
 
 ## assembly/
 

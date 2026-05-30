@@ -19,7 +19,7 @@ import com.boombustgroup.amorfati.types.*
   */
 object PriceEquityEconomics:
 
-  case class Output(
+  case class StepOutput(
       autoR: Share,
       hybR: Share,
       aggInventoryStock: PLN,
@@ -45,7 +45,10 @@ object PriceEquityEconomics:
       aggInventoryChange: PLN,
   )
 
-  type StepOutput = Output
+  /** Compatibility alias for older type references; new code should use
+    * [[StepOutput]].
+    */
+  type Output = StepOutput
 
   // ---------------------------------------------------------------------------
   // Sigma dynamics — Arthur-style increasing returns / learning-by-doing
@@ -235,7 +238,7 @@ object PriceEquityEconomics:
     val dividendTax            = dividends.tax
     val stateOwnedGovDividends = dividends.gov
 
-    Output(
+    StepOutput(
       autoR,
       hybR,
       aggInventoryStock,
