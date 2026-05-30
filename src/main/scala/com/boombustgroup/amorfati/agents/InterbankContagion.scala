@@ -25,8 +25,7 @@ import com.boombustgroup.ledger.Distribute
   *      reduces available liquidity, amplifying stress, but it remains separate
   *      from the realized failure/contagion-loss path.
   *
-  * Pure functions — no mutable state. Called from `processInterbankAndFailures`
-  * in BankingEconomics.
+  * Pure functions — no mutable state. Called from the banking multi-bank stage.
   *
   * Calibration: NBP Financial Stability Report, KNF interbank exposure data.
   */

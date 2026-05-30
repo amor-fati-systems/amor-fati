@@ -1,4 +1,4 @@
-package com.boombustgroup.amorfati.engine.economics
+package com.boombustgroup.amorfati.engine.economics.banking
 
 /** Contract for every production path that writes or computes
   * `Banking.BankState.capital`.
@@ -79,7 +79,7 @@ object BankCapitalSemantics:
       id = "monthly-bank-capital-and-ecl-write",
       categories = Set(Category.OrdinaryPnlWaterfall, Category.EclProvisionChange),
       source = SourceAnchor(
-        "src/main/scala/com/boombustgroup/amorfati/engine/economics/BankingEconomics.scala",
+        "src/main/scala/com/boombustgroup/amorfati/engine/economics/banking/BankingStepRunner.scala",
         "capital = capitalPnl.newCapital - eclResult.provisionChange",
       ),
       sfcTreatment = "Applies the ordinary P&L formula and the IFRS 9 provision-change hit before failure checks.",
@@ -124,7 +124,7 @@ object BankCapitalSemantics:
       id = "aggregate-exactness-capital-reconciliation",
       categories = Set(Category.ExactnessReconciliation),
       source = SourceAnchor(
-        "src/main/scala/com/boombustgroup/amorfati/engine/economics/BankingEconomics.scala",
+        "src/main/scala/com/boombustgroup/amorfati/engine/economics/banking/BankingStepRunner.scala",
         "bank.copy(capital = bank.capital + capitalResidual)",
       ),
       sfcTreatment = "Documented exactness patch after per-bank allocation; this is the only named residual capital writer.",
