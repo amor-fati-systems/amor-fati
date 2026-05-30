@@ -108,6 +108,8 @@ capital is not a supported ledger-owned stock.
 - `AssetOwnershipContract.UnsupportedFamilyId.BankCapital`
 - `Sfc.MonthlyFlows.bankCapitalDestruction`
 - `Sfc.SfcIdentity.BankCapital`
-- `BankingEconomics.capitalDestructionDelta`
+- `engine.economics.banking.FailureDetectionResult.capitalDestruction`
+- `engine.economics.banking.ReconciledResolutionResult.capitalDestruction`
+- `SfcSemanticProjection.bankCapitalDestruction`
 - `engine.economics.banking.BankCapitalSemantics.writeSites`
 - `BankBalanceSheetBenchmarkExport`

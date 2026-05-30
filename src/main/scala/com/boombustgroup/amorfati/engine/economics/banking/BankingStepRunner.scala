@@ -28,21 +28,19 @@ object BankingStepRunner:
   private val MediumLoanFrac: Share     = Share.decimal(30, 2) // fraction of loans in medium-term maturity bucket
   private val LongLoanFrac: Share       = Share.decimal(50, 2) // fraction of loans in long-term maturity bucket
 
-  // ---- Step-level types (formerly BankUpdateStep.Input / BankUpdateStep.Output) ----
-
   case class StepInput(
-      w: World,                                   // current world state (pre-step)
-      ledgerFinancialState: LedgerFinancialState, // ledger-backed financial state
-      s1: FiscalConstraintEconomics.StepOutput,   // fiscal constraint (month, lending base rate, res wage)
-      s2: LaborEconomics.StepOutput,              // labor/demographics (employment, wage, immigration)
-      s3: HouseholdIncomeEconomics.StepOutput,    // household income (consumption, PIT, debt service)
-      s4: DemandEconomics.StepOutput,             // demand (sector multipliers, gov purchases)
-      s5: FirmEconomics.StepOutput,               // firm processing (loans, NPL, bonds, I-O firms)
-      s6: HouseholdFinancialEconomics.StepOutput, // household financial flows (remittances, tourism, consumer credit)
-      s7: PriceEquityEconomics.StepOutput,        // price/equity (inflation, GDP, equity state, macropru)
-      s8: OpenEconEconomics.StepOutput,           // open economy (NBP rate, bond yield, QE, FX, BoP)
-      banks: Vector[Banking.BankState],           // explicit bank population
-      depositRng: RandomStream,                   // deterministic RNG for deposit flight decisions
+      world: World,
+      ledgerFinancialState: LedgerFinancialState,
+      fiscal: FiscalConstraintEconomics.StepOutput,
+      labor: LaborEconomics.StepOutput,
+      householdIncome: HouseholdIncomeEconomics.StepOutput,
+      demand: DemandEconomics.StepOutput,
+      firm: FirmEconomics.StepOutput,
+      householdFinancial: HouseholdFinancialEconomics.StepOutput,
+      priceEquity: PriceEquityEconomics.StepOutput,
+      openEconomy: OpenEconEconomics.StepOutput,
+      banks: Vector[Banking.BankState],
+      depositRng: RandomStream,
   )
 
   case class StepOutput(
@@ -116,7 +114,7 @@ object BankingStepRunner:
         LedgerFinancialState.quasiFiscalStock(in.ledgerFinancialState),
         govJst.newGovWithYield.govCapitalSpend,
         govJst.newGovWithYield.euCofinancing,
-        in.w.nbp.qeActive,
+        in.world.nbp.qeActive,
       )
     val newQuasiFiscal           = quasiFiscalStep.state
     val quasiFiscalDepositChange = newQuasiFiscal.monthlyLending - newQuasiFiscal.monthlyLoanRepayment
@@ -201,12 +199,12 @@ object BankingStepRunner:
       bfgLevy: PLN,
   )(using p: SimParams): LedgerClosingResult =
     val issuerSettledFirmBalances =
-      CorporateBondOwnership.applyAmortization(in.s5.ledgerFinancialState.firms, multi.reassignedFirms, in.s8.corpBonds.corpBondAmort)
+      CorporateBondOwnership.applyAmortization(in.firm.ledgerFinancialState.firms, multi.reassignedFirms, in.openEconomy.corpBonds.corpBondAmort)
 
     val rawLedgerFinancialState =
-      in.s5.ledgerFinancialState.copy(
+      in.firm.ledgerFinancialState.copy(
         households = LedgerFinancialState.settleHouseholdMortgageStock(
-          in.s5.ledgerFinancialState.households,
+          in.firm.ledgerFinancialState.households,
           housing.housingAfterFlows.mortgageStock,
           housing.housingAfterFlows.lastOrigination,
         ),
@@ -215,22 +213,22 @@ object BankingStepRunner:
         government = LedgerFinancialState.GovernmentBalances(govBondOutstanding = govJst.newGovBondOutstanding),
         foreign = LedgerFinancialState.ForeignBalances(
           govBondHoldings = multi.foreignBondHoldings,
-          equityHoldings = in.s7.foreignEquityHoldings,
+          equityHoldings = in.priceEquity.foreignEquityHoldings,
         ),
         nbp = LedgerFinancialState.nbpBalances(
           multi.finalNbpFinancialStocks,
           reserveLiability = LedgerFinancialState.nbpReserveLiabilityFromBanks(multi.finalBankLedgerBalances),
         ),
-        insurance = LedgerFinancialState.insuranceBalances(multi.finalInsuranceBalances, in.s8.corpBonds.closingCorpBondProjection.insuranceHoldings),
+        insurance = LedgerFinancialState.insuranceBalances(multi.finalInsuranceBalances, in.openEconomy.corpBonds.closingCorpBondProjection.insuranceHoldings),
         funds = LedgerFinancialState.fundBalances(
-          zusCash = SocialSecurity.zusCashAfter(in.ledgerFinancialState.funds.zusCash, in.s2.newZus),
-          nfzCash = SocialSecurity.nfzCashAfter(in.ledgerFinancialState.funds.nfzCash, in.s2.newNfz),
-          fpCash = EarmarkedFunds.fpCashAfter(in.ledgerFinancialState.funds.fpCash, in.s2.newEarmarked),
-          pfronCash = EarmarkedFunds.pfronCashAfter(in.ledgerFinancialState.funds.pfronCash, in.s2.newEarmarked),
-          fgspCash = EarmarkedFunds.fgspCashAfter(in.ledgerFinancialState.funds.fgspCash, in.s2.newEarmarked),
+          zusCash = SocialSecurity.zusCashAfter(in.ledgerFinancialState.funds.zusCash, in.labor.newZus),
+          nfzCash = SocialSecurity.nfzCashAfter(in.ledgerFinancialState.funds.nfzCash, in.labor.newNfz),
+          fpCash = EarmarkedFunds.fpCashAfter(in.ledgerFinancialState.funds.fpCash, in.labor.newEarmarked),
+          pfronCash = EarmarkedFunds.pfronCashAfter(in.ledgerFinancialState.funds.pfronCash, in.labor.newEarmarked),
+          fgspCash = EarmarkedFunds.fgspCashAfter(in.ledgerFinancialState.funds.fgspCash, in.labor.newEarmarked),
           jstCash = govJst.jstCash,
           ppkGovBondHoldings = multi.finalPpkGovBondHoldings,
-          corporateBonds = in.s8.corpBonds.closingCorpBondProjection,
+          corporateBonds = in.openEconomy.corpBonds.closingCorpBondProjection,
           nbfi = multi.finalNbfiBalances,
           quasiFiscal = quasiFiscalStep.stock,
         ),
@@ -245,10 +243,10 @@ object BankingStepRunner:
       openingCapital = prevBankAgg.capital,
       closingCapital = multi.resolvedBank.capital,
       retainedIncome = bankCapitalTerms.retainedIncome,
-      firmNplLoss = in.s5.nplLoss,
+      firmNplLoss = in.firm.nplLoss,
       mortgageNplLoss = housing.mortgageFlows.defaultLoss,
-      consumerNplLoss = in.s6.consumerNplLoss,
-      corpBondDefaultLoss = in.s8.corpBonds.corpBondBankDefaultLoss,
+      consumerNplLoss = in.householdFinancial.consumerNplLoss,
+      corpBondDefaultLoss = in.openEconomy.corpBonds.corpBondBankDefaultLoss,
       bfgLevy = bfgLevy,
       unrealizedBondLoss = bankCapitalTerms.unrealizedBondLoss,
       htmRealizedLoss = multi.htmRealizedLoss,
@@ -272,55 +270,55 @@ object BankingStepRunner:
   private[banking] def computeGovAndJst(in: StepInput)(using p: SimParams): GovJstResult =
     val tax = TaxRevenue.compute(
       TaxRevenue.Input(
-        consumption = in.s3.consumption,
-        pitRevenue = in.s3.pitRevenue,
-        totalImports = in.s8.external.newBop.totalImports,
-        informalCyclicalAdj = in.w.mechanisms.informalCyclicalAdj,
+        consumption = in.householdIncome.consumption,
+        pitRevenue = in.householdIncome.pitRevenue,
+        totalImports = in.openEconomy.external.newBop.totalImports,
+        informalCyclicalAdj = in.world.mechanisms.informalCyclicalAdj,
       ),
     )
 
-    val unempBenefitSpend   = in.s3.hhAgg.totalUnempBenefits
-    val socialTransferSpend = in.s3.hhAgg.totalSocialTransfers
-    val prevGov             = in.w.gov
-    val prevJst             = in.w.social.jst
+    val unempBenefitSpend   = in.householdIncome.hhAgg.totalUnempBenefits
+    val socialTransferSpend = in.householdIncome.hhAgg.totalSocialTransfers
+    val prevGov             = in.world.gov
+    val prevJst             = in.world.social.jst
 
     val newGov                = FiscalBudget.update(
       FiscalBudget.Input(
         prev = prevGov,
-        priceLevel = in.s7.newPrice,
-        citPaid = in.s5.sumTax + in.s7.dividendTax + tax.pitAfterEvasion,
-        govDividendRevenue = in.s7.stateOwnedGovDividends,
+        priceLevel = in.priceEquity.newPrice,
+        citPaid = in.firm.sumTax + in.priceEquity.dividendTax + tax.pitAfterEvasion,
+        govDividendRevenue = in.priceEquity.stateOwnedGovDividends,
         vat = tax.vatAfterEvasion,
-        nbpRemittance = in.s8.banking.nbpRemittance,
+        nbpRemittance = in.openEconomy.banking.nbpRemittance,
         exciseRevenue = tax.exciseAfterEvasion,
         customsDutyRevenue = tax.customsDutyRevenue,
         unempBenefitSpend = unempBenefitSpend,
-        debtService = in.s8.banking.monthlyDebtService,
-        zusGovSubvention = in.s2.newZus.govSubvention,
-        nfzGovSubvention = in.s2.newNfz.govSubvention,
-        earmarkedGovSubvention = in.s2.newEarmarked.totalGovSubvention,
+        debtService = in.openEconomy.banking.monthlyDebtService,
+        zusGovSubvention = in.labor.newZus.govSubvention,
+        nfzGovSubvention = in.labor.newNfz.govSubvention,
+        earmarkedGovSubvention = in.labor.newEarmarked.totalGovSubvention,
         socialTransferSpend = socialTransferSpend,
-        euCofinancing = in.s7.euCofin,
-        euProjectCapital = in.s7.euProjectCapital,
-        govPurchasesActual = in.s4.govPurchases,
+        euCofinancing = in.priceEquity.euCofin,
+        euProjectCapital = in.priceEquity.euProjectCapital,
+        govPurchasesActual = in.demand.govPurchases,
       ),
     )
     val newGovWithYield       = newGov.copy(
       policy = newGov.policy.copy(
-        bondYield = in.s8.monetary.newBondYield,
-        weightedCoupon = in.s8.monetary.newWeightedCoupon,
+        bondYield = in.openEconomy.monetary.newBondYield,
+        weightedCoupon = in.openEconomy.monetary.newWeightedCoupon,
       ),
     )
     val newGovBondOutstanding = FiscalBudget.nextGovBondOutstanding(in.ledgerFinancialState.government.govBondOutstanding, newGov.deficit)
 
-    val nLivingFirms = in.s5.ioFirms.count(Firm.isAlive)
+    val nLivingFirms = in.firm.ioFirms.count(Firm.isAlive)
     val jstResult    =
       Jst.step(
         prevJst,
         in.ledgerFinancialState.funds.jstCash,
-        in.s5.sumTax,
-        in.s3.totalIncome,
-        in.s7.gdp,
+        in.firm.sumTax,
+        in.householdIncome.totalIncome,
+        in.priceEquity.gdp,
         nLivingFirms,
         tax.pitAfterEvasion,
       )
@@ -336,15 +334,15 @@ object BankingStepRunner:
 
   /** Housing market: price step, origination, mortgage flows. */
   private[banking] def computeHousingFlows(in: StepInput)(using p: SimParams): HousingResult =
-    val unempRate              = in.w.unemploymentRate(in.s2.employed)
+    val unempRate              = in.world.unemploymentRate(in.labor.employed)
     val openingHousing         =
-      HousingMarket.withMortgageStock(in.w.real.housing, LedgerFinancialState.householdMortgageStock(in.ledgerFinancialState))
+      HousingMarket.withMortgageStock(in.world.real.housing, LedgerFinancialState.householdMortgageStock(in.ledgerFinancialState))
     val prevMortgageRate       = openingHousing.avgMortgageRate
     val mortgageBaseRate: Rate =
-      val exp = in.w.mechanisms.expectations
+      val exp = in.world.mechanisms.expectations
       YieldCurve
         .compute(
-          in.w.bankingSector.interbankRate,
+          in.world.bankingSector.interbankRate,
           nplRatio = Banking
             .aggregateFromBankStocks(
               in.banks,
@@ -362,15 +360,15 @@ object BankingStepRunner:
       HousingMarket.StepInput(
         prev = openingHousing,
         mortgageRate = mortgageRate,
-        inflation = in.s7.newInfl,
-        incomeGrowth = in.s2.wageGrowth.toMultiplier.toRate,
-        employed = in.s2.employed,
+        inflation = in.priceEquity.newInfl,
+        incomeGrowth = in.labor.wageGrowth.toMultiplier.toRate,
+        employed = in.labor.employed,
         prevMortgageRate = prevMortgageRate,
       ),
     )
     val housingAfterOrig       =
-      HousingMarket.processOrigination(housingAfterPrice, in.s3.totalIncome, mortgageRate, true)
-    val scheduledPrincipal     = Some(in.s3.hhAgg.totalMortgagePrincipal)
+      HousingMarket.processOrigination(housingAfterPrice, in.householdIncome.totalIncome, mortgageRate, true)
+    val scheduledPrincipal     = Some(in.householdIncome.hhAgg.totalMortgagePrincipal)
     val mortgageFlows          = HousingMarket.processMortgageFlows(housingAfterOrig, mortgageRate, unempRate, scheduledPrincipal)
     val housingAfterFlows      = HousingMarket.applyFlows(housingAfterOrig, mortgageFlows)
 
@@ -380,9 +378,9 @@ object BankingStepRunner:
     * minus current domestic investment spending.
     */
   private def computeInvestNetDepositFlow(in: StepInput)(using p: SimParams): PLN =
-    val currentInvestDomestic = in.s5.sumGrossInvestment * (Share.One - p.capital.importShare) +
-      in.s5.sumGreenInvestment * (Share.One - p.climate.greenImportShare)
-    in.s4.laggedInvestDemand - currentInvestDomestic
+    val currentInvestDomestic = in.firm.sumGrossInvestment * (Share.One - p.capital.importShare) +
+      in.firm.sumGreenInvestment * (Share.One - p.climate.greenImportShare)
+    in.demand.laggedInvestDemand - currentInvestDomestic
 
   /** Re-distribute the opening unsecured consumer-loan book across banks using
     * the current household bank routing as weights, while preserving the exact
@@ -426,15 +424,15 @@ object BankingStepRunner:
   private def computeHhAgg(in: StepInput)(using SimParams): Household.Aggregates =
     Household
       .computeAggregates(
-        in.s5.households,
-        in.s5.ledgerFinancialState.households.map(LedgerFinancialState.projectHouseholdFinancialStocks),
-        in.s2.newWage,
-        in.s1.resWage,
-        in.s3.importAdj,
-        in.s3.hhAgg.retrainingAttempts,
-        in.s3.hhAgg.retrainingSuccesses,
+        in.firm.households,
+        in.firm.ledgerFinancialState.households.map(LedgerFinancialState.projectHouseholdFinancialStocks),
+        in.labor.newWage,
+        in.fiscal.resWage,
+        in.householdIncome.importAdj,
+        in.householdIncome.hhAgg.retrainingAttempts,
+        in.householdIncome.hhAgg.retrainingSuccesses,
       )
-      .withFlowTotalsFrom(in.s3.hhAgg)
+      .withFlowTotalsFrom(in.householdIncome.hhAgg)
 
   /** Compute raw bond waterfall inputs — requests only, no final allocations.
     * Actual allocations happen in runMultiBankStage via sellToBuyer.
@@ -445,16 +443,16 @@ object BankingStepRunner:
   ): BondWaterfallInputs =
     val actualBondChange = newGovBondOutstanding - in.ledgerFinancialState.government.govBondOutstanding
     val insRequested     =
-      (in.s8.nonBank.newInsuranceBalances.govBondHoldings - in.ledgerFinancialState.insurance.govBondHoldings).max(PLN.Zero)
+      (in.openEconomy.nonBank.newInsuranceBalances.govBondHoldings - in.ledgerFinancialState.insurance.govBondHoldings).max(PLN.Zero)
     val tfiRequested     =
-      (in.s8.nonBank.newNbfiBalances.tfiGovBondHoldings - in.ledgerFinancialState.funds.nbfi.govBondHoldings).max(PLN.Zero)
-    val prevEr           = in.w.forex.exchangeRate
-    val currEr           = in.s8.external.newForex.exchangeRate
+      (in.openEconomy.nonBank.newNbfiBalances.tfiGovBondHoldings - in.ledgerFinancialState.funds.nbfi.govBondHoldings).max(PLN.Zero)
+    val prevEr           = in.world.forex.exchangeRate
+    val currEr           = in.openEconomy.external.newForex.exchangeRate
     val erChange         = currEr.deviationFrom(prevEr).toCoefficient
     BondWaterfallInputs(
       actualBondChange = actualBondChange,
-      qeRequested = in.s8.monetary.qePurchaseAmount,
-      ppkRequested = in.s2.rawPpkBondPurchase,
+      qeRequested = in.openEconomy.monetary.qePurchaseAmount,
+      ppkRequested = in.labor.rawPpkBondPurchase,
       insRequested = insRequested,
       tfiRequested = tfiRequested,
       erChange = erChange,
@@ -487,15 +485,15 @@ object BankingStepRunner:
       case None      =>
         val ws = if totalWorkers > 0 then Share.fraction(perBankWorkers(bId), totalWorkers) else Share.Zero
         PerBankHhFlows(
-          incomeShare = in.s3.totalIncome * ws,
-          consShare = in.s3.consumption * ws,
-          mortgageInterest = in.s3.hhAgg.totalMortgageInterest * ws,
+          incomeShare = in.householdIncome.totalIncome * ws,
+          consShare = in.householdIncome.consumption * ws,
+          mortgageInterest = in.householdIncome.hhAgg.totalMortgageInterest * ws,
           depInterest = PLN.Zero,
-          ccDebtService = in.s6.consumerDebtService * ws,
-          ccPrincipal = in.s6.consumerPrincipal * ws,
-          ccOrigination = in.s6.consumerOrigination * ws,
-          ccDefault = in.s6.consumerDefaultAmt * ws,
-          ccLoanDefault = in.s6.consumerLoanDefaultAmt * ws,
+          ccDebtService = in.householdFinancial.consumerDebtService * ws,
+          ccPrincipal = in.householdFinancial.consumerPrincipal * ws,
+          ccOrigination = in.householdFinancial.consumerOrigination * ws,
+          ccDefault = in.householdFinancial.consumerDefaultAmt * ws,
+          ccLoanDefault = in.householdFinancial.consumerLoanDefaultAmt * ws,
         )
 
   private def allocateBankCorpBondIssuance(issuance: PLN, perBankWorkers: Vector[Int]): Vector[PLN] =
@@ -550,48 +548,48 @@ object BankingStepRunner:
       return SingleBankUpdate(bank = b, financialStocks = stocks)
 
     val bId           = b.id.toInt
-    val bankNplNew    = in.s5.perBankNplDebt(bId)
+    val bankNplNew    = in.firm.perBankNplDebt(bId)
     val bankNplLoss   = bankNplNew * (Share.One - p.banking.loanRecovery)
-    val bankIntIncome = in.s5.perBankIntIncome(bId)
-    val bankBondInc   = Banking.govBondHoldings(stocks) * in.s8.monetary.newBondYield.monthly
+    val bankIntIncome = in.firm.perBankIntIncome(bId)
+    val bankBondInc   = Banking.govBondHoldings(stocks) * in.openEconomy.monetary.newBondYield.monthly
     val bankResInt    = perBankReserveInt.perBank(bId)
     val bankSfInc     = perBankStandingFac.perBank(bId)
     val bankIbInt     = perBankInterbankInt.perBank(bId)
     val newLoansTotal =
-      (stocks.firmLoan + in.s5.perBankNewLoans(bId) - in.s5.perBankFirmPrincipal(bId) - bankNplNew * p.banking.loanRecovery).max(PLN.Zero)
+      (stocks.firmLoan + in.firm.perBankNewLoans(bId) - in.firm.perBankFirmPrincipal(bId) - bankNplNew * p.banking.loanRecovery).max(PLN.Zero)
 
     val newDep = stocks.totalDeposits +
       hhFlows.incomeShare - hhFlows.consShare +
       investNetDepositFlow * workerShare +
       jstDepositChange * workerShare +
       quasiFiscalDepositChange * workerShare +
-      in.s7.netDomesticDividends * workerShare -
-      in.s7.foreignDividendOutflow * workerShare -
-      in.s6.remittanceOutflow * workerShare +
-      in.s6.diasporaInflow * workerShare +
-      in.s6.tourismExport * workerShare -
-      in.s6.tourismImport * workerShare +
-      in.s5.perBankNewLoans(bId) -
-      in.s5.perBankFirmPrincipal(bId) +
+      in.priceEquity.netDomesticDividends * workerShare -
+      in.priceEquity.foreignDividendOutflow * workerShare -
+      in.householdFinancial.remittanceOutflow * workerShare +
+      in.householdFinancial.diasporaInflow * workerShare +
+      in.householdFinancial.tourismExport * workerShare -
+      in.householdFinancial.tourismImport * workerShare +
+      in.firm.perBankNewLoans(bId) -
+      in.firm.perBankFirmPrincipal(bId) +
       hhFlows.ccOrigination +
-      in.s8.nonBank.insNetDepositChange * workerShare +
-      in.s8.nonBank.nbfiDepositDrain * workerShare
+      in.openEconomy.nonBank.insNetDepositChange * workerShare +
+      in.openEconomy.nonBank.nbfiDepositDrain * workerShare
 
     val bankMortgageIntIncome     = hhFlows.mortgageInterest
     val bankMortgageNplLoss       = mortgageFlows.defaultLoss * workerShare
     val bankCcNplLoss             = hhFlows.ccLoanDefault * (Share.One - p.household.ccNplRecovery)
-    val bankCcStockReduction: PLN = in.s3.perBankHhFlowsOpt match
+    val bankCcStockReduction: PLN = in.householdIncome.perBankHhFlowsOpt match
       case Some(pbf) => pbf(bId).consumerPrincipal
       case _         => hhFlows.ccPrincipal
     val bankCcInterestIncome      = hhFlows.ccDebtService - hhFlows.ccPrincipal
-    val bankCorpBondCoupon        = in.s8.corpBonds.corpBondBankCoupon * workerShare
-    val bankCorpBondDefaultLoss   = in.s8.corpBonds.corpBondBankDefaultLoss * workerShare
+    val bankCorpBondCoupon        = in.openEconomy.corpBonds.corpBondBankCoupon * workerShare
+    val bankCorpBondDefaultLoss   = in.openEconomy.corpBonds.corpBondBankDefaultLoss * workerShare
     val bankBfgLevy               =
       if !b.failed then stocks.totalDeposits * p.banking.bfgLevyRate.monthly
       else PLN.Zero
 
     // Per-bank mark-to-market loss on AFS bonds only (HTM losses hidden until forced reclassification)
-    val bankYieldChange    = in.s8.monetary.newBondYield - in.w.gov.bondYield
+    val bankYieldChange    = in.openEconomy.monetary.newBondYield - in.world.gov.bondYield
     val bankUnrealizedLoss = if bankYieldChange > Rate.Zero then stocks.govBondAfs * bankYieldChange * p.banking.govBondDuration else PLN.Zero
 
     val capitalPnl = Banking.computeCapitalDelta(
@@ -616,7 +614,7 @@ object BankingStepRunner:
     )
 
     // IFRS 9 ECL staging: provision change hits capital
-    val unemployment: Share              = in.w.unemploymentRate(in.s2.employed)
+    val unemployment: Share              = in.world.unemploymentRate(in.labor.employed)
     val referenceUnemployment: Share     = eclReferenceUnemployment(in)
     val gdpGrowth: Coefficient           = eclGdpGrowth(in)
     val eclResult: EclStaging.StepResult =
@@ -659,39 +657,39 @@ object BankingStepRunner:
     // carried into s5. This assumes no stage between the opening ledger snapshot
     // and s5 mutates household consumerLoan principal; only routing may drift.
     val bankStocks          = alignConsumerLoanBookToHouseholdRouting(
-      in.s5.households,
-      in.s5.ledgerFinancialState.households,
+      in.firm.households,
+      in.firm.ledgerFinancialState.households,
       openingBankStocks,
     )
     require(
       bankStocks.map(_.consumerLoan).sumPln == openingBankStocks.map(_.consumerLoan).sumPln,
       "BankingStepRunner consumer-loan realignment must preserve the aggregate opening bank loan book",
     )
-    val perBankReserveInt   = Banking.computeReserveInterest(banks, bankStocks, in.w.nbp.referenceRate)
-    val perBankStandingFac  = Banking.computeStandingFacilities(banks, bankStocks, in.w.nbp.referenceRate)
-    val perBankInterbankInt = Banking.interbankInterestFlows(banks, bankStocks, in.w.bankingSector.interbankRate)
-    val totalWorkers        = in.s5.perBankWorkers.sum
+    val perBankReserveInt   = Banking.computeReserveInterest(banks, bankStocks, in.world.nbp.referenceRate)
+    val perBankStandingFac  = Banking.computeStandingFacilities(banks, bankStocks, in.world.nbp.referenceRate)
+    val perBankInterbankInt = Banking.interbankInterestFlows(banks, bankStocks, in.world.bankingSector.interbankRate)
+    val totalWorkers        = in.firm.perBankWorkers.sum
 
     val workerShares: Vector[Share] =
       if totalWorkers <= 0 then Vector.fill(banks.length)(Share.Zero)
       else
         val n    = banks.length
-        val raw  = (0 until n - 1).map(i => Share.fraction(in.s5.perBankWorkers(i), totalWorkers)).toVector
+        val raw  = (0 until n - 1).map(i => Share.fraction(in.firm.perBankWorkers(i), totalWorkers)).toVector
         val last = Share.One - raw.foldLeft(Share.Zero)(_ + _)
         raw :+ last
 
     val settledBankCorpBonds = settleBankCorpBondHoldings(
       previous = CorporateBondOwnership.bankHolderBalances(in.ledgerFinancialState),
       previousAggregateStock = CorporateBondOwnership.stockStateFromLedger(in.ledgerFinancialState),
-      nextAggregateStock = in.s8.corpBonds.closingCorpBondProjection,
-      totalBondIssuance = in.s5.actualBondIssuance,
-      perBankWorkers = in.s5.perBankWorkers,
+      nextAggregateStock = in.openEconomy.corpBonds.closingCorpBondProjection,
+      totalBondIssuance = in.firm.actualBondIssuance,
+      perBankWorkers = in.firm.perBankWorkers,
     )
 
     val updatedRows       = banks.zip(bankStocks).map { case (b, stocks) =>
       val bId         = b.id.toInt
       val workerShare = workerShares(bId)
-      val hhFlows     = resolvePerBankHhFlows(bId, in.s3.perBankHhFlowsOpt, totalWorkers, in.s5.perBankWorkers, in)
+      val hhFlows     = resolvePerBankHhFlows(bId, in.householdIncome.perBankHhFlowsOpt, totalWorkers, in.firm.perBankWorkers, in)
       updateSingleBank(
         b,
         stocks,
@@ -714,7 +712,7 @@ object BankingStepRunner:
       in,
       updatedBanks,
       updatedBankStocks,
-      in.w.bankingSector.configs,
+      in.world.bankingSector.configs,
       wf,
       perBankReserveInt,
       perBankStandingFac,
@@ -793,16 +791,16 @@ object BankingStepRunner:
       )
     val anyFailureForMobility = failureDetection.anyFailed || resolved.aggregateReconciliation.newFailuresDelta > 0
     val eclGdpGrowthMonthly   = eclGdpGrowth(in)
-    val eclMigrationRate      = EclStaging.migrationRate(in.w.unemploymentRate(in.s2.employed), eclReferenceUnemployment(in), eclGdpGrowthMonthly)
+    val eclMigrationRate      = EclStaging.migrationRate(in.world.unemploymentRate(in.labor.employed), eclReferenceUnemployment(in), eclGdpGrowthMonthly)
     val eclDiagnostics        = computeBankEclDiagnostics(in.banks, finalFailureBanks, eclMigrationRate, eclGdpGrowthMonthly)
 
     // Repair stale failed-bank routing every month; mobility validates survivor bankIds.
     val reassignedFirms =
-      in.s5.ioFirms.map: f =>
+      in.firm.ioFirms.map: f =>
         val nextBankId = Banking.reassignBankId(f.bankId, finalFailureBanks, finalFailureStocks, finalCorpBondLookup)
         if nextBankId == f.bankId then f else f.copy(bankId = nextBankId)
     val postFailureHh   =
-      in.s5.households.map: h =>
+      in.firm.households.map: h =>
         val nextBankId = Banking.reassignBankId(h.bankId, finalFailureBanks, finalFailureStocks, finalCorpBondLookup)
         if nextBankId == h.bankId then h else h.copy(bankId = nextBankId)
 
@@ -872,7 +870,7 @@ object BankingStepRunner:
       standingFacilityIncome: Banking.PerBankAmounts,
       interbankInterest: Banking.PerBankAmounts,
   )(using p: SimParams): InterbankSettlementResult =
-    val interbankRate  = Banking.interbankRate(updatedBanks, updatedBankStocks, in.w.nbp.referenceRate)
+    val interbankRate  = Banking.interbankRate(updatedBanks, updatedBankStocks, in.world.nbp.referenceRate)
     val hoarding       = InterbankContagion.hoardingFactor(prevBankAgg.nplRatio)
     val afterInterbank = Banking.clearInterbank(updatedBanks, updatedBankStocks, bankConfigs, hoarding)
     val nbpSettlement  = applyNbpReserveSettlement(
@@ -881,13 +879,13 @@ object BankingStepRunner:
       reserveInterest,
       standingFacilityIncome,
       interbankInterest,
-      in.s8.monetary.fxPlnInjection,
+      in.openEconomy.monetary.fxPlnInjection,
     )
     if nbpSettlement.residual != PLN.Zero then
       throw IllegalStateException(
         s"NBP reserve settlement left unallocated FX residual ${nbpSettlement.residual} after reserve-side settlement.",
       )
-    val htmResult      = Banking.processHtmForcedSale(nbpSettlement.banks, nbpSettlement.financialStocks, in.s8.monetary.newBondYield)
+    val htmResult      = Banking.processHtmForcedSale(nbpSettlement.banks, nbpSettlement.financialStocks, in.openEconomy.monetary.newBondYield)
 
     InterbankSettlementResult(
       banks = htmResult.banks,
@@ -903,7 +901,7 @@ object BankingStepRunner:
       prevBankAgg: Banking.Aggregate,
       in: StepInput,
   )(using p: SimParams): Banking.MarketState =
-    val exp = in.w.mechanisms.expectations
+    val exp = in.world.mechanisms.expectations
     Banking.MarketState(
       interbankRate = settlement.interbankRate,
       configs = bankConfigs,
@@ -976,9 +974,9 @@ object BankingStepRunner:
       Banking.checkFailures(
         waterfall.banks,
         waterfall.financialStocks,
-        in.s1.m,
+        in.fiscal.m,
         true,
-        in.s7.newMacropru.ccyb,
+        in.priceEquity.newMacropru.ccyb,
         bankCorpBondHoldings,
       )
     val exposures = InterbankContagion.buildExposureMatrix(waterfall.banks, waterfall.financialStocks)
@@ -986,7 +984,7 @@ object BankingStepRunner:
       if primary.anyFailed then InterbankContagion.applyContagionLosses(primary.banks, exposures)
       else InterbankContagion.ContagionLossResult.unchanged(primary.banks)
     val secondary =
-      Banking.checkFailures(contagion.banks, waterfall.financialStocks, in.s1.m, true, in.s7.newMacropru.ccyb, bankCorpBondHoldings)
+      Banking.checkFailures(contagion.banks, waterfall.financialStocks, in.fiscal.m, true, in.priceEquity.newMacropru.ccyb, bankCorpBondHoldings)
     val anyFailed = primary.anyFailed || secondary.anyFailed
     val events    = primary.events ++ secondary.events
 
@@ -1085,9 +1083,9 @@ object BankingStepRunner:
       financialStocks: Vector[Banking.BankFinancialStocks],
   )(using p: SimParams): BondWaterfallResult =
     val afterBonds    =
-      if wf.actualBondChange > PLN.Zero then Banking.allocateBondIssuance(banks, financialStocks, wf.actualBondChange, in.s8.monetary.newBondYield)
+      if wf.actualBondChange > PLN.Zero then Banking.allocateBondIssuance(banks, financialStocks, wf.actualBondChange, in.openEconomy.monetary.newBondYield)
       else if wf.actualBondChange < PLN.Zero then
-        Banking.allocateBondRedemption(banks, financialStocks, PLN.fromRaw(-wf.actualBondChange.toLong), in.s8.monetary.newBondYield)
+        Banking.allocateBondRedemption(banks, financialStocks, PLN.fromRaw(-wf.actualBondChange.toLong), in.openEconomy.monetary.newBondYield)
       else Banking.BankStockState(banks, financialStocks)
     val primaryByBank = afterBonds.financialStocks
       .zip(financialStocks)
@@ -1097,7 +1095,7 @@ object BankingStepRunner:
     val auctionResult = BondAuction.auction(
       newIssuance = wf.actualBondChange.max(PLN.Zero),
       bankBondCapacity = bankDeposits * p.fiscal.bankBondAbsorptionShare,
-      marketYield = in.s8.monetary.newBondYield,
+      marketYield = in.openEconomy.monetary.newBondYield,
       erChange = wf.erChange,
     )
     val foreignSale   = Banking.sellToBuyer(afterBonds.banks, afterBonds.financialStocks, auctionResult.foreignAbsorbed)
@@ -1106,14 +1104,14 @@ object BankingStepRunner:
     val insSale       = Banking.sellToBuyer(ppkSale.banks, ppkSale.financialStocks, wf.insRequested)
     val tfiSale       = Banking.sellToBuyer(insSale.banks, insSale.financialStocks, wf.tfiRequested)
 
-    val finalNbp                = in.s8.monetary.postFxNbp.copy(qeCumulative = in.s8.monetary.postFxNbp.qeCumulative + qeSale.actualSold)
-    val finalNbpFinancialStocks = in.s8.monetary.postFxNbpFinancialStocks.copy(
-      govBondHoldings = in.s8.monetary.postFxNbpFinancialStocks.govBondHoldings + qeSale.actualSold,
+    val finalNbp                = in.openEconomy.monetary.postFxNbp.copy(qeCumulative = in.openEconomy.monetary.postFxNbp.qeCumulative + qeSale.actualSold)
+    val finalNbpFinancialStocks = in.openEconomy.monetary.postFxNbpFinancialStocks.copy(
+      govBondHoldings = in.openEconomy.monetary.postFxNbpFinancialStocks.govBondHoldings + qeSale.actualSold,
     )
-    val finalInsuranceBalances  = in.s8.nonBank.newInsuranceBalances.copy(
+    val finalInsuranceBalances  = in.openEconomy.nonBank.newInsuranceBalances.copy(
       govBondHoldings = in.ledgerFinancialState.insurance.govBondHoldings + insSale.actualSold,
     )
-    val finalNbfiBalances       = in.s8.nonBank.newNbfiBalances.copy(
+    val finalNbfiBalances       = in.openEconomy.nonBank.newNbfiBalances.copy(
       tfiGovBondHoldings = in.ledgerFinancialState.funds.nbfi.govBondHoldings + tfiSale.actualSold,
     )
 
@@ -1122,11 +1120,11 @@ object BankingStepRunner:
       financialStocks = tfiSale.financialStocks,
       finalNbp = finalNbp,
       finalNbpFinancialStocks = finalNbpFinancialStocks,
-      finalPpk = in.s2.newPpk,
+      finalPpk = in.labor.newPpk,
       finalPpkGovBondHoldings = in.ledgerFinancialState.funds.ppkGovBondHoldings + ppkSale.actualSold,
-      finalInsurance = in.s8.nonBank.newInsurance,
+      finalInsurance = in.openEconomy.nonBank.newInsurance,
       finalInsuranceBalances = finalInsuranceBalances,
-      finalNbfi = in.s8.nonBank.newNbfi,
+      finalNbfi = in.openEconomy.nonBank.newNbfi,
       finalNbfiBalances = finalNbfiBalances,
       foreignBondHoldings = in.ledgerFinancialState.foreign.govBondHoldings + foreignSale.actualSold,
       bidToCover = auctionResult.bidToCover,
@@ -1150,7 +1148,7 @@ object BankingStepRunner:
       finalBanks.length == in.banks.length,
       s"BankingStepRunner bank-capital terms require aligned bank rows, got ${finalBanks.length} final banks and ${in.banks.length} opening banks",
     )
-    val yieldChange        = in.s8.monetary.newBondYield - in.w.gov.bondYield
+    val yieldChange        = in.openEconomy.monetary.newBondYield - in.world.gov.bondYield
     val unrealizedBondLoss =
       if yieldChange > Rate.Zero then prevBankAgg.afsBonds * yieldChange * p.banking.govBondDuration
       else PLN.Zero
@@ -1164,12 +1162,12 @@ object BankingStepRunner:
       eclRaw += (currProv - prevProv).toLong
       i += 1
     val eclProvisionChange = PLN.fromRaw(eclRaw)
-    val capitalGrossIncome = in.s5.intIncome +
-      prevBankAgg.govBondHoldings * in.s8.monetary.newBondYield.monthly -
-      in.s6.depositInterestPaid + in.s8.banking.totalReserveInterest +
-      in.s8.banking.totalStandingFacilityIncome + in.s8.banking.totalInterbankInterest +
-      mortgageFlows.interest + (in.s6.consumerDebtService - in.s6.consumerPrincipal) +
-      in.s8.corpBonds.corpBondBankCoupon
+    val capitalGrossIncome = in.firm.intIncome +
+      prevBankAgg.govBondHoldings * in.openEconomy.monetary.newBondYield.monthly -
+      in.householdFinancial.depositInterestPaid + in.openEconomy.banking.totalReserveInterest +
+      in.openEconomy.banking.totalStandingFacilityIncome + in.openEconomy.banking.totalInterbankInterest +
+      mortgageFlows.interest + (in.householdFinancial.consumerDebtService - in.householdFinancial.consumerPrincipal) +
+      in.openEconomy.corpBonds.corpBondBankCoupon
     BankCapitalTerms(
       unrealizedBondLoss = unrealizedBondLoss,
       eclProvisionChange = eclProvisionChange,
@@ -1178,11 +1176,11 @@ object BankingStepRunner:
     )
 
   private def eclGdpGrowth(in: StepInput): Coefficient =
-    val prevGdp = in.w.cachedMonthlyGdpProxy
-    if prevGdp > PLN.Zero then (in.s7.gdp.ratioTo(prevGdp) - Scalar.One).toCoefficient else Coefficient.Zero
+    val prevGdp = in.world.cachedMonthlyGdpProxy
+    if prevGdp > PLN.Zero then (in.priceEquity.gdp.ratioTo(prevGdp) - Scalar.One).toCoefficient else Coefficient.Zero
 
   private def eclReferenceUnemployment(in: StepInput)(using p: SimParams): Share =
-    val lagged = in.w.pipeline.laggedUnemploymentRate
+    val lagged = in.world.pipeline.laggedUnemploymentRate
     if lagged > Share.Zero then lagged else p.pop.initialUnemploymentRate
 
   private def computeBankEclDiagnostics(
@@ -1282,8 +1280,8 @@ object BankingStepRunner:
         val beforeStocks              = financialStocks(targetIdx)
         val afterBank                 = nextBanks(targetIdx)
         val afterStocks               = nextStocks(targetIdx)
-        val reasonBefore              = Banking.failureReason(beforeBank, beforeStocks, in.s7.newMacropru.ccyb, targetCorpBonds)
-        val reasonAfter               = Banking.failureReason(afterBank, afterStocks, in.s7.newMacropru.ccyb, targetCorpBonds)
+        val reasonBefore              = Banking.failureReason(beforeBank, beforeStocks, in.priceEquity.newMacropru.ccyb, targetCorpBonds)
+        val reasonAfter               = Banking.failureReason(afterBank, afterStocks, in.priceEquity.newMacropru.ccyb, targetCorpBonds)
         val reconciliationDiagnostics = BankReconciliationDiagnostics.fromPatch(
           targetBankId = beforeBank.id,
           capitalResidual = capResidual,
@@ -1310,7 +1308,7 @@ object BankingStepRunner:
           )
         else
           val failCheck =
-            Banking.checkFailures(Vector(afterBank), Vector(afterStocks), in.s1.m, true, in.s7.newMacropru.ccyb, targetCorpBonds)
+            Banking.checkFailures(Vector(afterBank), Vector(afterStocks), in.fiscal.m, true, in.priceEquity.newMacropru.ccyb, targetCorpBonds)
           if !failCheck.anyFailed then
             AggregateReconciliationResult(
               nextBanks,
@@ -1357,18 +1355,18 @@ object BankingStepRunner:
       htmRealizedLoss: PLN,
       bankCapitalTerms: BankCapitalTerms,
   )(using p: SimParams): AggregateReconciliation =
-    val capitalLosses  = in.s5.nplLoss + mortgageFlows.defaultLoss + in.s6.consumerNplLoss +
-      in.s8.corpBonds.corpBondBankDefaultLoss +
+    val capitalLosses  = in.firm.nplLoss + mortgageFlows.defaultLoss + in.householdFinancial.consumerNplLoss +
+      in.openEconomy.corpBonds.corpBondBankDefaultLoss +
       Banking.computeBfgLevy(in.banks, in.ledgerFinancialState.banks.map(LedgerFinancialState.projectBankFinancialStocks)).total +
       interbankContagionLoss + bankCapitalTerms.unrealizedBondLoss + htmRealizedLoss +
       bankCapitalTerms.eclProvisionChange + multiCapDestruction
     val targetCapital  = prevBankAgg.capital - capitalLosses + bankCapitalTerms.retainedIncome
-    val targetDeposits = prevBankAgg.deposits + in.s3.totalIncome - in.s3.consumption +
-      investNetDepositFlow + jstDepositChange + quasiFiscalDepositChange + in.s7.netDomesticDividends -
-      in.s7.foreignDividendOutflow - in.s6.remittanceOutflow + in.s6.diasporaInflow +
-      in.s6.tourismExport - in.s6.tourismImport - bailInLoss + in.s5.sumNewLoans -
-      in.s5.sumFirmPrincipal + in.s6.consumerOrigination + in.s8.nonBank.insNetDepositChange +
-      in.s8.nonBank.nbfiDepositDrain
+    val targetDeposits = prevBankAgg.deposits + in.householdIncome.totalIncome - in.householdIncome.consumption +
+      investNetDepositFlow + jstDepositChange + quasiFiscalDepositChange + in.priceEquity.netDomesticDividends -
+      in.priceEquity.foreignDividendOutflow - in.householdFinancial.remittanceOutflow + in.householdFinancial.diasporaInflow +
+      in.householdFinancial.tourismExport - in.householdFinancial.tourismImport - bailInLoss + in.firm.sumNewLoans -
+      in.firm.sumFirmPrincipal + in.householdFinancial.consumerOrigination + in.openEconomy.nonBank.insNetDepositChange +
+      in.openEconomy.nonBank.nbfiDepositDrain
     AggregateReconciliation(
       depositsResidual = targetDeposits,
       capitalResidual = targetCapital,
