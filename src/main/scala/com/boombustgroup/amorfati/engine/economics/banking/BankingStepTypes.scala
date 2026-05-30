@@ -56,6 +56,49 @@ private[banking] final case class BondWaterfallResult(
     govBondRuntimeMovements: GovBondRuntimeMovements,
 )
 
+private[banking] final case class FailureDetectionResult(
+    banks: Vector[Banking.BankState],
+    financialStocks: Vector[Banking.BankFinancialStocks],
+    primary: Banking.FailureCheckResult,
+    secondary: Banking.FailureCheckResult,
+    contagion: InterbankContagion.ContagionLossResult,
+    failedBankIds: Set[BankId],
+    anyFailed: Boolean,
+    newFailures: Int,
+    capitalDestruction: PLN,
+    events: Vector[Banking.FailureEvent],
+)
+
+private[banking] final case class BailInStageResult(
+    banks: Vector[Banking.BankState],
+    financialStocks: Vector[Banking.BankFinancialStocks],
+    eligibleBankIds: Set[BankId],
+    loss: PLN,
+)
+
+private[banking] final case class BankResolutionStageResult(
+    banks: Vector[Banking.BankState],
+    financialStocks: Vector[Banking.BankFinancialStocks],
+    bankCorpBondHoldings: Vector[PLN],
+    absorberBankId: BankId,
+    resolvedBankCount: Int,
+    allFailedFallbackUsed: Boolean,
+)
+
+private[banking] final case class ReconciledResolutionResult(
+    banks: Vector[Banking.BankState],
+    financialStocks: Vector[Banking.BankFinancialStocks],
+    bankCorpBondHoldings: Vector[PLN],
+    bailInLoss: PLN,
+    capitalDestruction: PLN,
+    newFailures: Int,
+    failureEvents: Vector[Banking.FailureEvent],
+    resolvedBankCount: Int,
+    allFailedFallbackUsed: Boolean,
+    bankReconciliationDiagnostics: BankReconciliationDiagnostics,
+    capitalReconciliationResidual: PLN,
+)
+
 private[banking] final case class PerBankHhFlows(
     incomeShare: PLN,
     consShare: PLN,

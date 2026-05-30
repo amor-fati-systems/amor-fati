@@ -773,54 +773,10 @@ object BankingStepRunner:
     val waterfall      = runBondWaterfall(in, wf, afterHtm, afterHtmStocks)
 
     val bankCorpBondHoldingsAfterSettlement = Banking.bankCorpBondHoldingsFromVector(settledBankCorpBonds)
-
-    val failResult =
-      Banking.checkFailures(
-        waterfall.banks,
-        waterfall.financialStocks,
-        in.s1.m,
-        true,
-        in.s7.newMacropru.ccyb,
-        bankCorpBondHoldingsAfterSettlement,
-      )
-
-    // Interbank contagion: failed banks impose losses on counterparties
-    val exposures       = InterbankContagion.buildExposureMatrix(waterfall.banks, waterfall.financialStocks)
-    val contagionResult =
-      if failResult.anyFailed then InterbankContagion.applyContagionLosses(failResult.banks, exposures)
-      else InterbankContagion.ContagionLossResult.unchanged(failResult.banks)
-    val afterContagion  = contagionResult.banks
-    // Re-check for secondary failures triggered by contagion losses
-    val secondaryFail   =
-      Banking.checkFailures(afterContagion, waterfall.financialStocks, in.s1.m, true, in.s7.newMacropru.ccyb, bankCorpBondHoldingsAfterSettlement)
-    val afterFailCheck  = secondaryFail.banks
-    val afterFailStocks = waterfall.financialStocks
-    val anyFailed       = failResult.anyFailed || secondaryFail.anyFailed
-    val bailInBankIds   = (failResult.events ++ secondaryFail.events).map(_.bankId).toSet
-
-    val bailInResult          =
-      if bailInBankIds.nonEmpty then Banking.applyBailIn(afterFailCheck, afterFailStocks, bailInBankIds)
-      else Banking.BailInResult(afterFailCheck, afterFailStocks, PLN.Zero)
-    val resolveResult         =
-      if anyFailed then Banking.resolveFailures(bailInResult.banks, bailInResult.financialStocks, settledBankCorpBonds)
-      else Banking.ResolutionResult(bailInResult.banks, bailInResult.financialStocks, BankId.NoBank, settledBankCorpBonds)
-    val afterResolve          = resolveResult.banks
-    val afterResolveStocks    = resolveResult.financialStocks
-    val afterResolveCorpBonds = resolveResult.bankCorpBondHoldings
-    val newFailureCount       =
-      if anyFailed then waterfall.banks.zip(afterFailCheck).count { case (pre, post) => !pre.failed && post.failed } else 0
-    val primaryCapDest: PLN   =
-      waterfall.banks
-        .zip(failResult.banks)
-        .collect { case (pre, post) if !pre.failed && post.failed => pre.capital }
-        .sumPln
-    val secondaryCapDest: PLN =
-      afterContagion
-        .zip(afterFailCheck)
-        .collect { case (pre, post) if !pre.failed && post.failed => pre.capital }
-        .sumPln
-    val multiCapDest: PLN     = if anyFailed then primaryCapDest + secondaryCapDest else PLN.Zero
-    val curve                 =
+    val failureDetection                    = runFailureDetection(in, waterfall, bankCorpBondHoldingsAfterSettlement)
+    val bailIn                              = runBailIn(failureDetection)
+    val resolution                          = runBankResolution(failureDetection, bailIn, settledBankCorpBonds)
+    val curve                               =
       val exp = in.w.mechanisms.expectations
       Some(
         YieldCurve.compute(
@@ -831,51 +787,48 @@ object BankingStepRunner:
           targetInflation = p.monetary.targetInfl,
         ),
       )
-    val finalBankingMarket    = Banking.MarketState(
+    val finalBankingMarket                  = Banking.MarketState(
       interbankRate = ibRate,
       configs = bankConfigs,
       interbankCurve = curve,
     )
-    val bankCapitalTerms      = computeBankCapitalTerms(prevBankAgg, afterResolve, in, mortgageFlows)
-    val reconciled            = reconcileAggregateExactness(
-      banks = afterResolve,
-      financialStocks = afterResolveStocks,
-      bankCorpBondHoldings = afterResolveCorpBonds,
+    val bankCapitalTerms                    = computeBankCapitalTerms(prevBankAgg, resolution.banks, in, mortgageFlows)
+    val reconciled                          = reconcileAggregateExactness(
+      banks = resolution.banks,
+      financialStocks = resolution.financialStocks,
+      bankCorpBondHoldings = resolution.bankCorpBondHoldings,
       prevBankAgg = prevBankAgg,
       in = in,
       jstDepositChange = jstDepositChange,
       investNetDepositFlow = investNetDepositFlow,
       quasiFiscalDepositChange = quasiFiscalDepositChange,
       mortgageFlows = mortgageFlows,
-      bailInLoss = bailInResult.totalLoss,
-      multiCapDestruction = multiCapDest,
-      interbankContagionLoss = contagionResult.totalLoss,
+      bailInLoss = bailIn.loss,
+      multiCapDestruction = failureDetection.capitalDestruction,
+      interbankContagionLoss = failureDetection.contagion.totalLoss,
       htmRealizedLoss = htmResult.totalRealizedLoss,
       bankCapitalTerms = bankCapitalTerms,
     )
-    val finalFailureBanks     = reconciled.banks
-    val finalFailureStocks    = reconciled.financialStocks
-    val finalCorpBondHoldings = reconciled.bankCorpBondHoldings
-    val finalCorpBondLookup   = Banking.bankCorpBondHoldingsFromVector(finalCorpBondHoldings)
-    val totalBailInLoss       = bailInResult.totalLoss + reconciled.bailInLossDelta
-    val totalCapDestruction   = multiCapDest + reconciled.capitalDestructionDelta
-    val totalNewFailures      = newFailureCount + reconciled.newFailuresDelta
-    val failureEvents         = failResult.events ++ secondaryFail.events ++ reconciled.failureEvents
-    val invariantMismatches   = math.abs(totalNewFailures - failureEvents.length)
-    val failureDiagnostics    =
-      BankFailureDiagnostics.fromEvents(failureEvents, resolveResult.allFailedFallbackUsed || reconciled.allFailedFallbackUsed, invariantMismatches)
-    val resolutionDiagnostics =
+    val finalResolution                     = reconcileResolution(failureDetection, bailIn, resolution, reconciled)
+    val finalFailureBanks                   = finalResolution.banks
+    val finalFailureStocks                  = finalResolution.financialStocks
+    val finalCorpBondHoldings               = finalResolution.bankCorpBondHoldings
+    val finalCorpBondLookup                 = Banking.bankCorpBondHoldingsFromVector(finalCorpBondHoldings)
+    val invariantMismatches                 = math.abs(finalResolution.newFailures - finalResolution.failureEvents.length)
+    val failureDiagnostics                  =
+      BankFailureDiagnostics.fromEvents(finalResolution.failureEvents, finalResolution.allFailedFallbackUsed, invariantMismatches)
+    val resolutionDiagnostics               =
       BankResolutionDiagnostics.fromState(
         banks = finalFailureBanks,
-        newFailures = totalNewFailures,
-        bailInEvents = failureEvents.map(_.bankId).distinct.size,
-        resolvedBanks = resolveResult.resolvedBankCount + reconciled.resolvedBanksDelta,
-        allFailedFallbackUsed = resolveResult.allFailedFallbackUsed || reconciled.allFailedFallbackUsed,
+        newFailures = finalResolution.newFailures,
+        bailInEvents = finalResolution.failureEvents.map(_.bankId).distinct.size,
+        resolvedBanks = finalResolution.resolvedBankCount,
+        allFailedFallbackUsed = finalResolution.allFailedFallbackUsed,
       )
-    val anyFailureForMobility = anyFailed || reconciled.newFailuresDelta > 0
-    val eclGdpGrowthMonthly   = eclGdpGrowth(in)
-    val eclMigrationRate      = EclStaging.migrationRate(in.w.unemploymentRate(in.s2.employed), eclReferenceUnemployment(in), eclGdpGrowthMonthly)
-    val eclDiagnostics        = computeBankEclDiagnostics(in.banks, finalFailureBanks, eclMigrationRate, eclGdpGrowthMonthly)
+    val anyFailureForMobility               = failureDetection.anyFailed || reconciled.newFailuresDelta > 0
+    val eclGdpGrowthMonthly                 = eclGdpGrowth(in)
+    val eclMigrationRate                    = EclStaging.migrationRate(in.w.unemploymentRate(in.s2.employed), eclReferenceUnemployment(in), eclGdpGrowthMonthly)
+    val eclDiagnostics                      = computeBankEclDiagnostics(in.banks, finalFailureBanks, eclMigrationRate, eclGdpGrowthMonthly)
 
     // Repair stale failed-bank routing every month; mobility validates survivor bankIds.
     val reassignedFirms =
@@ -913,15 +866,15 @@ object BankingStepRunner:
       finalBankingMarket = finalBankingMarket,
       reassignedFirms = reassignedFirms,
       reassignedHouseholds = reassignedHouseholds,
-      bailInLoss = totalBailInLoss,
-      multiCapDestruction = totalCapDestruction,
-      interbankContagionLoss = contagionResult.totalLoss,
-      newFailures = totalNewFailures,
-      capitalReconciliationResidual = reconciled.capitalResidual,
+      bailInLoss = finalResolution.bailInLoss,
+      multiCapDestruction = finalResolution.capitalDestruction,
+      interbankContagionLoss = failureDetection.contagion.totalLoss,
+      newFailures = finalResolution.newFailures,
+      capitalReconciliationResidual = finalResolution.capitalReconciliationResidual,
       bankCapitalTerms = bankCapitalTerms,
       bankFailureDiagnostics = failureDiagnostics,
       bankResolutionDiagnostics = resolutionDiagnostics,
-      bankReconciliationDiagnostics = reconciled.bankReconciliationDiagnostics,
+      bankReconciliationDiagnostics = finalResolution.bankReconciliationDiagnostics,
       bankEclDiagnostics = eclDiagnostics,
       resolvedBank = Banking.aggregateFromBankStocks(finalFailureBanks, finalFailureStocks, finalCorpBondLookup),
       htmRealizedLoss = htmResult.totalRealizedLoss,
@@ -938,6 +891,115 @@ object BankingStepRunner:
       foreignBondHoldings = waterfall.foreignBondHoldings,
       bidToCover = waterfall.bidToCover,
       govBondRuntimeMovements = waterfall.govBondRuntimeMovements,
+    )
+
+  /** Detects primary failures, applies interbank contagion losses, and then
+    * performs the secondary failure check caused by those counterparty losses.
+    */
+  private[banking] def runFailureDetection(
+      in: StepInput,
+      waterfall: BondWaterfallResult,
+      bankCorpBondHoldings: Banking.BankCorpBondHoldings,
+  )(using p: SimParams): FailureDetectionResult =
+    val primary   =
+      Banking.checkFailures(
+        waterfall.banks,
+        waterfall.financialStocks,
+        in.s1.m,
+        true,
+        in.s7.newMacropru.ccyb,
+        bankCorpBondHoldings,
+      )
+    val exposures = InterbankContagion.buildExposureMatrix(waterfall.banks, waterfall.financialStocks)
+    val contagion =
+      if primary.anyFailed then InterbankContagion.applyContagionLosses(primary.banks, exposures)
+      else InterbankContagion.ContagionLossResult.unchanged(primary.banks)
+    val secondary =
+      Banking.checkFailures(contagion.banks, waterfall.financialStocks, in.s1.m, true, in.s7.newMacropru.ccyb, bankCorpBondHoldings)
+    val anyFailed = primary.anyFailed || secondary.anyFailed
+    val events    = primary.events ++ secondary.events
+
+    val newFailures                 =
+      if anyFailed then waterfall.banks.zip(secondary.banks).count { case (pre, post) => !pre.failed && post.failed } else 0
+    val primaryCapitalDestruction   =
+      waterfall.banks
+        .zip(primary.banks)
+        .collect { case (pre, post) if !pre.failed && post.failed => pre.capital }
+        .sumPln
+    val secondaryCapitalDestruction =
+      contagion.banks
+        .zip(secondary.banks)
+        .collect { case (pre, post) if !pre.failed && post.failed => pre.capital }
+        .sumPln
+
+    FailureDetectionResult(
+      banks = secondary.banks,
+      financialStocks = waterfall.financialStocks,
+      primary = primary,
+      secondary = secondary,
+      contagion = contagion,
+      failedBankIds = events.map(_.bankId).toSet,
+      anyFailed = anyFailed,
+      newFailures = newFailures,
+      capitalDestruction = if anyFailed then primaryCapitalDestruction + secondaryCapitalDestruction else PLN.Zero,
+      events = events,
+    )
+
+  /** Applies the depositor-side BRRD bail-in leg for banks that entered failure
+    * in this month.
+    */
+  private[banking] def runBailIn(failure: FailureDetectionResult)(using p: SimParams): BailInStageResult =
+    val result =
+      if failure.failedBankIds.nonEmpty then Banking.applyBailIn(failure.banks, failure.financialStocks, failure.failedBankIds)
+      else Banking.BailInResult(failure.banks, failure.financialStocks, PLN.Zero)
+    BailInStageResult(
+      banks = result.banks,
+      financialStocks = result.financialStocks,
+      eligibleBankIds = failure.failedBankIds,
+      loss = result.totalLoss,
+    )
+
+  /** Resolves newly failed banks after bail-in through the purchase-and-
+    * assumption path, preserving explicit bank shell slots.
+    */
+  private[banking] def runBankResolution(
+      failure: FailureDetectionResult,
+      bailIn: BailInStageResult,
+      bankCorpBondHoldings: Vector[PLN],
+  ): BankResolutionStageResult =
+    val result =
+      if failure.anyFailed then Banking.resolveFailures(bailIn.banks, bailIn.financialStocks, bankCorpBondHoldings)
+      else Banking.ResolutionResult(bailIn.banks, bailIn.financialStocks, BankId.NoBank, bankCorpBondHoldings)
+    BankResolutionStageResult(
+      banks = result.banks,
+      financialStocks = result.financialStocks,
+      bankCorpBondHoldings = result.bankCorpBondHoldings,
+      absorberBankId = result.absorberId,
+      resolvedBankCount = result.resolvedBankCount,
+      allFailedFallbackUsed = result.allFailedFallbackUsed,
+    )
+
+  /** Combines the explicit resolution path with the aggregate exactness
+    * reconciliation, which may itself create one additional failure event.
+    */
+  private[banking] def reconcileResolution(
+      failure: FailureDetectionResult,
+      bailIn: BailInStageResult,
+      resolution: BankResolutionStageResult,
+      reconciled: AggregateReconciliationResult,
+  ): ReconciledResolutionResult =
+    ReconciledResolutionResult(
+      banks = reconciled.banks,
+      financialStocks = reconciled.financialStocks,
+      bankCorpBondHoldings = reconciled.bankCorpBondHoldings,
+      bailInLoss = bailIn.loss + reconciled.bailInLossDelta,
+      capitalDestruction = failure.capitalDestruction + reconciled.capitalDestructionDelta,
+      newFailures = failure.newFailures + reconciled.newFailuresDelta,
+      failureEvents = failure.events ++ reconciled.failureEvents,
+      resolvedBankCount = resolution.resolvedBankCount + reconciled.resolvedBanksDelta,
+      allFailedFallbackUsed = resolution.allFailedFallbackUsed || reconciled.allFailedFallbackUsed,
+      bankReconciliationDiagnostics = reconciled.bankReconciliationDiagnostics,
+      capitalReconciliationResidual = reconciled.capitalResidual,
     )
 
   /** Executes the government-bond waterfall after reserve settlement and HTM
