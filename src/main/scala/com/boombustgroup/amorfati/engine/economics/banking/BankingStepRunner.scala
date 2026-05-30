@@ -408,17 +408,29 @@ object BankingStepRunner:
     val totalBook = bankStocks.map(_.consumerLoan).sumPln
     if bankStocks.isEmpty || totalBook <= PLN.Zero then bankStocks
     else
-      val bankWeights = Array.fill(bankStocks.length)(0L)
-      households
-        .zip(householdBalances)
-        .foreach: (hh, balances) =>
-          val bankIndex = hh.bankId.toInt
-          if bankIndex >= 0 && bankIndex < bankWeights.length && balances.consumerLoan > PLN.Zero then
-            bankWeights(bankIndex) += balances.consumerLoan.distributeRaw
-      if !bankWeights.exists(_ > 0L) then bankStocks
+      val bankWeights       = Array.fill(bankStocks.length)(0L)
+      var i                 = 0
+      while i < households.length do
+        val hh        = households(i)
+        val balances  = householdBalances(i)
+        val bankIndex = hh.bankId.toInt
+        if bankIndex >= 0 && bankIndex < bankWeights.length && balances.consumerLoan > PLN.Zero then
+          bankWeights(bankIndex) += balances.consumerLoan.distributeRaw
+        i += 1
+      var hasPositiveWeight = false
+      var weightIndex       = 0
+      while weightIndex < bankWeights.length && !hasPositiveWeight do
+        hasPositiveWeight = bankWeights(weightIndex) > 0L
+        weightIndex += 1
+      if !hasPositiveWeight then bankStocks
       else
-        val redistributed = Distribute.distribute(totalBook.distributeRaw, bankWeights).map(PLN.fromRaw).toVector
-        bankStocks.zip(redistributed).map((stocks, consumerLoan) => stocks.copy(consumerLoan = consumerLoan))
+        val redistributed     = Distribute.distribute(totalBook.distributeRaw, bankWeights)
+        val redistributedRows = new Array[Banking.BankFinancialStocks](bankStocks.length)
+        var bankIndex         = 0
+        while bankIndex < bankStocks.length do
+          redistributedRows(bankIndex) = bankStocks(bankIndex).copy(consumerLoan = PLN.fromRaw(redistributed(bankIndex)))
+          bankIndex += 1
+        redistributedRows.toVector
 
   /** Recompute household aggregates from final households. */
   private def computeHhAgg(in: StepInput)(using SimParams): Household.Aggregates =
@@ -686,11 +698,15 @@ object BankingStepRunner:
       perBankWorkers = in.firm.perBankWorkers,
     )
 
-    val updatedRows       = banks.zip(bankStocks).map { case (b, stocks) =>
+    val updatedRows       = new Array[SingleBankUpdate](banks.length)
+    var bankIndex         = 0
+    while bankIndex < banks.length do
+      val b           = banks(bankIndex)
+      val stocks      = bankStocks(bankIndex)
       val bId         = b.id.toInt
       val workerShare = workerShares(bId)
       val hhFlows     = resolvePerBankHhFlows(bId, in.householdIncome.perBankHhFlowsOpt, totalWorkers, in.firm.perBankWorkers, in)
-      updateSingleBank(
+      updatedRows(bankIndex) = updateSingleBank(
         b,
         stocks,
         hhFlows,
@@ -704,14 +720,20 @@ object BankingStepRunner:
         quasiFiscalDepositChange,
         in,
       )
-    }
-    val updatedBanks      = updatedRows.map(_.bank)
-    val updatedBankStocks = updatedRows.map(_.financialStocks)
+      bankIndex += 1
+    val updatedBanks      = new Array[Banking.BankState](updatedRows.length)
+    val updatedBankStocks = new Array[Banking.BankFinancialStocks](updatedRows.length)
+    var updatedIndex      = 0
+    while updatedIndex < updatedRows.length do
+      val updated = updatedRows(updatedIndex)
+      updatedBanks(updatedIndex) = updated.bank
+      updatedBankStocks(updatedIndex) = updated.financialStocks
+      updatedIndex += 1
 
     runMultiBankStage(
       in,
-      updatedBanks,
-      updatedBankStocks,
+      updatedBanks.toVector,
+      updatedBankStocks.toVector,
       in.world.bankingSector.configs,
       wf,
       perBankReserveInt,
@@ -795,14 +817,24 @@ object BankingStepRunner:
     val eclDiagnostics        = computeBankEclDiagnostics(in.banks, finalFailureBanks, eclMigrationRate, eclGdpGrowthMonthly)
 
     // Repair stale failed-bank routing every month; mobility validates survivor bankIds.
-    val reassignedFirms =
-      in.firm.ioFirms.map: f =>
-        val nextBankId = Banking.reassignBankId(f.bankId, finalFailureBanks, finalFailureStocks, finalCorpBondLookup)
+    val reassignedFirmRows = new Array[Firm.State](in.firm.ioFirms.length)
+    var firmIndex          = 0
+    while firmIndex < in.firm.ioFirms.length do
+      val f          = in.firm.ioFirms(firmIndex)
+      val nextBankId = Banking.reassignBankId(f.bankId, finalFailureBanks, finalFailureStocks, finalCorpBondLookup)
+      reassignedFirmRows(firmIndex) =
         if nextBankId == f.bankId then f else f.copy(bankId = nextBankId)
-    val postFailureHh   =
-      in.firm.households.map: h =>
-        val nextBankId = Banking.reassignBankId(h.bankId, finalFailureBanks, finalFailureStocks, finalCorpBondLookup)
+      firmIndex += 1
+    val reassignedFirms    = reassignedFirmRows.toVector
+    val postFailureHhRows  = new Array[Household.State](in.firm.households.length)
+    var householdIndex     = 0
+    while householdIndex < in.firm.households.length do
+      val h          = in.firm.households(householdIndex)
+      val nextBankId = Banking.reassignBankId(h.bankId, finalFailureBanks, finalFailureStocks, finalCorpBondLookup)
+      postFailureHhRows(householdIndex) =
         if nextBankId == h.bankId then h else h.copy(bankId = nextBankId)
+      householdIndex += 1
+    val postFailureHh      = postFailureHhRows.toVector
 
     // Deposit mobility: HH may switch banks based on health signals and panic
     val mobilityResult       = DepositMobility(postFailureHh, finalFailureBanks, finalFailureStocks, anyFailureForMobility, in.depositRng, finalCorpBondLookup)
