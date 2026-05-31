@@ -617,4 +617,4 @@ object Household:
 
   /** Gini coefficient for a pre-sorted array. */
   def giniSorted(sorted: Array[Long]): Share =
-    HouseholdAggregateComputation.giniSorted(sorted)
+    HouseholdDistributionStats.giniSorted(sorted)

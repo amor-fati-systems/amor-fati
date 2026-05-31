@@ -116,8 +116,7 @@ private[agents] object HouseholdMonthlyFlowConstruction:
       rng: RandomStream,
       bankRates: Option[BankRates],
       equityIndexReturn: Rate,
-      sectorWages: Option[Vector[PLN]],
-      sectorVacancies: Option[Vector[Int]],
+      laborContext: Option[HouseholdLaborTransitionContext],
       distressedIds: java.util.BitSet,
       consumerCreditGate: Option[Household.ConsumerCreditGate],
   )(using p: SimParams): HhMonthlyResult =
@@ -125,7 +124,7 @@ private[agents] object HouseholdMonthlyFlowConstruction:
     val distressMonths =
       if HouseholdDistressMachine.financialDistressTriggered(f) then hh.financialDistressMonths + 1 else 0
     if distressMonths > p.household.personalInsolvencyDistressMonths then resolveBankruptcy(f, distressMonths)
-    else resolveSurvival(f, sectorWages, sectorVacancies, rng, distressMonths)
+    else resolveSurvival(f, laborContext, rng, distressMonths)
 
   /** Builds the public monthly diagnostic row from a finalized household
     * result.
@@ -207,8 +206,7 @@ private[agents] object HouseholdMonthlyFlowConstruction:
     */
   private def resolveSurvival(
       f: MonthlyFlows,
-      sectorWages: Option[Vector[PLN]],
-      sectorVacancies: Option[Vector[Int]],
+      laborContext: Option[HouseholdLaborTransitionContext],
       rng: RandomStream,
       distressMonths: Int,
   )(using p: SimParams): HhMonthlyResult =
@@ -218,12 +216,14 @@ private[agents] object HouseholdMonthlyFlowConstruction:
     val afterMpc      = HouseholdDistressMachine.updateMpc(f.hh, f.financialStocks, f.income, f.newStatus)
 
     val (afterVoluntary, vQuit) = f.newStatus match
-      case emp: HhStatus.Employed if sectorWages.isDefined =>
-        HouseholdLaborTransitions.tryVoluntarySearch(f.financialStocks, emp, sectorWages.get, sectorVacancies.get, rng)
-      case _                                               => (f.newStatus, 0)
+      case emp: HhStatus.Employed =>
+        laborContext match
+          case Some(context) => HouseholdLaborTransitions.tryVoluntarySearch(f.financialStocks, emp, context, rng)
+          case None          => (f.newStatus, 0)
+      case _                      => (f.newStatus, 0)
 
     val (finalStatus, rAttempt, rSuccess) =
-      HouseholdLaborTransitions.tryRetraining(f.hh, f.financialStocks, afterVoluntary, f.neighborDistress, sectorWages, sectorVacancies, rng)
+      HouseholdLaborTransitions.tryRetraining(f.hh, f.financialStocks, afterVoluntary, f.neighborDistress, laborContext, rng)
     val nextFinancialDistressState        =
       HouseholdDistressMachine.advanceFinancialDistressState(f.hh.financialDistressState, finalStatus, distressMonths, personalInsolvency = false)
 

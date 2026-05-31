@@ -1,7 +1,7 @@
 package com.boombustgroup.amorfati.agents.household
 
 import com.boombustgroup.amorfati.agents.{BankRates, HhFinancialDistressState, HhStatus, Household, PerBankFlow}
-import com.boombustgroup.amorfati.agents.household.HouseholdAggregateComputation.StepTotals
+import com.boombustgroup.amorfati.agents.household.HouseholdStepAccumulator.StepTotals
 import com.boombustgroup.amorfati.agents.household.HouseholdStepTypes.*
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.World
@@ -44,6 +44,7 @@ private[agents] object HouseholdStepRunner:
       stockCheck += 1
 
     val distressedIds = HouseholdDistressMachine.buildDistressedSet(households)
+    val laborContext  = HouseholdLaborTransitionContext.fromOptions(sectorWages, sectorVacancies)
     val updatedRows   = new Array[Household.State](households.length)
     val stockRows     = new Array[Household.FinancialStocks](financialStocks.length)
     val monthlyRows   = new Array[Household.MonthlyFlow](households.length)
@@ -67,8 +68,7 @@ private[agents] object HouseholdStepRunner:
           rng,
           bankRates,
           equityIndexReturn,
-          sectorWages,
-          sectorVacancies,
+          laborContext,
           distressedIds,
           consumerCreditGate,
         )
@@ -85,7 +85,7 @@ private[agents] object HouseholdStepRunner:
     val monthly                          = monthlyRows.toVector
     val agg                              = HouseholdAggregateComputation.computeAggregates(updated, stocks, marketWage, reservationWage, importAdj, totals)
     val pbf: Option[Vector[PerBankFlow]] =
-      if bankRates.isDefined then Some(HouseholdAggregateComputation.buildPerBankFlows(flows, nBanks)) else None
+      if bankRates.isDefined then Some(HouseholdPerBankFlowAggregation.buildPerBankFlows(flows, nBanks)) else None
 
     var monthlyLiquidity = PLN.Zero
     var j                = 0

@@ -16,11 +16,12 @@ private[agents] object HouseholdLaborTransitions:
   def tryVoluntarySearch(
       financialStocks: Household.FinancialStocks,
       status: HhStatus.Employed,
-      sectorWages: Vector[PLN],
-      sectorVacancies: Vector[Int],
+      laborContext: HouseholdLaborTransitionContext,
       rng: RandomStream,
   )(using p: SimParams): (HhStatus, Int) =
     if !p.labor.voluntarySearchProb.sampleBelow(rng) then return (status, 0)
+    val sectorWages       = laborContext.sectorWages
+    val sectorVacancies   = laborContext.sectorVacancies
     val targetSector      =
       SectoralMobility.selectTargetSector(status.sectorIdx.toInt, sectorWages, sectorVacancies, p.labor.frictionMatrix, p.labor.vacancyWeight, rng)
     if sectorVacancies(targetSector) <= 0 then return (status, 0)
@@ -41,8 +42,7 @@ private[agents] object HouseholdLaborTransitions:
       financialStocks: Household.FinancialStocks,
       status: HhStatus,
       neighborDistress: Share,
-      sectorWages: Option[Vector[PLN]],
-      sectorVacancies: Option[Vector[Int]],
+      laborContext: Option[HouseholdLaborTransitionContext],
       rng: RandomStream,
   )(using p: SimParams): (HhStatus, Int, Int) =
     status match
@@ -50,18 +50,19 @@ private[agents] object HouseholdLaborTransitions:
         val retrainProb = p.household.retrainingProb +
           (if neighborDistress > NeighborDistressThreshold then NeighborDistressRetrainBoost else Share.Zero)
         if financialStocks.demandDeposit > p.household.retrainingCost && retrainProb.sampleBelow(rng) then
-          if sectorWages.isDefined then
-            val sw           = sectorWages.get
-            val sv           = sectorVacancies.get
-            val fromSector   = if hh.lastSectorIdx.toInt >= 0 then hh.lastSectorIdx.toInt else 0
-            val targetSector = SectoralMobility.selectTargetSector(fromSector, sw, sv, p.labor.frictionMatrix, p.labor.vacancyWeight, rng)
-            val friction     = p.labor.frictionMatrix(fromSector)(targetSector)
-            val rp           = SectoralMobility.frictionAdjustedParams(friction, p.labor.frictionDurationMult, p.labor.frictionCostMult)
-            if financialStocks.demandDeposit > rp.cost then (HhStatus.Retraining(rp.duration, SectorIdx(targetSector), rp.cost), 1, 0)
-            else (status, 0, 0)
-          else
-            val targetSector = rng.nextInt(p.sectorDefs.length)
-            (HhStatus.Retraining(p.household.retrainingDuration, SectorIdx(targetSector), p.household.retrainingCost), 1, 0)
+          laborContext match
+            case Some(context) =>
+              val sw           = context.sectorWages
+              val sv           = context.sectorVacancies
+              val fromSector   = if hh.lastSectorIdx.toInt >= 0 then hh.lastSectorIdx.toInt else 0
+              val targetSector = SectoralMobility.selectTargetSector(fromSector, sw, sv, p.labor.frictionMatrix, p.labor.vacancyWeight, rng)
+              val friction     = p.labor.frictionMatrix(fromSector)(targetSector)
+              val rp           = SectoralMobility.frictionAdjustedParams(friction, p.labor.frictionDurationMult, p.labor.frictionCostMult)
+              if financialStocks.demandDeposit > rp.cost then (HhStatus.Retraining(rp.duration, SectorIdx(targetSector), rp.cost), 1, 0)
+              else (status, 0, 0)
+            case None          =>
+              val targetSector = rng.nextInt(p.sectorDefs.length)
+              (HhStatus.Retraining(p.household.retrainingDuration, SectorIdx(targetSector), p.household.retrainingCost), 1, 0)
         else (status, 0, 0)
 
       case HhStatus.Retraining(monthsLeft, targetSector, cost) =>

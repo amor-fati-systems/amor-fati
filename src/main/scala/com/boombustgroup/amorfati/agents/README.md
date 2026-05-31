@@ -57,9 +57,13 @@ carry behavioral state, operational diagnostics, and legacy unsupported metrics.
 | `household/HouseholdConsumerCredit.scala` | Consumer-credit underwriting, approval gates, and residual shortfall demand |
 | `household/HouseholdLiquidityWaterfall.scala` | Consumption priority, liquidity shortfall attribution, and non-negative deposit settlement |
 | `household/HouseholdDistressMachine.scala` | Financial-distress lifecycle, unemployment scarring, MPC, and social-neighbor distress |
+| `household/HouseholdLaborTransitionContext.scala` | Aligned labor-market context for voluntary search and retraining |
 | `household/HouseholdLaborTransitions.scala` | Voluntary cross-sector search and retraining transitions |
 | `household/HouseholdMonthlyFlowConstruction.scala` | Per-household month pipeline from budget flows to finalized state and stocks |
-| `household/HouseholdAggregateComputation.scala` | Household aggregate accounting, per-bank flow totals, distribution stats, and Gini |
+| `household/HouseholdStepAccumulator.scala` | Exact monthly flow accumulator for finalized household results |
+| `household/HouseholdPerBankFlowAggregation.scala` | Per-bank household-flow aggregation |
+| `household/HouseholdDistributionStats.scala` | Distribution statistics, Gini, poverty-search helper, and sector-mobility metric |
+| `household/HouseholdAggregateComputation.scala` | Household aggregate accounting from state, stocks, and monthly flow totals |
 | `household/HouseholdStepRunner.scala` | Month-step orchestration preserving the public `Household.step` facade |
 | `household/HouseholdMortgageSchedule.scala` | Mortgage amortization helpers for household financial stocks |
 | `household/HouseholdParameters.scala` | Shared household constants used across init, monthly execution, and aggregates |
