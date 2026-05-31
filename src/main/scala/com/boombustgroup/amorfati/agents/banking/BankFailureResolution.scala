@@ -6,8 +6,16 @@ import com.boombustgroup.amorfati.engine.SimulationMonth.ExecutionMonth
 import com.boombustgroup.amorfati.engine.mechanisms.Macroprudential
 import com.boombustgroup.amorfati.types.*
 
+/** Detects bank failures and applies depositor and survivor-bank resolution
+  * mechanics.
+  *
+  * Failure detection classifies regulatory triggers. Resolution keeps the
+  * failed-bank shell explicit while transferring supported financial stocks to
+  * the healthiest survivor.
+  */
 private[agents] object BankFailureResolution:
 
+  /** Classifies the first active failure trigger for a bank, if any. */
   def failureReason(
       bank: BankState,
       financialStocks: BankFinancialStocks,
@@ -26,6 +34,9 @@ private[agents] object BankFailureResolution:
       else if lcrBreach then Some(BankFailureReason.LiquidityBreach)
       else None
 
+  /** Advances failure status for all banks and emits failure events for newly
+    * failed rows.
+    */
   def checkFailures(
       banks: Vector[BankState],
       financialStocks: Vector[BankFinancialStocks],
@@ -59,6 +70,7 @@ private[agents] object BankFailureResolution:
       val events  = checked.flatMap(_._2)
       FailureCheckResult(updated, events.nonEmpty, events)
 
+  /** Computes the monthly BFG levy from live-bank deposit stocks. */
   def computeBfgLevy(banks: Vector[BankState], financialStocks: Vector[BankFinancialStocks])(using p: SimParams): PerBankAmounts =
     val rows    = BankRows.from(banks, financialStocks, "Banking.computeBfgLevy")
     val perBank =
@@ -67,6 +79,9 @@ private[agents] object BankFailureResolution:
         else stocks.totalDeposits * p.banking.bfgLevyRate.monthly
     PerBankAmounts(perBank, perBank.sumPln)
 
+  /** Applies one-time uninsured-deposit haircuts for failed banks selected for
+    * bail-in.
+    */
   def applyBailIn(banks: Vector[BankState], financialStocks: Vector[BankFinancialStocks], eligibleBankIds: Set[BankId])(using
       p: SimParams,
   ): BailInResult =
@@ -84,6 +99,9 @@ private[agents] object BankFailureResolution:
         else (stocks, PLN.Zero)
     BailInResult(banks, withHaircut.map(_._1), withHaircut.map(_._2).sumPln)
 
+  /** Transfers failed-bank financial stocks to the healthiest survivor and
+    * leaves failed shells emptied.
+    */
   def resolveFailures(
       banks: Vector[BankState],
       financialStocks: Vector[BankFinancialStocks],
@@ -152,6 +170,7 @@ private[agents] object BankFailureResolution:
       }
       ResolutionResult(resolved, resolvedStocks, absorberId, resolvedCorpBonds, resolvedBankCount = toAbsorb.size)
 
+  /** Selects the strongest live absorber bank for resolution transfers. */
   def healthiestBankId(
       banks: Vector[BankState],
       financialStocks: Vector[BankFinancialStocks],
@@ -174,6 +193,7 @@ private[agents] object BankFailureResolution:
         riskBearingAlive.maxBy((bank, stocks) => (BankRegulatoryMetrics.car(bank, stocks, bankCorpBondHoldings(bank.id)).toLong, bank.capital.toLong))._1.id
       else alive.maxBy(_._1.capital.toLong)._1.id
 
+  /** Repairs a client bank reference away from failed banks. */
   def reassignBankId(
       currentBankId: BankId,
       banks: Vector[BankState],

@@ -5,11 +5,19 @@ import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.types.*
 import com.boombustgroup.ledger.Distribute
 
+/** Clears bank liquidity plumbing and computes monetary-policy income legs.
+  *
+  * This module owns the interbank rate surface, net interbank matching, reserve
+  * remuneration, standing-facility charges, and interbank interest flows.
+  */
 private[agents] object BankInterbankMarket:
 
   private val DepositSpreadFromRef: Rate = Rate.decimal(1, 2)
   private val LombardSpreadFromRef: Rate = Rate.decimal(1, 2)
 
+  /** Computes the stressed interbank reference rate from NPL stress and
+    * aggregate reserve liquidity.
+    */
   def interbankRate(banks: Vector[BankState], financialStocks: Vector[BankFinancialStocks], refRate: Rate)(using p: SimParams): Rate =
     val rows        = BankRows.from(banks, financialStocks, "Banking.interbankRate")
     val aggNpl      = rows.foldLeft(PLN.Zero)((acc, bank, _) => if bank.failed then acc else acc + bank.nplAmount)
@@ -33,6 +41,9 @@ private[agents] object BankInterbankMarket:
     val stressFactor = (Share.One - liquidityRatio) * creditStress
     depositRate + corridor * stressFactor
 
+  /** Matches banks with reserve-usable excess against banks with funding
+    * deficits and writes net interbank positions.
+    */
   def clearInterbank(
       banks: Vector[BankState],
       financialStocks: Vector[BankFinancialStocks],
@@ -87,15 +98,20 @@ private[agents] object BankInterbankMarket:
         .toVector
       BankStockState(banks, updatedStocks)
 
+  /** Computes monthly central-bank reserve remuneration for one bank. */
   def reserveInterest(bank: BankState, stocks: BankFinancialStocks, refRate: Rate)(using p: SimParams): PLN =
     if bank.failed || stocks.reserve <= PLN.Zero then PLN.Zero
     else stocks.reserve * (refRate * p.monetary.reserveRateMult.toMultiplier).monthly
 
+  /** Computes reserve-interest income for each bank from explicit financial
+    * stocks.
+    */
   def computeReserveInterest(banks: Vector[BankState], financialStocks: Vector[BankFinancialStocks], refRate: Rate)(using
       SimParams,
   ): PerBankAmounts =
     computeReserveInterestFromBankStocks(banks, financialStocks, refRate)
 
+  /** Aggregates the per-bank reserve-interest vector and total. */
   def computeReserveInterestFromBankStocks(banks: Vector[BankState], financialStocks: Vector[BankFinancialStocks], refRate: Rate)(using
       SimParams,
   ): PerBankAmounts =
@@ -103,11 +119,17 @@ private[agents] object BankInterbankMarket:
     val perBank = rows.map((bank, stocks) => reserveInterest(bank, stocks, refRate))
     PerBankAmounts(perBank, perBank.sumPln)
 
+  /** Computes deposit-facility income or lombard-facility charges for each
+    * bank.
+    */
   def computeStandingFacilities(banks: Vector[BankState], financialStocks: Vector[BankFinancialStocks], refRate: Rate)(using
       p: SimParams,
   ): PerBankAmounts =
     computeStandingFacilitiesFromBankStocks(banks, financialStocks, refRate)
 
+  /** Aggregates standing-facility income and charges from explicit financial
+    * stocks.
+    */
   def computeStandingFacilitiesFromBankStocks(banks: Vector[BankState], financialStocks: Vector[BankFinancialStocks], refRate: Rate)(using
       p: SimParams,
   ): PerBankAmounts =
@@ -122,9 +144,13 @@ private[agents] object BankInterbankMarket:
         else PLN.Zero
     PerBankAmounts(perBank, perBank.sumPln)
 
+  /** Computes interest flows on net interbank positions. */
   def interbankInterestFlows(banks: Vector[BankState], financialStocks: Vector[BankFinancialStocks], rate: Rate): PerBankAmounts =
     interbankInterestFlowsFromBankStocks(banks, financialStocks, rate)
 
+  /** Aggregates per-bank interbank interest flows from explicit financial
+    * stocks.
+    */
   def interbankInterestFlowsFromBankStocks(banks: Vector[BankState], financialStocks: Vector[BankFinancialStocks], rate: Rate): PerBankAmounts =
     val rows    = BankRows.from(banks, financialStocks, "Banking.interbankInterestFlowsFromBankStocks")
     val perBank =

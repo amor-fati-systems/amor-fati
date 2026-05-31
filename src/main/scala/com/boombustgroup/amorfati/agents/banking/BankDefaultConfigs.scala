@@ -3,8 +3,12 @@ package com.boombustgroup.amorfati.agents.banking
 import com.boombustgroup.amorfati.agents.Banking.Config
 import com.boombustgroup.amorfati.types.*
 
+/** Default banking-sector archetype calibration exposed through the public
+  * `Banking.DefaultConfigs` facade.
+  */
 private[agents] object BankDefaultConfigs:
 
+  /** Builds a sector-affinity vector while keeping the table compact. */
   private def affinity(xs: Share*): Vector[Share] = xs.toVector
 
   /** Poland-facing bank archetypes plus residual Other banks, 2026-04-30

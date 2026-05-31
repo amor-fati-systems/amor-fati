@@ -6,6 +6,11 @@ import com.boombustgroup.amorfati.engine.mechanisms.Macroprudential
 import com.boombustgroup.amorfati.random.RandomStream
 import com.boombustgroup.amorfati.types.*
 
+/** Encapsulates bank-side credit routing, pricing, and loan approval gates.
+  *
+  * The module owns borrower-bank assignment, rate formation, and the audited
+  * stochastic approval decision for new firm credit.
+  */
 private[agents] object BankCreditApproval:
 
   private val FailedBankSpread: Rate             = Rate.decimal(50, 2)
@@ -14,6 +19,9 @@ private[agents] object BankCreditApproval:
   private val CarPenaltyScale: Multiplier        = Multiplier(2)
   private val CrowdingOutSensitivity: Multiplier = Multiplier.decimal(30, 2)
 
+  /** Chooses the bank relationship for a firm using sector affinity and opening
+    * market-share weights.
+    */
   def assignBank(firmSector: SectorIdx, configs: Vector[Config], rng: RandomStream): BankId =
     val weights = configs.map(c => c.sectorAffinity(firmSector.toInt) * c.initMarketShare)
     val total   = weights.map(_.toLong).sum
@@ -24,9 +32,15 @@ private[agents] object BankCreditApproval:
       val picked = cumul.indexWhere(_ > r)
       BankId(if picked >= 0 then picked else weights.length - 1)
 
+  /** Computes the household deposit rate offered by banks at the current
+    * monetary-policy reference rate.
+    */
   def hhDepositRate(refRate: Rate)(using p: SimParams): Rate =
     (refRate - p.household.depositSpread).max(Rate.Zero)
 
+  /** Prices firm lending from monetary stance, bank-specific spread, risk
+    * stress, capital pressure, and government-bond crowding-out.
+    */
   def lendingRate(bank: BankState, stocks: BankFinancialStocks, cfg: Config, refRate: Rate, bondYield: Rate, corpBondHoldings: PLN)(using
       p: SimParams,
   ): Rate =
@@ -41,11 +55,18 @@ private[agents] object BankCreditApproval:
       val crowdingOut = (bondYield - refRate - p.banking.baseSpread).max(Rate.Zero) * CrowdingOutSensitivity
       refRate + p.banking.baseSpread + cfg.lendingSpread + nplSpread + carPenalty + crowdingOut
 
+  /** Returns the boolean approval decision used by legacy call sites. */
   def canLend(bank: BankState, stocks: BankFinancialStocks, amount: PLN, rng: RandomStream, ccyb: Multiplier, corpBondHoldings: PLN)(using
       p: SimParams,
   ): Boolean =
     creditApproval(bank, stocks, amount, rng, ccyb, corpBondHoldings).approved
 
+  /** Evaluates the full audited firm-credit approval decision.
+    *
+    * Hard regulatory gates cover failure status, projected CAR, LCR, and NSFR.
+    * Banks that pass those gates still face a stochastic approval draw
+    * penalized by NPL pressure and reserve utilization.
+    */
   def creditApproval(bank: BankState, stocks: BankFinancialStocks, amount: PLN, rng: RandomStream, ccyb: Multiplier, corpBondHoldings: PLN)(using
       p: SimParams,
   ): CreditApproval =

@@ -5,8 +5,16 @@ import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.types.*
 import com.boombustgroup.ledger.Distribute
 
+/** Manages government-bond allocation, redemption, sales, and HTM stress
+  * realization for bank portfolios.
+  *
+  * Issuance and redemption preserve aggregate accounting deltas while guarding
+  * per-bank AFS/HTM stock invariants. Central-bank purchases use the separate
+  * sale path because the requested sale may be capped by available holdings.
+  */
 private[agents] object BankBondPortfolio:
 
+  /** Allocates new government-bond issuance across live bank portfolios. */
   def allocateBondIssuance(
       banks: Vector[BankState],
       financialStocks: Vector[BankFinancialStocks],
@@ -16,6 +24,9 @@ private[agents] object BankBondPortfolio:
     if issuance <= PLN.Zero then return BankStockState(banks, financialStocks)
     allocateBondChange(banks, financialStocks, issuance, currentYield)
 
+  /** Allocates government-bond redemptions without allowing any bank bond
+    * bucket to become negative.
+    */
   def allocateBondRedemption(
       banks: Vector[BankState],
       financialStocks: Vector[BankFinancialStocks],
@@ -25,6 +36,9 @@ private[agents] object BankBondPortfolio:
     if redemption <= PLN.Zero then return BankStockState(banks, financialStocks)
     allocateBondChange(banks, financialStocks, PLN.fromRaw(-redemption.toLong), currentYield)
 
+  /** Dispatches signed bond-stock changes to the issuance or redemption
+    * allocation path.
+    */
   private def allocateBondChange(
       banks: Vector[BankState],
       financialStocks: Vector[BankFinancialStocks],
@@ -55,6 +69,9 @@ private[agents] object BankBondPortfolio:
     val updatedRows = rows.map((b, stocks) => signedById.get(b.id).fold((b, stocks))(amount => applyBondAllocation(b, stocks, amount, currentYield)))
     BankStockState(updatedRows.map(_._1), updatedRows.map(_._2))
 
+  /** Performs capped redemption redistribution using arrays aligned to the bank
+    * stock rows.
+    */
   private def allocateBondRedemptionChange(
       rows: BankRows,
       requestedRaw: Long,
@@ -160,6 +177,7 @@ private[agents] object BankBondPortfolio:
       i += 1
     BankStockState(rows.banks, updatedStocks.toVector)
 
+  /** Applies an already allocated signed bond change to a single bank row. */
   private def applyBondAllocation(b: BankState, stocks: BankFinancialStocks, amount: PLN, currentYield: Rate)(using
       p: SimParams,
   ): (BankState, BankFinancialStocks) =
@@ -174,6 +192,9 @@ private[agents] object BankBondPortfolio:
     else if amount < PLN.Zero then (b, applyBondRedemptionStocks(b, stocks, amount.abs))
     else (b, stocks)
 
+  /** Applies a local redemption to one bank's AFS/HTM buckets while preserving
+    * non-negative holdings.
+    */
   private def applyBondRedemptionStocks(b: BankState, stocks: BankFinancialStocks, reduction: PLN): BankFinancialStocks =
     val total = BankRegulatoryMetrics.govBondHoldings(stocks)
     require(
@@ -195,6 +216,9 @@ private[agents] object BankBondPortfolio:
         govBondHtm = (stocks.govBondHtm - htmReduce).max(PLN.Zero),
       )
 
+  /** Sells government bonds from banks to an external buyer, capped by
+    * available holdings.
+    */
   def sellToBuyer(banks: Vector[BankState], financialStocks: Vector[BankFinancialStocks], requested: PLN): BondSaleResult =
     val rows      = BankRows.from(banks, financialStocks, "Banking.sellToBuyer")
     val zeroSales = Vector.fill(banks.length)(PLN.Zero)
@@ -226,6 +250,9 @@ private[agents] object BankBondPortfolio:
         val soldByBank     = banks.map(bank => soldById.getOrElse(bank.id, PLN.Zero))
         BondSaleResult(banks, resultStocks, requestedSale, soldByBank)
 
+  /** Reclassifies stressed HTM holdings into AFS and realizes the resulting
+    * capital loss.
+    */
   def processHtmForcedSale(banks: Vector[BankState], financialStocks: Vector[BankFinancialStocks], currentYield: Rate)(using
       p: SimParams,
   ): HtmForcedSaleResult =

@@ -14,8 +14,10 @@ private[banking] final class BankRows private (
     val banks: Vector[BankState],
     val financialStocks: Vector[BankFinancialStocks],
 ):
+  /** Returns the number of aligned bank rows. */
   def length: Int = banks.length
 
+  /** Maps each aligned bank and stock row without exposing zip truncation. */
   def map[A](f: (BankState, BankFinancialStocks) => A): Vector[A] =
     val out = Vector.newBuilder[A]
     var i   = 0
@@ -24,6 +26,7 @@ private[banking] final class BankRows private (
       i += 1
     out.result()
 
+  /** Maps each aligned row together with its stable bank-vector index. */
   def mapWithIndex[A](f: (Int, BankState, BankFinancialStocks) => A): Vector[A] =
     val out = Vector.newBuilder[A]
     var i   = 0
@@ -32,6 +35,7 @@ private[banking] final class BankRows private (
       i += 1
     out.result()
 
+  /** Filters aligned rows while preserving the bank-stock pairing. */
   def filter(p: (BankState, BankFinancialStocks) => Boolean): Vector[(BankState, BankFinancialStocks)] =
     val out = Vector.newBuilder[(BankState, BankFinancialStocks)]
     var i   = 0
@@ -42,6 +46,8 @@ private[banking] final class BankRows private (
       i += 1
     out.result()
 
+  /** Folds over aligned bank and stock rows without allocating zipped tuples.
+    */
   def foldLeft[A](init: A)(f: (A, BankState, BankFinancialStocks) => A): A =
     var acc = init
     var i   = 0
@@ -50,6 +56,7 @@ private[banking] final class BankRows private (
       i += 1
     acc
 
+  /** Checks a predicate over bank rows only. */
   def forallBanks(p: BankState => Boolean): Boolean =
     var ok = true
     var i  = 0
@@ -58,7 +65,11 @@ private[banking] final class BankRows private (
       i += 1
     ok
 
+/** Factory for validated aligned bank-row views. */
 object BankRows:
+  /** Constructs an aligned view and fails fast when operational and financial
+    * stock rows have drifted apart.
+    */
   def from(banks: Vector[BankState], financialStocks: Vector[BankFinancialStocks], owner: String): BankRows =
     require(
       banks.length == financialStocks.length,
