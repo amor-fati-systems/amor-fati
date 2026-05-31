@@ -49,7 +49,9 @@ private[agents] object FirmOperatingDecision:
       if firm.stateOwned then (p.firm.laborAdjustSpeed * StateOwned.firingReduction).toLong
       else if isInStartup(firm) then (p.firm.laborAdjustSpeed * StartupDownsizeSpeedMultiplier).toLong
       else p.firm.laborAdjustSpeed.toLong
-    val cut                 = Math.max(1, FixedPointBase.multiplyRaw(gap.toLong, cutSpeedRaw).toInt)
+    val cut                 =
+      if gap <= 0 then 0
+      else Math.max(1, FixedPointBase.multiplyRaw(gap.toLong, cutSpeedRaw).toInt)
     val newWkrs             = Math.max(minRetained, workers - cut)
     // Severance cost = fired workers × wage × severanceMonths
     val fired               = workers - newWkrs

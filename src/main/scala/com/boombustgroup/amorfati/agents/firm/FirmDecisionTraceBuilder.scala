@@ -108,7 +108,7 @@ private[agents] object FirmDecisionTraceBuilder:
         newTech match
           case _: TechState.Automated => DecisionTrace.DecisionType.FullAiUpgrade
           case _: TechState.Hybrid    => DecisionTrace.DecisionType.HybridUpgrade
-          case _                      => DecisionTrace.DecisionType.Survive
+          case unexpected             => throw new IllegalStateException(s"Unexpected firm upgrade target tech state: $unexpected")
       case Decision.UpgradeFailed(_, _, _, _, _)    => DecisionTrace.DecisionType.UpgradeFailed
       case Decision.Downsize(_, _, _, _, _)         => DecisionTrace.DecisionType.Downsize
       case Decision.Upsize(_, _, _, _, _)           => DecisionTrace.DecisionType.Upsize

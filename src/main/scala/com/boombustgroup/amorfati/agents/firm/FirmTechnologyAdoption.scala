@@ -69,7 +69,7 @@ private[agents] object FirmTechnologyAdoption:
       w.external.gvc.importCostIndex,
     )
     val profitable = pnl.costs > upCost * FullAiProfitMargin
-    val canPay     = financialStocks.cash > upDown
+    val canPay     = financialStocks.cash >= upDown
     val ready      = firm.digitalReadiness >= p.firm.fullAiReadinessMin
     val bankCredit = bankCreditDecision(upLoan)
     val candidate  = UpgradeCandidate(upCapex, upLoan, upDown, profitable, canPay, ready, bankCredit)
@@ -259,7 +259,7 @@ private[agents] object FirmTechnologyAdoption:
       loan,
       down,
       profitable = pnl.costs > (cost * FullAiProfitMargin) / sigmaThreshold(w.currentSigmas(firm.sector.toInt)),
-      canPay = financialStocks.cash > down,
+      canPay = financialStocks.cash >= down,
       ready = firm.digitalReadiness >= p.firm.fullAiReadinessMin,
       credit = bankCreditDecision(loan),
     )
@@ -294,7 +294,7 @@ private[agents] object FirmTechnologyAdoption:
       loan,
       down,
       profitable = pnl.costs > (cost * HybridProfitMargin) / sigmaThreshold(w.currentSigmas(firm.sector.toInt)),
-      canPay = financialStocks.cash > down,
+      canPay = financialStocks.cash >= down,
       ready = firm.digitalReadiness >= p.firm.hybridReadinessMin,
       credit = bankCreditDecision(loan),
     )
@@ -311,7 +311,7 @@ private[agents] object FirmTechnologyAdoption:
       allFirms: Vector[State],
   )(using p: SimParams): (Share, Share) =
     val localAuto   = computeLocalAutoRatio(firm, allFirms)
-    val globalPanic = (w.real.automationRatio + w.real.hybridRatio * HybridPanicDiscount) * HybridPanicDiscount
+    val globalPanic = w.real.automationRatio + w.real.hybridRatio * HybridPanicDiscount
     val panic       = localAuto * LocalPanicWeight + globalPanic * GlobalPanicWeight
     val desper      = if pnl.netAfterTax < PLN.Zero then DesperationBonus else Share.Zero
     val strat       =

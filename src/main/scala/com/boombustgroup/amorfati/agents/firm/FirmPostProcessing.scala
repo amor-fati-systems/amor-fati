@@ -20,7 +20,7 @@ private[agents] object FirmPostProcessing:
   private[agents] def updateHiringSignalState(result: Result, prior: State, w: World, operationalSignals: OperationalSignals)(using p: SimParams): Result =
     if !isAlive(result.firm) then result
     else
-      val currentWorkers = workerCount(prior)
+      val currentWorkers = workerCount(result.firm)
       val desired        = desiredWorkers(prior, w, operationalSignals)
       val nextSignal     = nextHiringSignalMonths(prior, desired, currentWorkers)
       result.copy(firm = result.firm.copy(hiringSignalMonths = nextSignal))
@@ -164,7 +164,7 @@ private[agents] object FirmPostProcessing:
     * clamped to [0, 1].
     */
   private def effectiveShadowShare(sector: SectorIdx, carriedInformalAdj: Share)(using p: SimParams): Share =
-    (p.informal.sectorShares(sector.toInt) + carriedInformalAdj).min(Share.One)
+    (p.informal.sectorShares(sector.toInt) + carriedInformalAdj).max(Share.Zero).min(Share.One)
 
   /** CIT evasion fraction for a sector — shadow share × CIT evasion rate. */
   private def citEvasionFrac(sector: SectorIdx, carriedInformalAdj: Share)(using p: SimParams): Share =
@@ -187,10 +187,8 @@ private[agents] object FirmPostProcessing:
     */
   private[agents] def applyFdiFlows(r: Result)(using p: SimParams): Result =
     if !r.firm.foreignOwned || !isAlive(r.firm) then return r
-    val afterTaxProfit: PLN =
-      if p.fiscal.citRate > Rate.Zero && r.taxPaid > PLN.Zero then r.taxPaid * ((Rate(1) / p.fiscal.citRate) - Scalar.One).toMultiplier
-      else PLN.Zero
+    val afterTaxProfit: PLN = r.signedRealizedPostTaxProfit.max(PLN.Zero)
     val repatriation: PLN   =
-      (afterTaxProfit.max(PLN.Zero) * p.fdi.repatriationRate).min(r.financialStocks.cash.max(PLN.Zero))
+      (afterTaxProfit * p.fdi.repatriationRate).min(r.financialStocks.cash.max(PLN.Zero))
     if repatriation <= PLN.Zero then return r
     r.copy(financialStocks = r.financialStocks.copy(cash = r.financialStocks.cash - repatriation), fdiRepatriation = repatriation)
