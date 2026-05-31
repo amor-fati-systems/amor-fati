@@ -71,8 +71,11 @@ class BankingSectorPropertySpec extends AnyFlatSpec with Matchers with ScalaChec
 
   "allocateBondIssuance/allocateBondRedemption" should "have individual deltas summing to exactly the requested change (residual)" in
     forAll(genBanking.Sector, genDecimal("-1e8", "1e8")) { (bs, signedChange: BigDecimal) =>
-      val aliveDep = bs.banks.zip(bs.financialStocks).filterNot(_._1.failed).map((_, stocks) => decimal(stocks.totalDeposits)).sum
-      whenever(aliveDep > 0 && signedChange != BigDecimal("0.0")) {
+      val aliveRows      = bs.banks.zip(bs.financialStocks).filterNot(_._1.failed)
+      val aliveDep       = aliveRows.map((_, stocks) => decimal(stocks.totalDeposits)).sum
+      val availableBonds = aliveRows.map((_, stocks) => decimal(Banking.govBondHoldings(stocks))).sum
+      val validRequest   = signedChange > BigDecimal("0.0") || -signedChange <= availableBonds
+      whenever(aliveDep > 0 && signedChange != BigDecimal("0.0") && validRequest) {
         val after  =
           if signedChange > BigDecimal("0.0") then Banking.allocateBondIssuance(bs.banks, bs.financialStocks, plnBD(signedChange), Rate.decimal(5, 2))
           else Banking.allocateBondRedemption(bs.banks, bs.financialStocks, plnBD(-signedChange), Rate.decimal(5, 2))
@@ -80,6 +83,19 @@ class BankingSectorPropertySpec extends AnyFlatSpec with Matchers with ScalaChec
         val deltas =
           after.financialStocks.zip(bs.financialStocks).map((a, b) => decimal(Banking.govBondHoldings(a)) - decimal(Banking.govBondHoldings(b)))
         deltas.sum shouldBe signedChange +- BigDecimal("1.0")
+      }
+    }
+
+  it should "keep bank bond buckets non-negative for feasible redemptions" in
+    forAll(genBanking.Sector, genDecimal("0.0", "1e9")) { (bs, redemption: BigDecimal) =>
+      val aliveRows      = bs.banks.zip(bs.financialStocks).filterNot(_._1.failed)
+      val availableBonds = aliveRows.map((_, stocks) => decimal(Banking.govBondHoldings(stocks))).sum
+      whenever(redemption > BigDecimal("0.0") && redemption <= availableBonds) {
+        val after = Banking.allocateBondRedemption(bs.banks, bs.financialStocks, plnBD(redemption), Rate.decimal(5, 2))
+
+        after.financialStocks.foreach: stocks =>
+          stocks.govBondAfs should be >= PLN.Zero
+          stocks.govBondHtm should be >= PLN.Zero
       }
     }
 
