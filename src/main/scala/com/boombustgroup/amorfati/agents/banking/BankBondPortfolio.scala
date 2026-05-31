@@ -33,9 +33,9 @@ private[agents] object BankBondPortfolio:
   )(using p: SimParams): BankStockState =
     val rows      = BankRows.from(banks, financialStocks, "Banking.allocateBondChange")
     if signedChange == PLN.Zero then return BankStockState(banks, financialStocks)
+    if signedChange < PLN.Zero then return allocateBondRedemptionChange(rows, math.abs(signedChange.toLong))
     val aliveRows = rows.filter((bank, _) => !bank.failed)
     if aliveRows.isEmpty then return BankStockState(banks, financialStocks)
-    if signedChange < PLN.Zero then return allocateBondRedemptionChange(rows, aliveRows, math.abs(signedChange.toLong))
 
     val weights =
       val nonNegativeDeposits = aliveRows.map((_, stocks) => stocks.totalDeposits.toLong.max(0L))
@@ -57,37 +57,57 @@ private[agents] object BankBondPortfolio:
 
   private def allocateBondRedemptionChange(
       rows: BankRows,
-      aliveRows: Vector[(BankState, BankFinancialStocks)],
       requestedRaw: Long,
   ): BankStockState =
-    val capacities   = aliveRows.map((_, stocks) => BankRegulatoryMetrics.govBondHoldings(stocks).toLong.max(0L)).toArray
-    val availableRaw = capacities.sum
+    val capacities = Array.fill(rows.length)(0L)
+    val weights    = Array.fill(rows.length)(0L)
+
+    var availableRaw = 0L
+    var totalDep     = 0L
+    var aliveCount   = 0
+    var i            = 0
+    while i < rows.length do
+      val bank   = rows.banks(i)
+      val stocks = rows.financialStocks(i)
+      if !bank.failed then
+        aliveCount += 1
+        val capacity = BankRegulatoryMetrics.govBondHoldings(stocks).toLong.max(0L)
+        val deposits = stocks.totalDeposits.toLong.max(0L)
+        capacities(i) = capacity
+        weights(i) = deposits
+        availableRaw += capacity
+        totalDep += deposits
+      i += 1
+
+    if aliveCount == 0 then return BankStockState(rows.banks, rows.financialStocks)
+
     require(
       requestedRaw <= availableRaw,
       s"Banking.allocateBondRedemption cannot redeem ${PLN.fromRaw(requestedRaw).compact} from bank portfolios with only ${PLN.fromRaw(availableRaw).compact} available",
     )
 
-    val weights =
-      val nonNegativeDeposits = aliveRows.map((_, stocks) => stocks.totalDeposits.toLong.max(0L))
-      val totalDep            = nonNegativeDeposits.sum
-      if totalDep > 0L then nonNegativeDeposits.toArray
-      else capacities.map(capacity => if capacity > 0L then capacity else 0L)
+    if totalDep <= 0L then
+      i = 0
+      while i < rows.length do
+        weights(i) = if capacities(i) > 0L then capacities(i) else 0L
+        i += 1
 
     val initialReductions = Distribute.distribute(requestedRaw, weights)
-    val reductions        = Array.fill(aliveRows.length)(0L)
+    val reductions        = Array.fill(rows.length)(0L)
     var leftover          = 0L
-    var i                 = 0
-    while i < aliveRows.length do
+    i = 0
+    while i < rows.length do
       val capped = math.min(initialReductions(i), capacities(i))
       reductions(i) = capped
       leftover += initialReductions(i) - capped
       i += 1
 
+    val remainingWeights = Array.fill(rows.length)(0L)
     while leftover > 0L do
-      val remainingWeights = Array.fill(aliveRows.length)(0L)
-      var remainingTotal   = 0L
+      java.util.Arrays.fill(remainingWeights, 0L)
+      var remainingTotal = 0L
       i = 0
-      while i < aliveRows.length do
+      while i < rows.length do
         val remaining = capacities(i) - reductions(i)
         if remaining > 0L then
           remainingWeights(i) = remaining
@@ -103,7 +123,7 @@ private[agents] object BankBondPortfolio:
       var nextLeftover       = 0L
       var progressed         = false
       i = 0
-      while i < aliveRows.length do
+      while i < rows.length do
         val room   = capacities(i) - reductions(i)
         val reduce = math.min(residualReductions(i), room)
         if reduce > 0L then progressed = true
@@ -115,7 +135,7 @@ private[agents] object BankBondPortfolio:
       else
         var greedyLeftover = leftover
         i = 0
-        while i < aliveRows.length && greedyLeftover > 0L do
+        while i < rows.length && greedyLeftover > 0L do
           val room   = capacities(i) - reductions(i)
           val reduce = math.min(room, greedyLeftover)
           if reduce > 0L then
@@ -128,15 +148,17 @@ private[agents] object BankBondPortfolio:
         )
         leftover = greedyLeftover
 
-    val reductionById = aliveRows
-      .zip(reductions.iterator)
-      .collect {
-        case ((b, _), reductionRaw) if reductionRaw > 0L =>
-          b.id -> PLN.fromRaw(reductionRaw)
-      }
-      .toMap
-    val updatedRows   = rows.map((b, stocks) => reductionById.get(b.id).fold((b, stocks))(reduction => applyBondRedemption(b, stocks, reduction)))
-    BankStockState(updatedRows.map(_._1), updatedRows.map(_._2))
+    val updatedStocks = Array.ofDim[BankFinancialStocks](rows.length)
+    i = 0
+    while i < rows.length do
+      val bank         = rows.banks(i)
+      val stocks       = rows.financialStocks(i)
+      val reductionRaw = reductions(i)
+      updatedStocks(i) =
+        if reductionRaw > 0L then applyBondRedemptionStocks(bank, stocks, PLN.fromRaw(reductionRaw))
+        else stocks
+      i += 1
+    BankStockState(rows.banks, updatedStocks.toVector)
 
   private def applyBondAllocation(b: BankState, stocks: BankFinancialStocks, amount: PLN, currentYield: Rate)(using
       p: SimParams,
@@ -149,17 +171,17 @@ private[agents] object BankBondPortfolio:
         if newHtmTotal > PLN.Zero then (stocks.govBondHtm * b.htmBookYield + htmPortion * currentYield).ratioTo(newHtmTotal).toRate
         else b.htmBookYield
       (b.copy(htmBookYield = newBookYield), stocks.copy(govBondAfs = stocks.govBondAfs + afsPortion, govBondHtm = newHtmTotal))
-    else if amount < PLN.Zero then applyBondRedemption(b, stocks, amount.abs)
+    else if amount < PLN.Zero then (b, applyBondRedemptionStocks(b, stocks, amount.abs))
     else (b, stocks)
 
-  private def applyBondRedemption(b: BankState, stocks: BankFinancialStocks, reduction: PLN): (BankState, BankFinancialStocks) =
+  private def applyBondRedemptionStocks(b: BankState, stocks: BankFinancialStocks, reduction: PLN): BankFinancialStocks =
     val total = BankRegulatoryMetrics.govBondHoldings(stocks)
     require(
       reduction <= total,
       s"Banking.allocateBondRedemption allocated ${reduction.compact} to bank ${b.id.toInt} with only ${total.compact} available",
     )
-    if reduction <= PLN.Zero then (b, stocks)
-    else if reduction == total then (b, stocks.copy(govBondAfs = PLN.Zero, govBondHtm = PLN.Zero))
+    if reduction <= PLN.Zero then stocks
+    else if reduction == total then stocks.copy(govBondAfs = PLN.Zero, govBondHtm = PLN.Zero)
     else
       val afsReduceBase = (reduction * stocks.govBondAfs.ratioTo(total).toShare).min(stocks.govBondAfs)
       val htmReduceBase = (reduction - afsReduceBase).min(stocks.govBondHtm)
@@ -168,12 +190,9 @@ private[agents] object BankBondPortfolio:
       val extraHtm      = (residual - extraAfs).min(stocks.govBondHtm - htmReduceBase)
       val afsReduce     = afsReduceBase + extraAfs
       val htmReduce     = htmReduceBase + extraHtm
-      (
-        b,
-        stocks.copy(
-          govBondAfs = (stocks.govBondAfs - afsReduce).max(PLN.Zero),
-          govBondHtm = (stocks.govBondHtm - htmReduce).max(PLN.Zero),
-        ),
+      stocks.copy(
+        govBondAfs = (stocks.govBondAfs - afsReduce).max(PLN.Zero),
+        govBondHtm = (stocks.govBondHtm - htmReduce).max(PLN.Zero),
       )
 
   def sellToBuyer(banks: Vector[BankState], financialStocks: Vector[BankFinancialStocks], requested: PLN): BondSaleResult =
