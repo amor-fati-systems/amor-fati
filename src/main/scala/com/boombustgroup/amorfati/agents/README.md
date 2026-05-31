@@ -66,6 +66,8 @@ carry behavioral state, operational diagnostics, and legacy unsupported metrics.
 | `firm/FirmStartupLifecycle.scala` | Startup runway, operating-cost ramp, and one-month lifecycle advancement helpers |
 | `firm/FirmCreditAudit.scala` | Candidate-level and selected-credit audit aggregation, preserving trace fields independently from merge order |
 | `firm/FirmDecisionTraceBuilder.scala` | Side-effect-free projection of opening state, decision audit, and closing result into export traces |
+| `firm/FirmStepSemantics.scala` | Zero-cost phase tags for one firm's monthly timeline |
+| `firm/FirmStepDsl.scala` | Identity DSL wiring the firm step as opening → decision → execution → settlement → audit → close |
 | `firm/FirmProcessPipeline.scala` | Month-step orchestration preserving the public `Firm.process` facade |
 
 ## Household Modules
