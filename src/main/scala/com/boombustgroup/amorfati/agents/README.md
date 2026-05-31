@@ -14,7 +14,7 @@ carry behavioral state, operational diagnostics, and legacy unsupported metrics.
 |------|-------|-------|-------------------|
 | `Banking.scala` | 10 banking-sector rows: named bank archetypes plus residual Other banks (Poland 2026-04-30 baseline) | Public banking facade and domain types; implementation is split under `banking/` by credit, interbank, resolution, bond portfolio, capital, defaults, and regulatory metrics | BankCapital, BankDeposits, BondClearing, InterbankNetting |
 | `Firm.scala` | Heterogeneous firms (6 sectors) | Technology state (Traditional/Hybrid/Automated), capital stock, inventory, green capital, labor and production state; cash/debt/equity are ledger projections | BankCapital (NPL), FlowOfFunds, CorpBondStock |
-| `Household.scala` | Individual households | Skill, health, MPC, employment status, housing and demographic state; savings, debt, consumer credit, and equity wealth are ledger projections | BankDeposits, ConsumerCredit |
+| `Household.scala` | Individual households | Public household facade and domain types; implementation is split under `household/` by income, credit, liquidity, distress, labor transitions, monthly flow construction, and aggregate computation | BankDeposits, ConsumerCredit |
 | `Immigration.scala` | Immigrant workers | Stock, monthly inflow/outflow, remittance outflow | BankDeposits (remittance → deposit outflow), Nfa |
 | `Insurance.scala` | Life + non-life sector | Premium, claim, and investment-income diagnostics; reserves and securities holdings are ledger projections | BankDeposits (premium/claims), BondClearing |
 | `Jst.scala` | Local government (JST) | Revenue, spending, deficit, unsupported debt metric; cash is ledger-owned | BankDeposits (JST deposits), JstDebt |
@@ -48,6 +48,21 @@ carry behavioral state, operational diagnostics, and legacy unsupported metrics.
 | `banking/BankRegulatoryMetrics.scala` | Aggregate bank balance sheet, CAR, NPL, HQLA, LCR, NSFR, monetary aggregate metrics |
 | `banking/BankDefaultConfigs.scala` | Default Poland-facing bank archetype configuration |
 | `banking/BankRows.scala` | Internal validated alignment boundary for bank operational rows and ledger-owned stock rows |
+
+## Household Modules
+
+| File | Boundary |
+|------|----------|
+| `household/HouseholdIncomeConstruction.scala` | Income, PIT, social transfers, and labor-status income effects |
+| `household/HouseholdConsumerCredit.scala` | Consumer-credit underwriting, approval gates, and residual shortfall demand |
+| `household/HouseholdLiquidityWaterfall.scala` | Consumption priority, liquidity shortfall attribution, and non-negative deposit settlement |
+| `household/HouseholdDistressMachine.scala` | Financial-distress lifecycle, unemployment scarring, MPC, and social-neighbor distress |
+| `household/HouseholdLaborTransitions.scala` | Voluntary cross-sector search and retraining transitions |
+| `household/HouseholdMonthlyFlowConstruction.scala` | Per-household month pipeline from budget flows to finalized state and stocks |
+| `household/HouseholdAggregateComputation.scala` | Household aggregate accounting, per-bank flow totals, distribution stats, and Gini |
+| `household/HouseholdStepRunner.scala` | Month-step orchestration preserving the public `Household.step` facade |
+| `household/HouseholdMortgageSchedule.scala` | Mortgage amortization helpers for household financial stocks |
+| `household/HouseholdParameters.scala` | Shared household constants used across init, monthly execution, and aggregates |
 
 ## How to extend
 
