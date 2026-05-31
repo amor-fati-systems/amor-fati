@@ -31,12 +31,9 @@ private[agents] object BankBondPortfolio:
       signedChange: PLN,
       currentYield: Rate,
   )(using p: SimParams): BankStockState =
-    require(
-      banks.length == financialStocks.length,
-      s"Banking.allocateBondChange requires aligned banks and financial stocks, got ${banks.length} banks and ${financialStocks.length} stock rows",
-    )
+    val rows      = BankRows.from(banks, financialStocks, "Banking.allocateBondChange")
     if signedChange == PLN.Zero then return BankStockState(banks, financialStocks)
-    val aliveRows = banks.zip(financialStocks).filterNot(_._1.failed)
+    val aliveRows = rows.filter((bank, _) => !bank.failed)
     if aliveRows.isEmpty then return BankStockState(banks, financialStocks)
 
     val weights =
@@ -54,9 +51,7 @@ private[agents] object BankBondPortfolio:
       }
       .toMap
 
-    val updatedRows = banks.zip(financialStocks).map { case (b, stocks) =>
-      signedById.get(b.id).fold((b, stocks))(amount => applyBondAllocation(b, stocks, amount, currentYield))
-    }
+    val updatedRows = rows.map((b, stocks) => signedById.get(b.id).fold((b, stocks))(amount => applyBondAllocation(b, stocks, amount, currentYield)))
     BankStockState(updatedRows.map(_._1), updatedRows.map(_._2))
 
   private def applyBondAllocation(b: BankState, stocks: BankFinancialStocks, amount: PLN, currentYield: Rate)(using
@@ -88,14 +83,11 @@ private[agents] object BankBondPortfolio:
     else (b, stocks)
 
   def sellToBuyer(banks: Vector[BankState], financialStocks: Vector[BankFinancialStocks], requested: PLN): BondSaleResult =
-    require(
-      banks.length == financialStocks.length,
-      s"Banking.sellToBuyer requires aligned banks and financial stocks, got ${banks.length} banks and ${financialStocks.length} stock rows",
-    )
+    val rows      = BankRows.from(banks, financialStocks, "Banking.sellToBuyer")
     val zeroSales = Vector.fill(banks.length)(PLN.Zero)
     if requested <= PLN.Zero then BondSaleResult(banks, financialStocks, PLN.Zero, zeroSales)
     else
-      val eligible   = banks.zip(financialStocks).filter((b, stocks) => !b.failed && BankRegulatoryMetrics.govBondHoldings(stocks) > PLN.Zero)
+      val eligible   = rows.filter((b, stocks) => !b.failed && BankRegulatoryMetrics.govBondHoldings(stocks) > PLN.Zero)
       val totalBonds = eligible.map((_, stocks) => BankRegulatoryMetrics.govBondHoldings(stocks)).sumPln
       if totalBonds <= PLN.Zero then BondSaleResult(banks, financialStocks, PLN.Zero, zeroSales)
       else
@@ -108,31 +100,27 @@ private[agents] object BankBondPortfolio:
             b.id -> PLN.fromRaw(sold)
           }
           .toMap
-        val resultStocks   = banks.zip(financialStocks).map { case (b, stocks) =>
-          soldById.get(b.id).fold(stocks) { sold =>
-            val afsReduce = sold.min(stocks.govBondAfs)
-            val htmReduce = sold - afsReduce
-            stocks.copy(
-              govBondAfs = (stocks.govBondAfs - afsReduce).max(PLN.Zero),
-              govBondHtm = (stocks.govBondHtm - htmReduce).max(PLN.Zero),
-            )
-          }
-        }
+        val resultStocks   = rows.map: (b, stocks) =>
+          soldById
+            .get(b.id)
+            .fold(stocks): sold =>
+              val afsReduce = sold.min(stocks.govBondAfs)
+              val htmReduce = sold - afsReduce
+              stocks.copy(
+                govBondAfs = (stocks.govBondAfs - afsReduce).max(PLN.Zero),
+                govBondHtm = (stocks.govBondHtm - htmReduce).max(PLN.Zero),
+              )
         val soldByBank     = banks.map(bank => soldById.getOrElse(bank.id, PLN.Zero))
         BondSaleResult(banks, resultStocks, requestedSale, soldByBank)
 
   def processHtmForcedSale(banks: Vector[BankState], financialStocks: Vector[BankFinancialStocks], currentYield: Rate)(using
       p: SimParams,
   ): HtmForcedSaleResult =
-    require(
-      banks.length == financialStocks.length,
-      s"Banking.processHtmForcedSale requires aligned banks and financial stocks, got ${banks.length} banks and ${financialStocks.length} stock rows",
-    )
+    val rows      = BankRows.from(banks, financialStocks, "Banking.processHtmForcedSale")
     val threshold = p.banking.htmForcedSaleThreshold * p.banking.lcrMin
     var totalLoss = PLN.Zero
-    val updated   = banks
-      .zip(financialStocks)
-      .map: (b, stocks) =>
+    val updated   =
+      rows.map: (b, stocks) =>
         if b.failed || stocks.govBondHtm <= PLN.Zero || BankRegulatoryMetrics.lcr(stocks) >= threshold then (b, stocks)
         else
           val reclassified = stocks.govBondHtm * p.banking.htmForcedSaleRate

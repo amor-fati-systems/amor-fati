@@ -34,10 +34,7 @@ private[agents] object BankFailureResolution:
       ccyb: Multiplier,
       bankCorpBondHoldings: BankCorpBondHoldings,
   )(using p: SimParams): FailureCheckResult =
-    require(
-      banks.length == financialStocks.length,
-      s"Banking.checkFailures requires aligned banks and financial stocks, got ${banks.length} banks and ${financialStocks.length} stock rows",
-    )
+    val rows = BankRows.from(banks, financialStocks, "Banking.checkFailures")
     if !enabled then
       FailureCheckResult(
         banks = banks.map: b =>
@@ -48,30 +45,24 @@ private[agents] object BankFailureResolution:
         anyFailed = false,
       )
     else
-      val checked = banks
-        .zip(financialStocks)
-        .map: (b, stocks) =>
-          if b.failed then (b, None)
-          else
-            val minCar    = Macroprudential.effectiveMinCar(b.id.toInt, ccyb)
-            val lowCar    = BankRegulatoryMetrics.car(b, stocks, bankCorpBondHoldings(b.id)) < minCar
-            val newConsec = if lowCar then b.consecutiveLowCar + 1 else 0
-            val reason    = failureReason(b, stocks, ccyb, bankCorpBondHoldings)
-            reason match
-              case Some(r) => (b.copy(status = BankStatus.Failed(month), capital = PLN.Zero), Some(FailureEvent(b.id, month, r)))
-              case None    => (b.copy(status = BankStatus.Active(newConsec)), None)
+      val checked = rows.map: (b, stocks) =>
+        if b.failed then (b, None)
+        else
+          val minCar    = Macroprudential.effectiveMinCar(b.id.toInt, ccyb)
+          val lowCar    = BankRegulatoryMetrics.car(b, stocks, bankCorpBondHoldings(b.id)) < minCar
+          val newConsec = if lowCar then b.consecutiveLowCar + 1 else 0
+          val reason    = failureReason(b, stocks, ccyb, bankCorpBondHoldings)
+          reason match
+            case Some(r) => (b.copy(status = BankStatus.Failed(month), capital = PLN.Zero), Some(FailureEvent(b.id, month, r)))
+            case None    => (b.copy(status = BankStatus.Active(newConsec)), None)
       val updated = checked.map(_._1)
       val events  = checked.flatMap(_._2)
       FailureCheckResult(updated, events.nonEmpty, events)
 
   def computeBfgLevy(banks: Vector[BankState], financialStocks: Vector[BankFinancialStocks])(using p: SimParams): PerBankAmounts =
-    require(
-      banks.length == financialStocks.length,
-      s"Banking.computeBfgLevy requires aligned banks and financial stocks, got ${banks.length} banks and ${financialStocks.length} stock rows",
-    )
-    val perBank = banks
-      .zip(financialStocks)
-      .map: (b, stocks) =>
+    val rows    = BankRows.from(banks, financialStocks, "Banking.computeBfgLevy")
+    val perBank =
+      rows.map: (b, stocks) =>
         if b.failed then PLN.Zero
         else stocks.totalDeposits * p.banking.bfgLevyRate.monthly
     PerBankAmounts(perBank, perBank.sumPln)
@@ -79,13 +70,9 @@ private[agents] object BankFailureResolution:
   def applyBailIn(banks: Vector[BankState], financialStocks: Vector[BankFinancialStocks], eligibleBankIds: Set[BankId])(using
       p: SimParams,
   ): BailInResult =
-    require(
-      banks.length == financialStocks.length,
-      s"Banking.applyBailIn requires aligned banks and financial stocks, got ${banks.length} banks and ${financialStocks.length} stock rows",
-    )
-    val withHaircut = banks
-      .zip(financialStocks)
-      .map: (b, stocks) =>
+    val rows        = BankRows.from(banks, financialStocks, "Banking.applyBailIn")
+    val withHaircut =
+      rows.map: (b, stocks) =>
         val unprocessedDeposits = (stocks.totalDeposits - stocks.bailedInDeposits).max(PLN.Zero)
         if b.failed && eligibleBankIds.contains(b.id) && unprocessedDeposits > PLN.Zero then
           val guaranteed        = unprocessedDeposits.min(p.banking.bfgDepositGuarantee)
@@ -102,15 +89,12 @@ private[agents] object BankFailureResolution:
       financialStocks: Vector[BankFinancialStocks],
       bankCorpBondHoldings: Vector[PLN],
   ): ResolutionResult =
-    require(
-      banks.length == financialStocks.length,
-      s"Banking.resolveFailures requires aligned banks and financial stocks, got ${banks.length} banks and ${financialStocks.length} stock rows",
-    )
-    val holderBalances = Vector.tabulate(banks.length)(index => bankCorpBondHoldings.lift(index).getOrElse(PLN.Zero))
-    val newlyFailed    = banks.zip(financialStocks).filter((b, stocks) => b.failed && stocks.totalDeposits > PLN.Zero)
+    val rows           = BankRows.from(banks, financialStocks, "Banking.resolveFailures")
+    val holderBalances = Vector.tabulate(rows.length)(index => bankCorpBondHoldings.lift(index).getOrElse(PLN.Zero))
+    val newlyFailed    = rows.filter((b, stocks) => b.failed && stocks.totalDeposits > PLN.Zero)
     if newlyFailed.isEmpty then ResolutionResult(banks, financialStocks, BankId.NoBank, holderBalances)
     else
-      if banks.forall(_.failed) then
+      if rows.forallBanks(_.failed) then
         throw IllegalStateException(
           "Banking.resolveFailures encountered an all-failed banking sector with unresolved deposits. Explicit bridge-bank recapitalization or all-failed shutdown semantics are required; refusing to resurrect a failed bank as Active(0).",
         )
@@ -126,41 +110,39 @@ private[agents] object BankFailureResolution:
       val addBailedInDep = toAbsorb.map(_._2.bailedInDeposits).sumPln
       val htmYieldWt     = toAbsorb.map((bank, stocks) => stocks.govBondHtm * bank.htmBookYield).sumPln
 
-      val resolvedRows      = banks
-        .zip(financialStocks)
-        .map: (b, stocks) =>
-          if b.id == absorberId then
-            val combinedHtm      = stocks.govBondHtm + addHtm
-            val combinedHtmYield =
-              if combinedHtm > PLN.Zero then (stocks.govBondHtm * b.htmBookYield + htmYieldWt).ratioTo(combinedHtm).toRate
-              else b.htmBookYield
-            (
-              b.copy(htmBookYield = combinedHtmYield, status = BankStatus.Active(0)),
-              stocks.copy(
-                totalDeposits = stocks.totalDeposits + addDep,
-                firmLoan = (stocks.firmLoan + addLoans).max(PLN.Zero),
-                govBondAfs = stocks.govBondAfs + addAfs,
-                govBondHtm = combinedHtm,
-                consumerLoan = stocks.consumerLoan + addCC,
-                interbankLoan = stocks.interbankLoan + addIB,
-                bailedInDeposits = (stocks.bailedInDeposits + addBailedInDep).min(stocks.totalDeposits + addDep).max(PLN.Zero),
-              ),
-            )
-          else if b.failed && stocks.totalDeposits > PLN.Zero then
-            (
-              b.copy(htmBookYield = Rate.Zero, nplAmount = PLN.Zero, consumerNpl = PLN.Zero),
-              stocks.copy(
-                totalDeposits = PLN.Zero,
-                firmLoan = PLN.Zero,
-                govBondAfs = PLN.Zero,
-                govBondHtm = PLN.Zero,
-                reserve = PLN.Zero,
-                interbankLoan = PLN.Zero,
-                consumerLoan = PLN.Zero,
-                bailedInDeposits = PLN.Zero,
-              ),
-            )
-          else (b, stocks)
+      val resolvedRows      = rows.map: (b, stocks) =>
+        if b.id == absorberId then
+          val combinedHtm      = stocks.govBondHtm + addHtm
+          val combinedHtmYield =
+            if combinedHtm > PLN.Zero then (stocks.govBondHtm * b.htmBookYield + htmYieldWt).ratioTo(combinedHtm).toRate
+            else b.htmBookYield
+          (
+            b.copy(htmBookYield = combinedHtmYield, status = BankStatus.Active(0)),
+            stocks.copy(
+              totalDeposits = stocks.totalDeposits + addDep,
+              firmLoan = (stocks.firmLoan + addLoans).max(PLN.Zero),
+              govBondAfs = stocks.govBondAfs + addAfs,
+              govBondHtm = combinedHtm,
+              consumerLoan = stocks.consumerLoan + addCC,
+              interbankLoan = stocks.interbankLoan + addIB,
+              bailedInDeposits = (stocks.bailedInDeposits + addBailedInDep).min(stocks.totalDeposits + addDep).max(PLN.Zero),
+            ),
+          )
+        else if b.failed && stocks.totalDeposits > PLN.Zero then
+          (
+            b.copy(htmBookYield = Rate.Zero, nplAmount = PLN.Zero, consumerNpl = PLN.Zero),
+            stocks.copy(
+              totalDeposits = PLN.Zero,
+              firmLoan = PLN.Zero,
+              govBondAfs = PLN.Zero,
+              govBondHtm = PLN.Zero,
+              reserve = PLN.Zero,
+              interbankLoan = PLN.Zero,
+              consumerLoan = PLN.Zero,
+              bailedInDeposits = PLN.Zero,
+            ),
+          )
+        else (b, stocks)
       val resolved          = resolvedRows.map(_._1)
       val resolvedStocks    = resolvedRows.map(_._2)
       val resolvedCorpBonds = resolved.zip(resolvedStocks).zipWithIndex.map { case ((bank, stocks), index) =>
@@ -175,11 +157,8 @@ private[agents] object BankFailureResolution:
       financialStocks: Vector[BankFinancialStocks],
       bankCorpBondHoldings: BankCorpBondHoldings,
   ): BankId =
-    require(
-      banks.length == financialStocks.length,
-      s"Banking.healthiestBankId requires aligned banks and financial stocks, got ${banks.length} banks and ${financialStocks.length} stock rows",
-    )
-    val alive = banks.zip(financialStocks).filterNot(_._1.failed)
+    val rows  = BankRows.from(banks, financialStocks, "Banking.healthiestBankId")
+    val alive = rows.filter((bank, _) => !bank.failed)
     if alive.isEmpty then
       throw IllegalStateException(
         "Banking.healthiestBankId cannot select an absorber because every bank is failed. Explicit bridge-bank recapitalization or all-failed shutdown semantics are required.",

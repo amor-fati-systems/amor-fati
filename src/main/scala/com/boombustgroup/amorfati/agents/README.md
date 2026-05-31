@@ -47,6 +47,7 @@ carry behavioral state, operational diagnostics, and legacy unsupported metrics.
 | `banking/BankCapitalWaterfall.scala` | Per-bank retained-income and loss waterfall for regulatory capital |
 | `banking/BankRegulatoryMetrics.scala` | Aggregate bank balance sheet, CAR, NPL, HQLA, LCR, NSFR, monetary aggregate metrics |
 | `banking/BankDefaultConfigs.scala` | Default Poland-facing bank archetype configuration |
+| `banking/BankRows.scala` | Internal validated alignment boundary for bank operational rows and ledger-owned stock rows |
 
 ## How to extend
 

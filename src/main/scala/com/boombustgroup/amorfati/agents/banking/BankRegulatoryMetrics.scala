@@ -39,20 +39,17 @@ private[agents] object BankRegulatoryMetrics:
       financialStocks: Vector[BankFinancialStocks],
       bankCorpBondHoldings: BankCorpBondHoldings,
   ): Aggregate =
-    require(
-      banks.length == financialStocks.length,
-      s"Banking.aggregateFromBankStocks requires aligned banks and financial stocks, got ${banks.length} banks and ${financialStocks.length} stock rows",
-    )
+    val rows = BankRows.from(banks, financialStocks, "Banking.aggregateFromBankStocks")
     Aggregate(
-      totalLoans = financialStocks.foldLeft(PLN.Zero)(_ + _.firmLoan),
-      nplAmount = banks.foldLeft(PLN.Zero)(_ + _.nplAmount),
-      capital = banks.foldLeft(PLN.Zero)(_ + _.capital),
-      deposits = financialStocks.foldLeft(PLN.Zero)(_ + _.totalDeposits),
-      afsBonds = financialStocks.foldLeft(PLN.Zero)(_ + _.govBondAfs),
-      htmBonds = financialStocks.foldLeft(PLN.Zero)(_ + _.govBondHtm),
-      consumerLoans = financialStocks.foldLeft(PLN.Zero)(_ + _.consumerLoan),
-      consumerNpl = banks.foldLeft(PLN.Zero)(_ + _.consumerNpl),
-      corpBondHoldings = banks.foldLeft(PLN.Zero)((acc, bank) => acc + bankCorpBondHoldings(bank.id)),
+      totalLoans = rows.foldLeft(PLN.Zero)((acc, _, stocks) => acc + stocks.firmLoan),
+      nplAmount = rows.foldLeft(PLN.Zero)((acc, bank, _) => acc + bank.nplAmount),
+      capital = rows.foldLeft(PLN.Zero)((acc, bank, _) => acc + bank.capital),
+      deposits = rows.foldLeft(PLN.Zero)((acc, _, stocks) => acc + stocks.totalDeposits),
+      afsBonds = rows.foldLeft(PLN.Zero)((acc, _, stocks) => acc + stocks.govBondAfs),
+      htmBonds = rows.foldLeft(PLN.Zero)((acc, _, stocks) => acc + stocks.govBondHtm),
+      consumerLoans = rows.foldLeft(PLN.Zero)((acc, _, stocks) => acc + stocks.consumerLoan),
+      consumerNpl = rows.foldLeft(PLN.Zero)((acc, bank, _) => acc + bank.consumerNpl),
+      corpBondHoldings = rows.foldLeft(PLN.Zero)((acc, bank, _) => acc + bankCorpBondHoldings(bank.id)),
     )
 
   def govBondHoldings(stocks: BankFinancialStocks): PLN =
@@ -92,14 +89,10 @@ private[agents] object BankRegulatoryMetrics:
       tfiAum: PLN,
       corpBondOutstanding: PLN,
   ): Banking.MonetaryAggregates =
-    require(
-      banks.length == financialStocks.length,
-      s"Banking.MonetaryAggregates.computeFromBankStocks requires aligned banks and financial stocks, got ${banks.length} banks and ${financialStocks.length} stock rows",
-    )
-    val alive  = banks.zip(financialStocks).filterNot(_._1.failed).map(_._2)
-    val m0     = alive.map(_.reserve).sumPln
-    val demand = alive.map(_.demandDeposit).sumPln
-    val term   = alive.map(_.termDeposit).sumPln
+    val rows   = BankRows.from(banks, financialStocks, "Banking.MonetaryAggregates.computeFromBankStocks")
+    val m0     = rows.foldLeft(PLN.Zero)((acc, bank, stocks) => if bank.failed then acc else acc + stocks.reserve)
+    val demand = rows.foldLeft(PLN.Zero)((acc, bank, stocks) => if bank.failed then acc else acc + stocks.demandDeposit)
+    val term   = rows.foldLeft(PLN.Zero)((acc, bank, stocks) => if bank.failed then acc else acc + stocks.termDeposit)
     val m1     = demand
     val m2     = demand + term
     val m3     = m2 + tfiAum + corpBondOutstanding

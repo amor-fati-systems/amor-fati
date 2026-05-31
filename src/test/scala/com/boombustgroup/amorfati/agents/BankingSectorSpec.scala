@@ -192,6 +192,16 @@ class BankingSectorSpec extends AnyFlatSpec with Matchers:
     Banking.clearInterbank(banks(rows), stocks(rows), configs.take(2)).financialStocks(1).interbankLoan shouldBe PLN.Zero
   }
 
+  it should "fail fast when bank configs are not aligned with bank rows" in {
+    val rows = Vector(
+      mkBankRow(id = 0, loans = PLN(300000)),
+      mkBankRow(id = 1, deposits = PLN(500000), loans = PLN(800000), capital = PLN(100000)),
+    )
+
+    val ex = the[IllegalArgumentException] thrownBy Banking.clearInterbank(banks(rows), stocks(rows), configs.take(1))
+    ex.getMessage should include("Banking.clearInterbank requires aligned banks and configs")
+  }
+
   "Banking.checkFailures" should "respect disabled mode, trigger failures, and reset recovered counters" in {
     val weak     = mkBankRow(capital = PLN(1000), status = BankStatus.Active(5))
     val disabled = Banking.checkFailures(Vector(weak.bank), Vector(weak.stocks), ExecutionMonth(30), enabled = false, Multiplier.Zero)
