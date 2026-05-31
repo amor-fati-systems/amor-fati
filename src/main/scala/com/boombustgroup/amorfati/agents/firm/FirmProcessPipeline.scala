@@ -32,17 +32,23 @@ private[agents] object FirmProcessPipeline:
       traceDecision: Boolean,
   )(using p: SimParams): Result =
     val stepInput = Input(
-      firm = firm,
-      financialStocks = financialStocks,
-      world = w,
-      executionMonth = executionMonth,
-      operationalSignals = operationalSignals,
-      lendRate = lendRate,
-      bankCreditDecision = bankCreditDecision,
-      allFirms = allFirms,
-      rng = rng,
-      corpBondDebt = corpBondDebt,
-      traceDecision = traceDecision,
+      opening = OpeningState(
+        firm = firm,
+        financialStocks = financialStocks,
+        world = w,
+        executionMonth = executionMonth,
+        operationalSignals = operationalSignals,
+        corpBondDebt = corpBondDebt,
+      ),
+      credit = CreditSurface(
+        lendRate = lendRate,
+        bankCreditDecision = bankCreditDecision,
+      ),
+      environment = DecisionEnvironment(
+        allFirms = allFirms,
+        rng = rng,
+        traceDecision = traceDecision,
+      ),
     )
     MonthWorkflow.run:
       for

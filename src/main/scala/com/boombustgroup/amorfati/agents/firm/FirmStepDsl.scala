@@ -18,53 +18,36 @@ private[agents] object FirmStepDsl:
 
   /** Selects the stochastic firm decision without mutating firm state. */
   def decide(opening: OpeningInput)(using SimParams): Program[SelectedDecision] =
-    val in = opening.input
+    val in     = opening.input
+    val state  = in.opening
+    val credit = in.credit
+    val env    = in.environment
     MonthWorkflow.pure(
       FirmStepSemantics.selectedDecision(
         FirmDecisionEngine.decide(
-          in.firm,
-          in.financialStocks,
-          in.world,
-          in.executionMonth,
-          in.operationalSignals,
-          in.lendRate,
-          in.bankCreditDecision,
-          in.allFirms,
-          in.rng,
-          in.corpBondDebt,
+          state.firm,
+          state.financialStocks,
+          state.world,
+          state.executionMonth,
+          state.operationalSignals,
+          credit.lendRate,
+          credit.bankCreditDecision,
+          env.allFirms,
+          env.rng,
+          state.corpBondDebt,
         ),
       ),
     )
 
   /** Applies the selected decision into primary state and flow fields. */
   def execute(opening: OpeningInput, decision: SelectedDecision)(using SimParams): Program[PrimaryExecution] =
-    val in       = opening.input
+    val state    = opening.input.opening
     val selected = decision.decisionWithAudit
-    MonthWorkflow.pure(FirmStepSemantics.primaryExecution(FirmResultExecution.execute(in.firm, in.financialStocks, selected.decision)))
+    MonthWorkflow.pure(FirmStepSemantics.primaryExecution(FirmResultExecution.execute(state.firm, state.financialStocks, selected.decision)))
 
-  /** Settles deterministic same-month effects after primary execution.
-    *
-    * This preserves trace timing: opening trace is projected after scheduled
-    * debt service, while closing trace waits until the audited closed result.
-    */
+  /** Settles deterministic same-month effects after primary execution. */
   def settle(opening: OpeningInput, decision: SelectedDecision, executed: PrimaryExecution)(using SimParams): Program[SettledResult] =
-    val in                        = opening.input
-    val selected                  = decision.decisionWithAudit
-    val signaled                  = FirmPostProcessing.updateHiringSignalState(executed.result, in.firm, in.world, in.operationalSignals)
-    val debtSettled               = FirmPostProcessing.applyLoanAmortization(signaled)
-    val tracedOpening             =
-      if in.traceDecision then
-        debtSettled.copy(decisionTrace = Some(FirmDecisionTraceBuilder.buildDecisionTrace(in.firm, in.financialStocks, in.lendRate, selected, debtSettled)))
-      else debtSettled
-    val greenInvested             = FirmPostProcessing.applyGreenInvestment(tracedOpening)
-    val capitalInvested           =
-      FirmPostProcessing.applyInvestment(greenInvested, in.operationalSignals.sectorDemandPressure(in.firm.sector.toInt), in.bankCreditDecision)
-    val digitalReadinessDrifted   = FirmPostProcessing.applyDigitalDrift(capitalInvested)
-    val inventorySettled          =
-      FirmPostProcessing.applyInventory(digitalReadinessDrifted, sectorDemandMult = in.operationalSignals.sectorDemandMult(in.firm.sector.toInt))
-    val fdiRepatriationSettled    = FirmPostProcessing.applyFdiFlows(inventorySettled)
-    val informalCitEvasionSettled = FirmPostProcessing.applyInformalCitEvasion(fdiRepatriationSettled, in.world.mechanisms.informalCyclicalAdj)
-    MonthWorkflow.pure(FirmStepSemantics.settledResult(informalCitEvasionSettled))
+    FirmSettlementDsl.run(opening, decision, executed)
 
   /** Enriches closed monetary fields with selected and candidate credit
     * diagnostics.
@@ -76,9 +59,9 @@ private[agents] object FirmStepDsl:
     * is enabled.
     */
   def close(opening: OpeningInput, audited: AuditedResult)(using SimParams): Program[ClosedResult] =
-    val in     = opening.input
+    val env    = opening.input.environment
     val result = audited.result
     val closed =
-      if in.traceDecision then result.copy(decisionTrace = result.decisionTrace.map(FirmDecisionTraceBuilder.refreshDecisionTraceClosing(_, result)))
+      if env.traceDecision then result.copy(decisionTrace = result.decisionTrace.map(FirmDecisionTraceBuilder.refreshDecisionTraceClosing(_, result)))
       else result
     MonthWorkflow.pure(FirmStepSemantics.closedResult(closed))

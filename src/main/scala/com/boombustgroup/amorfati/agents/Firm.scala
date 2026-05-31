@@ -222,7 +222,7 @@ object Firm:
     FirmOperatingDecision.hasWorkingCapitalGrace(firm, pnl, cashAfterDecision)
 
   private[amorfati] def adoptionWillingnessMultiplier(month: ExecutionMonth, localAuto: Share)(using p: SimParams): Share =
-    FirmDecisionEngine.adoptionWillingnessMultiplier(month, localAuto)
+    FirmTechnologyAdoption.adoptionWillingnessMultiplier(month, localAuto)
 
   private[amorfati] def canFundUpsize(
       firm: State,

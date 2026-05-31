@@ -58,9 +58,11 @@ carry behavioral state, operational diagnostics, and legacy unsupported metrics.
 | `firm/FirmProduction.scala` | Technology-state liveness, headcount, capacity, CES output, and capital-planning scale |
 | `firm/FirmLaborPlanning.scala` | Labor-demand planning, hiring headroom, smooth adjustment, and labor diagnostics |
 | `firm/FirmTechnologyPlanning.scala` | AI/hybrid CAPEX, digital-investment cost, automation-neighborhood metrics, and sigma threshold |
-| `firm/FirmDecisionEngine.scala` | Stochastic operating and technology-upgrade decisions without state mutation |
+| `firm/FirmDecisionEngine.scala` | Technology-state dispatch for stochastic firm decisions without state mutation |
+| `firm/FirmTechnologyAdoption.scala` | AI/hybrid adoption feasibility, probabilities, implementation rolls, and technology-credit audit merge order |
 | `firm/FirmOperatingDecision.scala` | Survival fallback decisions: labor resizing, working-capital grace, startup runway, and digital investment |
 | `firm/FirmResultExecution.scala` | Pure application of selected decisions into closing firm state and primary flows |
+| `firm/FirmSettlementDsl.scala` | Phase-tagged deterministic settlement after primary decision execution |
 | `firm/FirmPostProcessing.scala` | Deterministic post-decision monthly adjustments: amortization, investment, inventory, FDI, and informal CIT evasion |
 | `firm/FirmProfitAndLoss.scala` | Revenue, operating costs, ETS, interest, profit shifting, and CIT loss-carryforward accounting |
 | `firm/FirmStartupLifecycle.scala` | Startup runway, operating-cost ramp, and one-month lifecycle advancement helpers |
