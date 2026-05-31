@@ -157,6 +157,17 @@ class BankingSectorSpec extends AnyFlatSpec with Matchers:
     approval.approvalRoll should not be empty
   }
 
+  it should "include consumer loans in reserve-pressure approval penalty" in {
+    val withoutConsumer = mkBankRow(deposits = PLN(1000000), loans = PLN(800000), capital = PLN(500000))
+    val withConsumer    = mkBankRow(deposits = PLN(1000000), loans = PLN(800000), capital = PLN(500000), consumerLoans = PLN(100000))
+
+    val noPressure = Banking.creditApproval(withoutConsumer.bank, withoutConsumer.stocks, PLN(100000), RandomStream.seeded(42), Multiplier.Zero, PLN.Zero)
+    val pressured  = Banking.creditApproval(withConsumer.bank, withConsumer.stocks, PLN(100000), RandomStream.seeded(42), Multiplier.Zero, PLN.Zero)
+
+    noPressure.approvalProbability shouldBe Some(Share.One)
+    pressured.approvalProbability shouldBe Some(Share.decimal(5, 1))
+  }
+
   "Banking.interbankRate" should "use explicit financial stocks" in {
     val healthy  = Vector(mkBankRow(id = 0), mkBankRow(id = 1))
     val stressed = Vector(
@@ -190,6 +201,26 @@ class BankingSectorSpec extends AnyFlatSpec with Matchers:
       mkBankRow(id = 1, deposits = PLN(500000), loans = PLN(800000), capital = PLN(100000), status = BankStatus.Failed(ExecutionMonth(30))),
     )
     Banking.clearInterbank(banks(rows), stocks(rows), configs.take(2)).financialStocks(1).interbankLoan shouldBe PLN.Zero
+  }
+
+  it should "preserve reserves when no interbank matching is possible" in {
+    val rows    = Vector(
+      mkBankRow(id = 0, deposits = PLN(1000000), loans = PLN(100000), capital = PLN(100000), reservesAtNbp = PLN(12345), interbankNet = PLN(5000)),
+    )
+    val cleared = Banking.clearInterbank(banks(rows), stocks(rows), configs.take(1))
+
+    cleared.financialStocks.head.interbankLoan shouldBe PLN.Zero
+    cleared.financialStocks.head.reserve shouldBe PLN(12345)
+  }
+
+  it should "include consumer loans when computing interbank excess" in {
+    val rows    = Vector(
+      mkBankRow(id = 0, deposits = PLN(1000000), loans = PLN(850000), capital = PLN(300000), consumerLoans = PLN(150000)),
+      mkBankRow(id = 1, deposits = PLN(1000000), loans = PLN(100000), capital = PLN(300000)),
+    )
+    val cleared = Banking.clearInterbank(banks(rows), stocks(rows), configs.take(2))
+
+    decimal(cleared.financialStocks(0).interbankLoan) shouldBe BigDecimal("-35000.0") +- BigDecimal("1.0")
   }
 
   it should "fail fast when bank configs are not aligned with bank rows" in {
@@ -301,6 +332,29 @@ class BankingSectorSpec extends AnyFlatSpec with Matchers:
 
     decimal(govBonds(result.financialStocks(0))) shouldBe BigDecimal("6000.0") +- BigDecimal("0.01")
     decimal(govBonds(result.financialStocks(1))) shouldBe BigDecimal("0.0") +- BigDecimal("0.01")
+  }
+
+  it should "redistribute capped redemption away from banks with insufficient holdings" in {
+    val rows   = Vector(
+      mkBankRow(id = 0, deposits = PLN(500000), loans = PLN.Zero, capital = PLN(100000), govBondHoldings = PLN(8000)),
+      mkBankRow(id = 1, deposits = PLN(500000), loans = PLN.Zero, capital = PLN(100000), govBondHoldings = PLN(1000)),
+    )
+    val result = Banking.allocateBondRedemption(banks(rows), stocks(rows), PLN(4000), Rate.decimal(5, 2))
+
+    decimal(govBonds(result.financialStocks(0))) shouldBe BigDecimal("5000.0") +- BigDecimal("0.01")
+    decimal(govBonds(result.financialStocks(1))) shouldBe BigDecimal("0.0") +- BigDecimal("0.01")
+    result.financialStocks.foreach: stocks =>
+      stocks.govBondAfs should be >= PLN.Zero
+      stocks.govBondHtm should be >= PLN.Zero
+  }
+
+  it should "fail fast when redemption exceeds alive bank holdings" in {
+    val rows = Vector(
+      mkBankRow(id = 0, deposits = PLN(500000), loans = PLN.Zero, capital = PLN(100000), govBondHoldings = PLN(1000)),
+    )
+
+    val ex = the[IllegalArgumentException] thrownBy Banking.allocateBondRedemption(banks(rows), stocks(rows), PLN(2000), Rate.decimal(5, 2))
+    ex.getMessage should include("Banking.allocateBondRedemption cannot redeem")
   }
 
   "Banking.sellToBuyer" should "sell AFS first and preserve exact requested sale where available" in {

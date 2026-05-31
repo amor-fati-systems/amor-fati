@@ -50,7 +50,7 @@ private[agents] object BankInterbankMarket:
     val excess: Vector[PLN] =
       rows.map: (b, stocks) =>
         if b.failed then PLN.Zero
-        else stocks.totalDeposits * (Share.One - p.banking.reserveReq) - stocks.firmLoan - BankRegulatoryMetrics.govBondHoldings(stocks)
+        else stocks.totalDeposits * (Share.One - p.banking.reserveReq) - stocks.firmLoan - stocks.consumerLoan - BankRegulatoryMetrics.govBondHoldings(stocks)
 
     val lenderIdxs     = excess.indices.filter(i => excess(i) > PLN.Zero && !banks(i).failed).toVector
     val borrowerIdxs   = excess.indices.filter(i => excess(i) < PLN.Zero && !banks(i).failed).toVector
@@ -62,7 +62,7 @@ private[agents] object BankInterbankMarket:
     if totalLending <= 0L || totalBorrowing <= 0L then
       BankStockState(
         banks,
-        rows.map((_, stocks) => stocks.copy(interbankLoan = PLN.Zero, reserve = PLN.Zero)),
+        rows.map((_, stocks) => stocks.copy(interbankLoan = PLN.Zero)),
       )
     else
       val matched        = math.min(totalLending, totalBorrowing)

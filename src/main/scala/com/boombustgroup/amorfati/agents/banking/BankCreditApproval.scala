@@ -68,7 +68,8 @@ private[agents] object BankCreditApproval:
       val currentNsfr                                                       = BankRegulatoryMetrics.nsfr(bank, stocks, corpBondHoldings)
       val nsfrOk                                                            = currentNsfr >= p.banking.nsfrMin
       val nplPenalty                                                        = BankRegulatoryMetrics.nplRatio(bank, stocks) * p.banking.firmCreditNplApprovalPenalty
-      val freeReserves                                                      = stocks.totalDeposits * (Share.One - p.banking.reserveReq) - stocks.firmLoan - BankRegulatoryMetrics.govBondHoldings(stocks)
+      val freeReserves                                                      =
+        stocks.totalDeposits * (Share.One - p.banking.reserveReq) - stocks.firmLoan - stocks.consumerLoan - BankRegulatoryMetrics.govBondHoldings(stocks)
       val postLoanFreeReserves                                              = freeReserves - amount
       val resPenalty                                                        = if postLoanFreeReserves > PLN.Zero then Share.Zero else p.banking.firmCreditReserveDeficitPenalty
       val approvalP                                                         = (Share.One - nplPenalty.toShare - resPenalty).max(p.banking.firmCreditMinApprovalProb)

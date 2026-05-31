@@ -68,7 +68,7 @@ object BankCapitalSemantics:
       id = "ordinary-bank-pnl-formula",
       categories = Set(Category.OrdinaryPnlWaterfall),
       source = SourceAnchor(
-        "src/main/scala/com/boombustgroup/amorfati/agents/Banking.scala",
+        "src/main/scala/com/boombustgroup/amorfati/agents/banking/BankCapitalWaterfall.scala",
         "CapitalPnlOutput(newCapital = in.prevCapital - losses + retainedIncome)",
       ),
       sfcTreatment = "Monthly BankCapital identity: retained income increases capital; realized banking losses reduce it.",
@@ -90,7 +90,7 @@ object BankCapitalSemantics:
       id = "htm-forced-sale-capital-loss",
       categories = Set(Category.HtmRealizedLoss),
       source = SourceAnchor(
-        "src/main/scala/com/boombustgroup/amorfati/agents/Banking.scala",
+        "src/main/scala/com/boombustgroup/amorfati/agents/banking/BankBondPortfolio.scala",
         "b.copy(capital = b.capital - loss)",
       ),
       sfcTreatment = "Non-batch monthly BankCapital identity term htmRealizedLoss.",
@@ -113,7 +113,7 @@ object BankCapitalSemantics:
       id = "failure-check-capital-wipe",
       categories = Set(Category.FailureCapitalDestruction),
       source = SourceAnchor(
-        "src/main/scala/com/boombustgroup/amorfati/agents/Banking.scala",
+        "src/main/scala/com/boombustgroup/amorfati/agents/banking/BankFailureResolution.scala",
         "b.copy(status = BankStatus.Failed(month), capital = PLN.Zero)",
       ),
       sfcTreatment = "Monthly BankCapital identity term bankCapitalDestruction.",
