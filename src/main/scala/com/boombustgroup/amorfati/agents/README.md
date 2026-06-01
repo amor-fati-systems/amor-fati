@@ -87,6 +87,8 @@ carry behavioral state, operational diagnostics, and legacy unsupported metrics.
 | `household/HouseholdPerBankFlowAggregation.scala` | Per-bank household-flow aggregation |
 | `household/HouseholdDistributionStats.scala` | Distribution statistics, Gini, poverty-search helper, and sector-mobility metric |
 | `household/HouseholdAggregateComputation.scala` | Household aggregate accounting from state, stocks, and monthly flow totals |
+| `household/HouseholdStepSemantics.scala` | Zero-cost phase tags for the household monthly batch timeline |
+| `household/HouseholdStepDsl.scala` | Identity DSL wiring the household step as opening → prepare → process → aggregate → validate → close |
 | `household/HouseholdStepRunner.scala` | Month-step orchestration preserving the public `Household.step` facade |
 | `household/HouseholdMortgageSchedule.scala` | Mortgage amortization helpers for household financial stocks |
 | `household/HouseholdParameters.scala` | Shared household constants used across init, monthly execution, and aggregates |
