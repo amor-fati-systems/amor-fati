@@ -91,7 +91,7 @@ typed `for`-comprehension rather than an implicit block of local values.
 | `LaborEconomics.scala` | Phillips curve + expectations + union rigidity wages, employment, demographics, immigration |
 | `HouseholdIncomeEconomics.scala` | Individual HH income, consumption, saving, portfolio; labor separations, wage updates, bank-specific rates, equity returns, sectoral mobility |
 | `DemandEconomics.scala` | Sector demand allocation: HH consumption, government purchases, investment, exports; capacity constraints and spillover |
-| `FirmEconomics.scala` | Production, I-O intermediate market, CAPEX, financing splits (equity/bonds/loans), labor matching, NPL detection |
+| `FirmEconomics.scala` / `firm/FirmStepRunner.scala` | Firm production, I-O intermediate market, CAPEX, financing splits (equity/bonds/loans), labor matching, NPL detection |
 | `HouseholdFinancialEconomics.scala` | Mortgage debt service, deposit interest, diaspora remittances, tourism, consumer credit aggregation |
 | `PriceEquityEconomics.scala` | Inflation, GPW equity, sigma dynamics, GDP, macroprudential, EU funds |
 | `OpenEconEconomics.scala` | BoP/forex, GVC trade, Taylor rule, bond yields, interbank, corporate bonds, insurance, NBFI |
