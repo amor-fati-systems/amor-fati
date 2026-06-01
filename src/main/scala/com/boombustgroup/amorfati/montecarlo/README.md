@@ -27,7 +27,7 @@ pipeline has no dependency on this package.
 | `McFirmDecisionTraceCsv.scala` | `McFirmDecisionTraceCsv` | Optional per-seed firm decision trace chunk writer and combined CSV finalizer |
 | `McFirmSizeClass.scala` | `McFirmSizeClass` | Shared worker-count size-class boundary used by terminal counts and firm snapshots |
 | `McHouseholdLiquidityDiagnostics.scala` | `McHouseholdLiquidityDiagnostics` | Shared household demand-deposit distribution diagnostics for timeseries and terminal summaries |
-| `McTimeseriesSchema.scala` | `McTimeseriesSchema` | Timeseries schema with typed `Col` definitions, `compute`, and shared `csvSchema` |
+| `McTimeseriesSchema.scala` | `McTimeseriesSchema` | Timeseries schema composed from domain column groups, with typed `Col` definitions, `compute`, and shared `csvSchema` |
 | `McCsvFile.scala` | `McCsvFile` | Generic streaming CSV sink with parent-dir creation, temp-file finalization, and fold support for diagnostics |
 | `McTimeseriesCsv.scala` | `McTimeseriesCsv` | Production per-seed timeseries CSV sink backed by `McCsvFile` |
 | `McTerminalSummarySchema.scala` | `McTerminalSummarySchema` | Household/bank/firm terminal summary schemas and terminal-state row extraction; bank stock columns read `LedgerFinancialState` |

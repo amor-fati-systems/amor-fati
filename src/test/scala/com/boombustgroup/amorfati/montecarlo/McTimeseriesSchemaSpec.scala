@@ -531,6 +531,31 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     McTimeseriesSchema.colNames.toVector shouldBe expectedColNames
   }
 
+  it should "compose the stable schema from deterministic domain groups" in {
+    McTimeseriesSchema.columnGroupNames shouldBe Vector(
+      "macro",
+      "firms",
+      "external",
+      "fiscal",
+      "banking",
+      "credit",
+      "capital-markets",
+      "diagnostics",
+      "housing",
+      "firms-real-assets",
+      "households",
+      "banking-macroprudential",
+      "firms-ownership-entry",
+      "households-distress",
+      "firms-population",
+      "diagnostics-informal-economy",
+      "households-regional",
+      "households-liquidity",
+    )
+    McTimeseriesSchema.columnGroupNames.distinct shouldBe McTimeseriesSchema.columnGroupNames
+    McTimeseriesSchema.colNamesByGroup.flatMap(_._2) shouldBe expectedColNames
+  }
+
   it should "fail fast when currentSigmas does not match the sector schema" in {
     val err = intercept[IllegalArgumentException]:
       computeRow(init.world.copy(currentSigmas = init.world.currentSigmas.dropRight(1)))

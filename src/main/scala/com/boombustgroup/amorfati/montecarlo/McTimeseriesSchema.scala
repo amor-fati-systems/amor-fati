@@ -42,6 +42,11 @@ object McTimeseriesSchema:
   /** Column definition: name paired with its computation. */
   private final case class ColumnDef private (name: String, compute: Ctx => MetricValue)
 
+  /** Named schema section. The flat CSV contract is the deterministic
+    * concatenation of these domain groups.
+    */
+  private final case class ColumnGroup(name: String, columns: Vector[ColumnDef])
+
   private object ColumnDef:
     def apply[A](name: String, compute: Ctx => A)(using encoder: MetricEncoder[A]): ColumnDef =
       new ColumnDef(name, ctx => encoder.encode(compute(ctx)))
@@ -233,7 +238,7 @@ object McTimeseriesSchema:
   //  Schema groups — composed with ++
   // -------------------------------------------------------------------------
 
-  private def coreGroup: Vector[ColumnDef] = Vector(
+  private def macroGroup: Vector[ColumnDef] = Vector(
     ColumnDef("Month", ctx => ctx.executionMonth.toInt),
     ColumnDef("Inflation", ctx => ctx.world.inflation),
     ColumnDef("Unemployment", ctx => ctx.unemployPct),
@@ -274,7 +279,7 @@ object McTimeseriesSchema:
     ColumnDef("HybridRatio", ctx => ctx.world.real.hybridRatio),
   )
 
-  private def automationGroup: Vector[ColumnDef] = Vector(
+  private def firmAutomationGroup: Vector[ColumnDef] = Vector(
     ColumnDef.macroPln("Automation_TechCapex", ctx => ctx.world.flows.automationTechCapex),
     ColumnDef.macroPln("Automation_TechImports", ctx => ctx.world.flows.automationTechImports),
     ColumnDef.macroPln("Automation_TechLoans", ctx => ctx.world.flows.automationTechLoans),
@@ -284,7 +289,7 @@ object McTimeseriesSchema:
     ColumnDef("Automation_NewHybrid", ctx => ctx.world.flows.automationNewHybrid),
   )
 
-  private def adoptionHeterogeneityGroup: Vector[ColumnDef] = Vector(
+  private def firmAdoptionHeterogeneityGroup: Vector[ColumnDef] = Vector(
     ColumnDef("Adoption_MicroShare", ctx => ctx.adoptionMicroShare),
     ColumnDef("Adoption_SmallShare", ctx => ctx.adoptionSmallShare),
     ColumnDef("Adoption_MediumShare", ctx => ctx.adoptionMediumShare),
@@ -299,7 +304,7 @@ object McTimeseriesSchema:
     ColumnDef("Adoption_DebtQ4", ctx => ctx.adoptionDebtQuartiles(3)),
   )
 
-  private def sectoralGroup: Vector[ColumnDef] =
+  private def firmSectoralGroup: Vector[ColumnDef] =
     val autoColumns   = sectorColumns.zipWithIndex.map: (sector, idx) =>
       ColumnDef(sector.autoColName, ctx => ctx.sectorAuto(idx))
     val outputColumns = sectorColumns.map: sector =>
@@ -315,6 +320,9 @@ object McTimeseriesSchema:
         ctx => if ctx.monthlyGdp > PLN.Zero then ctx.world.flows.ioFlows / ctx.monthlyGdp else Scalar.Zero,
       ),
     )).toVector
+
+  private def firmsGroup: Vector[ColumnDef] =
+    firmAutomationGroup ++ firmAdoptionHeterogeneityGroup ++ firmSectoralGroup
 
   private def externalGroup: Vector[ColumnDef] = Vector(
     ColumnDef.macroPln("NFA", ctx => ctx.world.bop.nfa),
@@ -426,7 +434,7 @@ object McTimeseriesSchema:
     ColumnDef("GovSpendingCutRatio", ctx => ctx.world.pipeline.govSpendingCutRatio),
   )
 
-  private def monetaryGroup: Vector[ColumnDef] = Vector(
+  private def bankingMonetaryGroup: Vector[ColumnDef] = Vector(
     // Bond market
     ColumnDef("BondYield", ctx => ctx.world.gov.bondYield),
     ColumnDef("WeightedCoupon", ctx => ctx.world.gov.weightedCoupon),
@@ -451,7 +459,7 @@ object McTimeseriesSchema:
     ColumnDef.macroPln("FofResidual", ctx => ctx.world.plumbing.fofResidual),
   )
 
-  private def financialGroup: Vector[ColumnDef] = Vector(
+  private def bankingSectorGroup: Vector[ColumnDef] = Vector(
     // Interbank
     ColumnDef("InterbankRate", ctx => ctx.world.bankingSector.interbankRate),
     ColumnDef(
@@ -515,6 +523,12 @@ object McTimeseriesSchema:
     ColumnDef("WIBOR_1M", ctx => ctx.world.bankingSector.interbankCurve.map(c => c.wibor1m).getOrElse(Rate.Zero)),
     ColumnDef("WIBOR_3M", ctx => ctx.world.bankingSector.interbankCurve.map(c => c.wibor3m).getOrElse(Rate.Zero)),
     ColumnDef("WIBOR_6M", ctx => ctx.world.bankingSector.interbankCurve.map(c => c.wibor6m).getOrElse(Rate.Zero)),
+  )
+
+  private def bankingGroup: Vector[ColumnDef] =
+    bankingMonetaryGroup ++ bankingSectorGroup
+
+  private def creditGroup: Vector[ColumnDef] = Vector(
     // Validation-ready credit aggregates: stocks use annualized GDP as denominator.
     ColumnDef.macroPln("BankFirmLoans", ctx => ctx.bankFirmLoans),
     // Firm Credit
@@ -600,6 +614,9 @@ object McTimeseriesSchema:
     ColumnDef("ConsumerLoansToGdp", ctx => ctx.annualizedGdpRatio(ctx.consumerLoanStock)),
     ColumnDef("NbfiLoansToGdp", ctx => ctx.annualizedGdpRatio(ctx.nbfiLoanStock)),
     ColumnDef("TotalCreditToGdp", ctx => ctx.annualizedGdpRatio(ctx.totalCreditStock)),
+  )
+
+  private def capitalMarketsGroup: Vector[ColumnDef] = Vector(
     // GPW Equity Market
     ColumnDef("GpwIndex", ctx => ctx.world.financialMarkets.equity.index),
     ColumnDef.macroPln("GpwMarketCap", ctx => ctx.world.financialMarkets.equity.marketCap),
@@ -673,6 +690,9 @@ object McTimeseriesSchema:
     // AFS/HTM bond portfolio split
     ColumnDef.macroPln("BankAfsBonds", ctx => ctx.bankAgg.afsBonds),
     ColumnDef.macroPln("BankHtmBonds", ctx => ctx.bankAgg.htmBonds),
+  )
+
+  private def diagnosticsGroup: Vector[ColumnDef] = Vector(
     // IFRS 9 ECL staging (aggregate across banks)
     ColumnDef.macroPln("EclStage1", ctx => ctx.eclStage1),
     ColumnDef.macroPln("EclStage2", ctx => ctx.eclStage2),
@@ -730,12 +750,11 @@ object McTimeseriesSchema:
     ColumnDef("BankCreditLoss_CorpBondLossRate", ctx => ctx.flowToStockRate(ctx.bankCapital.corpBondDefaultLoss, ctx.bankAgg.corpBondHoldings)),
   )
 
-  private def realGroup: Vector[ColumnDef] =
+  private def housingGroup: Vector[ColumnDef] =
     val regionalHousingColumns = HousingConfig.RegionalMarket.all.map: market =>
       ColumnDef(market.hpiColName, ctx => ctx.housingRegionHpi(market))
 
     (Vector(
-      // Housing Market
       ColumnDef("HousingPriceIndex", ctx => ctx.world.real.housing.priceIndex),
       ColumnDef.macroPln("HousingMarketValue", ctx => ctx.world.real.housing.totalValue),
       ColumnDef.macroPln("MortgageStock", ctx => ctx.ledgerHouseholdMortgageStock),
@@ -759,59 +778,61 @@ object McTimeseriesSchema:
           then ctx.ledgerHouseholdMortgageStock / (ctx.monthlyGdp * 12)
           else Scalar.Zero,
       ),
-    ) ++ regionalHousingColumns ++ Vector(
-      // Sectoral Labor Mobility
-      ColumnDef("SectorMobilityRate", ctx => ctx.world.real.sectoralMobility.sectorMobilityRate),
-      ColumnDef("CrossSectorHires", ctx => ctx.world.real.sectoralMobility.crossSectorHires),
-      ColumnDef("VoluntaryQuits", ctx => ctx.world.real.sectoralMobility.voluntaryQuits),
-      // Physical Capital
-      ColumnDef.macroPln("AggCapitalStock", ctx => ctx.living.map(f => f.capitalStock).sumPln),
-      ColumnDef.macroPln("GrossInvestment", ctx => ctx.world.real.grossInvestment),
-      ColumnDef.macroPln(
-        "TotalGrossFixedCapitalFormation",
-        ctx => ctx.world.real.grossInvestment + ctx.world.real.aggGreenInvestment + ctx.world.gov.govCapitalSpend + ctx.world.gov.euProjectCapital,
-      ),
-      ColumnDef(
-        "PrivateGrossInvestmentToGdp",
-        ctx => if ctx.monthlyGdp > PLN.Zero then ctx.world.real.grossInvestment / ctx.monthlyGdp else Scalar.Zero,
-      ),
-      ColumnDef(
-        "GrossFixedCapitalFormationToGdp",
-        ctx =>
-          if ctx.monthlyGdp > PLN.Zero then
-            (ctx.world.real.grossInvestment + ctx.world.real.aggGreenInvestment + ctx.world.gov.govCapitalSpend + ctx.world.gov.euProjectCapital) / ctx.monthlyGdp
-          else Scalar.Zero,
-      ),
-      ColumnDef.macroPln(
-        "CapitalDepreciation",
-        ctx => ctx.living.map(f => f.capitalStock * ctx.p.capital.depRates(f.sector.toInt).monthly).sumPln,
-      ),
-      // Inventories
-      ColumnDef.macroPln("AggInventoryStock", ctx => ctx.world.flows.aggInventoryStock),
-      ColumnDef.macroPln("InventoryChange", ctx => ctx.world.flows.aggInventoryChange),
-      ColumnDef(
-        "InventoryToGdp",
-        ctx => if ctx.monthlyGdp > PLN.Zero then ctx.world.flows.aggInventoryStock / ctx.monthlyGdp else Scalar.Zero,
-      ),
-      // Energy / Climate
-      ColumnDef.macroPln("AggEnergyCost", ctx => ctx.world.flows.aggEnergyCost),
-      ColumnDef(
-        "EnergyCostToGdp",
-        ctx => if ctx.monthlyGdp > PLN.Zero then ctx.world.flows.aggEnergyCost / ctx.monthlyGdp else Scalar.Zero,
-      ),
-      ColumnDef("EtsPrice", ctx => ctx.world.real.etsPrice),
-      ColumnDef.macroPln("AggGreenCapital", ctx => ctx.world.real.aggGreenCapital),
-      ColumnDef.macroPln("GreenInvestment", ctx => ctx.world.real.aggGreenInvestment),
-      ColumnDef(
-        "GreenCapitalRatio",
-        ctx => {
-          val aggK = ctx.living.map(f => f.capitalStock).sumPln
-          if ctx.world.real.aggGreenCapital > PLN.Zero && aggK > PLN.Zero then ctx.world.real.aggGreenCapital / aggK else Scalar.Zero
-        },
-      ),
-    )).toVector
+    ) ++ regionalHousingColumns).toVector
 
-  private def socialGroup: Vector[ColumnDef] = Vector(
+  private def firmRealAssetsGroup: Vector[ColumnDef] = Vector(
+    // Sectoral Labor Mobility
+    ColumnDef("SectorMobilityRate", ctx => ctx.world.real.sectoralMobility.sectorMobilityRate),
+    ColumnDef("CrossSectorHires", ctx => ctx.world.real.sectoralMobility.crossSectorHires),
+    ColumnDef("VoluntaryQuits", ctx => ctx.world.real.sectoralMobility.voluntaryQuits),
+    // Physical Capital
+    ColumnDef.macroPln("AggCapitalStock", ctx => ctx.living.map(f => f.capitalStock).sumPln),
+    ColumnDef.macroPln("GrossInvestment", ctx => ctx.world.real.grossInvestment),
+    ColumnDef.macroPln(
+      "TotalGrossFixedCapitalFormation",
+      ctx => ctx.world.real.grossInvestment + ctx.world.real.aggGreenInvestment + ctx.world.gov.govCapitalSpend + ctx.world.gov.euProjectCapital,
+    ),
+    ColumnDef(
+      "PrivateGrossInvestmentToGdp",
+      ctx => if ctx.monthlyGdp > PLN.Zero then ctx.world.real.grossInvestment / ctx.monthlyGdp else Scalar.Zero,
+    ),
+    ColumnDef(
+      "GrossFixedCapitalFormationToGdp",
+      ctx =>
+        if ctx.monthlyGdp > PLN.Zero then
+          (ctx.world.real.grossInvestment + ctx.world.real.aggGreenInvestment + ctx.world.gov.govCapitalSpend + ctx.world.gov.euProjectCapital) / ctx.monthlyGdp
+        else Scalar.Zero,
+    ),
+    ColumnDef.macroPln(
+      "CapitalDepreciation",
+      ctx => ctx.living.map(f => f.capitalStock * ctx.p.capital.depRates(f.sector.toInt).monthly).sumPln,
+    ),
+    // Inventories
+    ColumnDef.macroPln("AggInventoryStock", ctx => ctx.world.flows.aggInventoryStock),
+    ColumnDef.macroPln("InventoryChange", ctx => ctx.world.flows.aggInventoryChange),
+    ColumnDef(
+      "InventoryToGdp",
+      ctx => if ctx.monthlyGdp > PLN.Zero then ctx.world.flows.aggInventoryStock / ctx.monthlyGdp else Scalar.Zero,
+    ),
+    // Energy / Climate
+    ColumnDef.macroPln("AggEnergyCost", ctx => ctx.world.flows.aggEnergyCost),
+    ColumnDef(
+      "EnergyCostToGdp",
+      ctx => if ctx.monthlyGdp > PLN.Zero then ctx.world.flows.aggEnergyCost / ctx.monthlyGdp else Scalar.Zero,
+    ),
+    ColumnDef("EtsPrice", ctx => ctx.world.real.etsPrice),
+    ColumnDef.macroPln("AggGreenCapital", ctx => ctx.world.real.aggGreenCapital),
+    ColumnDef.macroPln("GreenInvestment", ctx => ctx.world.real.aggGreenInvestment),
+    ColumnDef(
+      "GreenCapitalRatio",
+      ctx => {
+        val aggK = ctx.living.map(f => f.capitalStock).sumPln
+        if ctx.world.real.aggGreenCapital > PLN.Zero && aggK > PLN.Zero then ctx.world.real.aggGreenCapital / aggK else Scalar.Zero
+      },
+    ),
+  )
+
+  private def householdSocialGroup: Vector[ColumnDef] = Vector(
     // JST
     ColumnDef.macroPln("JstRevenue", ctx => ctx.world.social.jst.revenue),
     ColumnDef.macroPln("JstSpending", ctx => ctx.world.social.jst.spending),
@@ -846,8 +867,7 @@ object McTimeseriesSchema:
     ColumnDef("InflationForecastError", ctx => ctx.world.mechanisms.expectations.forecastError),
   )
 
-  private def mechanismsGroup: Vector[ColumnDef] = Vector(
-    // Macroprudential
+  private def bankingMacroprudentialGroup: Vector[ColumnDef] = Vector(
     ColumnDef("CCyB", ctx => ctx.world.mechanisms.macropru.ccyb),
     ColumnDef("CreditToGdpGap", ctx => ctx.world.mechanisms.macropru.creditToGdpGap),
     ColumnDef(
@@ -859,6 +879,9 @@ object McTimeseriesSchema:
           ctx.aliveBanks.map(b => Macroprudential.effectiveMinCar(b.id.toInt, ctx.world.mechanisms.macropru.ccyb)).max
         },
     ),
+  )
+
+  private def firmOwnershipAndEntryGroup: Vector[ColumnDef] = Vector(
     // FDI Composition
     ColumnDef.macroPln("FdiProfitShifting", ctx => ctx.world.flows.fdiProfitShifting),
     ColumnDef.macroPln("FdiRepatriation", ctx => ctx.world.flows.fdiRepatriation),
@@ -871,6 +894,9 @@ object McTimeseriesSchema:
     // Endogenous Firm Entry
     ColumnDef("FirmBirths", ctx => ctx.world.flows.firmBirths),
     ColumnDef("FirmDeaths", ctx => ctx.world.flows.firmDeaths),
+  )
+
+  private def householdDistressGroup: Vector[ColumnDef] = Vector(
     // Legacy activity-status bankruptcy; personal insolvency is reported by HouseholdDistress_Bankruptcy.
     ColumnDef("HouseholdBankruptcies", ctx => ctx.hhAgg.bankrupt),
     ColumnDef("HouseholdBankruptcyRate", ctx => ctx.hhAgg.bankruptcyRate),
@@ -888,11 +914,16 @@ object McTimeseriesSchema:
     ColumnDef("HouseholdDistress_DefaultedShare", ctx => Share.fraction(ctx.hhAgg.distressDefaulted, ctx.households.length)),
     ColumnDef("HouseholdDistress_BankruptcyShare", ctx => Share.fraction(ctx.hhAgg.distressBankruptcy, ctx.households.length)),
     ColumnDef("HouseholdDistress_ActiveShare", ctx => ctx.hhAgg.distressActiveShare(ctx.households.length)),
+  )
+
+  private def firmPopulationGroup: Vector[ColumnDef] = Vector(
     ColumnDef("NetEntry", ctx => ctx.world.flows.firmBirths - ctx.world.flows.firmDeaths),
     ColumnDef("LivingFirmCount", ctx => ctx.nLiving),
     ColumnDef("NetFirmBirths", ctx => ctx.world.flows.netFirmBirths),
     ColumnDef("TotalFirmCount", ctx => ctx.firms.length),
-    // Informal Economy
+  )
+
+  private def informalEconomyDiagnosticsGroup: Vector[ColumnDef] = Vector(
     ColumnDef("RealizedTaxShadowShare", ctx => ctx.world.flows.realizedTaxShadowShare),
     ColumnDef("NextTaxShadowShare", ctx => ctx.world.mechanisms.nextTaxShadowShare),
     ColumnDef.macroPln("TaxEvasionLoss", ctx => ctx.world.flows.taxEvasionLoss),
@@ -903,7 +934,7 @@ object McTimeseriesSchema:
   )
 
   /** Regional unemployment rates per NUTS-1 macroregion. */
-  private def regionalGroup: Vector[ColumnDef] =
+  private def householdRegionalGroup: Vector[ColumnDef] =
     def regionUnemp(region: Region, label: String): ColumnDef =
       ColumnDef(
         s"Unemp_$label",
@@ -948,23 +979,40 @@ object McTimeseriesSchema:
   )
 
   // -------------------------------------------------------------------------
-  //  Flat schema — single source of truth
+  //  Flat schema — deterministic composition of domain groups
   // -------------------------------------------------------------------------
 
+  // Group order is CSV order. Domain-prefixed subgroups preserve the historical
+  // column contract where conceptual domains are not contiguous.
+  private val schemaGroups: Vector[ColumnGroup] = Vector(
+    ColumnGroup("macro", macroGroup),
+    ColumnGroup("firms", firmsGroup),
+    ColumnGroup("external", externalGroup),
+    ColumnGroup("fiscal", fiscalGroup),
+    ColumnGroup("banking", bankingGroup),
+    ColumnGroup("credit", creditGroup),
+    ColumnGroup("capital-markets", capitalMarketsGroup),
+    ColumnGroup("diagnostics", diagnosticsGroup),
+    ColumnGroup("housing", housingGroup),
+    ColumnGroup("firms-real-assets", firmRealAssetsGroup),
+    ColumnGroup("households", householdSocialGroup),
+    ColumnGroup("banking-macroprudential", bankingMacroprudentialGroup),
+    ColumnGroup("firms-ownership-entry", firmOwnershipAndEntryGroup),
+    ColumnGroup("households-distress", householdDistressGroup),
+    ColumnGroup("firms-population", firmPopulationGroup),
+    ColumnGroup("diagnostics-informal-economy", informalEconomyDiagnosticsGroup),
+    ColumnGroup("households-regional", householdRegionalGroup),
+    ColumnGroup("households-liquidity", householdLiquidityGroup),
+  )
+
+  private[montecarlo] val columnGroupNames: Vector[String] =
+    schemaGroups.map(_.name)
+
+  private[montecarlo] val colNamesByGroup: Vector[(String, Vector[String])] =
+    schemaGroups.map(group => group.name -> group.columns.map(_.name))
+
   private val schema: Array[ColumnDef] =
-    (coreGroup
-      ++ automationGroup
-      ++ adoptionHeterogeneityGroup
-      ++ sectoralGroup
-      ++ externalGroup
-      ++ fiscalGroup
-      ++ monetaryGroup
-      ++ financialGroup
-      ++ realGroup
-      ++ socialGroup
-      ++ mechanismsGroup
-      ++ regionalGroup
-      ++ householdLiquidityGroup).toArray
+    schemaGroups.iterator.flatMap(_.columns).toArray
 
   // -------------------------------------------------------------------------
   //  Col — opaque Int, derived by name lookup
