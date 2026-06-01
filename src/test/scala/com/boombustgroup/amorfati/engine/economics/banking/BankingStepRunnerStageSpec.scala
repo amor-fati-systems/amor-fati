@@ -60,12 +60,12 @@ class BankingStepRunnerStageSpec extends AnyFlatSpec with Matchers:
   private def failureEvent(bankId: BankId): Banking.FailureEvent =
     Banking.FailureEvent(bankId, SimulationMonth.ExecutionMonth.First, Banking.BankFailureReason.NegativeCapital)
 
-  "BankingStepRunner.runBailIn" should "return an explicit bail-in stage output for eligible failed banks only" in {
+  "BankFailurePipeline.runBailIn" should "return an explicit bail-in stage output for eligible failed banks only" in {
     val rows        = Vector(bank(0, failed = true), bank(1))
     val stockRows   = Vector(stocks(PLN(1000000)), stocks(PLN(1000000)))
     val failedBank  = BankId(0)
     val failure     = failureDetection(rows, stockRows, Set(failedBank), Vector(failureEvent(failedBank)))
-    val result      = BankingStepRunner.runBailIn(failure)
+    val result      = BankFailurePipeline.runBailIn(failure)
     val expectedCut = (stockRows.head.totalDeposits - p.banking.bfgDepositGuarantee) * p.banking.bailInDepositHaircut
 
     result.eligibleBankIds shouldBe Set(failedBank)
@@ -74,13 +74,13 @@ class BankingStepRunnerStageSpec extends AnyFlatSpec with Matchers:
     result.financialStocks(1).totalDeposits shouldBe stockRows(1).totalDeposits
   }
 
-  "BankingStepRunner.runBankResolution" should "return a named purchase-and-assumption resolution output" in {
+  "BankFailurePipeline.runBankResolution" should "return a named purchase-and-assumption resolution output" in {
     val rows         = Vector(bank(0, failed = true), bank(1))
     val stockRows    = Vector(stocks(PLN(1000000)), stocks(PLN(2000000)))
     val failedBank   = BankId(0)
     val failure      = failureDetection(rows, stockRows, Set(failedBank), Vector(failureEvent(failedBank)))
-    val bailIn       = BankingStepRunner.runBailIn(failure)
-    val resolved     = BankingStepRunner.runBankResolution(failure, bailIn, Vector(PLN.Zero, PLN.Zero))
+    val bailIn       = BankFailurePipeline.runBailIn(failure)
+    val resolved     = BankFailurePipeline.runBankResolution(failure, bailIn, Vector(PLN.Zero, PLN.Zero))
     val transferred  = bailIn.financialStocks.head.totalDeposits
     val survivorCash = stockRows(1).totalDeposits + transferred
 
@@ -90,7 +90,7 @@ class BankingStepRunnerStageSpec extends AnyFlatSpec with Matchers:
     resolved.financialStocks(1).totalDeposits shouldBe survivorCash
   }
 
-  "BankingStepRunner.reconcileResolution" should "combine explicit resolution and reconciliation deltas without hiding their source" in {
+  "BankFailurePipeline.reconcileResolution" should "combine explicit resolution and reconciliation deltas without hiding their source" in {
     val rows       = Vector(bank(0, failed = true), bank(1))
     val stockRows  = Vector(stocks(PLN.Zero), stocks(PLN(2000000)))
     val firstEvent = failureEvent(BankId(0))
@@ -120,7 +120,7 @@ class BankingStepRunnerStageSpec extends AnyFlatSpec with Matchers:
       resolvedBanksDelta = 1,
     )
 
-    val result = BankingStepRunner.reconcileResolution(failure, bailIn, resolution, patch)
+    val result = BankFailurePipeline.reconcileResolution(failure, bailIn, resolution, patch)
 
     result.bailInLoss shouldBe PLN(15)
     result.capitalDestruction shouldBe failure.capitalDestruction + PLN(7)
@@ -131,7 +131,7 @@ class BankingStepRunnerStageSpec extends AnyFlatSpec with Matchers:
     result.capitalReconciliationResidual shouldBe PLN(3)
   }
 
-  "BankingStepRunner.applyAggregateReconciliationPatch" should "spread sector capital residuals across active banks" in {
+  "BankAggregateReconciliation.applyPatch" should "spread sector capital residuals across active banks" in {
     val rows      = Vector(
       bank(0, capital = PLN(1000)),
       bank(1, capital = PLN(1000)),
@@ -139,7 +139,7 @@ class BankingStepRunnerStageSpec extends AnyFlatSpec with Matchers:
     )
     val stockRows = Vector(stocks(PLN(1000)), stocks(PLN(1000)), stocks(PLN.Zero))
 
-    val result = BankingStepRunner.applyAggregateReconciliationPatch(
+    val result = BankAggregateReconciliation.applyPatch(
       banks = rows,
       financialStocks = stockRows,
       bankCorpBondHoldings = Vector(PLN.Zero, PLN.Zero, PLN.Zero),
@@ -161,7 +161,7 @@ class BankingStepRunnerStageSpec extends AnyFlatSpec with Matchers:
     )
     val stockRows = Vector(stocks(PLN(1000), firmLoan = PLN(1000)), stocks(PLN(1000), firmLoan = PLN(1000)))
 
-    val result = BankingStepRunner.applyAggregateReconciliationPatch(
+    val result = BankAggregateReconciliation.applyPatch(
       banks = rows,
       financialStocks = stockRows,
       bankCorpBondHoldings = Vector(PLN.Zero, PLN.Zero),
