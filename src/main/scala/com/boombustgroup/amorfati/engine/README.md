@@ -11,7 +11,11 @@ rules that modify agent state outside market clearing).
 
 ```
 engine/
-├── World.scala             # Immutable macro/runtime state container (9 nested types)
+├── World.scala             # Immutable macro/runtime month-boundary root
+├── WorldStateSegments.scala # Domain state segments carried by World
+├── PipelineState.scala     # persisted pre-month decision signal surface
+├── FlowState.scala         # single-step derived flow diagnostics
+├── diagnostics/banking/    # bank failure/capital/resolution diagnostic contracts
 ├── economics/              # Same-month calculus pipeline, no monetary flow emission
 ├── closedmonth/            # Closed-month World/agent/ledger projection
 ├── flows/                  # SFC flow emission via verified ledger
@@ -24,7 +28,11 @@ engine/
 
 | File | Responsibility |
 |------|----------------|
-| `World.scala` | Case class holding macro/runtime state, decomposed into 9 nested types: `SocialState`, `HouseholdMarketState`, `FinancialMarketsState`, `ExternalState`, `RealState`, `MechanismsState`, `MonetaryPlumbingState`, `PipelineState`, `FlowState`. Financial ownership lives in `LedgerFinancialState`, not `World`. |
+| `World.scala` | Root month-boundary state: macro aggregates, domain state segments, pipeline signals, flow diagnostics, and regional wage cache. Financial ownership lives in `LedgerFinancialState`, not `World`. |
+| `WorldStateSegments.scala` | Domain state segments carried by `World`: social security/local government, household market, financial markets, external sector, real economy, mechanisms, and monetary plumbing. |
+| `PipelineState.scala` | Persisted pre-month decision signal surface plus `DecisionSignals` projection. Same-month operational consumers should use `OperationalSignals`. |
+| `FlowState.scala` | Single-step derived flow outputs and diagnostics used by SFC identities, output columns, and characterization exports. |
+| `diagnostics/banking/BankDiagnostics.scala` | Bank capital, failure-trigger, resolution, reconciliation, and ECL diagnostics carried through `FlowState`. |
 | `ledger/LedgerFinancialState.scala` | Runtime source of truth for supported financial balances; exposes projection DTOs for agent/economics execution. |
 | `ledger/AssetOwnershipContract.scala` | Audit contract for supported persisted owner/asset pairs, unsupported stock-like families, and non-persisted runtime shells. |
 | `ledger/RuntimeMechanismSurvivability.scala` | Audit contract classifying each runtime-emitted `FlowMechanism` as round-trippable stock, execution-delta-only, or unsupported/metric-only. |

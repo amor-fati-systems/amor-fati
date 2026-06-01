@@ -2,6 +2,7 @@ package com.boombustgroup.amorfati.engine.economics.banking
 
 import com.boombustgroup.amorfati.agents.*
 import com.boombustgroup.amorfati.engine.*
+import com.boombustgroup.amorfati.engine.diagnostics.banking.*
 import com.boombustgroup.amorfati.engine.ledger.LedgerFinancialState
 import com.boombustgroup.amorfati.engine.markets.{FiscalBudget, HousingMarket}
 import com.boombustgroup.amorfati.engine.mechanisms.TaxRevenue

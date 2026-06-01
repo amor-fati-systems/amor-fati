@@ -2,7 +2,8 @@ package com.boombustgroup.amorfati.engine.economics.banking
 
 import com.boombustgroup.amorfati.agents.*
 import com.boombustgroup.amorfati.config.SimParams
-import com.boombustgroup.amorfati.engine.{BankReconciliationDiagnostics, SimulationMonth}
+import com.boombustgroup.amorfati.engine.SimulationMonth
+import com.boombustgroup.amorfati.engine.diagnostics.banking.BankReconciliationDiagnostics
 import com.boombustgroup.amorfati.types.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

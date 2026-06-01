@@ -3,15 +3,15 @@ package com.boombustgroup.amorfati.montecarlo
 import com.boombustgroup.amorfati.FixedPointSpecSupport.*
 import com.boombustgroup.amorfati.agents.{Banking, EarmarkedFunds, EclStaging, Firm, Household, Nbfi, SocialSecurity, TechState}
 import com.boombustgroup.amorfati.config.{HousingConfig, SimParams}
-import com.boombustgroup.amorfati.engine.SimulationMonth.ExecutionMonth
-import com.boombustgroup.amorfati.engine.{
+import com.boombustgroup.amorfati.engine.diagnostics.banking.{
   BankCapitalDiagnostics,
   BankEclDiagnostics,
   BankFailureDiagnostics,
   BankReconciliationDiagnostics,
   BankResolutionDiagnostics,
-  World,
 }
+import com.boombustgroup.amorfati.engine.SimulationMonth.ExecutionMonth
+import com.boombustgroup.amorfati.engine.World
 import com.boombustgroup.amorfati.engine.flows.FlowSimulation
 import com.boombustgroup.amorfati.engine.ledger.LedgerFinancialState
 import com.boombustgroup.amorfati.init.{InitRandomness, WorldInit}
