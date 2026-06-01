@@ -13,7 +13,7 @@ carry behavioral state, operational diagnostics, and legacy unsupported metrics.
 | File | Agent | State | Key SFC identities |
 |------|-------|-------|-------------------|
 | `Banking.scala` | 10 banking-sector rows: named bank archetypes plus residual Other banks (Poland 2026-04-30 baseline) | Public banking facade and domain types; implementation is split under `banking/` by credit, interbank, resolution, bond portfolio, capital, defaults, and regulatory metrics | BankCapital, BankDeposits, BondClearing, InterbankNetting |
-| `Firm.scala` | Heterogeneous firms (6 sectors) | Technology state (Traditional/Hybrid/Automated), capital stock, inventory, green capital, labor and production state; cash/debt/equity are ledger projections | BankCapital (NPL), FlowOfFunds, CorpBondStock |
+| `Firm.scala` | Heterogeneous firms (6 sectors) | Public firm facade and domain types; implementation is split under `firm/` by decision engine, execution, post-processing, P&L, credit audit, and trace construction | BankCapital (NPL), FlowOfFunds, CorpBondStock |
 | `Household.scala` | Individual households | Public household facade and domain types; implementation is split under `household/` by income, credit, liquidity, distress, labor transitions, monthly flow construction, and aggregate computation | BankDeposits, ConsumerCredit |
 | `Immigration.scala` | Immigrant workers | Stock, monthly inflow/outflow, remittance outflow | BankDeposits (remittance → deposit outflow), Nfa |
 | `Insurance.scala` | Life + non-life sector | Premium, claim, and investment-income diagnostics; reserves and securities holdings are ledger projections | BankDeposits (premium/claims), BondClearing |
@@ -48,6 +48,29 @@ carry behavioral state, operational diagnostics, and legacy unsupported metrics.
 | `banking/BankRegulatoryMetrics.scala` | Aggregate bank balance sheet, CAR, NPL, HQLA, LCR, NSFR, monetary aggregate metrics |
 | `banking/BankDefaultConfigs.scala` | Default Poland-facing bank archetype configuration |
 | `banking/BankRows.scala` | Internal validated alignment boundary for bank operational rows and ledger-owned stock rows |
+
+## Firm Modules
+
+| File | Boundary |
+|------|----------|
+| `firm/FirmModel.scala` | Public firm model case classes re-exported through the `Firm` facade |
+| `firm/FirmCalibration.scala` | Internal firm-model constants that are not yet experiment parameters |
+| `firm/FirmProduction.scala` | Technology-state liveness, headcount, capacity, CES output, and capital-planning scale |
+| `firm/FirmLaborPlanning.scala` | Labor-demand planning, hiring headroom, smooth adjustment, and labor diagnostics |
+| `firm/FirmTechnologyPlanning.scala` | AI/hybrid CAPEX, digital-investment cost, automation-neighborhood metrics, and sigma threshold |
+| `firm/FirmDecisionEngine.scala` | Technology-state dispatch for stochastic firm decisions without state mutation |
+| `firm/FirmTechnologyAdoption.scala` | AI/hybrid adoption feasibility, probabilities, implementation rolls, and technology-credit audit merge order |
+| `firm/FirmOperatingDecision.scala` | Survival fallback decisions: labor resizing, working-capital grace, startup runway, and digital investment |
+| `firm/FirmResultExecution.scala` | Pure application of selected decisions into closing firm state and primary flows |
+| `firm/FirmSettlementDsl.scala` | Phase-tagged deterministic settlement after primary decision execution |
+| `firm/FirmPostProcessing.scala` | Deterministic post-decision monthly adjustments: amortization, investment, inventory, FDI, and informal CIT evasion |
+| `firm/FirmProfitAndLoss.scala` | Revenue, operating costs, ETS, interest, profit shifting, and CIT loss-carryforward accounting |
+| `firm/FirmStartupLifecycle.scala` | Startup runway, operating-cost ramp, and one-month lifecycle advancement helpers |
+| `firm/FirmCreditAudit.scala` | Candidate-level and selected-credit audit aggregation, preserving trace fields independently from merge order |
+| `firm/FirmDecisionTraceBuilder.scala` | Side-effect-free projection of opening state, decision audit, and closing result into export traces |
+| `firm/FirmStepSemantics.scala` | Zero-cost phase tags for one firm's monthly timeline |
+| `firm/FirmStepDsl.scala` | Identity DSL wiring the firm step as opening → decision → execution → settlement → audit → close |
+| `firm/FirmProcessPipeline.scala` | Month-step orchestration preserving the public `Firm.process` facade |
 
 ## Household Modules
 
