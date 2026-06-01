@@ -13,7 +13,7 @@ import com.boombustgroup.amorfati.types.*
   * order explicit while preserving the same runtime representation as the
   * wrapped value.
   */
-private[agents] object HouseholdStepSemantics:
+private[household] object HouseholdStepSemantics:
 
   sealed trait Phase
   sealed trait Opening       extends Phase

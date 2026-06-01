@@ -15,7 +15,7 @@ import com.boombustgroup.amorfati.types.*
   * implementation: validate opening rows, execute households, aggregate public
   * totals, validate diagnostics, and close into the public result.
   */
-private[agents] object HouseholdStepDsl:
+private[household] object HouseholdStepDsl:
 
   /** Opens one household batch from the public `Household.step` argument
     * surface.
