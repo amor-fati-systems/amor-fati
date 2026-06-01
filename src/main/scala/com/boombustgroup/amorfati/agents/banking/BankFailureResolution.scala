@@ -22,17 +22,28 @@ private[agents] object BankFailureResolution:
       ccyb: Multiplier,
       bankCorpBondHoldings: BankCorpBondHoldings,
   )(using p: SimParams): Option[BankFailureReason] =
-    if bank.failed then None
+    failureReasonWithCarCounter(bank, financialStocks, ccyb, bankCorpBondHoldings, bank.consecutiveLowCar)._1
+
+  private def failureReasonWithCarCounter(
+      bank: BankState,
+      financialStocks: BankFinancialStocks,
+      ccyb: Multiplier,
+      bankCorpBondHoldings: BankCorpBondHoldings,
+      previousLowCarMonths: Int,
+  )(using p: SimParams): (Option[BankFailureReason], Int) =
+    if bank.failed then (None, bank.consecutiveLowCar)
     else
       val minCar    = Macroprudential.effectiveMinCar(bank.id.toInt, ccyb)
       val lowCar    = BankRegulatoryMetrics.car(bank, financialStocks, bankCorpBondHoldings(bank.id)) < minCar
       val lcrBreach = BankRegulatoryMetrics.lcr(financialStocks) < p.banking.lcrMin * Share.decimal(5, 1)
-      val newConsec = if lowCar then bank.consecutiveLowCar + 1 else 0
+      val newConsec = if lowCar then previousLowCarMonths + 1 else 0
       val insolvent = bank.capital < PLN.Zero
-      if insolvent then Some(BankFailureReason.NegativeCapital)
-      else if newConsec >= 3 then Some(BankFailureReason.CarBreach)
-      else if lcrBreach then Some(BankFailureReason.LiquidityBreach)
-      else None
+      val reason    =
+        if insolvent then Some(BankFailureReason.NegativeCapital)
+        else if newConsec >= 3 then Some(BankFailureReason.CarBreach)
+        else if lcrBreach then Some(BankFailureReason.LiquidityBreach)
+        else None
+      (reason, newConsec)
 
   /** Advances failure status for all banks and emits failure events for newly
     * failed rows.
@@ -45,7 +56,25 @@ private[agents] object BankFailureResolution:
       ccyb: Multiplier,
       bankCorpBondHoldings: BankCorpBondHoldings,
   )(using p: SimParams): FailureCheckResult =
+    checkFailuresWithCarCounterBase(banks, financialStocks, month, enabled, ccyb, bankCorpBondHoldings, banks)
+
+  /** Classifies month-boundary failures while sharing one opening CAR counter
+    * base across repeated checks inside the same monthly banking pipeline.
+    */
+  def checkFailuresWithCarCounterBase(
+      banks: Vector[BankState],
+      financialStocks: Vector[BankFinancialStocks],
+      month: ExecutionMonth,
+      enabled: Boolean,
+      ccyb: Multiplier,
+      bankCorpBondHoldings: BankCorpBondHoldings,
+      carCounterBase: Vector[BankState],
+  )(using p: SimParams): FailureCheckResult =
     val rows = BankRows.from(banks, financialStocks, "Banking.checkFailures")
+    require(
+      carCounterBase.length == banks.length,
+      s"Banking.checkFailures requires aligned CAR counter base, got ${banks.length} banks and ${carCounterBase.length} counter rows",
+    )
     if !enabled then
       FailureCheckResult(
         banks = banks.map: b =>
@@ -56,13 +85,11 @@ private[agents] object BankFailureResolution:
         anyFailed = false,
       )
     else
-      val checked = rows.map: (b, stocks) =>
+      val checked = rows.mapWithIndex: (index, b, stocks) =>
         if b.failed then (b, None)
         else
-          val minCar    = Macroprudential.effectiveMinCar(b.id.toInt, ccyb)
-          val lowCar    = BankRegulatoryMetrics.car(b, stocks, bankCorpBondHoldings(b.id)) < minCar
-          val newConsec = if lowCar then b.consecutiveLowCar + 1 else 0
-          val reason    = failureReason(b, stocks, ccyb, bankCorpBondHoldings)
+          val previousLowCarMonths = carCounterBase(index).consecutiveLowCar
+          val (reason, newConsec)  = failureReasonWithCarCounter(b, stocks, ccyb, bankCorpBondHoldings, previousLowCarMonths)
           reason match
             case Some(r) => (b.copy(status = BankStatus.Failed(month), capital = PLN.Zero), Some(FailureEvent(b.id, month, r)))
             case None    => (b.copy(status = BankStatus.Active(newConsec)), None)

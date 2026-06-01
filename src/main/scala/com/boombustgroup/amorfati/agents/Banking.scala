@@ -406,6 +406,23 @@ object Banking:
   )(using p: SimParams): FailureCheckResult =
     BankFailureResolution.checkFailures(banks, financialStocks, month, enabled, ccyb, bankCorpBondHoldings)
 
+  /** Failure check for repeated same-month banking stages.
+    *
+    * CAR persistence is derived from `carCounterBase`, so primary detection,
+    * contagion, and reconciliation cannot count the same low-CAR month several
+    * times.
+    */
+  def checkFailuresWithCarCounterBase(
+      banks: Vector[BankState],
+      financialStocks: Vector[BankFinancialStocks],
+      month: ExecutionMonth,
+      enabled: Boolean,
+      ccyb: Multiplier,
+      bankCorpBondHoldings: BankCorpBondHoldings,
+      carCounterBase: Vector[BankState],
+  )(using p: SimParams): FailureCheckResult =
+    BankFailureResolution.checkFailuresWithCarCounterBase(banks, financialStocks, month, enabled, ccyb, bankCorpBondHoldings, carCounterBase)
+
   /** Compute monthly BFG levy for all banks.
     *
     * Failed banks pay no levy. Active banks pay deposits × bfgLevyRate / 12.

@@ -25,10 +25,10 @@ class BankingStepRunnerStageSpec extends AnyFlatSpec with Matchers:
       consumerNpl = PLN.Zero,
     )
 
-  private def stocks(deposits: PLN): Banking.BankFinancialStocks =
+  private def stocks(deposits: PLN, firmLoan: PLN = PLN.Zero): Banking.BankFinancialStocks =
     Banking.BankFinancialStocks(
       totalDeposits = deposits,
-      firmLoan = PLN.Zero,
+      firmLoan = firmLoan,
       govBondAfs = PLN.Zero,
       govBondHtm = PLN.Zero,
       reserve = PLN.Zero,
@@ -129,6 +129,50 @@ class BankingStepRunnerStageSpec extends AnyFlatSpec with Matchers:
     result.resolvedBankCount shouldBe 2
     result.allFailedFallbackUsed shouldBe true
     result.capitalReconciliationResidual shouldBe PLN(3)
+  }
+
+  "BankingStepRunner.applyAggregateReconciliationPatch" should "spread sector capital residuals across active banks" in {
+    val rows      = Vector(
+      bank(0, capital = PLN(1000)),
+      bank(1, capital = PLN(1000)),
+      bank(2, failed = true, capital = PLN.Zero),
+    )
+    val stockRows = Vector(stocks(PLN(1000)), stocks(PLN(1000)), stocks(PLN.Zero))
+
+    val result = BankingStepRunner.applyAggregateReconciliationPatch(
+      banks = rows,
+      financialStocks = stockRows,
+      bankCorpBondHoldings = Vector(PLN.Zero, PLN.Zero, PLN.Zero),
+      depositResidual = PLN.Zero,
+      capitalResidual = PLN(-400),
+      ccyb = Multiplier.Zero,
+      carCounterBase = rows,
+    )
+
+    result.banks.map(_.capital) shouldBe Vector(PLN(800), PLN(800), PLN.Zero)
+    result.bankReconciliationDiagnostics.capitalResidual shouldBe PLN(-400)
+    result.bankReconciliationDiagnostics.targetBankId should (be(0) or be(1))
+  }
+
+  it should "avoid creating an artificial single-bank CAR breach from a sector residual" in {
+    val rows      = Vector(
+      bank(0, capital = PLN(100)).copy(loansLong = PLN(1000), status = Banking.BankStatus.Active(2)),
+      bank(1, capital = PLN(100)).copy(loansLong = PLN(1000), status = Banking.BankStatus.Active(2)),
+    )
+    val stockRows = Vector(stocks(PLN(1000), firmLoan = PLN(1000)), stocks(PLN(1000), firmLoan = PLN(1000)))
+
+    val result = BankingStepRunner.applyAggregateReconciliationPatch(
+      banks = rows,
+      financialStocks = stockRows,
+      bankCorpBondHoldings = Vector(PLN.Zero, PLN.Zero),
+      depositResidual = PLN.Zero,
+      capitalResidual = PLN(-20),
+      ccyb = Multiplier.Zero,
+      carCounterBase = rows,
+    )
+
+    result.banks.map(_.capital) shouldBe Vector(PLN(90), PLN(90))
+    result.bankReconciliationDiagnostics.crossedFailureThreshold shouldBe 0
   }
 
 end BankingStepRunnerStageSpec

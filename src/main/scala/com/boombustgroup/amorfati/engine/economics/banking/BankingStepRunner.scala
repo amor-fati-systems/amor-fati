@@ -66,7 +66,7 @@ object BankingStepRunner:
       bankCapitalDiagnostics: BankCapitalDiagnostics,               // aggregate monthly bank-capital waterfall diagnostics
       bankFailureDiagnostics: BankFailureDiagnostics,               // monthly bank-failure trigger diagnostics
       bankResolutionDiagnostics: BankResolutionDiagnostics,         // monthly bank-resolution count diagnostics
-      bankReconciliationDiagnostics: BankReconciliationDiagnostics, // exactness-patch impact on target bank capital/CAR
+      bankReconciliationDiagnostics: BankReconciliationDiagnostics, // distributed exactness-patch impact on bank capital/CAR
       bankEclDiagnostics: BankEclDiagnostics,                       // IFRS 9 ECL allowance and migration diagnostics
       monAgg: Option[Banking.MonetaryAggregates],                   // M0/M1/M2/M3 (when credit diagnostics on)
       finalHhAgg: Household.Aggregates,                             // recomputed HH aggregates
@@ -1003,23 +1003,35 @@ object BankingStepRunner:
       waterfall: BondWaterfallResult,
       bankCorpBondHoldings: Banking.BankCorpBondHoldings,
   )(using p: SimParams): FailureDetectionResult =
-    val primary   =
-      Banking.checkFailures(
+    val carCounterBase = waterfall.banks
+    val primary        =
+      Banking.checkFailuresWithCarCounterBase(
         waterfall.banks,
         waterfall.financialStocks,
         in.fiscal.m,
         true,
         in.priceEquity.newMacropru.ccyb,
         bankCorpBondHoldings,
+        carCounterBase,
       )
-    val exposures = InterbankContagion.buildExposureMatrix(waterfall.banks, waterfall.financialStocks)
-    val contagion =
+    val exposures      = InterbankContagion.buildExposureMatrix(waterfall.banks, waterfall.financialStocks)
+    val contagion      =
       if primary.anyFailed then InterbankContagion.applyContagionLosses(primary.banks, exposures)
       else InterbankContagion.ContagionLossResult.unchanged(primary.banks)
-    val secondary =
-      Banking.checkFailures(contagion.banks, waterfall.financialStocks, in.fiscal.m, true, in.priceEquity.newMacropru.ccyb, bankCorpBondHoldings)
-    val anyFailed = primary.anyFailed || secondary.anyFailed
-    val events    = primary.events ++ secondary.events
+    val secondary      =
+      if primary.anyFailed then
+        Banking.checkFailuresWithCarCounterBase(
+          contagion.banks,
+          waterfall.financialStocks,
+          in.fiscal.m,
+          true,
+          in.priceEquity.newMacropru.ccyb,
+          bankCorpBondHoldings,
+          carCounterBase,
+        )
+      else primary
+    val anyFailed      = primary.anyFailed || secondary.anyFailed
+    val events         = primary.events ++ secondary.events
 
     val newFailures                 =
       if anyFailed then waterfall.banks.zip(secondary.banks).count { case (pre, post) => !pre.failed && post.failed } else 0
@@ -1082,7 +1094,7 @@ object BankingStepRunner:
     )
 
   /** Combines the explicit resolution path with the aggregate exactness
-    * reconciliation, which may itself create one additional failure event.
+    * reconciliation, which may itself create additional failure events.
     */
   private[banking] def reconcileResolution(
       failure: FailureDetectionResult,
@@ -1302,33 +1314,30 @@ object BankingStepRunner:
           BankReconciliationDiagnostics.zero,
         )
       else
-        val targetIdx                 = banks.lastIndexWhere(!_.failed) match
-          case -1 => banks.indices.last
-          case i  => i
-        val reconciled                = reconcileSingleBank(banks(targetIdx), financialStocks(targetIdx), depResidual, capResidual)
-        val nextBanks                 = banks.updated(targetIdx, reconciled._1)
-        val nextStocks                = financialStocks.updated(targetIdx, reconciled._2)
-        val targetCorpBonds           = (bankId: BankId) => bankCorpBondHoldings.lift(bankId.toInt).getOrElse(PLN.Zero)
-        val beforeBank                = banks(targetIdx)
-        val beforeStocks              = financialStocks(targetIdx)
-        val afterBank                 = nextBanks(targetIdx)
-        val afterStocks               = nextStocks(targetIdx)
-        val reasonBefore              = Banking.failureReason(beforeBank, beforeStocks, in.priceEquity.newMacropru.ccyb, targetCorpBonds)
-        val reasonAfter               = Banking.failureReason(afterBank, afterStocks, in.priceEquity.newMacropru.ccyb, targetCorpBonds)
-        val reconciliationDiagnostics = BankReconciliationDiagnostics.fromPatch(
-          targetBankId = beforeBank.id,
+        val targetCorpBonds = (bankId: BankId) => bankCorpBondHoldings.lift(bankId.toInt).getOrElse(PLN.Zero)
+        val patched         = applyAggregateReconciliationPatch(
+          banks = banks,
+          financialStocks = financialStocks,
+          bankCorpBondHoldings = bankCorpBondHoldings,
+          depositResidual = depResidual,
           capitalResidual = capResidual,
-          targetCapitalBefore = beforeBank.capital,
-          targetCapitalAfter = afterBank.capital,
-          targetCarBefore = Banking.car(beforeBank, beforeStocks, targetCorpBonds(beforeBank.id)),
-          targetCarAfter = Banking.car(afterBank, afterStocks, targetCorpBonds(afterBank.id)),
-          reasonBefore = reasonBefore,
-          reasonAfter = reasonAfter,
+          ccyb = in.priceEquity.newMacropru.ccyb,
+          carCounterBase = in.banks,
         )
-        if reasonAfter.isEmpty || afterBank.failed then
+        val failCheck       =
+          Banking.checkFailuresWithCarCounterBase(
+            patched.banks,
+            patched.financialStocks,
+            in.fiscal.m,
+            true,
+            in.priceEquity.newMacropru.ccyb,
+            targetCorpBonds,
+            in.banks,
+          )
+        if !failCheck.anyFailed then
           AggregateReconciliationResult(
-            nextBanks,
-            nextStocks,
+            patched.banks,
+            patched.financialStocks,
             bankCorpBondHoldings,
             depResidual,
             capResidual,
@@ -1337,43 +1346,147 @@ object BankingStepRunner:
             0,
             Vector.empty,
             false,
-            reconciliationDiagnostics,
+            patched.bankReconciliationDiagnostics,
           )
         else
-          val failCheck =
-            Banking.checkFailures(Vector(afterBank), Vector(afterStocks), in.fiscal.m, true, in.priceEquity.newMacropru.ccyb, targetCorpBonds)
-          if !failCheck.anyFailed then
-            AggregateReconciliationResult(
-              nextBanks,
-              nextStocks,
-              bankCorpBondHoldings,
-              depResidual,
-              capResidual,
-              PLN.Zero,
-              PLN.Zero,
-              0,
-              Vector.empty,
-              false,
-              reconciliationDiagnostics,
-            )
-          else
-            val failedBank = failCheck.banks.head
-            val bailIn     = Banking.applyBailIn(nextBanks.updated(targetIdx, failedBank), nextStocks, failCheck.events.map(_.bankId).toSet)
-            val resolved   = Banking.resolveFailures(bailIn.banks, bailIn.financialStocks, bankCorpBondHoldings)
-            AggregateReconciliationResult(
-              resolved.banks,
-              resolved.financialStocks,
-              resolved.bankCorpBondHoldings,
-              depResidual,
-              capResidual,
-              bailIn.totalLoss,
-              nextBanks(targetIdx).capital,
-              1,
-              failCheck.events,
-              resolved.allFailedFallbackUsed,
-              reconciliationDiagnostics,
-              resolvedBanksDelta = resolved.resolvedBankCount,
-            )
+          val failedBankIds           = failCheck.events.map(_.bankId).toSet
+          val banksAfterFailureCheck  =
+            patched.banks.zip(failCheck.banks).map { case (before, after) =>
+              if before.id == after.id then after else before
+            }
+          val bailIn                  = Banking.applyBailIn(banksAfterFailureCheck, patched.financialStocks, failedBankIds)
+          val resolved                = Banking.resolveFailures(bailIn.banks, bailIn.financialStocks, bankCorpBondHoldings)
+          val capitalDestructionDelta = failCheck.events.map(event => patched.banks(event.bankId.toInt).capital).sumPln
+          AggregateReconciliationResult(
+            resolved.banks,
+            resolved.financialStocks,
+            resolved.bankCorpBondHoldings,
+            depResidual,
+            capResidual,
+            bailIn.totalLoss,
+            capitalDestructionDelta,
+            failCheck.events.length,
+            failCheck.events,
+            resolved.allFailedFallbackUsed,
+            patched.bankReconciliationDiagnostics,
+            resolvedBanksDelta = resolved.resolvedBankCount,
+          )
+
+  /** Applies aggregate exactness residuals across live banks instead of using
+    * one arbitrary row as the sector-level accounting sink.
+    */
+  private[banking] def applyAggregateReconciliationPatch(
+      banks: Vector[Banking.BankState],
+      financialStocks: Vector[Banking.BankFinancialStocks],
+      bankCorpBondHoldings: Vector[PLN],
+      depositResidual: PLN,
+      capitalResidual: PLN,
+      ccyb: Multiplier,
+      carCounterBase: Vector[Banking.BankState],
+  )(using p: SimParams): ReconciliationPatchResult =
+    require(
+      carCounterBase.length == banks.length,
+      s"BankingStepRunner reconciliation patch requires aligned CAR counter base, got ${banks.length} banks and ${carCounterBase.length} counter rows",
+    )
+    val patchIndices =
+      val active = banks.indices.filter(index => !banks(index).failed).toVector
+      if active.nonEmpty then active else banks.indices.toVector
+
+    if patchIndices.isEmpty || (depositResidual == PLN.Zero && capitalResidual == PLN.Zero) then
+      ReconciliationPatchResult(banks, financialStocks, BankReconciliationDiagnostics.zero)
+    else
+      val depositWeights     = positiveOrEqualWeights(patchIndices.map(index => financialStocks(index).totalDeposits.toLong.max(0L)).toArray)
+      val capitalWeights     =
+        val positiveCapital = patchIndices.map(index => banks(index).capital.toLong.max(0L)).toArray
+        val capitalTotal    = positiveCapital.sum
+        if capitalTotal > 0L then positiveCapital else depositWeights
+      val depositAllocations = distributeSignedResidual(depositResidual, depositWeights)
+      val capitalAllocations = distributeSignedResidual(capitalResidual, capitalWeights)
+      val nextBanks          = banks.toArray
+      val nextStocks         = financialStocks.toArray
+
+      var i = 0
+      while i < patchIndices.length do
+        val index       = patchIndices(i)
+        val depositMove = depositAllocations(i)
+        val capitalMove = capitalAllocations(i)
+        if depositMove != PLN.Zero then
+          val newDeposits = nextStocks(index).totalDeposits + depositMove
+          nextStocks(index) = nextStocks(index).copy(
+            totalDeposits = newDeposits,
+            demandDeposit = newDeposits * (Share.One - p.banking.termDepositFrac),
+            termDeposit = newDeposits * p.banking.termDepositFrac,
+          )
+        if capitalMove != PLN.Zero then nextBanks(index) = nextBanks(index).copy(capital = nextBanks(index).capital + capitalMove)
+        i += 1
+
+      val nextBanksVector  = nextBanks.toVector
+      val nextStocksVector = nextStocks.toVector
+      val targetPosition   = mostImpactedPatchPosition(capitalAllocations, depositAllocations)
+      val targetIndex      = patchIndices(targetPosition)
+      val corpBondLookup   = (bankId: BankId) => bankCorpBondHoldings.lift(bankId.toInt).getOrElse(PLN.Zero)
+      val crossedFailure   =
+        var crossed = false
+        var j       = 0
+        while j < patchIndices.length && !crossed do
+          val index        = patchIndices(j)
+          val reasonBefore = failureReasonFromCarCounterBase(banks(index), financialStocks(index), carCounterBase(index), ccyb, corpBondLookup)
+          val reasonAfter  = failureReasonFromCarCounterBase(nextBanksVector(index), nextStocksVector(index), carCounterBase(index), ccyb, corpBondLookup)
+          crossed = reasonBefore.isEmpty && reasonAfter.nonEmpty
+          j += 1
+        crossed
+      val beforeBank       = banks(targetIndex)
+      val beforeStocks     = financialStocks(targetIndex)
+      val afterBank        = nextBanksVector(targetIndex)
+      val afterStocks      = nextStocksVector(targetIndex)
+      val diagnostics      = BankReconciliationDiagnostics.fromDistributedPatch(
+        targetBankId = beforeBank.id,
+        aggregateCapitalResidual = capitalResidual,
+        targetCapitalAllocation = capitalAllocations(targetPosition),
+        targetCapitalBefore = beforeBank.capital,
+        targetCapitalAfter = afterBank.capital,
+        targetCarBefore = Banking.car(beforeBank, beforeStocks, corpBondLookup(beforeBank.id)),
+        targetCarAfter = Banking.car(afterBank, afterStocks, corpBondLookup(afterBank.id)),
+        crossedFailureThreshold = crossedFailure,
+        targetReasonAfter = failureReasonFromCarCounterBase(afterBank, afterStocks, carCounterBase(targetIndex), ccyb, corpBondLookup),
+      )
+      ReconciliationPatchResult(nextBanksVector, nextStocksVector, diagnostics)
+
+  private def failureReasonFromCarCounterBase(
+      bank: Banking.BankState,
+      financialStocks: Banking.BankFinancialStocks,
+      carCounterBase: Banking.BankState,
+      ccyb: Multiplier,
+      bankCorpBondHoldings: Banking.BankCorpBondHoldings,
+  )(using p: SimParams): Option[Banking.BankFailureReason] =
+    val bankAtOpeningCounter =
+      if bank.failed then bank else bank.copy(status = Banking.BankStatus.Active(carCounterBase.consecutiveLowCar))
+    Banking.failureReason(bankAtOpeningCounter, financialStocks, ccyb, bankCorpBondHoldings)
+
+  private def positiveOrEqualWeights(weights: Array[Long]): Array[Long] =
+    if weights.exists(_ > 0L) then weights.map(_.max(0L))
+    else Array.fill(weights.length)(1L)
+
+  private def distributeSignedResidual(amount: PLN, weights: Array[Long]): Array[PLN] =
+    if amount == PLN.Zero || weights.isEmpty then Array.fill(weights.length)(PLN.Zero)
+    else
+      val magnitudes = Distribute.distribute(amount.abs.toLong, positiveOrEqualWeights(weights))
+      val negative   = amount < PLN.Zero
+      magnitudes.map(raw => PLN.fromRaw(if negative then -raw else raw))
+
+  private def mostImpactedPatchPosition(capitalAllocations: Array[PLN], depositAllocations: Array[PLN]): Int =
+    val preferCapital = capitalAllocations.exists(_ != PLN.Zero)
+    val values        = if preferCapital then capitalAllocations else depositAllocations
+    var bestIndex     = 0
+    var bestAbs       = PLN.Zero
+    var i             = 0
+    while i < values.length do
+      val currentAbs = values(i).abs
+      if currentAbs > bestAbs then
+        bestAbs = currentAbs
+        bestIndex = i
+      i += 1
+    bestIndex
 
   private def aggregateReconciliationTarget(
       prevBankAgg: Banking.Aggregate,
@@ -1403,22 +1516,6 @@ object BankingStepRunner:
     AggregateReconciliation(
       depositsResidual = targetDeposits,
       capitalResidual = targetCapital,
-    )
-
-  private def reconcileSingleBank(
-      bank: Banking.BankState,
-      stocks: Banking.BankFinancialStocks,
-      depositResidual: PLN,
-      capitalResidual: PLN,
-  )(using p: SimParams): (Banking.BankState, Banking.BankFinancialStocks) =
-    val newDeposits = stocks.totalDeposits + depositResidual
-    (
-      bank.copy(capital = bank.capital + capitalResidual),
-      stocks.copy(
-        totalDeposits = newDeposits,
-        demandDeposit = newDeposits * (Share.One - p.banking.termDepositFrac),
-        termDeposit = newDeposits * p.banking.termDepositFrac,
-      ),
     )
 
   /** Monetary aggregates (M0/M1/M2/M3) when credit diagnostics enabled. */

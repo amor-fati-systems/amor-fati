@@ -54,7 +54,7 @@ case class FlowState(
     bankCapital: BankCapitalDiagnostics = BankCapitalDiagnostics.zero,                      // monthly bank-capital waterfall diagnostics
     bankFailure: BankFailureDiagnostics = BankFailureDiagnostics.zero,                      // monthly bank-failure trigger diagnostics
     bankResolution: BankResolutionDiagnostics = BankResolutionDiagnostics.zero,             // monthly bank-resolution count diagnostics
-    bankReconciliation: BankReconciliationDiagnostics = BankReconciliationDiagnostics.zero, // exactness-patch impact on target bank capital/CAR
+    bankReconciliation: BankReconciliationDiagnostics = BankReconciliationDiagnostics.zero, // distributed exactness-patch impact on bank capital/CAR
     bankEcl: BankEclDiagnostics = BankEclDiagnostics.zero,                                  // IFRS 9 ECL allowance and staging diagnostics
 )
 object FlowState:

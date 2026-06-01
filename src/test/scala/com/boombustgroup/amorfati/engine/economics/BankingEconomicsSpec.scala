@@ -157,21 +157,24 @@ class BankingEconomicsSpec extends AnyFlatSpec with Matchers:
     LedgerFinancialState.projectBankFinancialStocks(result.ledgerFinancialState.banks.head) shouldBe alignedOpeningStocks
   }
 
-  it should "resolve a bank made insolvent by aggregate capital reconciliation" in {
-    val prepared       = preparedBankingStep()
-    val stressedFirmS5 = prepared.s5.copy(nplLoss = prepared.s5.nplLoss + PLN(250000000000L))
+  it should "distribute aggregate capital reconciliation without creating a single-bank failure sink" in {
+    val prepared                = preparedBankingStep()
+    val survivableResidualShock = PLN(500000000L)
+    val stressedFirmS5          = prepared.s5.copy(nplLoss = prepared.s5.nplLoss + survivableResidualShock)
 
     val result = prepared.run(s5Override = stressedFirmS5)
 
-    result.bankReconciliationDiagnostics.crossedFailureThreshold shouldBe 1
-    result.bankReconciliationDiagnostics.postResidualReasonCode shouldBe Banking.BankFailureReason.NegativeCapital.code
-    result.banks.exists(bank => bank.id.toInt == result.bankReconciliationDiagnostics.targetBankId && bank.failed) shouldBe true
-    result.banks.filterNot(_.failed).foreach(_.capital should be >= PLN.Zero)
-    result.bankFailureDiagnostics.newNegativeCapital should be >= 1
+    result.bankReconciliationDiagnostics.materialResidual shouldBe 1
+    result.bankReconciliationDiagnostics.crossedFailureThreshold shouldBe 0
+    result.bankReconciliationDiagnostics.postResidualReasonCode shouldBe 0
+    result.banks.foreach(_.failed shouldBe false)
+    result.banks.foreach(_.capital should be >= PLN.Zero)
+    result.bankFailureDiagnostics.newNegativeCapital shouldBe 0
     result.bankResolutionDiagnostics.activeBanks + result.bankResolutionDiagnostics.failedBanks shouldBe result.banks.size
     result.bankResolutionDiagnostics.newFailures shouldBe result.bankCapitalDiagnostics.newFailures
-    result.bankResolutionDiagnostics.bailInEvents shouldBe result.bankResolutionDiagnostics.newFailures
-    result.bankResolutionDiagnostics.resolvedBanks should be >= 1
+    result.bankResolutionDiagnostics.newFailures shouldBe 0
+    result.bankResolutionDiagnostics.bailInEvents shouldBe 0
+    result.bankResolutionDiagnostics.resolvedBanks shouldBe 0
     result.bankResolutionDiagnostics.invalidActiveBankInvariant shouldBe 0
   }
 

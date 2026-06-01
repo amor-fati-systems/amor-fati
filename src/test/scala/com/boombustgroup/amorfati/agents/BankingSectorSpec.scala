@@ -254,6 +254,33 @@ class BankingSectorSpec extends AnyFlatSpec with Matchers:
       .consecutiveLowCar shouldBe 0
   }
 
+  it should "not count repeated same-month checks as multiple low-CAR months" in {
+    val weakOpening = mkBankRow(capital = PLN(1000), loans = PLN(100000), status = BankStatus.Active(0))
+    val first       = Banking.checkFailuresWithCarCounterBase(
+      Vector(weakOpening.bank),
+      Vector(weakOpening.stocks),
+      ExecutionMonth(30),
+      enabled = true,
+      Multiplier.Zero,
+      Banking.noBankCorpBondHoldings,
+      Vector(weakOpening.bank),
+    )
+    val second      = Banking.checkFailuresWithCarCounterBase(
+      first.banks,
+      Vector(weakOpening.stocks),
+      ExecutionMonth(30),
+      enabled = true,
+      Multiplier.Zero,
+      Banking.noBankCorpBondHoldings,
+      Vector(weakOpening.bank),
+    )
+
+    first.anyFailed shouldBe false
+    second.anyFailed shouldBe false
+    first.banks.head.consecutiveLowCar shouldBe 1
+    second.banks.head.consecutiveLowCar shouldBe 1
+  }
+
   it should "fail negative-capital banks immediately" in {
     val insolvent = mkBankRow(capital = PLN(-1))
     val result    = Banking.checkFailures(Vector(insolvent.bank), Vector(insolvent.stocks), ExecutionMonth(30), enabled = true, Multiplier.Zero)
