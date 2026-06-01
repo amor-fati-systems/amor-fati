@@ -1,4 +1,4 @@
-package com.boombustgroup.amorfati.engine.assembly
+package com.boombustgroup.amorfati.engine.closedmonth
 
 import com.boombustgroup.amorfati.engine.{FlowState, MonthClosingInput}
 import com.boombustgroup.amorfati.engine.mechanisms.PopulationLifecycleTransitions
@@ -6,7 +6,7 @@ import com.boombustgroup.amorfati.engine.mechanisms.PopulationLifecycleTransitio
 /** Maps month-closing inputs into the diagnostic flow-state surface. */
 object FlowStateAssembler:
 
-  private[assembly] def build(
+  private[closedmonth] def build(
       closingInput: MonthClosingInput,
       lifecycle: PopulationLifecycleTransitions.Result,
   ): FlowState =

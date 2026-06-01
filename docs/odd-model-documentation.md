@@ -191,7 +191,7 @@ The monthly calculus boundary is:
 | `PriceEquityEconomics` | inflation, equity market, GDP proxy, macroprudential, EU funds |
 | `OpenEconEconomics` | BoP, forex, GVC, Taylor rule, bond yields, insurance, NBFI |
 | `BankingEconomics` | bank P&L, provisioning, CAR, resolution, interbank, BFG levy, M1/M2/M3 |
-| `MonthClosing` | aggregation, informal economy, lifecycle transitions, SFC status, next state |
+| `closedmonth/MonthClosing` | aggregation, informal economy, lifecycle transitions, SFC status, next state |
 
 ### Flow Emission And Accounting Boundary
 

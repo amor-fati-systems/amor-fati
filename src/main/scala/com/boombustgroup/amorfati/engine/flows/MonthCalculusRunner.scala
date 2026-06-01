@@ -3,7 +3,7 @@ package com.boombustgroup.amorfati.engine.flows
 import com.boombustgroup.amorfati.agents.*
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.{MonthExecution, MonthRandomness, MonthWorkflow, World}
-import com.boombustgroup.amorfati.engine.assembly.MonthClosing
+import com.boombustgroup.amorfati.engine.closedmonth.MonthClosing
 import com.boombustgroup.amorfati.engine.economics.*
 import com.boombustgroup.amorfati.engine.ledger.{CorporateBondOwnership, GovernmentBondCircuit, LedgerFinancialState}
 import com.boombustgroup.amorfati.engine.markets.CorporateBondMarket
