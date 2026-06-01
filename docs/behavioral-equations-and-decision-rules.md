@@ -800,18 +800,19 @@ secondary failure checks. It is not routed through
 correction to the per-bank allocation. `BankCapital_WaterfallResidual` is the
 remaining unexplained capital delta after that correction and should remain near
 zero unless a diagnostic term is missing.
-`BankReconciliation_*` columns then inspect the one bank row that received the
-exactness patch. They report the target bank id, capital before/after, CAR
-before/after, the absolute capital residual as a share of pre-patch capital, and
-whether the residual is material. A residual is marked material when its
-absolute size is at least 1 bp of target-bank pre-patch capital.
+`BankReconciliation_*` columns then inspect the most impacted bank row after the
+sector residual is distributed across live banks. They report the target bank id,
+capital before/after, CAR before/after, the allocated residual as a share of
+pre-patch capital, and whether the residual is material. A residual is marked
+material when the most impacted allocation is at least 1 bp of that bank's
+pre-patch capital.
 `BankReconciliation_CrossedFailureThreshold` is `1` only when the patch moves
-the target bank from no failure trigger to a post-patch failure trigger; the
-post-patch reason code uses the same `0..5` reason-code mapping as
-`BankFailure_FirstNewReasonCode`. When the patched active bank has a
-post-residual failure reason, the banking stage runs a final failure,
-bail-in, and P&A resolution pass before month close; an active bank must not
-finish the month with residual-induced negative capital or a valid failure
+any bank from no failure trigger to a post-patch failure trigger; the post-patch
+reason code uses the same `0..5` reason-code mapping as
+`BankFailure_FirstNewReasonCode`. When the patch creates post-residual failure
+reasons, the banking stage runs a final failure, bail-in, and P&A resolution pass
+before month close; an active bank must not finish the month with
+residual-induced negative capital or a valid failure
 trigger.
 `BankCapital_DepositBailInLoss` is also reported for resolution analysis, but it
 is a depositor haircut rather than an equity-capital P&L term.

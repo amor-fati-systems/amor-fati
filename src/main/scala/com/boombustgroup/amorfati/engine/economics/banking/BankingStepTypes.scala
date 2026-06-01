@@ -188,6 +188,12 @@ private[banking] final case class AggregateReconciliationResult(
     resolvedBanksDelta: Int = 0,
 )
 
+private[banking] final case class ReconciliationPatchResult(
+    banks: Vector[Banking.BankState],
+    financialStocks: Vector[Banking.BankFinancialStocks],
+    bankReconciliationDiagnostics: BankReconciliationDiagnostics,
+)
+
 private[banking] final case class LedgerClosingResult(
     ledgerFinancialState: LedgerFinancialState,
     monAgg: Option[Banking.MonetaryAggregates],

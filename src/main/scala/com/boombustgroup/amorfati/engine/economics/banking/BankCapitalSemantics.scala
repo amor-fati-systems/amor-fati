@@ -125,10 +125,11 @@ object BankCapitalSemantics:
       categories = Set(Category.ExactnessReconciliation),
       source = SourceAnchor(
         "src/main/scala/com/boombustgroup/amorfati/engine/economics/banking/BankingStepRunner.scala",
-        "bank.copy(capital = bank.capital + capitalResidual)",
+        "copy(capital = nextBanks(index).capital + capitalMove)",
       ),
       sfcTreatment = "Documented exactness patch after per-bank allocation; this is the only named residual capital writer.",
-      absorber = "One selected survivor bank row absorbs the aggregate exactness patch; diagnostics expose bank id, size and CAR impact.",
+      absorber =
+        "The aggregate exactness patch is distributed across live bank rows; diagnostics expose the most impacted bank id, allocation size, and CAR impact.",
       diagnostics = "BankCapital_ReconciliationResidual and BankReconciliation_*.",
     ),
   )

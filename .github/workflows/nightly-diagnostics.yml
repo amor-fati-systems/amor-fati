@@ -2,11 +2,9 @@ name: Nightly Diagnostics
 
 on:
   schedule:
-    # GitHub cron is UTC. Both entries are needed to hit 02:00 Europe/Warsaw
-    # across DST; the schedule gate below skips whichever one is not 02:00
-    # locally on that date.
+    # GitHub cron is UTC; this runs at 02:00 Warsaw during CEST.
+    # A single cron avoids duplicate scheduled workflow runs in the Actions UI.
     - cron: "0 0 * * *"
-    - cron: "0 1 * * *"
   workflow_dispatch:
     inputs:
       profile:
@@ -36,78 +34,7 @@ jobs:
       OUT_DIR: target/nightly-diagnostics
       JAR_PATH: target/scala-3.8.2/amor-fati.jar
     steps:
-      - name: Check 02:00 Warsaw schedule window
-        id: schedule_window
-        shell: bash
-        env:
-          SCHEDULE_CRON: ${{ github.event.schedule }}
-        run: |
-          set -euo pipefail
-
-          should_run=true
-          schedule_reason="manual dispatch"
-          scheduled_cron="${SCHEDULE_CRON:-manual}"
-          scheduled_epoch="$(date +%s)"
-
-          if [[ "${GITHUB_EVENT_NAME}" == "schedule" ]]; then
-            utc_date="$(date -u '+%Y-%m-%d')"
-            case "${scheduled_cron}" in
-              "0 0 * * *") scheduled_hour=00 ;;
-              "0 1 * * *") scheduled_hour=01 ;;
-              *)
-                scheduled_hour="$(date -u '+%H')"
-                schedule_reason="unknown scheduled cron '${scheduled_cron}'"
-                ;;
-            esac
-            scheduled_epoch="$(date -u -d "${utc_date} ${scheduled_hour}:00:00" '+%s')"
-          fi
-
-          warsaw_time="$(TZ=Europe/Warsaw date -d "@${scheduled_epoch}" '+%Y-%m-%d %H:%M:%S %Z')"
-          warsaw_hour="$(TZ=Europe/Warsaw date -d "@${scheduled_epoch}" '+%H')"
-          warsaw_zone="$(TZ=Europe/Warsaw date -d "@${scheduled_epoch}" '+%Z')"
-          prev_warsaw_hour="$(TZ=Europe/Warsaw date -d "@$((scheduled_epoch - 3600))" '+%H')"
-          prev_warsaw_zone="$(TZ=Europe/Warsaw date -d "@$((scheduled_epoch - 3600))" '+%Z')"
-          next_warsaw_hour="$(TZ=Europe/Warsaw date -d "@$((scheduled_epoch + 3600))" '+%H')"
-          next_warsaw_zone="$(TZ=Europe/Warsaw date -d "@$((scheduled_epoch + 3600))" '+%Z')"
-
-          if [[ "${GITHUB_EVENT_NAME}" == "schedule" ]]; then
-            should_run=false
-            if [[ "${scheduled_cron}" == "0 0 * * *" && "${warsaw_hour}" == "02" && "${warsaw_zone}" == "CEST" && ! ( "${next_warsaw_hour}" == "02" && "${next_warsaw_zone}" == "CET" ) ]]; then
-              should_run=true
-              schedule_reason="02:00 Warsaw during CEST"
-            elif [[ "${scheduled_cron}" == "0 1 * * *" && "${warsaw_hour}" == "02" && "${warsaw_zone}" == "CET" ]]; then
-              should_run=true
-              schedule_reason="02:00 Warsaw during CET"
-            elif [[ "${scheduled_cron}" == "0 1 * * *" && "${warsaw_hour}" == "03" && "${warsaw_zone}" == "CEST" && "${prev_warsaw_hour}" == "01" && "${prev_warsaw_zone}" == "CET" ]]; then
-              should_run=true
-              schedule_reason="spring DST gap: 02:00 Warsaw does not exist, running at 03:00 CEST"
-            else
-              should_run=false
-              schedule_reason="scheduled cron does not correspond to the selected 02:00 Warsaw occurrence"
-            fi
-          fi
-
-          {
-            echo "should_run=${should_run}"
-            echo "warsaw_time=${warsaw_time}"
-            echo "schedule_reason=${schedule_reason}"
-            echo "scheduled_cron=${scheduled_cron}"
-          } >> "${GITHUB_OUTPUT}"
-
-      - name: Skip non-02:00 Warsaw scheduled trigger
-        if: ${{ steps.schedule_window.outputs.should_run != 'true' }}
-        run: |
-          {
-            echo "### Nightly Diagnostics"
-            echo
-            echo "Skipped scheduled trigger because local Warsaw time was not 02:00."
-            echo
-            echo "- Warsaw time: \`${{ steps.schedule_window.outputs.warsaw_time }}\`"
-            echo "- Schedule reason: \`${{ steps.schedule_window.outputs.schedule_reason }}\`"
-          } >> "${GITHUB_STEP_SUMMARY}"
-
       - name: Check out HEAD of main
-        if: ${{ steps.schedule_window.outputs.should_run == 'true' }}
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           ref: main
@@ -116,10 +43,8 @@ jobs:
           persist-credentials: false
 
       - uses: cachix/install-nix-action@8aa03977d8d733052d78f4e008a241fd1dbf36b3
-        if: ${{ steps.schedule_window.outputs.should_run == 'true' }}
 
       - name: Resolve diagnostics run metadata
-        if: ${{ steps.schedule_window.outputs.should_run == 'true' }}
         id: meta
         shell: bash
         run: |
@@ -127,6 +52,7 @@ jobs:
 
           sha="$(git rev-parse HEAD)"
           short_sha="$(git rev-parse --short HEAD)"
+          warsaw_time="$(TZ=Europe/Warsaw date '+%Y-%m-%d %H:%M:%S %Z')"
           if [[ "${GITHUB_EVENT_NAME}" == "schedule" ]]; then
             run_id="${PROFILE}-$(date -u +%Y%m%d)-${short_sha}"
           else
@@ -148,6 +74,7 @@ jobs:
             echo "run_root=${run_root}"
             echo "artifact_name=${artifact_name}"
             echo "retention_days=${retention_days}"
+            echo "warsaw_time=${warsaw_time}"
           } >> "${GITHUB_OUTPUT}"
 
           {
@@ -159,13 +86,11 @@ jobs:
             echo "- Output root: \`${run_root}\`"
             echo "- Artifact: \`${artifact_name}\`"
             echo "- Artifact retention: \`${retention_days} days\`"
-            echo "- Warsaw schedule time: \`${{ steps.schedule_window.outputs.warsaw_time }}\`"
-            echo "- Schedule reason: \`${{ steps.schedule_window.outputs.schedule_reason }}\`"
+            echo "- Warsaw run time: \`${warsaw_time}\`"
           } >> "${GITHUB_STEP_SUMMARY}"
 
       - name: Build assembled jar under Nix
         id: build
-        if: ${{ steps.schedule_window.outputs.should_run == 'true' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -186,7 +111,7 @@ jobs:
           exit 0
 
       - name: Run diagnostics profile from assembled jar
-        if: ${{ steps.schedule_window.outputs.should_run == 'true' && steps.build.outputs.exit_code == '0' }}
+        if: ${{ steps.build.outputs.exit_code == '0' }}
         id: diagnostics
         shell: bash
         run: |
@@ -217,7 +142,7 @@ jobs:
           exit 0
 
       - name: Report diagnostics result
-        if: ${{ always() && steps.schedule_window.outputs.should_run == 'true' }}
+        if: ${{ always() }}
         shell: bash
         env:
           RUN_ID: ${{ steps.meta.outputs.run_id }}
@@ -310,7 +235,7 @@ jobs:
           fi
 
       - name: Upload diagnostics artifacts
-        if: ${{ always() && steps.schedule_window.outputs.should_run == 'true' && steps.meta.outputs.artifact_name != '' }}
+        if: ${{ always() && steps.meta.outputs.artifact_name != '' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: ${{ steps.meta.outputs.artifact_name }}

@@ -25,7 +25,7 @@ case class BankCapitalDiagnostics(
     eclProvisionChange: PLN = PLN.Zero,     // IFRS 9 provision increase, positive when capital is hit
     capitalDestruction: PLN = PLN.Zero,     // shareholder capital wiped when banks newly fail
     interbankContagionLoss: PLN = PLN.Zero, // failed-counterparty interbank exposure loss
-    reconciliationResidual: PLN = PLN.Zero, // per-bank exactness patch; positive values add capital
+    reconciliationResidual: PLN = PLN.Zero, // aggregate exactness patch distributed across bank rows
     depositBailInLoss: PLN = PLN.Zero,      // depositor haircut from resolution, not equity-capital P&L
     newFailures: Int = 0,                   // banks newly marked failed during the month
 ):
@@ -38,7 +38,7 @@ case class BankCapitalDiagnostics(
     retainedIncome - realizedCreditLoss - bfgLevy - unrealizedBondLoss -
       htmRealizedLoss - eclProvisionChange - interbankContagionLoss - capitalDestruction
 
-  /** Unexplained capital delta after ordinary waterfall terms and the per-bank
+  /** Unexplained capital delta after ordinary waterfall terms and the aggregate
     * exactness patch. Values away from zero indicate a missing diagnostic term.
     */
   def waterfallResidual: PLN =
@@ -121,23 +121,24 @@ object BankResolutionDiagnostics:
       invalidActiveBankInvariant = if invalidActive then 1 else 0,
     )
 
-/** Diagnostics for the aggregate-exactness patch applied to one bank row.
+/** Diagnostics for the aggregate-exactness patch distributed across bank rows.
   *
-  * `capitalResidual` has the same sign as the patch: positive adds bank
-  * capital, negative removes it. The materiality flag marks residuals whose
-  * absolute size is at least 1 bp of the target bank's pre-patch capital.
+  * `capitalResidual` has the same sign as the aggregate patch: positive adds
+  * bank capital, negative removes it. `targetBankId` is the most impacted row,
+  * and the materiality flag is computed on that row's allocation rather than on
+  * the whole sector residual.
   */
 case class BankReconciliationDiagnostics(
-    targetBankId: Int = -1,                        // bank id receiving the exactness patch, or -1 when no patch was applied
-    capitalResidual: PLN = PLN.Zero,               // capital exactness patch applied to the target bank
-    targetCapitalBefore: PLN = PLN.Zero,           // target-bank capital before the patch
-    targetCapitalAfter: PLN = PLN.Zero,            // target-bank capital after the patch
-    targetCarBefore: Multiplier = Multiplier.Zero, // target-bank CAR before the patch
-    targetCarAfter: Multiplier = Multiplier.Zero,  // target-bank CAR after the patch
-    residualToTargetCapital: Scalar = Scalar.Zero, // |capitalResidual| / max(|targetCapitalBefore|, PLN 1)
+    targetBankId: Int = -1,                        // most impacted bank id, or -1 when no patch was applied
+    capitalResidual: PLN = PLN.Zero,               // aggregate capital exactness patch applied across bank rows
+    targetCapitalBefore: PLN = PLN.Zero,           // most-impacted-bank capital before the patch
+    targetCapitalAfter: PLN = PLN.Zero,            // most-impacted-bank capital after the patch
+    targetCarBefore: Multiplier = Multiplier.Zero, // most-impacted-bank CAR before the patch
+    targetCarAfter: Multiplier = Multiplier.Zero,  // most-impacted-bank CAR after the patch
+    residualToTargetCapital: Scalar = Scalar.Zero, // |target allocation| / max(|targetCapitalBefore|, PLN 1)
     materialResidual: Int = 0,                     // 1 when residualToTargetCapital is at least 1 bp
-    crossedFailureThreshold: Int = 0,              // 1 when the patch alone moves the target bank into a failure trigger
-    postResidualReasonCode: Int = 0,               // failure reason after the patch, or 0 when none
+    crossedFailureThreshold: Int = 0,              // 1 when the patch alone moves any bank into a failure trigger
+    postResidualReasonCode: Int = 0,               // most-impacted-bank failure reason after the patch, or 0 when none
 )
 
 object BankReconciliationDiagnostics:
@@ -169,6 +170,32 @@ object BankReconciliationDiagnostics:
       materialResidual = if material then 1 else 0,
       crossedFailureThreshold = if crossed then 1 else 0,
       postResidualReasonCode = reasonAfter.map(_.code).getOrElse(0),
+    )
+
+  def fromDistributedPatch(
+      targetBankId: BankId,
+      aggregateCapitalResidual: PLN,
+      targetCapitalAllocation: PLN,
+      targetCapitalBefore: PLN,
+      targetCapitalAfter: PLN,
+      targetCarBefore: Multiplier,
+      targetCarAfter: Multiplier,
+      crossedFailureThreshold: Boolean,
+      targetReasonAfter: Option[Banking.BankFailureReason],
+  ): BankReconciliationDiagnostics =
+    val ratio    = targetCapitalAllocation.abs.ratioTo(targetCapitalBefore.abs.max(PLN(1)))
+    val material = ratio >= MaterialResidualRatio
+    BankReconciliationDiagnostics(
+      targetBankId = targetBankId.toInt,
+      capitalResidual = aggregateCapitalResidual,
+      targetCapitalBefore = targetCapitalBefore,
+      targetCapitalAfter = targetCapitalAfter,
+      targetCarBefore = targetCarBefore,
+      targetCarAfter = targetCarAfter,
+      residualToTargetCapital = ratio,
+      materialResidual = if material then 1 else 0,
+      crossedFailureThreshold = if crossedFailureThreshold then 1 else 0,
+      postResidualReasonCode = targetReasonAfter.map(_.code).getOrElse(0),
     )
 
 /** Monthly IFRS 9 / ECL provisioning diagnostics.
