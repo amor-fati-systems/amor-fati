@@ -1,5 +1,6 @@
 package com.boombustgroup.amorfati.engine.flows
 
+import com.boombustgroup.amorfati.engine.{EngineFailure, EngineFailureCategory}
 import com.boombustgroup.amorfati.engine.ledger.FundRuntimeIndex
 import com.boombustgroup.ledger.*
 
@@ -72,20 +73,26 @@ final case class RuntimeLedgerTopology(
       sectorSize: Int,
       index: Int,
   ): Unit =
-    require(
+    EngineFailure.ensure(
       index >= 0 && index < sectorSize,
+      EngineFailureCategory.UnsupportedTopology,
+      "RuntimeLedgerTopology.toFlatFlows",
       s"$batchKind $position index $index is out of bounds for $sector (size=$sectorSize).",
     )
 
   private def validateScatter(scatter: BatchedFlow.Scatter): Unit =
     val sourceSize = sectorSizes(scatter.from)
     val targetSize = sectorSizes(scatter.to)
-    require(
+    EngineFailure.ensure(
       scatter.amounts.length == scatter.targetIndices.length,
+      EngineFailureCategory.UnsupportedTopology,
+      "RuntimeLedgerTopology.validateScatter",
       s"Scatter ${scatter.mechanism} has amounts.length=${scatter.amounts.length} but targetIndices.length=${scatter.targetIndices.length}.",
     )
-    require(
+    EngineFailure.ensure(
       scatter.amounts.length == sourceSize,
+      EngineFailureCategory.UnsupportedTopology,
+      "RuntimeLedgerTopology.validateScatter",
       s"Scatter ${scatter.mechanism} has amounts.length=${scatter.amounts.length} but source sector ${scatter.from} has size=$sourceSize.",
     )
     scatter.targetIndices.zipWithIndex.foreach:
@@ -101,8 +108,10 @@ final case class RuntimeLedgerTopology(
   private def validateBroadcast(broadcast: BatchedFlow.Broadcast): Unit =
     val sourceSize = sectorSizes(broadcast.from)
     val targetSize = sectorSizes(broadcast.to)
-    require(
+    EngineFailure.ensure(
       broadcast.amounts.length == broadcast.targetIndices.length,
+      EngineFailureCategory.UnsupportedTopology,
+      "RuntimeLedgerTopology.validateBroadcast",
       s"Broadcast ${broadcast.mechanism} has amounts.length=${broadcast.amounts.length} but targetIndices.length=${broadcast.targetIndices.length}.",
     )
     requireBoundedIndex(

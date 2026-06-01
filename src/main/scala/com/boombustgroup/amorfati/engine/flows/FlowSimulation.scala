@@ -394,6 +394,17 @@ object FlowSimulation:
       nextState = nextState,
     )
 
+  /** Typed month-step boundary for callers that need classifiable fail-fast
+    * errors, such as diagnostics and Monte Carlo orchestration.
+    */
+  def stepEither(
+      stateIn: SimState,
+      randomness: MonthRandomness.Contract,
+      traceFirmDecisions: Boolean = false,
+  )(using p: SimParams): Either[EngineFailure, StepOutput] =
+    try Right(step(stateIn, randomness, traceFirmDecisions = traceFirmDecisions))
+    catch case failure: EngineFailure => Left(failure)
+
   /** Public API: compute calculus only (for tests that need MonthlyCalculus).
     */
   def computeCalculus(state: SimState, randomness: MonthRandomness.Contract)(using p: SimParams): MonthlyCalculus =

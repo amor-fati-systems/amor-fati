@@ -1,6 +1,6 @@
 package com.boombustgroup.amorfati.engine.flows
 
-import com.boombustgroup.amorfati.engine.{MonthSemantics, SimulationMonth}
+import com.boombustgroup.amorfati.engine.{EngineFailure, EngineFailureCategory, MonthSemantics, SimulationMonth}
 import com.boombustgroup.amorfati.engine.ledger.RuntimeFlowProjection
 
 /** Advances a realized closed month into the next pre-month simulation state.
@@ -42,13 +42,30 @@ object NextStateAdvancer:
 
     // This is the only legal closed-month -> next-pre transition: the closed
     // month still sees the old seed, while the next boundary applies SeedOut.
-    require(
+    EngineFailure.ensure(
       input.executionMonth == expectedExecutionMonth,
+      EngineFailureCategory.InvariantViolation,
+      "NextStateAdvancer.advanceSemanticState",
       s"NextStateAdvancer input.executionMonth ${input.executionMonth.toInt} must equal input.stateIn.completedMonth.next ${expectedExecutionMonth.toInt} before constructing FlowSimulation.SimState",
     )
-    require(currentSeed == input.stateIn.world.seedIn, "StepInput seedIn must match stateIn.world.seedIn")
-    require(closing.world.seedIn == currentSeed, "ClosedMonth world must remain on the pre-step seed until NextStateAdvancer runs")
-    require(nextWorld.seedIn == nextSeed, "NextStateAdvancer must be the transition that applies SeedOut to the next boundary")
+    EngineFailure.ensure(
+      currentSeed == input.stateIn.world.seedIn,
+      EngineFailureCategory.InvariantViolation,
+      "NextStateAdvancer.advanceSemanticState",
+      "StepInput seedIn must match stateIn.world.seedIn",
+    )
+    EngineFailure.ensure(
+      closing.world.seedIn == currentSeed,
+      EngineFailureCategory.InvariantViolation,
+      "NextStateAdvancer.advanceSemanticState",
+      "ClosedMonth world must remain on the pre-step seed until NextStateAdvancer runs",
+    )
+    EngineFailure.ensure(
+      nextWorld.seedIn == nextSeed,
+      EngineFailureCategory.InvariantViolation,
+      "NextStateAdvancer.advanceSemanticState",
+      "NextStateAdvancer must be the transition that applies SeedOut to the next boundary",
+    )
 
     FlowSimulation.SimState(
       completedMonth = input.executionMonth.completed,

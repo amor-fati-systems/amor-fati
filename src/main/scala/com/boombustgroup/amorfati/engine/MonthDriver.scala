@@ -11,8 +11,10 @@ import com.boombustgroup.amorfati.engine.flows.FlowSimulation
   */
 object MonthDriver:
 
-  type SimState   = FlowSimulation.SimState
-  type StepOutput = FlowSimulation.StepOutput
+  type SimState                     = FlowSimulation.SimState
+  type StepOutput                   = FlowSimulation.StepOutput
+  type StepResult                   = Either[EngineFailure, StepOutput]
+  private[engine] type StepBoundary = (SimState, MonthRandomness.Contract, Boolean) => StepResult
 
   /** Caller-owned month schedule for the engine unfold.
     *
@@ -22,7 +24,27 @@ object MonthDriver:
   type RandomnessSchedule = SimState => Option[MonthRandomness.Contract]
 
   def unfoldSteps(initialState: SimState, traceFirmDecisions: Boolean = false)(schedule: RandomnessSchedule)(using p: SimParams): Iterator[StepOutput] =
-    Iterator.unfold(initialState): state =>
-      schedule(state).map: randomness =>
-        val output = FlowSimulation.step(state, randomness, traceFirmDecisions = traceFirmDecisions)
-        (output, output.nextState)
+    unfoldStepResults(initialState, traceFirmDecisions = traceFirmDecisions)(schedule).map:
+      case Right(output) => output
+      case Left(failure) => throw failure
+
+  /** Engine unfold that keeps central month-step failures in their structured
+    * form for diagnostics and Monte Carlo orchestration.
+    */
+  def unfoldStepResults(initialState: SimState, traceFirmDecisions: Boolean = false)(schedule: RandomnessSchedule)(using
+      p: SimParams,
+  ): Iterator[StepResult] =
+    unfoldStepResultsWithBoundary(initialState, traceFirmDecisions = traceFirmDecisions)(schedule): (state, randomness, trace) =>
+      FlowSimulation.stepEither(state, randomness, traceFirmDecisions = trace)
+
+  private[engine] def unfoldStepResultsWithBoundary(initialState: SimState, traceFirmDecisions: Boolean = false)(schedule: RandomnessSchedule)(
+      stepBoundary: StepBoundary,
+  ): Iterator[StepResult] =
+    Iterator.unfold((initialState, false)):
+      case (_, true)      =>
+        None
+      case (state, false) =>
+        schedule(state).map: randomness =>
+          stepBoundary(state, randomness, traceFirmDecisions) match
+            case Right(output) => (Right(output), (output.nextState, false))
+            case Left(failure) => (Left(failure), (state, true))

@@ -90,7 +90,9 @@ object McRunner:
       .unfold(steps): iterator =>
         if iterator.hasNext then Some((iterator.next(), iterator))
         else None
-      .mapZIO(result => ZIO.fromEither(stepSnapshot(result)))
+      .mapZIO:
+        case Left(failure) => ZIO.fail(SimError.Engine(failure))
+        case Right(result) => ZIO.fromEither(stepSnapshot(result))
 
   private def initSeed(seed: Long)(using p: SimParams) =
     val init      = WorldInit.initialize(InitRandomness.Contract.fromSeed(seed))
@@ -102,8 +104,8 @@ object McRunner:
 
   private def runtimeSteps(seed: Long, initState: FlowSimulation.SimState, traceFirmDecisions: Boolean)(using
       p: SimParams,
-  ): Iterator[FlowSimulation.StepOutput] =
-    MonthDriver.unfoldSteps(initState, traceFirmDecisions = traceFirmDecisions): state =>
+  ): Iterator[MonthDriver.StepResult] =
+    MonthDriver.unfoldStepResults(initState, traceFirmDecisions = traceFirmDecisions): state =>
       Some(MonthRandomness.Contract.fromSeed(runtimeRootSeed(seed, state)))
 
   private def runtimeRootSeed(seed: Long, state: FlowSimulation.SimState): Long =
@@ -138,19 +140,22 @@ object McRunner:
 
   private def materializeRun(
       initState: FlowSimulation.SimState,
-      steps: Iterator[FlowSimulation.StepOutput],
+      steps: Iterator[MonthDriver.StepResult],
   )(using p: SimParams): Either[SimError, RunResult] =
     val monthSeries = Vector.newBuilder[Array[MetricValue]]
 
     @scala.annotation.tailrec
-    def collect(remaining: Iterator[FlowSimulation.StepOutput], terminal: FlowSimulation.SimState): Either[SimError, RunResult] =
+    def collect(remaining: Iterator[MonthDriver.StepResult], terminal: FlowSimulation.SimState): Either[SimError, RunResult] =
       if !remaining.hasNext then Right(RunResult(TimeSeries.wrap(monthSeries.result().toArray), terminal))
       else
-        stepSnapshot(remaining.next()) match
-          case Left(err)       => Left(err)
-          case Right(snapshot) =>
-            monthSeries += snapshot.monthData
-            collect(remaining, snapshot.state)
+        remaining.next() match
+          case Left(failure) => Left(SimError.Engine(failure))
+          case Right(result) =>
+            stepSnapshot(result) match
+              case Left(err)       => Left(err)
+              case Right(snapshot) =>
+                monthSeries += snapshot.monthData
+                collect(remaining, snapshot.state)
 
     collect(steps, initState)
 

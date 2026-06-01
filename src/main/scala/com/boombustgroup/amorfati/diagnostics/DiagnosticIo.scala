@@ -1,6 +1,7 @@
 package com.boombustgroup.amorfati.diagnostics
 
-import zio.{Runtime, Unsafe, ZIO}
+import com.boombustgroup.amorfati.engine.EngineFailure
+import zio.{Cause, Runtime, Unsafe, ZIO}
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path}
@@ -13,7 +14,7 @@ private[diagnostics] object DiagnosticIo:
       Runtime.default.unsafe
         .run:
           effect.foldCause(
-            cause => Left(cause.failureOption.getOrElse(s"Diagnostic crashed: ${cause.prettyPrint}")),
+            cause => Left(renderCause(cause)),
             value => Right(value),
           )
         .getOrThrowFiberFailure()
@@ -28,3 +29,10 @@ private[diagnostics] object DiagnosticIo:
 
   def outputFailure(operation: String, path: Path, err: Throwable): String =
     s"Output failure during $operation at $path: ${Option(err.getMessage).filter(_.nonEmpty).getOrElse(err.getClass.getSimpleName)}"
+
+  private def renderCause(cause: Cause[String]): String =
+    cause.failureOption.getOrElse:
+      EngineFailure
+        .firstIn(cause.defects)
+        .map(failure => s"Diagnostic crashed: ${failure.diagnosticMessage}")
+        .getOrElse(s"Diagnostic crashed: ${cause.prettyPrint}")

@@ -1,6 +1,7 @@
 package com.boombustgroup.amorfati.montecarlo
 
 import com.boombustgroup.amorfati.accounting.{InitCheck, Sfc}
+import com.boombustgroup.amorfati.engine.EngineFailure
 import com.boombustgroup.amorfati.engine.SimulationMonth.ExecutionMonth
 import com.boombustgroup.amorfati.engine.flows.FlowSimulation
 import com.boombustgroup.amorfati.montecarlo.McTimeseriesSchema.Col
@@ -21,6 +22,10 @@ object SimError:
   case class RuntimeFailure(operation: String, details: String) extends SimError:
     override def toString: String =
       s"Runtime failure during $operation: $details"
+
+  case class Engine(failure: EngineFailure) extends SimError:
+    override def toString: String =
+      failure.diagnosticMessage
 
   case class OutputFailure(operation: String, path: String, details: String) extends SimError:
     override def toString: String =

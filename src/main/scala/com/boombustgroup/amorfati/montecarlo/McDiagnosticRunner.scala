@@ -1,7 +1,8 @@
 package com.boombustgroup.amorfati.montecarlo
 
 import com.boombustgroup.amorfati.config.SimParams
-import zio.ZIO
+import com.boombustgroup.amorfati.engine.EngineFailure
+import zio.{Cause, ZIO}
 import zio.stream.ZStream
 
 private[amorfati] object McDiagnosticRunner:
@@ -90,14 +91,12 @@ private[amorfati] object McDiagnosticRunner:
         given SimParams  = params
         val monthsStream = McRunner
           .seedMonths(job.seed, months, traceFirmDecisions)
-          .mapError(_.toString)
+          .mapError(renderSimError)
         reduce(job.scenario, job.seed, monthsStream)
           .catchAll(err => ZIO.fail(s"$context failed: $err"))
 
     effect.catchAllCause: cause =>
-      cause.failureOption match
-        case Some(err) => ZIO.fail(err)
-        case None      => ZIO.fail(s"$context crashed: ${cause.prettyPrint}")
+      ZIO.fail(renderCause(context, cause))
 
   private def runJobStream[Scenario, A](
       job: Job[Scenario],
@@ -113,11 +112,21 @@ private[amorfati] object McDiagnosticRunner:
           given SimParams  = params
           val monthsStream = McRunner
             .seedMonths(job.seed, months, traceFirmDecisions)
-            .mapError(_.toString)
+            .mapError(renderSimError)
           ZIO.succeed:
             rows(job.scenario, job.seed, monthsStream)
               .mapError(err => s"$context failed: $err")
       .catchAllCause: cause =>
-        cause.failureOption match
-          case Some(err) => ZStream.fail(err)
-          case None      => ZStream.fail(s"$context crashed: ${cause.prettyPrint}")
+        ZStream.fail(renderCause(context, cause))
+
+  private def renderSimError(error: SimError): String =
+    error match
+      case SimError.Engine(failure) => failure.diagnosticMessage
+      case other                    => other.toString
+
+  private def renderCause(context: String, cause: Cause[String]): String =
+    cause.failureOption.getOrElse:
+      EngineFailure
+        .firstIn(cause.defects)
+        .map(failure => s"$context crashed: ${failure.diagnosticMessage}")
+        .getOrElse(s"$context crashed: ${cause.prettyPrint}")
