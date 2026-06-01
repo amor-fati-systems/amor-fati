@@ -50,6 +50,13 @@ class CalibrationProvenanceSpec extends AnyFlatSpec with Matchers:
     CalibrationProvenance.Baseline.statusCounts should contain(PolicyScenario -> 7)
   }
 
+  it should "load the large baseline row table from a classpath resource" in {
+    CalibrationProvenance.Baseline.baselineRowsResource shouldBe
+      "com/boombustgroup/amorfati/config/calibration-provenance-baseline.md"
+    Option(getClass.getClassLoader.getResource(CalibrationProvenance.Baseline.baselineRowsResource)) should not be empty
+    CalibrationProvenance.Baseline.parseErrors shouldBe empty
+  }
+
   it should "report remaining statuses from the typed registry" in {
     val report = CalibrationProvenance.Baseline.statusReport.map(row => row.status -> row.count).toMap
 
