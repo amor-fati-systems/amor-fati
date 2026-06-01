@@ -1005,10 +1005,10 @@ object McTimeseriesSchema:
     ColumnGroup("households-liquidity", householdLiquidityGroup),
   )
 
-  private[amorfati] val columnGroupNames: Vector[String] =
+  private[montecarlo] val columnGroupNames: Vector[String] =
     schemaGroups.map(_.name)
 
-  private[amorfati] val colNamesByGroup: Vector[(String, Vector[String])] =
+  private[montecarlo] val colNamesByGroup: Vector[(String, Vector[String])] =
     schemaGroups.map(group => group.name -> group.columns.map(_.name))
 
   private val schema: Array[ColumnDef] =
