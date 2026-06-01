@@ -2,7 +2,7 @@ package com.boombustgroup.amorfati.engine.flows
 
 import com.boombustgroup.amorfati.accounting.Sfc
 import com.boombustgroup.amorfati.config.SimParams
-import com.boombustgroup.amorfati.engine.MonthSemantics
+import com.boombustgroup.amorfati.engine.{EngineFailure, MonthSemantics}
 import com.boombustgroup.amorfati.types.*
 import com.boombustgroup.ledger.*
 
@@ -228,39 +228,25 @@ object SfcSemanticProjection:
                     case (EntitySector.NBP, EntitySector.Banks) => amount
                     case (EntitySector.Banks, EntitySector.NBP) => -amount
                     case _                                      =>
-                      throw new IllegalArgumentException(
-                        s"${bankIncomeMechanismLabel(mechanism)} batch has unsupported direction ${batch.from}->${batch.to}",
-                      )
+                      throw unsupportedDirection(bankIncomeMechanismLabel(mechanism), batch)
                 case FlowMechanism.InvestmentDepositSettlement                                              =>
                   (batch.from, batch.to) match
                     case (EntitySector.Banks, EntitySector.Firms) => amount
                     case (EntitySector.Firms, EntitySector.Banks) => -amount
-                    case _                                        =>
-                      throw new IllegalArgumentException(
-                        s"InvestmentDepositSettlement batch has unsupported direction ${batch.from}->${batch.to}",
-                      )
+                    case _                                        => throw unsupportedDirection("InvestmentDepositSettlement", batch)
                 case FlowMechanism.TfiDepositDrain                                                          =>
                   (batch.from, batch.to) match
                     case (EntitySector.Banks, EntitySector.Households) => amount
                     case (EntitySector.Households, EntitySector.Banks) => -amount
-                    case _                                             =>
-                      throw new IllegalArgumentException(
-                        s"TfiDepositDrain batch has unsupported direction ${batch.from}->${batch.to}",
-                      )
+                    case _                                             => throw unsupportedDirection("TfiDepositDrain", batch)
                 case FlowMechanism.QuasiFiscalLendingDeposit                                                =>
                   (batch.from, batch.to) match
                     case (EntitySector.Banks, EntitySector.Firms) => amount
-                    case _                                        =>
-                      throw new IllegalArgumentException(
-                        s"QuasiFiscalLendingDeposit batch has unsupported direction ${batch.from}->${batch.to}",
-                      )
+                    case _                                        => throw unsupportedDirection("QuasiFiscalLendingDeposit", batch)
                 case FlowMechanism.QuasiFiscalRepaymentDeposit                                              =>
                   (batch.from, batch.to) match
                     case (EntitySector.Firms, EntitySector.Banks) => -amount
-                    case _                                        =>
-                      throw new IllegalArgumentException(
-                        s"QuasiFiscalRepaymentDeposit batch has unsupported direction ${batch.from}->${batch.to}",
-                      )
+                    case _                                        => throw unsupportedDirection("QuasiFiscalRepaymentDeposit", batch)
                 case _                                                                                      => amount
 
             (
@@ -273,3 +259,9 @@ object SfcSemanticProjection:
     private def bankIncomeMechanismLabel(mechanism: MechanismId): String =
       if mechanism == FlowMechanism.BankInterbankInterest then "FlowMechanism.BankInterbankInterest"
       else "FlowMechanism.BankStandingFacility"
+
+    private def unsupportedDirection(mechanismLabel: String, batch: BatchedFlow): EngineFailure =
+      EngineFailure.unsupportedTopology(
+        "SfcSemanticProjection.ExecutedFlowEvidence.from",
+        s"$mechanismLabel batch has unsupported direction ${batch.from}->${batch.to}",
+      )

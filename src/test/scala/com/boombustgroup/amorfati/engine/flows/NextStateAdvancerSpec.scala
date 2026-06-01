@@ -3,6 +3,8 @@ package com.boombustgroup.amorfati.engine.flows
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.{
   DecisionSignals,
+  EngineFailure,
+  EngineFailureCategory,
   MonthBoundarySnapshot,
   MonthClosingResult,
   MonthSemantics,
@@ -41,9 +43,10 @@ class NextStateAdvancerSpec extends AnyFlatSpec with Matchers:
     val nextSeed = state.world.seedIn.copy(laggedHiringSlack = Share.decimal(42, 2))
     val badSeed  = state.world.seedIn.copy(laggedHiringSlack = Share.Zero)
 
-    val err = intercept[IllegalArgumentException]:
+    val err = intercept[EngineFailure]:
       NextStateAdvancer.advance(input(state, nextSeed, seedIn = Some(MonthSemantics.seedIn(badSeed))))
 
+    err.category.shouldBe(EngineFailureCategory.InvariantViolation)
     err.getMessage.should(include("StepInput seedIn"))
   }
 
@@ -51,9 +54,10 @@ class NextStateAdvancerSpec extends AnyFlatSpec with Matchers:
     val state    = stateFromSeed()
     val nextSeed = state.world.seedIn.copy(laggedHiringSlack = Share.decimal(42, 2))
 
-    val err = intercept[IllegalArgumentException]:
+    val err = intercept[EngineFailure]:
       NextStateAdvancer.advance(input(state, nextSeed, executionMonth = Some(state.completedMonth.next.next)))
 
+    err.category.shouldBe(EngineFailureCategory.InvariantViolation)
     err.getMessage.should(include("input.executionMonth"))
     err.getMessage.should(include("input.stateIn.completedMonth.next"))
     err.getMessage.should(include("FlowSimulation.SimState"))
@@ -64,9 +68,10 @@ class NextStateAdvancerSpec extends AnyFlatSpec with Matchers:
     val nextSeed    = state.world.seedIn.copy(laggedHiringSlack = Share.decimal(42, 2))
     val seededWorld = state.world.copy(pipeline = state.world.pipeline.withDecisionSignals(nextSeed))
 
-    val err = intercept[IllegalArgumentException]:
+    val err = intercept[EngineFailure]:
       NextStateAdvancer.advance(input(state, nextSeed, closed = Some(closedMonth(state, world = Some(seededWorld)))))
 
+    err.category.shouldBe(EngineFailureCategory.InvariantViolation)
     err.getMessage.should(include("ClosedMonth world must remain on the pre-step seed"))
   }
 

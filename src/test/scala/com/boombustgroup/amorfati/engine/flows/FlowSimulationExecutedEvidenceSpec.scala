@@ -1,6 +1,7 @@
 package com.boombustgroup.amorfati.engine.flows
 
 import com.boombustgroup.amorfati.config.SimParams
+import com.boombustgroup.amorfati.engine.{EngineFailure, EngineFailureCategory}
 import com.boombustgroup.amorfati.types.*
 import com.boombustgroup.ledger.{AssetType, BatchedFlow, EntitySector}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -108,9 +109,10 @@ class FlowSimulationExecutedEvidenceSpec extends AnyFlatSpec with Matchers:
       mechanism = FlowMechanism.BankInterbankInterest,
     )
 
-    val err = intercept[IllegalArgumentException]:
+    val err = intercept[EngineFailure]:
       SfcSemanticProjection.ExecutedFlowEvidence.from(Vector(batch))
 
+    err.category.shouldBe(EngineFailureCategory.UnsupportedTopology)
     err.getMessage.should(include("FlowMechanism.BankInterbankInterest"))
     err.getMessage.should(include("unsupported direction"))
     err.getMessage.should(include("Government->Banks"))

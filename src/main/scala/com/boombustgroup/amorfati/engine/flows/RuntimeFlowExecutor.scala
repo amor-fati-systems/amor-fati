@@ -1,5 +1,6 @@
 package com.boombustgroup.amorfati.engine.flows
 
+import com.boombustgroup.amorfati.engine.EngineFailure
 import com.boombustgroup.ledger.*
 
 /** Executes runtime ledger batches against the explicit month topology.
@@ -21,10 +22,12 @@ object RuntimeFlowExecutor:
       netDelta: Long,
   )
 
-  def execute(flows: Vector[BatchedFlow])(using topology: RuntimeLedgerTopology): Either[String, Result] =
+  def execute(flows: Vector[BatchedFlow])(using topology: RuntimeLedgerTopology): Either[EngineFailure, Result] =
     val state = topology.emptyExecutionState()
     ImperativeInterpreter
       .planAndApplyAll(state, flows)
+      .left
+      .map(executionFailure)
       .map: _ =>
         val deltaLedger = state.snapshot
         Result(
@@ -34,7 +37,7 @@ object RuntimeFlowExecutor:
         )
 
   def executeOrThrow(flows: Vector[BatchedFlow])(using RuntimeLedgerTopology): Result =
-    execute(flows).fold(err => throw executionFailure(err), identity)
+    execute(flows).fold(err => throw err, identity)
 
-  def executionFailure(error: String): IllegalStateException =
-    IllegalStateException(s"Ledger batch execution failed: $error")
+  def executionFailure(error: String): EngineFailure =
+    EngineFailure.runtimeLedgerExecution("RuntimeFlowExecutor.execute", s"Ledger batch execution failed: $error")
