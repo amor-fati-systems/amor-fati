@@ -4,7 +4,7 @@ The engine package orchestrates the monthly simulation loop. The month
 boundary is `FlowSimulation.SimState`, which carries `World` macro state,
 agent populations, household aggregates, and `LedgerFinancialState`.
 Domain logic is split across **economics** (same-month calculus pipeline),
-**assembly** (month-closing state projection), **flows** (SFC-verified monetary
+**closedmonth** (closed-month state projection), **flows** (SFC-verified monetary
 flow emission via ledger), **ledger** (financial ownership contracts and
 projections), **markets** (clearing mechanisms), and **mechanisms** (domain
 rules that modify agent state outside market clearing).
@@ -13,7 +13,7 @@ rules that modify agent state outside market clearing).
 engine/
 ├── World.scala             # Immutable macro/runtime state container (9 nested types)
 ├── economics/              # Same-month calculus pipeline, no monetary flow emission
-├── assembly/               # Month-closing World/agent/ledger projection
+├── closedmonth/            # Closed-month World/agent/ledger projection
 ├── flows/                  # SFC flow emission via verified ledger
 ├── ledger/                 # Ledger-owned financial state, ownership contracts, projections
 ├── markets/                # Market clearing & price formation
@@ -39,7 +39,7 @@ engine/
 | `OperationalSignals.scala` | Explicit same-month signal surface for month-`t` operational execution, kept distinct from persisted start-of-month `DecisionSignals`. |
 | `SignalExtraction.scala` | Explicit closed-to-next-pre boundary: derives next-month `DecisionSignals` and typed seed provenance from realized month-`t` outcomes. |
 | `MonthTrace.scala` | Boundary-focused audit artifact with a stable month core (`boundary`, `seedTransition`, `randomness`, validations) plus extensible typed timing envelopes. |
-| `assembly/MonthClosing.scala` | Explicit month-closing boundary. Consumes `MonthClosingInput` and closing randomness, then returns the realized month-`t` closing state before next seed extraction. |
+| `closedmonth/MonthClosing.scala` | Explicit month-closing boundary. Consumes `MonthClosingInput` and closing randomness, then returns the realized month-`t` closed state before next seed extraction. |
 
 ## Month Step Boundary
 
@@ -101,12 +101,12 @@ Each module exposes a `StepOutput` boundary type. Modules that historically
 named their payload `Output` keep `type Output = StepOutput` aliases for
 transitional type references, but new engine code should refer to `StepOutput`.
 
-## assembly/
+## closedmonth/
 
-Month-closing state projection. This package is intentionally separate from
+Closed-month state projection. This package is intentionally separate from
 `economics`: it does not decide market behavior or emit monetary flows. It
 takes the already-computed stage outputs, invokes domain transition mechanisms,
-and materializes the month-`t+1` engine boundary.
+and materializes the realized month-`t` state consumed by next-month seed extraction.
 
 | File | Responsibility |
 |------|----------------|

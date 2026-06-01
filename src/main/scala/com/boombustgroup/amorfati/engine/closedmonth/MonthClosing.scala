@@ -1,4 +1,4 @@
-package com.boombustgroup.amorfati.engine.assembly
+package com.boombustgroup.amorfati.engine.closedmonth
 
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.*

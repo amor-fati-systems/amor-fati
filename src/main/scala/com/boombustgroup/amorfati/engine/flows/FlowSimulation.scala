@@ -5,7 +5,7 @@ import com.boombustgroup.amorfati.agents.*
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.*
 import com.boombustgroup.amorfati.engine.SimulationMonth.{CompletedMonth, ExecutionMonth}
-import com.boombustgroup.amorfati.engine.assembly.MonthClosing
+import com.boombustgroup.amorfati.engine.closedmonth.MonthClosing
 import com.boombustgroup.amorfati.engine.economics.*
 import com.boombustgroup.amorfati.engine.ledger.LedgerFinancialState
 import com.boombustgroup.amorfati.types.*

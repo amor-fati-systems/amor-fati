@@ -1,4 +1,4 @@
-package com.boombustgroup.amorfati.engine.assembly
+package com.boombustgroup.amorfati.engine.closedmonth
 
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.*
@@ -12,7 +12,7 @@ import com.boombustgroup.amorfati.types.*
   */
 object WorldStateAssembler:
 
-  private[assembly] def assemble(
+  private[closedmonth] def assemble(
       closingInput: MonthClosingInput,
       lifecycle: PopulationLifecycleTransitions.Result,
   )(using p: SimParams): World =
