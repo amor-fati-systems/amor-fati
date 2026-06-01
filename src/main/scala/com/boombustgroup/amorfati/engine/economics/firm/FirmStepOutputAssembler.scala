@@ -37,96 +37,86 @@ private[firm] object FirmStepOutputAssembler:
       firms = LedgerFinancialState.refreshFirmFinancialBalances(firmFinancialStocks, ledgerFinancialState.firms),
     )
 
-    val emptyPln        = Vector.fill(lending.nBanks)(PLN.Zero)
-    val perBankNewLoans = fp.outcomes.foldLeft(emptyPln): (acc, o) =>
-      acc.updated(o.bankId.toInt, acc(o.bankId.toInt) + o.finalLoan)
-
-    val perBankNewLoansWithRevert =
-      if bonded.corpBondAbsorption < Share.One then
-        fp.outcomes.foldLeft(perBankNewLoans): (acc, o) =>
-          val revert = bonded.bondReversionByFirm.getOrElse(o.firm.id, PLN.Zero)
-          if revert > PLN.Zero then acc.updated(o.bankId.toInt, acc(o.bankId.toInt) + revert)
-          else acc
-      else perBankNewLoans
-
-    val perBankFirmPrincipal = fp.outcomes.foldLeft(emptyPln): (acc, o) =>
-      acc.updated(o.bankId.toInt, acc(o.bankId.toInt) + o.principalRepaid)
-    val decisionTraces       =
+    val totals         = FirmOutputAggregation.derive(fp, bonded, lending.nBanks)
+    val decisionTraces =
       if fp.traceDecisions then finalizedDecisionTraces(fp, bonded, ioFirms, firmFinancialStocks)
       else Vector.empty
 
-    StepOutput(
-      ioFirms = ioFirms,
-      households = households,
-      sumTax = flows.tax,
-      sumCapex = flows.capex,
-      sumTechImp = flows.techImp,
-      sumNewLoans = bonded.sumNewLoans,
-      automationTechCapex = flows.capex,
-      automationTechImports = flows.techImp,
-      automationTechLoans = automationTechLoanTotal(fp, bonded),
-      automationUpgradeFailures = fp.outcomes.count(_.automationUpgradeFailure),
-      automationAiDebtTrap = fp.outcomes.count(_.automationAiDebtTrap),
-      automationNewFullAi = fp.outcomes.count(_.automationNewFullAi),
-      automationNewHybrid = fp.outcomes.count(_.automationNewHybrid),
-      sumEquityIssuance = flows.equityIssuance,
-      sumGrossInvestment = flows.grossInvestment,
-      sumBondIssuance = flows.bondIssuance,
-      sumProfitShifting = flows.profitShifting,
-      sumFdiRepatriation = flows.fdiRepatriation,
-      sumInventoryChange = flows.inventoryChange,
-      sumCitEvasion = flows.citEvasion,
-      sumEnergyCost = flows.energyCost,
-      sumGreenInvestment = flows.greenInvestment,
-      totalIoPaid = totalIoPaid,
-      nplNew = npl.nplNew,
-      nplLoss = npl.nplLoss,
-      totalBondDefault = npl.totalBondDefault,
-      firmDeaths = npl.firmDeaths,
-      intIncome = npl.intIncome,
-      corpBondAbsorption = bonded.corpBondAbsorption,
-      actualBondIssuance = bonded.actualBondIssuance,
-      netMigration = in.labor.newImmig.monthlyInflow - in.labor.newImmig.monthlyOutflow,
-      perBankNewLoans = perBankNewLoansWithRevert,
-      sumFirmPrincipal = flows.principalRepaid,
-      perBankFirmPrincipal = perBankFirmPrincipal,
-      perBankNplDebt = npl.perBankNplDebt,
-      perBankIntIncome = npl.perBankIntIncome,
-      perBankWorkers = npl.perBankWorkers,
-      lendingRates = lending.rates,
-      sumInvestmentCreditDemand = flows.investmentCreditDemand,
-      sumInvestmentCreditApproved = flows.investmentCreditApproved,
-      sumInvestmentCreditRejected = flows.investmentCreditRejected,
-      sumTechCreditDemand = flows.techCreditDemand,
-      sumTechCreditApproved = flows.techCreditApproved,
-      sumTechCreditRejected = flows.techCreditRejected,
-      sumTechSelectedCreditDemand = flows.techSelectedCreditDemand,
-      sumTechSelectedCreditApproved = flows.techSelectedCreditApproved,
-      sumTechSelectedCreditRejected = flows.techSelectedCreditRejected,
-      sumTechCandidateCreditDemand = flows.techCandidateCreditDemand,
-      sumTechCandidateCreditApproved = flows.techCandidateCreditApproved,
-      sumTechCandidateCreditRejected = flows.techCandidateCreditRejected,
-      sumCreditRejectedByReason = flows.creditRejectedByReason,
-      postFirmCrossSectorHires = crossSectorHires,
-      postFirmHires = hires,
-      postFirmHireCapacity = hireCapacity,
-      markupInflation = markupInflation,
-      sumRealizedPostTaxProfit = fp.outcomes.foldLeft(PLN.Zero)(_ + _.realizedPostTaxProfit),
-      sumStateOwnedPostTaxProfit = fp.outcomes.filter(_.firm.stateOwned).foldLeft(PLN.Zero)((acc, o) => acc + o.realizedPostTaxProfit),
-      decisionTraces = decisionTraces,
-      ledgerFinancialState = ledgerAfterFirmStocks,
+    StepOutput.fromSections(
+      state = FirmOutputState(
+        ioFirms = ioFirms,
+        households = households,
+        decisionTraces = decisionTraces,
+        ledgerFinancialState = ledgerAfterFirmStocks,
+      ),
+      flows = FirmOutputFlowTotals(
+        sumTax = flows.tax,
+        sumCapex = flows.capex,
+        sumTechImp = flows.techImp,
+        sumNewLoans = bonded.sumNewLoans,
+        sumEquityIssuance = flows.equityIssuance,
+        sumGrossInvestment = flows.grossInvestment,
+        sumBondIssuance = flows.bondIssuance,
+        sumProfitShifting = flows.profitShifting,
+        sumFdiRepatriation = flows.fdiRepatriation,
+        sumInventoryChange = flows.inventoryChange,
+        sumCitEvasion = flows.citEvasion,
+        sumEnergyCost = flows.energyCost,
+        sumGreenInvestment = flows.greenInvestment,
+        totalIoPaid = totalIoPaid,
+        sumFirmPrincipal = flows.principalRepaid,
+      ),
+      automation = FirmOutputAutomationTotals(
+        techCapex = flows.capex,
+        techImports = flows.techImp,
+        techLoans = totals.automationTechLoans,
+        upgradeFailures = totals.automationUpgradeFailures,
+        aiDebtTrap = totals.automationAiDebtTrap,
+        newFullAi = totals.automationNewFullAi,
+        newHybrid = totals.automationNewHybrid,
+      ),
+      banking = FirmOutputBankingTotals(
+        nplNew = npl.nplNew,
+        nplLoss = npl.nplLoss,
+        totalBondDefault = npl.totalBondDefault,
+        firmDeaths = npl.firmDeaths,
+        intIncome = npl.intIncome,
+        corpBondAbsorption = bonded.corpBondAbsorption,
+        actualBondIssuance = bonded.actualBondIssuance,
+        perBankNewLoans = totals.perBankNewLoans,
+        perBankFirmPrincipal = totals.perBankFirmPrincipal,
+        perBankNplDebt = npl.perBankNplDebt,
+        perBankIntIncome = npl.perBankIntIncome,
+        perBankWorkers = npl.perBankWorkers,
+        lendingRates = lending.rates,
+      ),
+      credit = FirmOutputCreditTotals(
+        investmentDemand = flows.investmentCreditDemand,
+        investmentApproved = flows.investmentCreditApproved,
+        investmentRejected = flows.investmentCreditRejected,
+        techDemand = flows.techCreditDemand,
+        techApproved = flows.techCreditApproved,
+        techRejected = flows.techCreditRejected,
+        techSelectedDemand = flows.techSelectedCreditDemand,
+        techSelectedApproved = flows.techSelectedCreditApproved,
+        techSelectedRejected = flows.techSelectedCreditRejected,
+        techCandidateDemand = flows.techCandidateCreditDemand,
+        techCandidateApproved = flows.techCandidateCreditApproved,
+        techCandidateRejected = flows.techCandidateCreditRejected,
+        rejectedByReason = flows.creditRejectedByReason,
+      ),
+      labor = FirmOutputLaborTotals(
+        netMigration = in.labor.newImmig.monthlyInflow - in.labor.newImmig.monthlyOutflow,
+        crossSectorHires = crossSectorHires,
+        hires = hires,
+        hireCapacity = hireCapacity,
+      ),
+      profitability = FirmOutputProfitability(
+        markupInflation = markupInflation,
+        realizedPostTaxProfit = totals.realizedPostTaxProfit,
+        stateOwnedPostTaxProfit = totals.stateOwnedPostTaxProfit,
+      ),
     )
-
-  private def automationTechLoanTotal(fp: FirmProcessingResult, bonded: BondAbsorptionResult): PLN =
-    fp.outcomes.iterator
-      .map: outcome =>
-        FirmFinancing.automationTechLoanAmount(
-          techBankLoan = outcome.techBankLoan,
-          techBondAmt = outcome.techBondAmt,
-          bondAmt = outcome.bondAmt,
-          revertedBond = bonded.bondReversionByFirm.getOrElse(outcome.firm.id, PLN.Zero),
-        )
-      .sumPln
 
   private def finalizedDecisionTraces(
       fp: FirmProcessingResult,
