@@ -133,17 +133,72 @@ private[household] object HouseholdStepDsl:
 
   /** Checks monthly diagnostics against aggregate accounting before closing. */
   def validate(aggregated: AggregatedHouseholds): Program[ValidatedHouseholds] =
-    val rows             = aggregated.rows
-    val monthlyRows      = rows.monthly
-    val agg              = rows.aggregates
-    var monthlyLiquidity = PLN.Zero
-    var j                = 0
+    val rows                       = aggregated.rows
+    val monthlyRows                = rows.monthly
+    val agg                        = rows.aggregates
+    var monthlyLiquidity           = PLN.Zero
+    var monthlyDefault             = PLN.Zero
+    var monthlyLoanDef             = PLN.Zero
+    var monthlyBridge              = PLN.Zero
+    var monthlyConsGap             = PLN.Zero
+    var monthlyRentGap             = PLN.Zero
+    var monthlyMtgGap              = PLN.Zero
+    var monthlyDebtGap             = PLN.Zero
+    var monthlyOverdraft           = PLN.Zero
+    var j                          = 0
     while j < monthlyRows.length do
-      monthlyLiquidity = monthlyLiquidity + monthlyRows(j).liquidityShortfallFinancing
+      val row = monthlyRows(j)
+      monthlyLiquidity = monthlyLiquidity + row.liquidityShortfallFinancing
+      monthlyDefault = monthlyDefault + row.consumerDefault
+      monthlyLoanDef = monthlyLoanDef + row.consumerLoanDefault
+      monthlyBridge = monthlyBridge + row.liquidityBridgeChargeOff
+      monthlyConsGap = monthlyConsGap + row.consumptionShortfall
+      monthlyRentGap = monthlyRentGap + row.rentArrears
+      monthlyMtgGap = monthlyMtgGap + row.mortgageArrears
+      monthlyDebtGap = monthlyDebtGap + row.consumerDebtArrears
+      monthlyOverdraft = monthlyOverdraft + row.temporaryOverdraft
       j += 1
+    val monthlyShortfallComponents =
+      monthlyConsGap + monthlyRentGap + monthlyMtgGap + monthlyDebtGap + monthlyOverdraft
     require(
       monthlyLiquidity == agg.totalLiquidityShortfallFinancing,
       "Household.step monthly flow diagnostics must reconcile to aggregate liquidity shortfall financing",
+    )
+    require(
+      monthlyDefault == agg.totalConsumerDefault,
+      "Household.step monthly flow diagnostics must reconcile to aggregate consumer default",
+    )
+    require(
+      monthlyLoanDef == agg.totalConsumerLoanDefault,
+      "Household.step monthly flow diagnostics must reconcile to aggregate consumer-loan default",
+    )
+    require(
+      monthlyBridge == agg.totalLiquidityBridgeChargeOff,
+      "Household.step monthly flow diagnostics must reconcile to aggregate liquidity bridge charge-off",
+    )
+    require(
+      monthlyConsGap == agg.totalConsumptionShortfall,
+      "Household.step monthly flow diagnostics must reconcile to aggregate consumption shortfall",
+    )
+    require(
+      monthlyRentGap == agg.totalRentArrears,
+      "Household.step monthly flow diagnostics must reconcile to aggregate rent arrears",
+    )
+    require(
+      monthlyMtgGap == agg.totalMortgageArrears,
+      "Household.step monthly flow diagnostics must reconcile to aggregate mortgage arrears",
+    )
+    require(
+      monthlyDebtGap == agg.totalConsumerDebtArrears,
+      "Household.step monthly flow diagnostics must reconcile to aggregate consumer-debt arrears",
+    )
+    require(
+      monthlyOverdraft == agg.totalTemporaryOverdraft,
+      "Household.step monthly flow diagnostics must reconcile to aggregate temporary overdraft",
+    )
+    require(
+      monthlyShortfallComponents == agg.totalLiquidityShortfallComponents,
+      "Household.step monthly flow diagnostics must reconcile to aggregate liquidity shortfall components",
     )
     require(
       agg.totalLiquidityShortfallComponents == agg.totalLiquidityShortfallFinancing,
