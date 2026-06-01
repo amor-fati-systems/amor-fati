@@ -91,7 +91,7 @@ typed `for`-comprehension rather than an implicit block of local values.
 | `LaborEconomics.scala` | Phillips curve + expectations + union rigidity wages, employment, demographics, immigration |
 | `HouseholdIncomeEconomics.scala` | Individual HH income, consumption, saving, portfolio; labor separations, wage updates, bank-specific rates, equity returns, sectoral mobility |
 | `DemandEconomics.scala` | Sector demand allocation: HH consumption, government purchases, investment, exports; capacity constraints and spillover |
-| `FirmEconomics.scala` | Production, I-O intermediate market, CAPEX, financing splits (equity/bonds/loans), labor matching, NPL detection |
+| `FirmEconomics.scala` / `firm/*` | Firm facade plus staged runner: lending surface, firm decisions, financing splits, bond absorption, I-O market, pricing, labor matching, NPL/default settlement, and output assembly |
 | `HouseholdFinancialEconomics.scala` | Mortgage debt service, deposit interest, diaspora remittances, tourism, consumer credit aggregation |
 | `PriceEquityEconomics.scala` | Inflation, GPW equity, sigma dynamics, GDP, macroprudential, EU funds |
 | `OpenEconEconomics.scala` | BoP/forex, GVC trade, Taylor rule, bond yields, interbank, corporate bonds, insurance, NBFI |
@@ -100,6 +100,31 @@ typed `for`-comprehension rather than an implicit block of local values.
 Each module exposes a `StepOutput` boundary type. Modules that historically
 named their payload `Output` keep `type Output = StepOutput` aliases for
 transitional type references, but new engine code should refer to `StepOutput`.
+
+### economics/firm/
+
+The firm sector is intentionally split like the banking sector: the public
+`FirmEconomics.scala` facade delegates to a small `FirmStepRunner`, while
+package-local stage modules own the actual same-month mechanics.
+
+| File | Responsibility |
+|------|----------------|
+| `FirmStepRunner.scala` | Ordered firm-stage workflow expressed through `MonthWorkflow`: lending, processing, bond absorption, market stages, default settlement, output assembly |
+| `FirmEconomicsStepDsl.scala` | Typed step composition helpers for the firm workflow |
+| `FirmStepInput.scala` | Same-month input boundary from earlier economics stages, world state, agents, ledger state, and trace settings |
+| `FirmStepOutput.scala` | Public flattened `StepOutput` consumed by downstream economics, flow emission, diagnostics, and snapshots |
+| `FirmStepOutputSections.scala` | Internal grouped sections used to assemble the public `StepOutput` without treating the flattened contract as the domain model |
+| `FirmCreditSurface.scala` | Bank-facing credit surface and financing-channel boundary types |
+| `FirmLendingStage.scala` | Per-bank lending rates, approval functions, and current-month operational signals for firm decisions |
+| `FirmOutcomeProcessor.scala` | Per-firm decision execution, financing split, automation diagnostics, and optional decision trace enrichment |
+| `FirmProcessingStage.scala` | Indexed incumbent-firm processing loop with single-pass flow and bond-demand aggregation |
+| `FirmFlowTotals.scala` | Firm monetary-flow and credit-audit totals accumulated during processing |
+| `FirmFinancing.scala` | Equity, corporate-bond, and residual bank-loan split logic |
+| `FirmBondAbsorption.scala` | Catalyst absorption constraint and unsold-bond reversion back into bank loans |
+| `FirmMarketStages.scala` | I-O market, Calvo pricing, labor matching, firm default/NPL aggregation, and issuer-debt settlement |
+| `FirmOutputAggregation.scala` | Single-pass derived totals for per-bank lending, automation diagnostics, and profitability |
+| `FirmStepOutputAssembler.scala` | Final projection from stage internals to the public `StepOutput` |
+| `FirmProcessingTypes.scala` / `FirmStageResults.scala` | Package-local boundary types for per-firm outcomes and stage results |
 
 ## closedmonth/
 
