@@ -83,27 +83,48 @@ private[amorfati] object BankInterbankSettlement:
       interbankInterest: Banking.PerBankAmounts,
       fxInjection: PLN,
   ): ReserveSettlementResult =
-    val distributedFx                        = distributeFxInjectionByDeposits(financialStocks, fxInjection)
-    val updatedStocks                        = Vector.newBuilder[Banking.BankFinancialStocks]
-    val (standingFacilityBackstop, residual) =
-      banks.zip(financialStocks).zipWithIndex.foldLeft((PLN.Zero, distributedFx.residual)) { (acc, rowAndIdx) =>
-        val (accBackstop, accResidual) = acc
-        val ((_, stocks), idx)         = rowAndIdx
-        val delta                      =
-          reserveInterest.perBank(idx) +
-            standingFacilityIncome.perBank(idx) +
-            interbankInterest.perBank(idx) +
-            distributedFx.allocations(idx)
-        val updated                    = stocks.reserve + delta
-        if updated >= PLN.Zero then
-          updatedStocks += stocks.copy(reserve = updated)
-          (accBackstop, accResidual)
-        else
-          updatedStocks += stocks.copy(reserve = PLN.Zero)
-          (accBackstop - updated, accResidual)
-      }
+    val n = banks.length
+    require(
+      financialStocks.length == n,
+      s"BankInterbankSettlement.applyNbpReserveSettlement requires aligned banks and financialStocks, got banks=$n and financialStocks=${financialStocks.length}",
+    )
+    require(
+      reserveInterest.perBank.length == n,
+      s"BankInterbankSettlement.applyNbpReserveSettlement requires reserveInterest rows=$n, got ${reserveInterest.perBank.length}",
+    )
+    require(
+      standingFacilityIncome.perBank.length == n,
+      s"BankInterbankSettlement.applyNbpReserveSettlement requires standingFacilityIncome rows=$n, got ${standingFacilityIncome.perBank.length}",
+    )
+    require(
+      interbankInterest.perBank.length == n,
+      s"BankInterbankSettlement.applyNbpReserveSettlement requires interbankInterest rows=$n, got ${interbankInterest.perBank.length}",
+    )
 
-    ReserveSettlementResult(banks, updatedStocks.result(), standingFacilityBackstop, residual)
+    val distributedFx = distributeFxInjectionByDeposits(financialStocks, fxInjection)
+    require(
+      distributedFx.allocations.length == n,
+      s"BankInterbankSettlement.applyNbpReserveSettlement requires distributedFx allocations=$n, got ${distributedFx.allocations.length}",
+    )
+
+    val updatedStocks            = new Array[Banking.BankFinancialStocks](n)
+    var standingFacilityBackstop = PLN.Zero
+    var idx                      = 0
+    while idx < n do
+      val stocks  = financialStocks(idx)
+      val delta   =
+        reserveInterest.perBank(idx) +
+          standingFacilityIncome.perBank(idx) +
+          interbankInterest.perBank(idx) +
+          distributedFx.allocations(idx)
+      val updated = stocks.reserve + delta
+      if updated >= PLN.Zero then updatedStocks(idx) = stocks.copy(reserve = updated)
+      else
+        updatedStocks(idx) = stocks.copy(reserve = PLN.Zero)
+        standingFacilityBackstop -= updated
+      idx += 1
+
+    ReserveSettlementResult(banks, updatedStocks.toVector, standingFacilityBackstop, distributedFx.residual)
 
   /** Distribute FX intervention PLN injection across banks proportional to
     * deposit market share, adjusting reservesAtNbp. EUR purchase -> PLN

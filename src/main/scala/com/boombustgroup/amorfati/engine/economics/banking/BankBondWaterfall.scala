@@ -39,6 +39,10 @@ private[banking] object BankBondWaterfall:
       totalBondIssuance: PLN,
       perBankWorkers: Vector[Int],
   )(using p: SimParams): Vector[PLN] =
+    require(
+      previous.length == perBankWorkers.length,
+      s"BankBondWaterfall.settleCorpBondHoldings requires aligned bank rows, got previous.length=${previous.length} and perBankWorkers.length=${perBankWorkers.length}",
+    )
     val bankIssuance   = CorporateBondMarket.processIssuance(CorporateBondMarket.StockState.zero, totalBondIssuance).bankHoldings
     val bankReduction  = (previousAggregateStock.bankHoldings + bankIssuance - nextAggregateStock.bankHoldings).max(PLN.Zero)
     val afterReduction = reduceBankCorpBondHoldings(previous, bankReduction)

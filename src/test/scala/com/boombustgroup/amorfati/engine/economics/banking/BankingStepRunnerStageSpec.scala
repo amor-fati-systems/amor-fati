@@ -4,6 +4,7 @@ import com.boombustgroup.amorfati.agents.*
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.SimulationMonth
 import com.boombustgroup.amorfati.engine.diagnostics.banking.BankReconciliationDiagnostics
+import com.boombustgroup.amorfati.engine.markets.CorporateBondMarket
 import com.boombustgroup.amorfati.types.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -150,7 +151,7 @@ class BankingStepRunnerStageSpec extends AnyFlatSpec with Matchers:
     )
 
     result.banks.map(_.capital) shouldBe Vector(PLN(800), PLN(800), PLN.Zero)
-    result.bankReconciliationDiagnostics.capitalResidual shouldBe PLN(-400)
+    result.bankReconciliationDiagnostics.capitalResidual shouldBe PLN(-200)
     result.bankReconciliationDiagnostics.targetBankId should (be(0) or be(1))
   }
 
@@ -173,6 +174,50 @@ class BankingStepRunnerStageSpec extends AnyFlatSpec with Matchers:
 
     result.banks.map(_.capital) shouldBe Vector(PLN(90), PLN(90))
     result.bankReconciliationDiagnostics.crossedFailureThreshold shouldBe 0
+  }
+
+  it should "fail fast when a deposit patch would make a bank balance negative" in {
+    val rows      = Vector(bank(0))
+    val stockRows = Vector(stocks(PLN(100)))
+
+    an[IllegalArgumentException] shouldBe thrownBy {
+      BankAggregateReconciliation.applyPatch(
+        banks = rows,
+        financialStocks = stockRows,
+        bankCorpBondHoldings = Vector(PLN.Zero),
+        depositResidual = PLN(-101),
+        capitalResidual = PLN.Zero,
+        ccyb = Multiplier.Zero,
+        carCounterBase = rows,
+      )
+    }
+  }
+
+  "BankBondWaterfall.settleCorpBondHoldings" should "fail fast when bank dimensions are misaligned" in {
+    an[IllegalArgumentException] shouldBe thrownBy {
+      BankBondWaterfall.settleCorpBondHoldings(
+        previous = Vector(PLN.Zero),
+        previousAggregateStock = CorporateBondMarket.StockState.zero,
+        nextAggregateStock = CorporateBondMarket.StockState.zero,
+        totalBondIssuance = PLN.Zero,
+        perBankWorkers = Vector.empty,
+      )
+    }
+  }
+
+  "BankInterbankSettlement.applyNbpReserveSettlement" should "fail fast when per-bank rows are misaligned" in {
+    val zeroAmounts = Banking.PerBankAmounts(Vector(PLN.Zero), PLN.Zero)
+
+    an[IllegalArgumentException] shouldBe thrownBy {
+      BankInterbankSettlement.applyNbpReserveSettlement(
+        banks = Vector(bank(0)),
+        financialStocks = Vector.empty,
+        reserveInterest = zeroAmounts,
+        standingFacilityIncome = zeroAmounts,
+        interbankInterest = zeroAmounts,
+        fxInjection = PLN.Zero,
+      )
+    }
   }
 
 end BankingStepRunnerStageSpec

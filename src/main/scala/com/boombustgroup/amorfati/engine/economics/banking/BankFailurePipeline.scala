@@ -28,7 +28,7 @@ private[banking] object BankFailurePipeline:
     val failureDetection                    = runFailureDetection(in, waterfall, bankCorpBondHoldingsAfterSettlement)
     val bailIn                              = runBailIn(failureDetection)
     val bankResolution                      = runBankResolution(failureDetection, bailIn, settledBankCorpBonds)
-    val bankCapitalTerms                    = computeBankCapitalTerms(prevBankAgg, bankResolution.banks, in, mortgageFlows)
+    val bankCapitalTerms                    = computeBankCapitalTerms(prevBankAgg, waterfall.banks, in, mortgageFlows)
     val aggregateReconciliation             = BankAggregateReconciliation.reconcile(
       banks = bankResolution.banks,
       financialStocks = bankResolution.financialStocks,
@@ -179,13 +179,13 @@ private[banking] object BankFailurePipeline:
 
   private def computeBankCapitalTerms(
       prevBankAgg: Banking.Aggregate,
-      finalBanks: Vector[Banking.BankState],
+      bankRows: Vector[Banking.BankState],
       in: StepInput,
       mortgageFlows: HousingMarket.MortgageFlows,
   )(using p: SimParams): BankCapitalTerms =
     require(
-      finalBanks.length == in.banks.length,
-      s"BankFailurePipeline bank-capital terms require aligned bank rows, got ${finalBanks.length} final banks and ${in.banks.length} opening banks",
+      bankRows.length == in.banks.length,
+      s"BankFailurePipeline bank-capital terms require aligned bank rows, got ${bankRows.length} post-update banks and ${in.banks.length} opening banks",
     )
     val yieldChange        = in.openEconomy.monetary.newBondYield - in.world.gov.bondYield
     val unrealizedBondLoss =
@@ -193,8 +193,8 @@ private[banking] object BankFailurePipeline:
       else PLN.Zero
     var eclRaw             = 0L
     var i                  = 0
-    while i < finalBanks.length do
-      val curr     = finalBanks(i)
+    while i < bankRows.length do
+      val curr     = bankRows(i)
       val prev     = in.banks(i)
       val currProv = EclStaging.allowance(curr.eclStaging)
       val prevProv = EclStaging.allowance(prev.eclStaging)

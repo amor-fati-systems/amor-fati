@@ -181,6 +181,10 @@ private[banking] object BankAggregateReconciliation:
         val capitalMove = capitalAllocations(i)
         if depositMove != PLN.Zero then
           val newDeposits = nextStocks(index).totalDeposits + depositMove
+          require(
+            newDeposits >= PLN.Zero,
+            s"BankAggregateReconciliation deposit patch would make bank ${banks(index).id} deposits negative: current=${nextStocks(index).totalDeposits}, move=$depositMove, aggregateResidual=$depositResidual",
+          )
           nextStocks(index) = nextStocks(index).copy(
             totalDeposits = newDeposits,
             demandDeposit = newDeposits * (Share.One - p.banking.termDepositFrac),
