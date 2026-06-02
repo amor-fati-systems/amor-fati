@@ -1,0 +1,34 @@
+version: 2
+
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Warsaw"
+    open-pull-requests-limit: 5
+    labels:
+      - "area:infrastructure"
+      - "type:improvement"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "sbt"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:15"
+      timezone: "Europe/Warsaw"
+    open-pull-requests-limit: 5
+    labels:
+      - "area:infrastructure"
+      - "type:improvement"
+    groups:
+      root-sbt:
+        patterns:
+          - "*"
