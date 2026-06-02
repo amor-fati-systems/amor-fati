@@ -330,10 +330,12 @@ uses stable codes: `0` none, `1` negative capital, `2` CAR breach,
 `BankReconciliation_*` columns quantify the exactness patch applied after the
 normal bank update. The patch is distributed across live bank rows;
 `BankReconciliation_TargetBankId` identifies the most impacted row, not the
-sole absorber. The capital before/after and CAR before/after fields show whether
-that row's allocation is just fixed-point cleanup or a material balance-sheet
-transfer. `BankReconciliation_MaterialResidual` is `1` when the most impacted
-allocation is at least 1 bp of that bank's pre-patch capital.
+sole absorber. `BankReconciliation_CapitalResidual` is that target row's
+allocation; the sector aggregate remains `BankCapital_ReconciliationResidual`.
+The capital before/after and CAR before/after fields show whether that row's
+allocation is just fixed-point cleanup or a material balance-sheet transfer.
+`BankReconciliation_MaterialResidual` is `1` when the most impacted allocation
+is at least 1 bp of that bank's pre-patch capital.
 `BankReconciliation_CrossedFailureThreshold` is `1` when the patch alone moves
 any bank from no failure trigger to a failure trigger; the post-patch
 reason code uses the same reason-code mapping as `BankFailure_FirstNewReasonCode`.

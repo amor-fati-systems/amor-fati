@@ -2,7 +2,7 @@ package com.boombustgroup.amorfati.engine.economics
 
 import com.boombustgroup.amorfati.agents.{Banking, Household}
 import com.boombustgroup.amorfati.config.SimParams
-import com.boombustgroup.amorfati.engine.economics.banking.BankingStepRunner
+import com.boombustgroup.amorfati.engine.economics.banking.{BankInterbankSettlement, BankingHouseholdBooks, BankingStepRunner}
 import com.boombustgroup.amorfati.engine.ledger.LedgerFinancialState
 import com.boombustgroup.amorfati.types.PLN
 
@@ -33,7 +33,7 @@ object BankingEconomics:
       householdBalances: Vector[LedgerFinancialState.HouseholdBalances],
       bankStocks: Vector[Banking.BankFinancialStocks],
   ): Vector[Banking.BankFinancialStocks] =
-    BankingStepRunner.alignConsumerLoanBookToHouseholdRouting(households, householdBalances, bankStocks)
+    BankingHouseholdBooks.alignConsumerLoanBookToHouseholdRouting(households, householdBalances, bankStocks)
 
   private[amorfati] def applyNbpReserveSettlement(
       banks: Vector[Banking.BankState],
@@ -43,11 +43,11 @@ object BankingEconomics:
       interbankInterest: Banking.PerBankAmounts,
       fxInjection: PLN,
   ): ReserveSettlementResult =
-    BankingStepRunner.applyNbpReserveSettlement(banks, financialStocks, reserveInterest, standingFacilityIncome, interbankInterest, fxInjection)
+    BankInterbankSettlement.applyNbpReserveSettlement(banks, financialStocks, reserveInterest, standingFacilityIncome, interbankInterest, fxInjection)
 
   private[amorfati] def distributeFxInjection(
       banks: Vector[Banking.BankState],
       financialStocks: Vector[Banking.BankFinancialStocks],
       injection: PLN,
   ): ReserveSettlementResult =
-    BankingStepRunner.distributeFxInjection(banks, financialStocks, injection)
+    BankInterbankSettlement.distributeFxInjection(banks, financialStocks, injection)

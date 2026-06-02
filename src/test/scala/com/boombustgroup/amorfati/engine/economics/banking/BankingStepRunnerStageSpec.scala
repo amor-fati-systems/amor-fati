@@ -4,6 +4,7 @@ import com.boombustgroup.amorfati.agents.*
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.SimulationMonth
 import com.boombustgroup.amorfati.engine.diagnostics.banking.BankReconciliationDiagnostics
+import com.boombustgroup.amorfati.engine.markets.CorporateBondMarket
 import com.boombustgroup.amorfati.types.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -60,12 +61,12 @@ class BankingStepRunnerStageSpec extends AnyFlatSpec with Matchers:
   private def failureEvent(bankId: BankId): Banking.FailureEvent =
     Banking.FailureEvent(bankId, SimulationMonth.ExecutionMonth.First, Banking.BankFailureReason.NegativeCapital)
 
-  "BankingStepRunner.runBailIn" should "return an explicit bail-in stage output for eligible failed banks only" in {
+  "BankFailurePipeline.runBailIn" should "return an explicit bail-in stage output for eligible failed banks only" in {
     val rows        = Vector(bank(0, failed = true), bank(1))
     val stockRows   = Vector(stocks(PLN(1000000)), stocks(PLN(1000000)))
     val failedBank  = BankId(0)
     val failure     = failureDetection(rows, stockRows, Set(failedBank), Vector(failureEvent(failedBank)))
-    val result      = BankingStepRunner.runBailIn(failure)
+    val result      = BankFailurePipeline.runBailIn(failure)
     val expectedCut = (stockRows.head.totalDeposits - p.banking.bfgDepositGuarantee) * p.banking.bailInDepositHaircut
 
     result.eligibleBankIds shouldBe Set(failedBank)
@@ -74,13 +75,13 @@ class BankingStepRunnerStageSpec extends AnyFlatSpec with Matchers:
     result.financialStocks(1).totalDeposits shouldBe stockRows(1).totalDeposits
   }
 
-  "BankingStepRunner.runBankResolution" should "return a named purchase-and-assumption resolution output" in {
+  "BankFailurePipeline.runBankResolution" should "return a named purchase-and-assumption resolution output" in {
     val rows         = Vector(bank(0, failed = true), bank(1))
     val stockRows    = Vector(stocks(PLN(1000000)), stocks(PLN(2000000)))
     val failedBank   = BankId(0)
     val failure      = failureDetection(rows, stockRows, Set(failedBank), Vector(failureEvent(failedBank)))
-    val bailIn       = BankingStepRunner.runBailIn(failure)
-    val resolved     = BankingStepRunner.runBankResolution(failure, bailIn, Vector(PLN.Zero, PLN.Zero))
+    val bailIn       = BankFailurePipeline.runBailIn(failure)
+    val resolved     = BankFailurePipeline.runBankResolution(failure, bailIn, Vector(PLN.Zero, PLN.Zero))
     val transferred  = bailIn.financialStocks.head.totalDeposits
     val survivorCash = stockRows(1).totalDeposits + transferred
 
@@ -90,7 +91,7 @@ class BankingStepRunnerStageSpec extends AnyFlatSpec with Matchers:
     resolved.financialStocks(1).totalDeposits shouldBe survivorCash
   }
 
-  "BankingStepRunner.reconcileResolution" should "combine explicit resolution and reconciliation deltas without hiding their source" in {
+  "BankFailurePipeline.reconcileResolution" should "combine explicit resolution and reconciliation deltas without hiding their source" in {
     val rows       = Vector(bank(0, failed = true), bank(1))
     val stockRows  = Vector(stocks(PLN.Zero), stocks(PLN(2000000)))
     val firstEvent = failureEvent(BankId(0))
@@ -120,7 +121,7 @@ class BankingStepRunnerStageSpec extends AnyFlatSpec with Matchers:
       resolvedBanksDelta = 1,
     )
 
-    val result = BankingStepRunner.reconcileResolution(failure, bailIn, resolution, patch)
+    val result = BankFailurePipeline.reconcileResolution(failure, bailIn, resolution, patch)
 
     result.bailInLoss shouldBe PLN(15)
     result.capitalDestruction shouldBe failure.capitalDestruction + PLN(7)
@@ -131,7 +132,7 @@ class BankingStepRunnerStageSpec extends AnyFlatSpec with Matchers:
     result.capitalReconciliationResidual shouldBe PLN(3)
   }
 
-  "BankingStepRunner.applyAggregateReconciliationPatch" should "spread sector capital residuals across active banks" in {
+  "BankAggregateReconciliation.applyPatch" should "spread sector capital residuals across active banks" in {
     val rows      = Vector(
       bank(0, capital = PLN(1000)),
       bank(1, capital = PLN(1000)),
@@ -139,7 +140,7 @@ class BankingStepRunnerStageSpec extends AnyFlatSpec with Matchers:
     )
     val stockRows = Vector(stocks(PLN(1000)), stocks(PLN(1000)), stocks(PLN.Zero))
 
-    val result = BankingStepRunner.applyAggregateReconciliationPatch(
+    val result = BankAggregateReconciliation.applyPatch(
       banks = rows,
       financialStocks = stockRows,
       bankCorpBondHoldings = Vector(PLN.Zero, PLN.Zero, PLN.Zero),
@@ -150,7 +151,7 @@ class BankingStepRunnerStageSpec extends AnyFlatSpec with Matchers:
     )
 
     result.banks.map(_.capital) shouldBe Vector(PLN(800), PLN(800), PLN.Zero)
-    result.bankReconciliationDiagnostics.capitalResidual shouldBe PLN(-400)
+    result.bankReconciliationDiagnostics.capitalResidual shouldBe PLN(-200)
     result.bankReconciliationDiagnostics.targetBankId should (be(0) or be(1))
   }
 
@@ -161,7 +162,7 @@ class BankingStepRunnerStageSpec extends AnyFlatSpec with Matchers:
     )
     val stockRows = Vector(stocks(PLN(1000), firmLoan = PLN(1000)), stocks(PLN(1000), firmLoan = PLN(1000)))
 
-    val result = BankingStepRunner.applyAggregateReconciliationPatch(
+    val result = BankAggregateReconciliation.applyPatch(
       banks = rows,
       financialStocks = stockRows,
       bankCorpBondHoldings = Vector(PLN.Zero, PLN.Zero),
@@ -173,6 +174,50 @@ class BankingStepRunnerStageSpec extends AnyFlatSpec with Matchers:
 
     result.banks.map(_.capital) shouldBe Vector(PLN(90), PLN(90))
     result.bankReconciliationDiagnostics.crossedFailureThreshold shouldBe 0
+  }
+
+  it should "fail fast when a deposit patch would make a bank balance negative" in {
+    val rows      = Vector(bank(0))
+    val stockRows = Vector(stocks(PLN(100)))
+
+    an[IllegalArgumentException] shouldBe thrownBy {
+      BankAggregateReconciliation.applyPatch(
+        banks = rows,
+        financialStocks = stockRows,
+        bankCorpBondHoldings = Vector(PLN.Zero),
+        depositResidual = PLN(-101),
+        capitalResidual = PLN.Zero,
+        ccyb = Multiplier.Zero,
+        carCounterBase = rows,
+      )
+    }
+  }
+
+  "BankBondWaterfall.settleCorpBondHoldings" should "fail fast when bank dimensions are misaligned" in {
+    an[IllegalArgumentException] shouldBe thrownBy {
+      BankBondWaterfall.settleCorpBondHoldings(
+        previous = Vector(PLN.Zero),
+        previousAggregateStock = CorporateBondMarket.StockState.zero,
+        nextAggregateStock = CorporateBondMarket.StockState.zero,
+        totalBondIssuance = PLN.Zero,
+        perBankWorkers = Vector.empty,
+      )
+    }
+  }
+
+  "BankInterbankSettlement.applyNbpReserveSettlement" should "fail fast when per-bank rows are misaligned" in {
+    val zeroAmounts = Banking.PerBankAmounts(Vector(PLN.Zero), PLN.Zero)
+
+    an[IllegalArgumentException] shouldBe thrownBy {
+      BankInterbankSettlement.applyNbpReserveSettlement(
+        banks = Vector(bank(0)),
+        financialStocks = Vector.empty,
+        reserveInterest = zeroAmounts,
+        standingFacilityIncome = zeroAmounts,
+        interbankInterest = zeroAmounts,
+        fxInjection = PLN.Zero,
+      )
+    }
   }
 
 end BankingStepRunnerStageSpec
