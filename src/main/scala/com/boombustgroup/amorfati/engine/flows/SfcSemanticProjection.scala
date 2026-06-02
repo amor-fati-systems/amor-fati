@@ -19,10 +19,10 @@ object SfcSemanticProjection:
       batches: Vector[BatchedFlow],
       fofResidual: PLN,
   )(using p: SimParams): Sfc.SemanticFlows =
-    val firms    = semanticProjection.firms
-    val openEcon = semanticProjection.openEcon
-    val banking  = semanticProjection.banking
-    val evidence = ExecutedFlowEvidence.from(batches)
+    val firmCredit = semanticProjection.firmCredit
+    val external   = semanticProjection.external
+    val banking    = semanticProjection.banking
+    val evidence   = ExecutedFlowEvidence.from(batches)
     // Runtime-covered legs are sourced from executed flow evidence. Remaining
     // month-semantics reads are diagnostics or stock projections without a
     // first-class emitted mechanism yet.
@@ -34,12 +34,12 @@ object SfcSemanticProjection:
       totalIncome = evidence.amount(FlowMechanism.HhTotalIncome),
       totalConsumption = evidence.amount(FlowMechanism.HhConsumption),
       newLoans = evidence.amount(FlowMechanism.FirmNewLoan),
-      nplRecovery = firms.nplNew * p.banking.loanRecovery,
-      currentAccount = openEcon.external.newBop.currentAccount,
-      valuationEffect = openEcon.external.oeValuationEffect,
+      nplRecovery = firmCredit.newNonPerformingLoans * p.banking.loanRecovery,
+      currentAccount = external.currentAccount,
+      valuationEffect = external.valuationEffect,
       bankBondIncome = evidence.amount(FlowMechanism.BankGovBondIncome),
       qePurchase = evidence.amount(FlowMechanism.NbpQeGovBondPurchase),
-      newBondIssuance = banking.actualBondChange,
+      newBondIssuance = banking.netGovernmentBondChange,
       depositInterestPaid = evidence.amount(FlowMechanism.HhDepositInterest),
       reserveInterest = evidence.amount(FlowMechanism.BankReserveInterest),
       standingFacilityIncome = evidence.signedAmount(FlowMechanism.BankStandingFacility),
@@ -86,7 +86,7 @@ object SfcSemanticProjection:
       tourismImport = evidence.amount(FlowMechanism.TourismImport),
       bfgLevy = evidence.amount(FlowMechanism.BankBfgLevy),
       bailInLoss = evidence.amount(FlowMechanism.BankBailIn),
-      bankCapitalDestruction = banking.multiCapDestruction,
+      bankCapitalDestruction = banking.capitalDestruction,
       interbankContagionLoss = banking.interbankContagionLoss,
       investNetDepositFlow = evidence.investNetDepositFlow,
       firmPrincipalRepaid = evidence.amount(FlowMechanism.FirmLoanRepayment),
