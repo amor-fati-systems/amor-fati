@@ -92,6 +92,9 @@ module is a pure function producing quantities, rates, and decisions without
 emitting monetary flows. `MonthCalculusRunner` wires them together through the
 same `MonthWorkflow` identity DSL, so the operational order is visible as a
 typed `for`-comprehension rather than an implicit block of local values.
+Broader same-month stages receive named input surfaces, such as firm, price,
+open-economy, banking, and final execution assembly inputs, instead of long
+positional dependency lists.
 
 | File | Domain |
 |------|--------|
