@@ -8,6 +8,7 @@ import com.boombustgroup.amorfati.engine.SimulationMonth.{CompletedMonth, Execut
 import com.boombustgroup.amorfati.engine.closedmonth.MonthClosing
 import com.boombustgroup.amorfati.engine.economics.*
 import com.boombustgroup.amorfati.engine.ledger.LedgerFinancialState
+import com.boombustgroup.amorfati.types.*
 import com.boombustgroup.ledger.*
 
 /** New flow-based simulation pipeline.
@@ -92,16 +93,83 @@ object FlowSimulation:
   )
 
   /** Same-month payload narrowed for executed-batch -> SFC semantic projection.
+    *
+    * Each field is a non-batch identity term needed by `Sfc.SemanticFlows`.
+    * Runtime-covered cash legs stay sourced from executed batch evidence.
     */
   private[engine] case class SemanticFlowInputs(
-      labor: LaborEconomics.StepOutput,
-      hhIncome: HouseholdIncomeEconomics.StepOutput,
-      firms: FirmEconomics.StepOutput,
-      hhFinancial: HouseholdFinancialEconomics.StepOutput,
-      prices: PriceEquityEconomics.StepOutput,
-      openEcon: OpenEconEconomics.StepOutput,
-      banking: BankingEconomics.StepOutput,
+      firmCredit: SemanticFlowInputs.FirmCreditEvidence,
+      external: SemanticFlowInputs.ExternalBalanceEvidence,
+      banking: SemanticFlowInputs.BankingBalanceSheetEvidence,
   )
+
+  private[engine] object SemanticFlowInputs:
+
+    /** Firm-credit stock movement that is validated by SFC outside runtime
+      * batch execution.
+      */
+    case class FirmCreditEvidence(
+        newNonPerformingLoans: PLN,
+    )
+
+    /** External-account stock-flow facts that currently enter SFC as same-month
+      * semantic terms rather than emitted runtime batches.
+      */
+    case class ExternalBalanceEvidence(
+        currentAccount: PLN,
+        valuationEffect: PLN,
+    )
+
+    /** Bank balance-sheet identity terms not represented as first-class runtime
+      * transfer batches.
+      */
+    case class BankingBalanceSheetEvidence(
+        netGovernmentBondChange: PLN,
+        capitalDestruction: PLN,
+        interbankContagionLoss: PLN,
+        htmRealizedLoss: PLN,
+        eclProvisionChange: PLN,
+    )
+
+    def fromExecution(execution: MonthExecution): SemanticFlowInputs =
+      SemanticFlowInputs(
+        firmCredit = FirmCreditEvidence(
+          newNonPerformingLoans = execution.firm.nplNew,
+        ),
+        external = ExternalBalanceEvidence(
+          currentAccount = execution.openEconomy.external.newBop.currentAccount,
+          valuationEffect = execution.openEconomy.external.oeValuationEffect,
+        ),
+        banking = BankingBalanceSheetEvidence(
+          netGovernmentBondChange = execution.banking.actualBondChange,
+          capitalDestruction = execution.banking.multiCapDestruction,
+          interbankContagionLoss = execution.banking.interbankContagionLoss,
+          htmRealizedLoss = execution.banking.htmRealizedLoss,
+          eclProvisionChange = execution.banking.eclProvisionChange,
+        ),
+      )
+
+  /** Same-month evidence needed by `StepOutput` diagnostics and exports.
+    *
+    * This is deliberately separate from SFC semantic projection so trace and
+    * snapshot payloads do not widen the accounting validation boundary.
+    */
+  private[engine] case class StepEvidenceInputs(
+      firmDecisionTraces: Vector[Firm.DecisionTrace],
+      householdSnapshotState: HouseholdSnapshotState,
+      householdMonthlyFlows: Vector[Household.MonthlyFlow],
+  )
+
+  private[engine] object StepEvidenceInputs:
+    def fromExecution(execution: MonthExecution): StepEvidenceInputs =
+      StepEvidenceInputs(
+        firmDecisionTraces = execution.firm.decisionTraces,
+        householdSnapshotState = HouseholdSnapshotState(
+          households = execution.householdIncome.updatedHouseholds,
+          ledgerFinancialState = execution.householdIncome.ledgerFinancialState,
+        ),
+        householdMonthlyFlows = execution.householdIncome.householdMonthlyFlows,
+      )
 
   /** Downstream-specific same-month boundary views derived from one economics
     * execution.
@@ -111,6 +179,7 @@ object FlowSimulation:
       signals: SignalBoundaryInputs,
       closing: MonthClosingInput,
       semanticProjection: SemanticFlowInputs,
+      stepEvidence: StepEvidenceInputs,
   )
 
   /** Realized month-`t` closing boundary plus the narrow payload needed to
@@ -129,6 +198,7 @@ object FlowSimulation:
       operational: MonthSemantics.Operational,
       flowPlan: MonthSemantics.FlowPlan,
       semanticProjection: MonthSemantics.SemanticProjection,
+      stepEvidence: MonthSemantics.StepEvidence,
       closed: MonthSemantics.ClosedMonth,
       seedOut: MonthSemantics.SeedOut,
       traceCore: MonthTraceCore,
@@ -154,6 +224,9 @@ object FlowSimulation:
 
     def semanticProjection(boundaries: SameMonthBoundaryViews): Program[MonthSemantics.SemanticProjection] =
       MonthWorkflow.pure(MonthSemantics.semanticProjection(boundaries.semanticProjection))
+
+    def stepEvidence(boundaries: SameMonthBoundaryViews): Program[MonthSemantics.StepEvidence] =
+      MonthWorkflow.pure(MonthSemantics.stepEvidence(boundaries.stepEvidence))
 
     def operational(signalView: MonthSemantics.SignalView): Program[MonthSemantics.Operational] =
       MonthWorkflow.pure(buildOperationalSignals(signalView))
@@ -252,12 +325,9 @@ object FlowSimulation:
       semanticFlows = sfcFlows,
       sfcResult,
       trace = monthTrace,
-      firmDecisionTraces = outcome.semanticProjection.firms.decisionTraces,
-      householdSnapshotState = HouseholdSnapshotState(
-        households = outcome.semanticProjection.hhIncome.updatedHouseholds,
-        ledgerFinancialState = outcome.semanticProjection.hhIncome.ledgerFinancialState,
-      ),
-      householdMonthlyFlows = outcome.semanticProjection.hhIncome.householdMonthlyFlows,
+      firmDecisionTraces = outcome.stepEvidence.firmDecisionTraces,
+      householdSnapshotState = outcome.stepEvidence.householdSnapshotState,
+      householdMonthlyFlows = outcome.stepEvidence.householdMonthlyFlows,
       nextState = nextState,
     )
 
@@ -354,6 +424,7 @@ object FlowSimulation:
         flowPlan           <- MonthStepDsl.flowPlan(sameMonth)
         closingInput       <- MonthStepDsl.closingInput(sameMonth)
         semanticProjection <- MonthStepDsl.semanticProjection(sameMonth)
+        stepEvidence       <- MonthStepDsl.stepEvidence(sameMonth)
         operational        <- MonthStepDsl.operational(signalView)
         closed             <- MonthStepDsl.closedMonth(pre, closingInput, signalView)
         seedOut            <- MonthStepDsl.seedOut(signalView, closed)
@@ -362,6 +433,7 @@ object FlowSimulation:
         operational = operational,
         flowPlan = flowPlan,
         semanticProjection = semanticProjection,
+        stepEvidence = stepEvidence,
         closed = closed,
         seedOut = seedOut,
         traceCore = traceCore,

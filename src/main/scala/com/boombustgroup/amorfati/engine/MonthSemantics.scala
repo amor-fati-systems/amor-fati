@@ -1,6 +1,6 @@
 package com.boombustgroup.amorfati.engine
 
-import com.boombustgroup.amorfati.engine.flows.FlowSimulation.{ClosedMonthBoundary, SemanticFlowInputs, SignalBoundaryInputs}
+import com.boombustgroup.amorfati.engine.flows.FlowSimulation.{ClosedMonthBoundary, SemanticFlowInputs, SignalBoundaryInputs, StepEvidenceInputs}
 import com.boombustgroup.amorfati.engine.flows.MonthlyCalculus
 
 /** Tiny type-level timeline for one monthly engine step.
@@ -98,26 +98,34 @@ object MonthSemantics:
     wrap[SemanticFlowInputs, SameMonth](inputs)
 
   extension (semanticProjection: SemanticProjection)
-    private[engine] inline def labor =
-      unwrap(semanticProjection).labor
+    private[engine] inline def firmCredit =
+      unwrap(semanticProjection).firmCredit
 
-    private[engine] inline def hhIncome =
-      unwrap(semanticProjection).hhIncome
-
-    private[engine] inline def firms =
-      unwrap(semanticProjection).firms
-
-    private[engine] inline def hhFinancial =
-      unwrap(semanticProjection).hhFinancial
-
-    private[engine] inline def prices =
-      unwrap(semanticProjection).prices
-
-    private[engine] inline def openEcon =
-      unwrap(semanticProjection).openEcon
+    private[engine] inline def external =
+      unwrap(semanticProjection).external
 
     private[engine] inline def banking =
       unwrap(semanticProjection).banking
+
+  /** Same-month diagnostic/export evidence carried to `StepOutput`.
+    *
+    * This stays separate from [[SemanticProjection]] so SFC validation cannot
+    * accidentally depend on full economics-stage payloads.
+    */
+  type StepEvidence = At[StepEvidenceInputs, SameMonth]
+
+  private[engine] inline def stepEvidence(inputs: StepEvidenceInputs): StepEvidence =
+    wrap[StepEvidenceInputs, SameMonth](inputs)
+
+  extension (stepEvidence: StepEvidence)
+    private[engine] inline def firmDecisionTraces =
+      unwrap(stepEvidence).firmDecisionTraces
+
+    private[engine] inline def householdSnapshotState =
+      unwrap(stepEvidence).householdSnapshotState
+
+    private[engine] inline def householdMonthlyFlows =
+      unwrap(stepEvidence).householdMonthlyFlows
 
   /** Realized closed-month boundary before extracting the next seed. */
   type ClosedMonth = At[ClosedMonthBoundary, Post]

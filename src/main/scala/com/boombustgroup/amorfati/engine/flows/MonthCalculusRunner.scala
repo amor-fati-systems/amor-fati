@@ -12,7 +12,7 @@ import com.boombustgroup.amorfati.engine.closedmonth.MonthClosing
   * seed extraction remain outside this runner.
   */
 private[flows] object MonthCalculusRunner:
-  import FlowSimulation.{SameMonthBoundaryViews, SemanticFlowInputs, SignalBoundaryInputs, StepInput}
+  import FlowSimulation.{SameMonthBoundaryViews, SemanticFlowInputs, SignalBoundaryInputs, StepEvidenceInputs, StepInput}
 
   def run(input: StepInput)(using p: SimParams): SameMonthBoundaryViews =
     val flowPlanSource = runEconomicsStages(input)
@@ -63,13 +63,6 @@ private[flows] object MonthCalculusRunner:
         demand = execution.demand,
       ),
       closing = MonthClosing.prepareInput(closingState),
-      semanticProjection = SemanticFlowInputs(
-        labor = execution.labor,
-        hhIncome = execution.householdIncome,
-        firms = execution.firm,
-        hhFinancial = execution.householdFinancial,
-        prices = execution.priceEquity,
-        openEcon = execution.openEconomy,
-        banking = execution.banking,
-      ),
+      semanticProjection = SemanticFlowInputs.fromExecution(execution),
+      stepEvidence = StepEvidenceInputs.fromExecution(execution),
     )

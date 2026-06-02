@@ -78,7 +78,7 @@ Read it as a month transition:
 
 - `stateIn.world.seedIn` is the persisted `pre` input surface.
 - `randomness` is the explicit month-level randomness surface; fixing `stateIn` and `randomness.rootSeed` fixes replay for one step.
-- `MonthOutcome` is built through the `MonthWorkflow` identity DSL as `pre -> same-month boundary views -> closed month -> seedOut/next-pre`; the same-month views are `SignalView`, `FlowPlan`, `ClosingInput`, and `SemanticProjection`.
+- `MonthOutcome` is built through the `MonthWorkflow` identity DSL as `pre -> same-month boundary views -> closed month -> seedOut/next-pre`; the same-month views are `SignalView`, `FlowPlan`, `ClosingInput`, `SemanticProjection`, and `StepEvidence`.
 - `operationalSignals` is the explicit same-month surface created inside the step.
 - `signalExtraction` is the dedicated `closed -> next-pre` boundary.
 - `trace` is the emitted audit artifact for month `t`.
