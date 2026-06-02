@@ -123,14 +123,13 @@ object BankResolutionDiagnostics:
 
 /** Diagnostics for the aggregate-exactness patch distributed across bank rows.
   *
-  * `capitalResidual` has the same sign as the aggregate patch: positive adds
-  * bank capital, negative removes it. `targetBankId` is the most impacted row,
-  * and the materiality flag is computed on that row's allocation rather than on
-  * the whole sector residual.
+  * `capitalResidual` is the amount allocated to `targetBankId`: positive adds
+  * capital to that row, negative removes it. The sector-level residual remains
+  * available through `BankCapitalDiagnostics.reconciliationResidual`.
   */
 case class BankReconciliationDiagnostics(
     targetBankId: Int = -1,                        // most impacted bank id, or -1 when no patch was applied
-    capitalResidual: PLN = PLN.Zero,               // aggregate capital exactness patch applied across bank rows
+    capitalResidual: PLN = PLN.Zero,               // target-bank capital exactness patch allocation
     targetCapitalBefore: PLN = PLN.Zero,           // most-impacted-bank capital before the patch
     targetCapitalAfter: PLN = PLN.Zero,            // most-impacted-bank capital after the patch
     targetCarBefore: Multiplier = Multiplier.Zero, // most-impacted-bank CAR before the patch
@@ -174,7 +173,6 @@ object BankReconciliationDiagnostics:
 
   def fromDistributedPatch(
       targetBankId: BankId,
-      aggregateCapitalResidual: PLN,
       targetCapitalAllocation: PLN,
       targetCapitalBefore: PLN,
       targetCapitalAfter: PLN,
@@ -187,7 +185,7 @@ object BankReconciliationDiagnostics:
     val material = ratio >= MaterialResidualRatio
     BankReconciliationDiagnostics(
       targetBankId = targetBankId.toInt,
-      capitalResidual = aggregateCapitalResidual,
+      capitalResidual = targetCapitalAllocation,
       targetCapitalBefore = targetCapitalBefore,
       targetCapitalAfter = targetCapitalAfter,
       targetCarBefore = targetCarBefore,

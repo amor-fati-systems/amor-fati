@@ -210,7 +210,6 @@ private[banking] object BankAggregateReconciliation:
       val afterStocks      = nextStocksVector(targetIndex)
       val diagnostics      = BankReconciliationDiagnostics.fromDistributedPatch(
         targetBankId = beforeBank.id,
-        aggregateCapitalResidual = capitalResidual,
         targetCapitalAllocation = capitalAllocations(targetPosition),
         targetCapitalBefore = beforeBank.capital,
         targetCapitalAfter = afterBank.capital,
