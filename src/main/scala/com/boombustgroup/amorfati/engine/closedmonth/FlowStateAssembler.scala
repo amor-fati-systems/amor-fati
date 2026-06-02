@@ -10,7 +10,7 @@ object FlowStateAssembler:
       closingInput: MonthClosingInput,
       lifecycle: PopulationLifecycleTransitions.Result,
   ): FlowState =
-    val in       = closingInput.execution
+    val in       = closingInput.closingState
     val informal = closingInput.mechanisms.informalEconomy
     FlowState(
       monthlyGdpProxy = in.priceEquity.gdp,

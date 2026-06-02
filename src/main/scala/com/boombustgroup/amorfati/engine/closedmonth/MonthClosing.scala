@@ -14,15 +14,18 @@ import com.boombustgroup.amorfati.engine.mechanisms.{FirmEntry, InformalEconomy,
 object MonthClosing:
 
   def prepareInput(execution: MonthExecution)(using p: SimParams): MonthClosingInput =
+    prepareInput(MonthClosingStateInput.fromExecution(execution))
+
+  def prepareInput(state: MonthClosingStateInput)(using p: SimParams): MonthClosingInput =
     MonthClosingInput(
-      execution = execution,
+      closingState = state,
       mechanisms = MonthClosingMechanisms(
-        informalEconomy = InformalEconomy.compute(informalInput(execution)),
+        informalEconomy = InformalEconomy.compute(informalInput(state)),
       ),
       diagnostics = MonthClosingDiagnostics(
-        flowOfFundsResidual = FlowOfFundsDiagnostics.residual(execution),
+        flowOfFundsResidual = FlowOfFundsDiagnostics.residual(FlowOfFundsDiagnostics.Input.fromClosingState(state)),
       ),
-      agentLifecycle = populationLifecycleInput(execution),
+      agentLifecycle = populationLifecycleInput(state),
     )
 
   def closeExecution(
@@ -35,7 +38,7 @@ object MonthClosing:
       closingInput: MonthClosingInput,
       randomness: MonthRandomness.ClosingStreams,
   )(using p: SimParams): MonthClosingResult =
-    val execution   = closingInput.execution
+    val state       = closingInput.closingState
     val lifecycle   = PopulationLifecycleTransitions.run(
       closingInput.agentLifecycle,
       fdiMaRng = randomness.fdiMa,
@@ -44,10 +47,10 @@ object MonthClosing:
       regionalMigrationRng = randomness.regionalMigration,
     )
     val finalWorld  = WorldStateAssembler.assemble(closingInput, lifecycle)
-    val finalLedger = execution.banking.ledgerFinancialState.copy(
+    val finalLedger = state.banking.ledgerFinancialState.copy(
       firms = LedgerFinancialState.refreshFirmPopulationBalances(
         lifecycle.firmFinancialStocks,
-        execution.banking.ledgerFinancialState.firms,
+        state.banking.ledgerFinancialState.firms,
         lifecycle.newFirmIds,
       ),
     )
@@ -56,51 +59,51 @@ object MonthClosing:
       world = finalWorld,
       firms = lifecycle.firms,
       households = lifecycle.households,
-      banks = execution.banking.banks,
+      banks = state.banking.banks,
       householdAggregates = lifecycle.householdAggregates,
       ledgerFinancialState = finalLedger,
       startupAbsorptionRate = lifecycle.startupAbsorptionRate,
     )
 
-  private def informalInput(execution: MonthExecution): InformalEconomy.Input =
+  private def informalInput(state: MonthClosingStateInput): InformalEconomy.Input =
     InformalEconomy.Input(
-      citEvasion = execution.firm.sumCitEvasion,
-      vatBeforeEvasion = execution.banking.vat,
-      vatAfterEvasion = execution.banking.vatAfterEvasion,
-      pitBeforeEvasion = execution.householdIncome.pitRevenue,
-      pitAfterEvasion = execution.banking.pitAfterEvasion,
-      exciseBeforeEvasion = execution.banking.exciseRevenue,
-      exciseAfterEvasion = execution.banking.exciseAfterEvasion,
-      realizedTaxShadowShare = execution.banking.realizedTaxShadowShare,
-      employed = execution.labor.employed,
-      workingAgePopulation = execution.labor.newDemographics.workingAgePop,
-      previousCyclicalAdjustment = execution.openingWorld.mechanisms.informalCyclicalAdj,
+      citEvasion = state.firm.sumCitEvasion,
+      vatBeforeEvasion = state.banking.vat,
+      vatAfterEvasion = state.banking.vatAfterEvasion,
+      pitBeforeEvasion = state.householdIncome.pitRevenue,
+      pitAfterEvasion = state.banking.pitAfterEvasion,
+      exciseBeforeEvasion = state.banking.exciseRevenue,
+      exciseAfterEvasion = state.banking.exciseAfterEvasion,
+      realizedTaxShadowShare = state.banking.realizedTaxShadowShare,
+      employed = state.labor.employed,
+      workingAgePopulation = state.labor.newDemographics.workingAgePop,
+      previousCyclicalAdjustment = state.openingWorld.mechanisms.informalCyclicalAdj,
     )
 
-  private def populationLifecycleInput(execution: MonthExecution): PopulationLifecycleTransitions.Input =
+  private def populationLifecycleInput(state: MonthClosingStateInput): PopulationLifecycleTransitions.Input =
     PopulationLifecycleTransitions.Input(
       stocks = PopulationLifecycleTransitions.AgentStocks(
-        firms = execution.banking.reassignedFirms,
-        firmFinancialBalances = execution.banking.ledgerFinancialState.firms,
-        households = execution.banking.reassignedHouseholds,
-        householdFinancialBalances = execution.banking.ledgerFinancialState.households,
+        firms = state.banking.reassignedFirms,
+        firmFinancialBalances = state.banking.ledgerFinancialState.firms,
+        households = state.banking.reassignedHouseholds,
+        householdFinancialBalances = state.banking.ledgerFinancialState.households,
       ),
       entry = PopulationLifecycleTransitions.EntryContext(
-        automationRatio = execution.priceEquity.autoR,
-        hybridRatio = execution.priceEquity.hybR,
-        laggedEntrySignals = FirmEntry.LaggedEntrySignals.fromDecisionSignals(execution.openingWorld.seedIn),
+        automationRatio = state.priceEquity.autoR,
+        hybridRatio = state.priceEquity.hybR,
+        laggedEntrySignals = FirmEntry.LaggedEntrySignals.fromDecisionSignals(state.openingWorld.seedIn),
       ),
       startupStaffing = PopulationLifecycleTransitions.StartupStaffingContext(
-        marketWage = execution.labor.newWage,
-        reservationWage = execution.fiscal.resWage,
-        importAdjustment = execution.householdIncome.importAdj,
-        regionalWages = execution.labor.regionalWages,
-        remainingHireCapacity = execution.firm.postFirmHireCapacity - execution.firm.postFirmHires,
-        retrainingAttempts = execution.householdIncome.hhAgg.retrainingAttempts,
-        retrainingSuccesses = execution.householdIncome.hhAgg.retrainingSuccesses,
-        householdFlowTotals = execution.banking.finalHhAgg,
+        marketWage = state.labor.newWage,
+        reservationWage = state.fiscal.resWage,
+        importAdjustment = state.householdIncome.importAdj,
+        regionalWages = state.labor.regionalWages,
+        remainingHireCapacity = state.firm.postFirmHireCapacity - state.firm.postFirmHires,
+        retrainingAttempts = state.householdIncome.hhAgg.retrainingAttempts,
+        retrainingSuccesses = state.householdIncome.hhAgg.retrainingSuccesses,
+        householdFlowTotals = state.banking.finalHhAgg,
       ),
       regionalMigration = PopulationLifecycleTransitions.RegionalMigrationContext(
-        regionalWages = execution.labor.regionalWages,
+        regionalWages = state.labor.regionalWages,
       ),
     )

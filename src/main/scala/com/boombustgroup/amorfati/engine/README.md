@@ -39,8 +39,8 @@ engine/
 | `ledger/RuntimeFlowProjection.scala` | Typed projection from executed runtime `deltaLedger` into the currently materialized persisted ledger slice. |
 | `ledger/BankReserveDiagnostics.scala` | Ledger-backed reserve diagnostics for active bank deposit-facility usage. |
 | `MonthSemantics.scala` | Tiny typed phase markers for the internal month step: pre-seed, same-month operational state, closed-month state, and next pre-seed extraction. |
-| `MonthExecution.scala` | Same-month result of the ordered economics pipeline; consumed by flow planning, semantic projection, and month closing. |
-| `MonthClosing.scala` | Explicit closing input/result contracts: derived mechanisms, diagnostics, agent lifecycle input, and realized month-`t` closing state. |
+| `MonthExecution.scala` | Same-month result of the ordered economics pipeline; retained as an execution transcript and adapted into narrower downstream boundary views. |
+| `MonthClosing.scala` | Explicit closing input/result contracts: narrowed closing-state view, derived mechanisms, diagnostics, agent lifecycle input, and realized month-`t` closing state. |
 | `MonthWorkflow.scala` | Minimal identity-monad DSL used to express the deterministic month transition as a typed `for`-comprehension without adding runtime effects. |
 | `MonthRandomness.scala` | Explicit month-step randomness contract: one root seed split into named stage and closing streams for deterministic replay and auditability. |
 | `MonthDriver.scala` | Shared month-by-month unfold driver over the explicit `FlowSimulation.step` boundary. |

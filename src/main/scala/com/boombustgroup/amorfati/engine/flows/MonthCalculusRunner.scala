@@ -1,7 +1,7 @@
 package com.boombustgroup.amorfati.engine.flows
 
 import com.boombustgroup.amorfati.config.SimParams
-import com.boombustgroup.amorfati.engine.{MonthExecution, MonthWorkflow}
+import com.boombustgroup.amorfati.engine.{MonthClosingStateInput, MonthExecution, MonthWorkflow}
 import com.boombustgroup.amorfati.engine.closedmonth.MonthClosing
 
 /** Runs the deterministic same-month economics boundary.
@@ -55,13 +55,14 @@ private[flows] object MonthCalculusRunner:
       )
 
   private def buildBoundaryViews(execution: MonthExecution, flowPlan: MonthlyCalculus)(using p: SimParams): SameMonthBoundaryViews =
+    val closingState = MonthClosingStateInput.fromExecution(execution)
     SameMonthBoundaryViews(
       flowPlan = flowPlan,
       signals = SignalBoundaryInputs(
         labor = execution.labor,
         demand = execution.demand,
       ),
-      closing = MonthClosing.prepareInput(execution),
+      closing = MonthClosing.prepareInput(closingState),
       semanticProjection = SemanticFlowInputs(
         labor = execution.labor,
         hhIncome = execution.householdIncome,
