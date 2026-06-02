@@ -2,6 +2,7 @@ package com.boombustgroup.amorfati.engine.closedmonth
 
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.*
+import com.boombustgroup.amorfati.engine.economics.PriceEquityEconomics
 import com.boombustgroup.amorfati.engine.ledger.BankReserveDiagnostics
 import com.boombustgroup.amorfati.engine.markets.EquityMarket
 import com.boombustgroup.amorfati.engine.mechanisms.{ClimatePolicy, PopulationLifecycleTransitions, SectoralMobility, TourismSeasonality}
@@ -16,7 +17,7 @@ object WorldStateAssembler:
       closingInput: MonthClosingInput,
       lifecycle: PopulationLifecycleTransitions.Result,
   )(using p: SimParams): World =
-    val in                    = closingInput.execution
+    val in                    = closingInput.closingState
     val informal              = closingInput.mechanisms.informalEconomy
     val diagnostics           = closingInput.diagnostics
     val elapsedMonths         = in.fiscal.m.previousCompleted.toInt
@@ -49,7 +50,7 @@ object WorldStateAssembler:
       householdMarket = HouseholdMarketState.fromAggregates(in.banking.finalHhAgg),
       social = social,
       financialMarkets = FinancialMarketsState(
-        equity = finalizeEquity(in),
+        equity = finalizeEquity(in.priceEquity),
         corporateBonds = in.openEconomy.corpBonds.newCorpBonds,
         insurance = in.banking.finalInsurance,
         nbfi = in.banking.finalNbfi,
@@ -98,10 +99,10 @@ object WorldStateAssembler:
       regionalWages = in.labor.regionalWages,
     )
 
-  private def finalizeEquity(in: MonthExecution): EquityMarket.State =
-    in.priceEquity.equityAfterForeignStock.copy(
+  private def finalizeEquity(priceEquity: PriceEquityEconomics.StepOutput): EquityMarket.State =
+    priceEquity.equityAfterForeignStock.copy(
       lastWealthEffect = PLN.Zero,
-      lastDomesticDividends = in.priceEquity.netDomesticDividends,
-      lastForeignDividends = in.priceEquity.foreignDividendOutflow,
-      lastDividendTax = in.priceEquity.dividendTax,
+      lastDomesticDividends = priceEquity.netDomesticDividends,
+      lastForeignDividends = priceEquity.foreignDividendOutflow,
+      lastDividendTax = priceEquity.dividendTax,
     )
