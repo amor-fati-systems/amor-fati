@@ -7,16 +7,6 @@ import com.boombustgroup.amorfati.engine.economics.*
 import com.boombustgroup.amorfati.engine.ledger.LedgerFinancialState
 import com.boombustgroup.amorfati.types.*
 
-private[flows] final case class SameMonthStageRun(
-    openingLedger: LedgerFinancialState,
-    openingBanks: Vector[Banking.BankState],
-    execution: MonthExecution,
-    laborPre: LaborEconomics.StepOutput,
-    payroll: SocialSecurity.PayrollBase,
-    nBankruptFirms: Int,
-    avgFirmWorkers: Int,
-)
-
 private[flows] final case class SameMonthEconomicsPre(
     input: FlowSimulation.StepInput,
     randomness: MonthRandomness.StageSeeds,

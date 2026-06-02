@@ -15,11 +15,11 @@ private[flows] object MonthCalculusRunner:
   import FlowSimulation.{SameMonthBoundaryViews, SemanticFlowInputs, SignalBoundaryInputs, StepInput}
 
   def run(input: StepInput)(using p: SimParams): SameMonthBoundaryViews =
-    val stages   = runEconomicsStages(input)
-    val flowPlan = MonthFlowPlanBuilder.build(stages)
-    buildBoundaryViews(stages.execution, flowPlan)
+    val flowPlanSource = runEconomicsStages(input)
+    val flowPlan       = MonthFlowPlanBuilder.build(flowPlanSource)
+    buildBoundaryViews(flowPlanSource.execution, flowPlan)
 
-  private def runEconomicsStages(input: StepInput)(using p: SimParams): SameMonthStageRun =
+  private def runEconomicsStages(input: StepInput)(using p: SimParams): SameMonthFlowPlanSource =
     MonthWorkflow.run:
       for
         pre                <- SameMonthEconomicsDsl.pre(input)
@@ -37,14 +37,21 @@ private[flows] object MonthCalculusRunner:
         openEconomy        <- SameMonthEconomicsDsl.openEconomy(pre, fiscal, labor, householdIncome, demand, firm, householdFinancial, priceEquity)
         banking            <- SameMonthEconomicsDsl.banking(pre, fiscal, labor, householdIncome, demand, firm, householdFinancial, priceEquity, openEconomy)
         execution          <- SameMonthEconomicsDsl.execution(pre, fiscal, labor, householdIncome, demand, firm, householdFinancial, priceEquity, openEconomy, banking)
-      yield SameMonthStageRun(
-        openingLedger = pre.ledger,
-        openingBanks = pre.banks,
+      yield SameMonthFlowPlanSource(
+        openingFinancial = SameMonthFlowPlanSource.OpeningFinancialBoundary(
+          ledger = pre.ledger,
+          banks = pre.banks,
+        ),
         execution = execution,
-        laborPre = laborPre,
-        payroll = payroll.payroll,
-        nBankruptFirms = postFirm.nBankruptFirms,
-        avgFirmWorkers = postFirm.avgFirmWorkers,
+        laborOpening = SameMonthFlowPlanSource.LaborOpeningBoundary(
+          payroll = payroll.payroll,
+          retirees = laborPre.newDemographics.retirees,
+          workingAgePopulation = laborPre.newDemographics.workingAgePop,
+        ),
+        firmDemography = SameMonthFlowPlanSource.FirmDemographyBoundary(
+          bankruptFirms = postFirm.nBankruptFirms,
+          averageFirmWorkers = postFirm.avgFirmWorkers,
+        ),
       )
 
   private def buildBoundaryViews(execution: MonthExecution, flowPlan: MonthlyCalculus)(using p: SimParams): SameMonthBoundaryViews =
