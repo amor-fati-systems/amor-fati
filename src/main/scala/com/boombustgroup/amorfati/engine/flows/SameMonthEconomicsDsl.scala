@@ -2,9 +2,11 @@ package com.boombustgroup.amorfati.engine.flows
 
 import com.boombustgroup.amorfati.agents.*
 import com.boombustgroup.amorfati.config.SimParams
+import com.boombustgroup.amorfati.engine.SimulationMonth.ExecutionMonth
 import com.boombustgroup.amorfati.engine.{MonthExecution, MonthRandomness, MonthWorkflow, World}
 import com.boombustgroup.amorfati.engine.economics.*
 import com.boombustgroup.amorfati.engine.ledger.LedgerFinancialState
+import com.boombustgroup.amorfati.random.RandomStream
 import com.boombustgroup.amorfati.types.*
 
 private[flows] final case class SameMonthEconomicsPre(
@@ -34,6 +36,128 @@ private[flows] final case class SocialFundStages(
     nfz: SocialSecurity.NfzState,
     ppk: SocialSecurity.PpkState,
     earmarked: EarmarkedFunds.State,
+)
+
+/** Household-income stage dependencies pinned to the opening labor/payroll
+  * boundary.
+  */
+private[flows] final case class HouseholdIncomeStageInput(
+    world: World,
+    firms: Vector[Firm.State],
+    households: Vector[Household.State],
+    banks: Vector[Banking.BankState],
+    ledger: LedgerFinancialState,
+    lendingBaseRate: Rate,
+    reservationWage: PLN,
+    wage: PLN,
+    pensionIncome: PLN,
+    rng: RandomStream,
+)
+
+/** Firm stage dependencies before post-firm labor reconciliation. */
+private[flows] final case class FirmStageInput(
+    world: World,
+    firms: Vector[Firm.State],
+    households: Vector[Household.State],
+    banks: Vector[Banking.BankState],
+    ledger: LedgerFinancialState,
+    fiscal: FiscalConstraintEconomics.StepOutput,
+    openingLabor: LaborEconomics.StepOutput,
+    householdIncome: HouseholdIncomeEconomics.StepOutput,
+    demand: DemandEconomics.StepOutput,
+    rng: RandomStream,
+    traceDecisions: Boolean,
+)
+
+/** Social-fund dependencies that remain anchored to opening payroll while firm
+  * bankruptcies affect earmarked funds.
+  */
+private[flows] final case class SocialFundStageInput(
+    payroll: SocialSecurity.PayrollBase,
+    zus: SocialSecurity.ZusState,
+    workingAgePopulation: Int,
+    retirees: Int,
+    unemploymentBenefits: PLN,
+    bankruptFirms: Int,
+    averageFirmWorkers: Int,
+)
+
+/** Labor reconciliation dependencies after firm processing. */
+private[flows] final case class LaborReconciliationStageInput(
+    world: World,
+    fiscal: FiscalConstraintEconomics.StepOutput,
+    openingLabor: LaborEconomics.StepOutput,
+    livingFirms: Vector[Firm.State],
+    households: Vector[Household.State],
+    socialFunds: SocialFundStages,
+)
+
+/** Household-financial stage dependencies after labor reconciliation. */
+private[flows] final case class HouseholdFinancialStageInput(
+    world: World,
+    month: ExecutionMonth,
+    employed: Int,
+    householdAggregates: Household.Aggregates,
+    rng: RandomStream,
+)
+
+/** Price/equity dependencies for market valuation and macro-price updates. */
+private[flows] final case class PriceEquityStageInput(
+    world: World,
+    month: ExecutionMonth,
+    wageGrowth: Coefficient,
+    averageDemandMultiplier: Multiplier,
+    sectorMultipliers: Vector[Multiplier],
+    totalSystemLoans: PLN,
+    firm: FirmEconomics.StepOutput,
+    ledger: LedgerFinancialState,
+)
+
+/** Open-economy dependencies after domestic real/financial stages are known. */
+private[flows] final case class OpenEconomyStageInput(
+    world: World,
+    ledger: LedgerFinancialState,
+    fiscal: FiscalConstraintEconomics.StepOutput,
+    labor: LaborEconomics.StepOutput,
+    householdIncome: HouseholdIncomeEconomics.StepOutput,
+    demand: DemandEconomics.StepOutput,
+    firm: FirmEconomics.StepOutput,
+    householdFinancial: HouseholdFinancialEconomics.StepOutput,
+    priceEquity: PriceEquityEconomics.StepOutput,
+    banks: Vector[Banking.BankState],
+    rng: RandomStream,
+)
+
+/** Banking dependencies after fiscal, real-sector, household-financial,
+  * price/equity, and open-economy stages have resolved.
+  */
+private[flows] final case class BankingStageInput(
+    world: World,
+    ledger: LedgerFinancialState,
+    fiscal: FiscalConstraintEconomics.StepOutput,
+    labor: LaborEconomics.StepOutput,
+    householdIncome: HouseholdIncomeEconomics.StepOutput,
+    demand: DemandEconomics.StepOutput,
+    firm: FirmEconomics.StepOutput,
+    householdFinancial: HouseholdFinancialEconomics.StepOutput,
+    priceEquity: PriceEquityEconomics.StepOutput,
+    openEconomy: OpenEconEconomics.StepOutput,
+    banks: Vector[Banking.BankState],
+    depositRng: RandomStream,
+)
+
+/** Final same-month transcript assembly dependencies. */
+private[flows] final case class MonthExecutionAssemblyInput(
+    openingWorld: World,
+    fiscal: FiscalConstraintEconomics.StepOutput,
+    labor: LaborEconomics.StepOutput,
+    householdIncome: HouseholdIncomeEconomics.StepOutput,
+    demand: DemandEconomics.StepOutput,
+    firm: FirmEconomics.StepOutput,
+    householdFinancial: HouseholdFinancialEconomics.StepOutput,
+    priceEquity: PriceEquityEconomics.StepOutput,
+    openEconomy: OpenEconEconomics.StepOutput,
+    banking: BankingEconomics.StepOutput,
 )
 
 /** Identity-monad DSL for ordered same-month economics.
@@ -74,24 +198,19 @@ private[flows] object SameMonthEconomicsDsl:
       ),
     )
 
-  def householdIncome(
-      pre: SameMonthEconomicsPre,
-      fiscal: FiscalConstraintEconomics.StepOutput,
-      laborPre: LaborEconomics.StepOutput,
-      payroll: OpeningPayroll,
-  )(using SimParams): Program[HouseholdIncomeEconomics.StepOutput] =
+  def householdIncome(in: HouseholdIncomeStageInput)(using SimParams): Program[HouseholdIncomeEconomics.StepOutput] =
     MonthWorkflow.pure(
       HouseholdIncomeEconomics.compute(
-        pre.world,
-        pre.firms,
-        pre.households,
-        pre.banks,
-        pre.ledger,
-        fiscal.lendingBaseRate,
-        fiscal.resWage,
-        laborPre.newWage,
-        pre.randomness.householdIncomeEconomics.newStream(),
-        pensionIncome = payroll.zus.pensionPayments,
+        in.world,
+        in.firms,
+        in.households,
+        in.banks,
+        in.ledger,
+        in.lendingBaseRate,
+        in.reservationWage,
+        in.wage,
+        in.rng,
+        pensionIncome = in.pensionIncome,
       ),
     )
 
@@ -102,26 +221,20 @@ private[flows] object SameMonthEconomicsDsl:
   )(using SimParams): Program[DemandEconomics.StepOutput] =
     MonthWorkflow.pure(DemandEconomics.compute(pre.world, laborPre.employed, laborPre.living, householdIncome.domesticCons))
 
-  def firm(
-      pre: SameMonthEconomicsPre,
-      fiscal: FiscalConstraintEconomics.StepOutput,
-      laborPre: LaborEconomics.StepOutput,
-      householdIncome: HouseholdIncomeEconomics.StepOutput,
-      demand: DemandEconomics.StepOutput,
-  )(using SimParams): Program[FirmEconomics.StepOutput] =
+  def firm(in: FirmStageInput)(using SimParams): Program[FirmEconomics.StepOutput] =
     MonthWorkflow.pure(
       FirmEconomics.runStep(
-        pre.world,
-        pre.firms,
-        pre.households,
-        pre.banks,
-        pre.ledger,
-        fiscal,
-        laborPre,
-        householdIncome,
-        demand,
-        pre.randomness.firmEconomics.newStream(),
-        traceDecisions = pre.input.traceFirmDecisions,
+        in.world,
+        in.firms,
+        in.households,
+        in.banks,
+        in.ledger,
+        in.fiscal,
+        in.openingLabor,
+        in.householdIncome,
+        in.demand,
+        in.rng,
+        traceDecisions = in.traceDecisions,
       ),
     )
 
@@ -135,157 +248,105 @@ private[flows] object SameMonthEconomicsDsl:
       ),
     )
 
-  def socialFunds(
-      payroll: OpeningPayroll,
-      laborPre: LaborEconomics.StepOutput,
-      householdIncome: HouseholdIncomeEconomics.StepOutput,
-      postFirm: PostFirmBoundary,
-  )(using SimParams): Program[SocialFundStages] =
+  def socialFunds(in: SocialFundStageInput)(using SimParams): Program[SocialFundStages] =
     MonthWorkflow.pure(
       SocialFundStages(
-        zus = payroll.zus,
-        nfz = SocialSecurity.nfzStep(payroll.payroll, laborPre.newDemographics.workingAgePop, laborPre.newDemographics.retirees),
-        ppk = SocialSecurity.ppkStep(payroll.payroll),
-        earmarked = EarmarkedFunds.step(payroll.payroll, householdIncome.hhAgg.totalUnempBenefits, postFirm.nBankruptFirms, postFirm.avgFirmWorkers),
+        zus = in.zus,
+        nfz = SocialSecurity.nfzStep(in.payroll, in.workingAgePopulation, in.retirees),
+        ppk = SocialSecurity.ppkStep(in.payroll),
+        earmarked = EarmarkedFunds.step(in.payroll, in.unemploymentBenefits, in.bankruptFirms, in.averageFirmWorkers),
       ),
     )
 
-  def labor(
-      pre: SameMonthEconomicsPre,
-      fiscal: FiscalConstraintEconomics.StepOutput,
-      laborPre: LaborEconomics.StepOutput,
-      postFirm: PostFirmBoundary,
-      socialFunds: SocialFundStages,
-  )(using SimParams): Program[LaborEconomics.StepOutput] =
-    val reconciled = LaborEconomics.reconcilePostFirmStep(pre.world, fiscal, laborPre, postFirm.livingFirms, postFirm.firm.households)
+  def labor(in: LaborReconciliationStageInput)(using SimParams): Program[LaborEconomics.StepOutput] =
+    val reconciled = LaborEconomics.reconcilePostFirmStep(in.world, in.fiscal, in.openingLabor, in.livingFirms, in.households)
     // Labor reconciliation refreshes employment/wage state after the firm step,
     // but social funds are pinned to the opening-boundary payroll for month t.
     MonthWorkflow.pure(
       reconciled.copy(
-        newZus = socialFunds.zus,
-        newNfz = socialFunds.nfz,
-        newPpk = socialFunds.ppk,
-        newEarmarked = socialFunds.earmarked,
+        newZus = in.socialFunds.zus,
+        newNfz = in.socialFunds.nfz,
+        newPpk = in.socialFunds.ppk,
+        newEarmarked = in.socialFunds.earmarked,
       ),
     )
 
-  def householdFinancial(
-      pre: SameMonthEconomicsPre,
-      fiscal: FiscalConstraintEconomics.StepOutput,
-      labor: LaborEconomics.StepOutput,
-      householdIncome: HouseholdIncomeEconomics.StepOutput,
-  )(using SimParams): Program[HouseholdFinancialEconomics.StepOutput] =
+  def householdFinancial(in: HouseholdFinancialStageInput)(using SimParams): Program[HouseholdFinancialEconomics.StepOutput] =
     MonthWorkflow.pure(
       HouseholdFinancialEconomics.compute(
-        pre.world,
-        fiscal.m,
-        labor.employed,
-        householdIncome.hhAgg,
-        pre.randomness.householdFinancialEconomics.newStream(),
+        in.world,
+        in.month,
+        in.employed,
+        in.householdAggregates,
+        in.rng,
       ),
     )
 
-  def priceEquity(
-      pre: SameMonthEconomicsPre,
-      fiscal: FiscalConstraintEconomics.StepOutput,
-      labor: LaborEconomics.StepOutput,
-      demand: DemandEconomics.StepOutput,
-      firm: FirmEconomics.StepOutput,
-  )(using SimParams): Program[PriceEquityEconomics.StepOutput] =
+  def priceEquity(in: PriceEquityStageInput)(using SimParams): Program[PriceEquityEconomics.StepOutput] =
     MonthWorkflow.pure(
       PriceEquityEconomics.compute(
-        w = pre.world,
-        month = fiscal.m,
-        wageGrowth = labor.wageGrowth,
-        avgDemandMult = demand.avgDemandMult,
-        sectorMults = demand.sectorMults,
-        totalSystemLoans = pre.ledger.banks.map(_.firmLoan).sumPln,
-        firmStep = firm,
-        ledgerFinancialState = pre.ledger,
+        w = in.world,
+        month = in.month,
+        wageGrowth = in.wageGrowth,
+        avgDemandMult = in.averageDemandMultiplier,
+        sectorMults = in.sectorMultipliers,
+        totalSystemLoans = in.totalSystemLoans,
+        firmStep = in.firm,
+        ledgerFinancialState = in.ledger,
       ),
     )
 
-  def openEconomy(
-      pre: SameMonthEconomicsPre,
-      fiscal: FiscalConstraintEconomics.StepOutput,
-      labor: LaborEconomics.StepOutput,
-      householdIncome: HouseholdIncomeEconomics.StepOutput,
-      demand: DemandEconomics.StepOutput,
-      firm: FirmEconomics.StepOutput,
-      householdFinancial: HouseholdFinancialEconomics.StepOutput,
-      priceEquity: PriceEquityEconomics.StepOutput,
-  )(using SimParams): Program[OpenEconEconomics.StepOutput] =
+  def openEconomy(in: OpenEconomyStageInput)(using SimParams): Program[OpenEconEconomics.StepOutput] =
     MonthWorkflow.pure(
       OpenEconEconomics.runStep(
         OpenEconEconomics.StepInput(
-          pre.world,
-          pre.ledger,
-          fiscal,
-          labor,
-          householdIncome,
-          demand,
-          firm,
-          householdFinancial,
-          priceEquity,
-          pre.banks,
-          pre.randomness.openEconEconomics.newStream(),
+          in.world,
+          in.ledger,
+          in.fiscal,
+          in.labor,
+          in.householdIncome,
+          in.demand,
+          in.firm,
+          in.householdFinancial,
+          in.priceEquity,
+          in.banks,
+          in.rng,
         ),
       ),
     )
 
-  def banking(
-      pre: SameMonthEconomicsPre,
-      fiscal: FiscalConstraintEconomics.StepOutput,
-      labor: LaborEconomics.StepOutput,
-      householdIncome: HouseholdIncomeEconomics.StepOutput,
-      demand: DemandEconomics.StepOutput,
-      firm: FirmEconomics.StepOutput,
-      householdFinancial: HouseholdFinancialEconomics.StepOutput,
-      priceEquity: PriceEquityEconomics.StepOutput,
-      openEconomy: OpenEconEconomics.StepOutput,
-  )(using SimParams): Program[BankingEconomics.StepOutput] =
+  def banking(in: BankingStageInput)(using SimParams): Program[BankingEconomics.StepOutput] =
     MonthWorkflow.pure(
       BankingEconomics.runStep(
         BankingEconomics.StepInput(
-          world = pre.world,
-          ledgerFinancialState = pre.ledger,
-          fiscal = fiscal,
-          labor = labor,
-          householdIncome = householdIncome,
-          demand = demand,
-          firm = firm,
-          householdFinancial = householdFinancial,
-          priceEquity = priceEquity,
-          openEconomy = openEconomy,
-          banks = pre.banks,
-          depositRng = pre.randomness.bankingEconomics.newStream(),
+          world = in.world,
+          ledgerFinancialState = in.ledger,
+          fiscal = in.fiscal,
+          labor = in.labor,
+          householdIncome = in.householdIncome,
+          demand = in.demand,
+          firm = in.firm,
+          householdFinancial = in.householdFinancial,
+          priceEquity = in.priceEquity,
+          openEconomy = in.openEconomy,
+          banks = in.banks,
+          depositRng = in.depositRng,
         ),
       ),
     )
 
-  def execution(
-      pre: SameMonthEconomicsPre,
-      fiscal: FiscalConstraintEconomics.StepOutput,
-      labor: LaborEconomics.StepOutput,
-      householdIncome: HouseholdIncomeEconomics.StepOutput,
-      demand: DemandEconomics.StepOutput,
-      firm: FirmEconomics.StepOutput,
-      householdFinancial: HouseholdFinancialEconomics.StepOutput,
-      priceEquity: PriceEquityEconomics.StepOutput,
-      openEconomy: OpenEconEconomics.StepOutput,
-      banking: BankingEconomics.StepOutput,
-  ): Program[MonthExecution] =
+  def execution(in: MonthExecutionAssemblyInput): Program[MonthExecution] =
     MonthWorkflow.pure(
       MonthExecution(
-        openingWorld = pre.world,
-        fiscal = fiscal,
-        labor = labor,
-        householdIncome = householdIncome,
-        demand = demand,
-        firm = firm,
-        householdFinancial = householdFinancial,
-        priceEquity = priceEquity,
-        openEconomy = openEconomy,
-        banking = banking,
+        openingWorld = in.openingWorld,
+        fiscal = in.fiscal,
+        labor = in.labor,
+        householdIncome = in.householdIncome,
+        demand = in.demand,
+        firm = in.firm,
+        householdFinancial = in.householdFinancial,
+        priceEquity = in.priceEquity,
+        openEconomy = in.openEconomy,
+        banking = in.banking,
       ),
     )
