@@ -139,15 +139,11 @@ nix develop --command java -cp target/scala-3.8.2/amor-fati.jar \
   --require-main
 ```
 
-The scheduled workflow targets 02:00 Europe/Warsaw. GitHub cron only supports
-UTC, so the workflow registers both `0 0 * * *` and `0 1 * * *` UTC and then
-uses a lightweight gate step to continue only for the intended local-time
-occurrence. In ordinary CEST this is `0 0 * * *`; in ordinary CET this is
-`0 1 * * *`. On the autumn DST transition, where local 02:00 occurs twice, the
-workflow keeps the second occurrence in CET and skips the first one. On the
-spring DST transition, where local 02:00 does not exist, the workflow runs at
-the first valid post-transition slot, 03:00 CEST. The gate runs before checkout
-or Nix setup, so skipped scheduled events are cheap.
+The scheduled workflow uses a single GitHub cron, `0 0 * * *` UTC. During CEST
+this runs at 02:00 Europe/Warsaw. GitHub cron does not track local daylight
+saving time, so maintainers should adjust the cron if exact 02:00 local time is
+required during CET months. A single cron is intentional because it avoids
+duplicate scheduled workflow runs in the Actions UI.
 
 The job summary reports the profile, commit SHA, run id, runtime, manifest path,
 terminal status, build/runtime exit codes, and failure reason when either the
