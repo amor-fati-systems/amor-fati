@@ -12,13 +12,15 @@ import scala.IArray
 /** Projects same-month economics outputs into the flow-emission contract. */
 private[flows] object MonthFlowPlanBuilder:
 
-  def build(stages: SameMonthStageRun)(using p: SimParams): MonthlyCalculus =
-    val ledger             = stages.openingLedger
-    val banks              = stages.openingBanks
-    val execution          = stages.execution
+  def build(source: SameMonthFlowPlanSource)(using p: SimParams): MonthlyCalculus =
+    val openingFinancial   = source.openingFinancial
+    val laborOpening       = source.laborOpening
+    val firmDemography     = source.firmDemography
+    val ledger             = openingFinancial.ledger
+    val banks              = openingFinancial.banks
+    val execution          = source.execution
     val w                  = execution.openingWorld
     val fiscal             = execution.fiscal
-    val laborPre           = stages.laborPre
     val labor              = execution.labor
     val householdIncome    = execution.householdIncome
     val firm               = execution.firm
@@ -52,18 +54,18 @@ private[flows] object MonthFlowPlanBuilder:
       labor = MonthlyCalculus.LaborAndSocial(
         wage = labor.newWage,
         employed = labor.employed,
-        payroll = stages.payroll,
+        payroll = laborOpening.payroll,
         zus = labor.newZus,
         ppk = labor.newPpk,
         earmarked = labor.newEarmarked,
         unemploymentRate = unemploymentRate,
         laborDemand = labor.laborDemand,
         livingFirms = firm.ioFirms.count(Firm.isAlive),
-        retirees = laborPre.newDemographics.retirees,
-        workingAgePop = laborPre.newDemographics.workingAgePop,
+        retirees = laborOpening.retirees,
+        workingAgePop = laborOpening.workingAgePopulation,
         nfz = labor.newNfz,
-        nBankruptFirms = stages.nBankruptFirms,
-        avgFirmWorkers = stages.avgFirmWorkers,
+        nBankruptFirms = firmDemography.bankruptFirms,
+        avgFirmWorkers = firmDemography.averageFirmWorkers,
       ),
       household = MonthlyCalculus.HouseholdFlows(
         totalIncome = householdIncome.totalIncome,
