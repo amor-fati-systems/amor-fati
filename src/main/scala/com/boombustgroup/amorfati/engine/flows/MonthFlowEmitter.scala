@@ -11,7 +11,7 @@ import com.boombustgroup.ledger.BatchedFlow
   */
 object MonthFlowEmitter:
 
-  def emitAllBatches(c: FlowSimulation.MonthlyCalculus)(using p: SimParams, topology: RuntimeLedgerTopology): Vector[BatchedFlow] =
+  def emitAllBatches(c: MonthlyCalculus)(using p: SimParams, topology: RuntimeLedgerTopology): Vector[BatchedFlow] =
     Vector.concat(
       // Tier 1: Social funds
       ZusFlows.emitBatches(ZusFlows.ZusInput(c.zus)),

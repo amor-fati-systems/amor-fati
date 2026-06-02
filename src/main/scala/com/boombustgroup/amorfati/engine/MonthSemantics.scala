@@ -1,6 +1,7 @@
 package com.boombustgroup.amorfati.engine
 
-import com.boombustgroup.amorfati.engine.flows.FlowSimulation.{ClosedMonthBoundary, MonthlyCalculus, SemanticFlowInputs, SignalBoundaryInputs}
+import com.boombustgroup.amorfati.engine.flows.FlowSimulation.{ClosedMonthBoundary, SemanticFlowInputs, SignalBoundaryInputs}
+import com.boombustgroup.amorfati.engine.flows.MonthlyCalculus
 
 /** Tiny type-level timeline for one monthly engine step.
   *
