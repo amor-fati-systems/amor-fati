@@ -53,9 +53,12 @@ Every run should include a manifest with at least:
 - month horizon
 - logical diagnostic steps
 - per-step semantic classification and failure policy
+- per-step runtime telemetry: duration, normalized seed-month throughput where
+  applicable, artifact sizes, CSV row counts, and memory/GC observations
 - output paths
 - start and end timestamps
 - Nix, Java, sbt, and project versions where practical
+- JVM and OS runtime metadata where practical
 
 Every non-dry-run profile should also include compact health summaries:
 
@@ -115,8 +118,16 @@ target/nightly-diagnostics/<profile>/<run-id>/health-summary.md
 
 The manifest records the profile, resolved git ref, dirty-tree status, jar path
 and SHA-256 when available, command line, tool versions, step seed/month
-settings, step output directories, artifact paths, timestamps, and final
-status.
+settings, step output directories, artifact paths, timestamps, lightweight
+performance telemetry, JVM/OS runtime metadata, and final status.
+
+Per-step telemetry is intentionally orchestration-level evidence, not a
+correctness test. It records elapsed step time, `seeds × months` throughput when
+both dimensions are meaningful, emitted artifact file counts and bytes, CSV row
+counts where available, and before/after memory plus GC deltas when the JVM
+exposes them. Missing or partial telemetry is represented in the manifest rather
+than launching duplicate simulations or adding assertions inside diagnostic
+exporters.
 
 The health summary reuses artifacts emitted by the configured diagnostics. It
 does not launch additional simulations. The first threshold layer reads the
