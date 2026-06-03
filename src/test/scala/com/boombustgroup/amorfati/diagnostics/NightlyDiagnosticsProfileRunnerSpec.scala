@@ -4,6 +4,7 @@ import org.scalatest.EitherValues.*
 import org.scalatest.OptionValues.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import zio.Cause
 
 import java.nio.file.{Files, Path}
 import java.time.Instant
@@ -123,17 +124,62 @@ class NightlyDiagnosticsProfileRunnerSpec extends AnyFlatSpec with Matchers:
     rendered should include(""""profile":"smoke"""")
     rendered should include(""""status":"DRY_RUN"""")
     rendered should include(""""jar":{"path":"target/scala-3.8.2/amor-fati.jar"""")
+    rendered should include(""""runtime":{"available_processors":8""")
     rendered should include(""""steps":[""")
     rendered should include(""""id":"baseline-monte-carlo"""")
     rendered should include(""""classification":"normal_validation"""")
+    rendered should include(""""telemetry":null""")
     rendered should include(
       """"failure_policy":"Hard accounting/runtime failures fail; economic failures are interpreted as normal-path engine or calibration alarms."""",
     )
   }
 
+  it should "render per-step performance telemetry" in {
+    val ctx      = context("smoke")
+    val step     = ctx.profile
+      .steps(ctx)
+      .head
+      .completed(
+        ctx,
+        startedAt = Instant.parse("2026-05-26T00:00:00Z"),
+        finishedAt = Instant.parse("2026-05-26T00:00:01Z"),
+        artifacts = Vector(ctx.runRoot.resolve("baseline-monte-carlo")),
+        telemetry = Some(sampleStepTelemetry),
+      )
+    val manifest = NightlyDiagnosticsProfileRunner.Manifest(
+      profileId = "smoke",
+      runId = "smoke-manual-20260526-abcdef0",
+      status = "RUNNING",
+      dryRun = false,
+      startedAt = Instant.parse("2026-05-26T00:00:00Z"),
+      finishedAt = None,
+      runRoot = ctx.runRoot,
+      outRoot = ctx.config.out,
+      metadata = ctx.metadata,
+      steps = Vector(step),
+      error = None,
+    )
+    val rendered = NightlyDiagnosticsProfileRunner.renderManifest(manifest)
+
+    rendered should include(""""telemetry":{""")
+    rendered should include(""""duration_ms":1500""")
+    rendered should include(""""duration_seconds":1.5""")
+    rendered should include(""""seed_months":12""")
+    rendered should include(""""seed_months_per_second":8""")
+    rendered should include(""""csv_row_count":36""")
+    rendered should include(""""heap_used_bytes":1000""")
+    rendered should include(""""collection_count_delta":2""")
+    rendered should include(""""collection_error":null""")
+  }
+
   it should "derive manual UTC run ids from profile and short commit" in {
     NightlyDiagnosticsProfileRunner.autoRunId("nightly", "abcdef0", Instant.parse("2026-05-26T12:34:00Z")) shouldBe
       "nightly-manual-20260526-1234-abcdef0"
+  }
+
+  it should "render typed and defect causes for manifest failure fields" in {
+    NightlyDiagnosticsProfileRunner.renderCause("step-x", Cause.fail("typed failure")) shouldBe "typed failure"
+    NightlyDiagnosticsProfileRunner.renderCause("step-x", Cause.die(RuntimeException("boom"))) should include("step-x crashed")
   }
 
   "NightlyHealthSummary" should "pass when baseline CSVs satisfy normal-path thresholds" in {
@@ -202,8 +248,52 @@ class NightlyDiagnosticsProfileRunnerSpec extends AnyFlatSpec with Matchers:
         nixVersion = Some("nix test"),
         sbtVersion = Some("sbt test"),
         buildCommit = "abcdef0",
+        runtime = NightlyDiagnosticsProfileRunner.RuntimeTelemetry(
+          availableProcessors = 8,
+          maxMemoryBytes = 4096,
+          totalMemoryBytes = 2048,
+          freeMemoryBytes = 1024,
+          usedMemoryBytes = 1024,
+          jvmName = "test-vm",
+          jvmVendor = "test-vendor",
+          jvmVersion = "test-vm-version",
+          osName = "test-os",
+          osArch = "test-arch",
+          osVersion = "test-os-version",
+        ),
       ),
       startedAt = Instant.parse("2026-05-26T00:00:00Z"),
+    )
+
+  private def sampleStepTelemetry: NightlyDiagnosticsProfileRunner.StepTelemetry =
+    NightlyDiagnosticsProfileRunner.StepTelemetry(
+      durationMillis = 1500L,
+      seedMonths = Some(12L),
+      seedMonthsPerSecond = Some(BigDecimal(8)),
+      artifacts = NightlyDiagnosticsProfileRunner.ArtifactTelemetry(
+        fileCount = 4L,
+        bytes = 8192L,
+        csvFileCount = 3L,
+        csvRowCount = 36L,
+      ),
+      memoryBefore = NightlyDiagnosticsProfileRunner.MemoryTelemetry(
+        heapUsedBytes = 1000L,
+        heapCommittedBytes = 2000L,
+        heapMaxBytes = 4000L,
+        nonHeapUsedBytes = 300L,
+        nonHeapCommittedBytes = 600L,
+        nonHeapMaxBytes = 900L,
+      ),
+      memoryAfter = NightlyDiagnosticsProfileRunner.MemoryTelemetry(
+        heapUsedBytes = 1200L,
+        heapCommittedBytes = 2200L,
+        heapMaxBytes = 4000L,
+        nonHeapUsedBytes = 350L,
+        nonHeapCommittedBytes = 650L,
+        nonHeapMaxBytes = 900L,
+      ),
+      gc = Vector(NightlyDiagnosticsProfileRunner.GcTelemetry("test-gc", collectionCountDelta = Some(2L), collectionTimeMillisDelta = Some(11L))),
+      collectionError = None,
     )
 
   private def succeededSteps(ctx: NightlyDiagnosticsProfileRunner.RunContext): Vector[NightlyDiagnosticsProfileRunner.ManifestStep] =

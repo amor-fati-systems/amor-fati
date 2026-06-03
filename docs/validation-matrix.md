@@ -32,6 +32,7 @@ duplicating those layers.
 | Coverage upload | PR and push | `.github/workflows/ci.yml` `test` job | `codecov/codecov-action` | Publish non-heavy unit coverage | Non-blocking upload; CI does not fail if Codecov upload fails |
 | Nightly diagnostics | Scheduled daily on `main`; manual dispatch | `.github/workflows/nightly-diagnostics.yml` | Build `sbt assembly` under Nix, then run `NightlyDiagnosticsProfileRunner` from the jar | Long validation and diagnostics artifacts over `smoke`, `nightly`, and `extended` profiles | Hard fail on runner/build failure and hard invariants; economic outcomes are interpreted by profile classification |
 | Nightly health summary | After a non-dry-run diagnostics profile completes | `NightlyHealthSummary` via `NightlyDiagnosticsProfileRunner` | Reuse `run-manifest.json` and baseline Monte Carlo seed CSVs to write `health-summary.json` and `health-summary.md` | Compact machine/human verdict answering whether `main` stayed normal-path healthy overnight | Hard fail on normal-validation threshold breaches; warn/report for soft research signals; do not turn stress/exploratory outcomes into normal-path failures |
+| Nightly performance telemetry | Every diagnostics profile step | `NightlyDiagnosticsProfileRunner` manifest telemetry | Per-step duration, seed-month throughput, artifact size/row counts, and JVM memory/GC observations in `run-manifest.json` | Lightweight regression visibility before heavier profilers exist | Report-only initially; hard performance budgets belong to later baseline/regression work |
 | Manual diagnostics | Local or workflow dispatch | Maintainer | `nix develop --command java -cp target/scala-3.8.2/amor-fati.jar com.boombustgroup.amorfati.diagnostics.NightlyDiagnosticsProfileRunner ...` | Reproduce or inspect profile outputs outside PR CI | Evidence only unless explicitly promoted to a CI/nightly gate |
 | Future profiling | Manual or weekly | #687 / #688 | To be added under Nix | Hot-path timing/allocation visibility for FlowSimulation, banking, firms, households, runtime ledger execution, SFC projection, and diagnostics exports | Initially warning/report-only; hard budgets require low-noise baseline evidence |
 
@@ -50,9 +51,9 @@ invariant gate.
 ## Nightly Profile Ownership
 
 The nightly workflow is the owner for long-running diagnostics, research health
-evidence, and the compact health verdict derived from those artifacts. It runs
-from the assembled jar under the Nix environment, not from ad hoc local
-classpaths.
+evidence, lightweight performance telemetry, and the compact health verdict
+derived from those artifacts. It runs from the assembled jar under the Nix
+environment, not from ad hoc local classpaths.
 
 | Profile | Trigger | Current intent | Typical interpretation |
 | --- | --- | --- | --- |

@@ -2,18 +2,20 @@ package com.boombustgroup.amorfati.diagnostics
 
 import com.boombustgroup.amorfati.config.RobustnessScenarios.ScenarioSet
 import com.boombustgroup.amorfati.config.{ScenarioRegistry, SimParams}
+import com.boombustgroup.amorfati.engine.EngineFailure
 import com.boombustgroup.amorfati.montecarlo.{McRunConfig, McRunner}
 import com.boombustgroup.amorfati.util.BuildInfo
-import zio.{Clock, Ref, ZIO}
+import zio.{Cause, Clock, Exit, Ref, ZIO}
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path}
 import java.security.MessageDigest
+import java.lang.management.ManagementFactory
 import java.time.format.DateTimeFormatter
 import java.time.{Instant, ZoneOffset}
 import java.util.Locale
 import scala.jdk.CollectionConverters.*
-import scala.util.Try
+import scala.util.{Try, Using}
 
 /** Jar-runnable profile orchestrator for the nightly diagnostics milestone.
   *
@@ -59,7 +61,106 @@ object NightlyDiagnosticsProfileRunner:
       nixVersion: Option[String],
       sbtVersion: Option[String],
       buildCommit: String,
+      runtime: RuntimeTelemetry,
   )
+
+  /** JVM/runtime facts captured once per diagnostics invocation. */
+  private[diagnostics] final case class RuntimeTelemetry(
+      availableProcessors: Int,
+      maxMemoryBytes: Long,
+      totalMemoryBytes: Long,
+      freeMemoryBytes: Long,
+      usedMemoryBytes: Long,
+      jvmName: String,
+      jvmVendor: String,
+      jvmVersion: String,
+      osName: String,
+      osArch: String,
+      osVersion: String,
+  )
+
+  /** Heap/non-heap sample around a single diagnostic step. */
+  private[diagnostics] final case class MemoryTelemetry(
+      heapUsedBytes: Long,
+      heapCommittedBytes: Long,
+      heapMaxBytes: Long,
+      nonHeapUsedBytes: Long,
+      nonHeapCommittedBytes: Long,
+      nonHeapMaxBytes: Long,
+  )
+
+  /** Best-effort GC delta observed around a single diagnostic step. */
+  private[diagnostics] final case class GcTelemetry(name: String, collectionCountDelta: Option[Long], collectionTimeMillisDelta: Option[Long])
+
+  /** File-system facts collected from a step's emitted artifacts. */
+  private[diagnostics] final case class ArtifactTelemetry(
+      fileCount: Long,
+      bytes: Long,
+      csvFileCount: Long,
+      csvRowCount: Long,
+  )
+
+  /** Lightweight per-step performance telemetry for the nightly manifest. */
+  private[diagnostics] final case class StepTelemetry(
+      durationMillis: Long,
+      seedMonths: Option[Long],
+      seedMonthsPerSecond: Option[BigDecimal],
+      artifacts: ArtifactTelemetry,
+      memoryBefore: MemoryTelemetry,
+      memoryAfter: MemoryTelemetry,
+      gc: Vector[GcTelemetry],
+      collectionError: Option[String],
+  )
+
+  private[diagnostics] object RuntimeTelemetry:
+    def capture(): RuntimeTelemetry =
+      val runtime = Runtime.getRuntime
+      val vm      = ManagementFactory.getRuntimeMXBean
+      val os      = ManagementFactory.getOperatingSystemMXBean
+      RuntimeTelemetry(
+        availableProcessors = runtime.availableProcessors(),
+        maxMemoryBytes = runtime.maxMemory(),
+        totalMemoryBytes = runtime.totalMemory(),
+        freeMemoryBytes = runtime.freeMemory(),
+        usedMemoryBytes = runtime.totalMemory() - runtime.freeMemory(),
+        jvmName = vm.getVmName,
+        jvmVendor = vm.getVmVendor,
+        jvmVersion = vm.getVmVersion,
+        osName = os.getName,
+        osArch = os.getArch,
+        osVersion = os.getVersion,
+      )
+
+  private[diagnostics] object MemoryTelemetry:
+    def capture(): MemoryTelemetry =
+      val memory  = ManagementFactory.getMemoryMXBean
+      val heap    = memory.getHeapMemoryUsage
+      val nonHeap = memory.getNonHeapMemoryUsage
+      MemoryTelemetry(
+        heapUsedBytes = heap.getUsed,
+        heapCommittedBytes = heap.getCommitted,
+        heapMaxBytes = heap.getMax,
+        nonHeapUsedBytes = nonHeap.getUsed,
+        nonHeapCommittedBytes = nonHeap.getCommitted,
+        nonHeapMaxBytes = nonHeap.getMax,
+      )
+
+  private final case class GcCounter(collectionCount: Option[Long], collectionTimeMillis: Option[Long])
+
+  private final case class StepRuntimeCounters(memory: MemoryTelemetry, gc: Map[String, GcCounter])
+
+  private object StepRuntimeCounters:
+    def capture(): StepRuntimeCounters =
+      StepRuntimeCounters(
+        memory = MemoryTelemetry.capture(),
+        gc = ManagementFactory.getGarbageCollectorMXBeans.asScala
+          .map: bean =>
+            bean.getName -> GcCounter(nonNegative(bean.getCollectionCount), nonNegative(bean.getCollectionTime))
+          .toMap,
+      )
+
+    private def nonNegative(value: Long): Option[Long] =
+      Option.when(value >= 0L)(value)
 
   private[diagnostics] final case class RunContext(
       config: Config,
@@ -88,6 +189,7 @@ object NightlyDiagnosticsProfileRunner:
       startedAt: Option[Instant],
       finishedAt: Option[Instant],
       artifacts: Vector[Path],
+      telemetry: Option[StepTelemetry],
       error: Option[String],
   )
 
@@ -173,14 +275,15 @@ object NightlyDiagnosticsProfileRunner:
         startedAt = None,
         finishedAt = None,
         artifacts = Vector.empty,
+        telemetry = None,
         error = None,
       )
 
-    def completed(ctx: RunContext, startedAt: Instant, finishedAt: Instant, artifacts: Vector[Path]): ManifestStep =
-      planned(ctx).copy(status = "SUCCEEDED", startedAt = Some(startedAt), finishedAt = Some(finishedAt), artifacts = artifacts)
+    def completed(ctx: RunContext, startedAt: Instant, finishedAt: Instant, artifacts: Vector[Path], telemetry: Option[StepTelemetry] = None): ManifestStep =
+      planned(ctx).copy(status = "SUCCEEDED", startedAt = Some(startedAt), finishedAt = Some(finishedAt), artifacts = artifacts, telemetry = telemetry)
 
-    def failed(ctx: RunContext, startedAt: Instant, finishedAt: Instant, error: String): ManifestStep =
-      planned(ctx).copy(status = "FAILED", startedAt = Some(startedAt), finishedAt = Some(finishedAt), error = Some(error))
+    def failed(ctx: RunContext, startedAt: Instant, finishedAt: Instant, error: String, telemetry: Option[StepTelemetry] = None): ManifestStep =
+      planned(ctx).copy(status = "FAILED", startedAt = Some(startedAt), finishedAt = Some(finishedAt), error = Some(error), telemetry = telemetry)
 
   def main(args: Array[String]): Unit =
     parseArgs(args.toVector) match
@@ -259,27 +362,45 @@ object NightlyDiagnosticsProfileRunner:
       stepResult   <- ZIO
         .foreachDiscard(steps): step =>
           for
-            started  <- Clock.instant
-            paths    <- step
-              .run(ctx)
-              .tapError: err =>
-                Clock.instant.flatMap(finished => failedRef.set(Some(step.failed(ctx, started, finished, err))))
-            finished <- Clock.instant
-            done      = step.completed(ctx, started, finished, paths)
-            _        <- completedRef.update(_ :+ done)
-            current  <- completedRef.get
-            _        <- writeManifest(ctx, mergeSteps(steps, current, None, ctx), "RUNNING", None, None)
+            started     <- Clock.instant
+            startNano   <- ZIO.succeed(System.nanoTime())
+            before      <- ZIO.succeed(StepRuntimeCounters.capture())
+            outcome     <- step.run(ctx).exit
+            endNano     <- ZIO.succeed(System.nanoTime())
+            finished    <- Clock.instant
+            after       <- ZIO.succeed(StepRuntimeCounters.capture())
+            elapsedNanos = math.max(0L, endNano - startNano)
+            paths        = outcome match
+              case Exit.Success(paths) => paths
+              case Exit.Failure(_)     => Vector.empty
+            stepError    = outcome match
+              case Exit.Success(_)     => None
+              case Exit.Failure(cause) => Some(renderCause(step.id, cause))
+            telemetry   <- collectStepTelemetry(ctx, step, elapsedNanos, before, after, paths, stepError)
+            _           <- outcome match
+              case Exit.Success(paths) =>
+                val done = step.completed(ctx, started, finished, paths, Some(telemetry))
+                for
+                  _       <- completedRef.update(_ :+ done)
+                  current <- completedRef.get
+                  _       <- writeManifest(ctx, mergeSteps(steps, current, None, ctx), "RUNNING", None, None)
+                yield ()
+              case Exit.Failure(cause) =>
+                val err = stepError.getOrElse(renderCause(step.id, cause))
+                failedRef.set(Some(step.failed(ctx, started, finished, err, Some(telemetry)))) *>
+                  ZIO.failCause(cause)
           yield ()
-        .foldZIO(
-          err =>
+        .foldCauseZIO(
+          cause =>
             for
               finished  <- Clock.instant
               completed <- completedRef.get
               failed    <- failedRef.get
+              err        = renderCause("Nightly diagnostics profile", cause)
               terminal   = mergeSteps(steps, completed, failed, ctx)
               _         <- NightlyHealthSummary.write(ctx, terminal)
               manifest  <- writeManifest(ctx, terminal, "FAILED", Some(finished), Some(err))
-              _         <- ZIO.fail(err)
+              _         <- ZIO.failCause(cause)
             yield RunResult(manifest, ctx.runRoot, "FAILED"),
           _ =>
             for
@@ -304,6 +425,117 @@ object NightlyDiagnosticsProfileRunner:
       finished <- Clock.instant
       manifest <- writeManifest(ctx, steps.map(_.planned(ctx)), "DRY_RUN", Some(finished), None)
     yield RunResult(manifest, ctx.runRoot, "DRY_RUN")
+
+  private def collectStepTelemetry(
+      ctx: RunContext,
+      step: DiagnosticStep,
+      elapsedNanos: Long,
+      before: StepRuntimeCounters,
+      after: StepRuntimeCounters,
+      artifacts: Vector[Path],
+      stepError: Option[String],
+  ): ZIO[Any, Nothing, StepTelemetry] =
+    ZIO
+      .attemptBlocking(collectStepTelemetryBlocking(ctx, step, elapsedNanos, before, after, artifacts, stepError))
+      .catchAll: err =>
+        ZIO.succeed(fallbackStepTelemetry(step, elapsedNanos, before, after, combineCollectionErrors(stepError, Some(message(err)))))
+
+  private def collectStepTelemetryBlocking(
+      ctx: RunContext,
+      step: DiagnosticStep,
+      elapsedNanos: Long,
+      before: StepRuntimeCounters,
+      after: StepRuntimeCounters,
+      artifacts: Vector[Path],
+      stepError: Option[String],
+  ): StepTelemetry =
+    val durationMillis       = durationMillisFromNanos(elapsedNanos)
+    val seedMonths           = for
+      seeds  <- step.seeds
+      months <- step.months
+    yield seeds.toLong * months.toLong
+    val seedMonthsPerSecond  = throughputPerSecond(seedMonths, elapsedNanos)
+    val artifactPaths        = (artifacts :+ step.outputDir(ctx)).distinct
+    val artifactTelemetry    = collectArtifactTelemetry(artifactPaths)
+    val (artifactStats, err) = artifactTelemetry match
+      case Right(stats)  => stats                                                                              -> None
+      case Left(message) => ArtifactTelemetry(fileCount = 0L, bytes = 0L, csvFileCount = 0L, csvRowCount = 0L) -> Some(message)
+
+    StepTelemetry(
+      durationMillis = durationMillis,
+      seedMonths = seedMonths,
+      seedMonthsPerSecond = seedMonthsPerSecond,
+      artifacts = artifactStats,
+      memoryBefore = before.memory,
+      memoryAfter = after.memory,
+      gc = gcDelta(before.gc, after.gc),
+      collectionError = combineCollectionErrors(stepError, err),
+    )
+
+  private def fallbackStepTelemetry(
+      step: DiagnosticStep,
+      elapsedNanos: Long,
+      before: StepRuntimeCounters,
+      after: StepRuntimeCounters,
+      collectionError: Option[String],
+  ): StepTelemetry =
+    val durationMillis = durationMillisFromNanos(elapsedNanos)
+    val seedMonths     = for
+      seeds  <- step.seeds
+      months <- step.months
+    yield seeds.toLong * months.toLong
+    StepTelemetry(
+      durationMillis = durationMillis,
+      seedMonths = seedMonths,
+      seedMonthsPerSecond = throughputPerSecond(seedMonths, elapsedNanos),
+      artifacts = ArtifactTelemetry(fileCount = 0L, bytes = 0L, csvFileCount = 0L, csvRowCount = 0L),
+      memoryBefore = before.memory,
+      memoryAfter = after.memory,
+      gc = gcDelta(before.gc, after.gc),
+      collectionError = collectionError,
+    )
+
+  private def collectArtifactTelemetry(paths: Vector[Path]): Either[String, ArtifactTelemetry] =
+    Try:
+      val files    = paths
+        .flatMap(filesForArtifact)
+        .distinctBy(path => path.toAbsolutePath.normalize.toString)
+      val csvFiles = files.filter(path => path.getFileName.toString.toLowerCase(Locale.ROOT).endsWith(".csv"))
+      ArtifactTelemetry(
+        fileCount = files.length.toLong,
+        bytes = files.foldLeft(0L)((acc, path) => acc + Files.size(path)),
+        csvFileCount = csvFiles.length.toLong,
+        csvRowCount = csvFiles.foldLeft(0L)((acc, path) => acc + csvDataRows(path)),
+      )
+    .toEither.left.map(err => s"artifact telemetry unavailable: ${message(err)}")
+
+  private def filesForArtifact(path: Path): Vector[Path] =
+    if Files.isRegularFile(path) then Vector(path)
+    else if Files.isDirectory(path) then
+      Using.resource(Files.walk(path)): stream =>
+        stream.iterator().asScala.filter(candidate => Files.isRegularFile(candidate)).toVector
+    else Vector.empty
+
+  private def csvDataRows(path: Path): Long =
+    val lineCount = Using.resource(Files.lines(path, StandardCharsets.UTF_8))(_.count())
+    math.max(0L, lineCount - 1L)
+
+  private def gcDelta(before: Map[String, GcCounter], after: Map[String, GcCounter]): Vector[GcTelemetry] =
+    after.toVector
+      .sortBy((name, _) => name)
+      .map: (name, afterCounter) =>
+        val beforeCounter = before.getOrElse(name, GcCounter(None, None))
+        GcTelemetry(
+          name = name,
+          collectionCountDelta = delta(beforeCounter.collectionCount, afterCounter.collectionCount),
+          collectionTimeMillisDelta = delta(beforeCounter.collectionTimeMillis, afterCounter.collectionTimeMillis),
+        )
+
+  private def delta(before: Option[Long], after: Option[Long]): Option[Long] =
+    for
+      start <- before
+      end   <- after
+    yield math.max(0L, end - start)
 
   private def writeManifest(
       ctx: RunContext,
@@ -709,6 +941,7 @@ object NightlyDiagnosticsProfileRunner:
           nixVersion = command(Vector("nix", "--version")),
           sbtVersion = command(Vector("sbt", "--script-version")),
           buildCommit = BuildInfo.gitCommit,
+          runtime = RuntimeTelemetry.capture(),
         )
       .mapError(err => s"Failed to capture runtime metadata: ${message(err)}")
 
@@ -783,6 +1016,7 @@ object NightlyDiagnosticsProfileRunner:
           "sbt"   -> metadata.sbtVersion.fold("null")(json),
         ),
       ),
+      "runtime"       -> renderRuntimeTelemetry(metadata.runtime),
       "steps"         -> renderArray(manifest.steps.map(renderStep)),
       "error"         -> manifest.error.fold("null")(json),
     )
@@ -805,7 +1039,75 @@ object NightlyDiagnosticsProfileRunner:
         "started_at"     -> step.startedAt.fold("null")(value => json(instant(value))),
         "finished_at"    -> step.finishedAt.fold("null")(value => json(instant(value))),
         "artifacts"      -> renderArray(step.artifacts.map(path => json(path.toString))),
+        "telemetry"      -> step.telemetry.fold("null")(renderStepTelemetry),
         "error"          -> step.error.fold("null")(json),
+      ),
+    )
+
+  private def renderRuntimeTelemetry(runtime: RuntimeTelemetry): String =
+    renderObject(
+      Vector(
+        "available_processors" -> runtime.availableProcessors.toString,
+        "max_memory_bytes"     -> runtime.maxMemoryBytes.toString,
+        "total_memory_bytes"   -> runtime.totalMemoryBytes.toString,
+        "free_memory_bytes"    -> runtime.freeMemoryBytes.toString,
+        "used_memory_bytes"    -> runtime.usedMemoryBytes.toString,
+        "jvm_name"             -> json(runtime.jvmName),
+        "jvm_vendor"           -> json(runtime.jvmVendor),
+        "jvm_version"          -> json(runtime.jvmVersion),
+        "os_name"              -> json(runtime.osName),
+        "os_arch"              -> json(runtime.osArch),
+        "os_version"           -> json(runtime.osVersion),
+      ),
+    )
+
+  private def renderStepTelemetry(telemetry: StepTelemetry): String =
+    renderObject(
+      Vector(
+        "duration_ms"            -> telemetry.durationMillis.toString,
+        "duration_seconds"       -> decimalSeconds(telemetry.durationMillis),
+        "seed_months"            -> telemetry.seedMonths.fold("null")(_.toString),
+        "seed_months_per_second" -> telemetry.seedMonthsPerSecond.fold("null")(decimal),
+        "artifacts"              -> renderArtifactTelemetry(telemetry.artifacts),
+        "memory"                 -> renderObject(
+          Vector(
+            "before" -> renderMemoryTelemetry(telemetry.memoryBefore),
+            "after"  -> renderMemoryTelemetry(telemetry.memoryAfter),
+          ),
+        ),
+        "gc"                     -> renderArray(telemetry.gc.map(renderGcTelemetry)),
+        "collection_error"       -> telemetry.collectionError.fold("null")(json),
+      ),
+    )
+
+  private def renderArtifactTelemetry(telemetry: ArtifactTelemetry): String =
+    renderObject(
+      Vector(
+        "file_count"     -> telemetry.fileCount.toString,
+        "bytes"          -> telemetry.bytes.toString,
+        "csv_file_count" -> telemetry.csvFileCount.toString,
+        "csv_row_count"  -> telemetry.csvRowCount.toString,
+      ),
+    )
+
+  private def renderMemoryTelemetry(telemetry: MemoryTelemetry): String =
+    renderObject(
+      Vector(
+        "heap_used_bytes"          -> telemetry.heapUsedBytes.toString,
+        "heap_committed_bytes"     -> telemetry.heapCommittedBytes.toString,
+        "heap_max_bytes"           -> telemetry.heapMaxBytes.toString,
+        "non_heap_used_bytes"      -> telemetry.nonHeapUsedBytes.toString,
+        "non_heap_committed_bytes" -> telemetry.nonHeapCommittedBytes.toString,
+        "non_heap_max_bytes"       -> telemetry.nonHeapMaxBytes.toString,
+      ),
+    )
+
+  private def renderGcTelemetry(telemetry: GcTelemetry): String =
+    renderObject(
+      Vector(
+        "name"                         -> json(telemetry.name),
+        "collection_count_delta"       -> telemetry.collectionCountDelta.fold("null")(_.toString),
+        "collection_time_millis_delta" -> telemetry.collectionTimeMillisDelta.fold("null")(_.toString),
       ),
     )
 
@@ -833,11 +1135,44 @@ object NightlyDiagnosticsProfileRunner:
   private def instant(value: Instant): String =
     DateTimeFormatter.ISO_INSTANT.format(value)
 
+  private def decimalSeconds(durationMillis: Long): String =
+    decimal(round6(BigDecimal(durationMillis) / BigDecimal(1000)))
+
+  private def decimal(value: BigDecimal): String =
+    value.bigDecimal.stripTrailingZeros.toPlainString
+
+  private def round6(value: BigDecimal): BigDecimal =
+    value.setScale(6, BigDecimal.RoundingMode.HALF_UP)
+
+  private def durationMillisFromNanos(elapsedNanos: Long): Long =
+    math.max(0L, elapsedNanos) / NanosPerMillisecond
+
+  private def throughputPerSecond(seedMonths: Option[Long], elapsedNanos: Long): Option[BigDecimal] =
+    val safeElapsedNanos = math.max(0L, elapsedNanos)
+    seedMonths
+      .filter(_ > 0)
+      .flatMap: value =>
+        Option.when(safeElapsedNanos > 0L)(round6(BigDecimal(value) * NanosPerSecond / BigDecimal(safeElapsedNanos)))
+
+  private def combineCollectionErrors(first: Option[String], second: Option[String]): Option[String] =
+    val messages = Vector(first, second).flatten.map(_.trim).filter(_.nonEmpty)
+    Option.when(messages.nonEmpty)(messages.mkString("; "))
+
   private def knownFlag(flag: String): Boolean =
     flag == "--profile" || flag == "--out" || flag == "--run-id" || flag == "--jar-path" || flag == "--jar"
 
+  private[diagnostics] def renderCause(context: String, cause: Cause[String]): String =
+    cause.failureOption.getOrElse:
+      EngineFailure
+        .firstIn(cause.defects)
+        .map(failure => s"$context crashed: ${failure.diagnosticMessage}")
+        .getOrElse(s"$context crashed: ${cause.prettyPrint}")
+
   private def message(err: Throwable): String =
     Option(err.getMessage).filter(_.trim.nonEmpty).getOrElse(err.getClass.getSimpleName)
+
+  private val NanosPerSecond: BigDecimal = BigDecimal(1000000000L)
+  private val NanosPerMillisecond: Long  = 1000000L
 
   private val usage: String =
     """Usage: NightlyDiagnosticsProfileRunner [--profile smoke|nightly|extended] [--out DIR] [--run-id ID] [--jar-path PATH] [--dry-run] [--allow-dirty] [--require-main]
