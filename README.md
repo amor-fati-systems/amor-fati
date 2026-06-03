@@ -181,6 +181,7 @@ replication, calibration, validation, and publication work:
 
 | Artifact | Purpose |
 | --- | --- |
+| [Model notation and state vector](docs/model-notation-and-state-vector.md) | Canonical publication-facing notation for time, agents, sectors, stocks, flows, rates, shares, stochastic variables, the full model state vector, and runtime implementation anchors. |
 | [ODD / ODD+D model documentation](docs/odd-model-documentation.md) | Paper-facing model description: purpose, entities, state variables, scales, scheduling, initialization, inputs, submodels, observation surfaces, and decision-making notes. |
 | [Behavioral equations and decision rules](docs/behavioral-equations-and-decision-rules.md) | Household, firm, bank, fiscal, monetary, external, insurance, NBFI, quasi-fiscal, and JST rules linked to implementation modules and numeric output columns. |
 | [Calibration register](docs/calibration-register.md) | Key parameter values, units, implementation owners, empirical targets, transformations, provenance status, and searchable gaps. |

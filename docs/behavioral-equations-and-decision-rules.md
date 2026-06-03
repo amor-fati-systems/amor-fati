@@ -14,6 +14,12 @@ The document complements:
 
 ## Scope And Notation
 
+The canonical publication notation and model state vector live in
+[`docs/model-notation-and-state-vector.md`](model-notation-and-state-vector.md).
+This document uses the same stock, flow, rate, share, stochasticity, and
+runtime-ownership conventions, then adds local shorthand where it makes the
+implemented rules easier to read.
+
 All monetary quantities are PLN unless noted otherwise. Rates are annual unless
 the implementation explicitly applies `.monthly`. Shares are dimensionless
 values in `[0, 1]`. The runtime ledger owns supported financial stocks; agent

@@ -106,6 +106,12 @@ Amor Fati separates state into three broad surfaces:
 - ledger-owned financial state: supported financial balances in
   `LedgerFinancialState`, projected into runtime execution and validation.
 
+The canonical mathematical notation for these surfaces is defined in
+[`docs/model-notation-and-state-vector.md`](model-notation-and-state-vector.md).
+In that notation, the complete month-boundary state is
+`X_t = (m_t, W_t, F_t, H_t, B_t, A^H_t, L_t)`, directly mapped to
+`FlowSimulation.SimState`.
+
 The top-level monthly boundary is `FlowSimulation.SimState`, containing:
 
 - completed month index;
