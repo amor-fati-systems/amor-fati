@@ -104,8 +104,10 @@ def ratio(policy: MetricPolicy, current: float, baseline: float) -> float | None
     if baseline <= 0.0:
         return None
     if policy.direction == "higher":
+        return None if current <= 0.0 else baseline / current
+    if policy.direction == "lower":
         return current / baseline
-    return current / baseline
+    raise ValueError(f"Unsupported policy direction: {policy.direction}")
 
 
 def format_value(value: float | None, unit: str) -> str:

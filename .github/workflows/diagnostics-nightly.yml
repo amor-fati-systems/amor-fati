@@ -6,6 +6,8 @@ on:
     - cron: "0 0 * * *"
   workflow_dispatch:
 
+# Performance baseline selection queries the Actions API and downloads artifacts
+# from previous runs, so artifact access requires actions: read.
 permissions:
   contents: read
   actions: read

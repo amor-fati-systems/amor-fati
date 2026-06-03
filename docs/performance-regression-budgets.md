@@ -82,11 +82,19 @@ generated performance reports before merging.
 A metric can become a hard gate only after:
 
 - the profile has several comparable successful `main` runs;
-- the metric is low-noise on GitHub-hosted runners;
+- the metric has coefficient of variation below 5% across at least 10
+  comparable successful `main` runs on GitHub-hosted runners for the same commit,
+  runner type, JFR setting, profile, and build parameters;
 - the failure message explains the affected step and metric;
 - stress-profile failures cannot be mistaken for normal-path performance
   regressions;
 - the threshold rationale is documented here.
+
+Measure noise from the generated `performance-regression-report.json` inputs by
+collecting the candidate metric across those 10 runs and computing
+`standard_deviation / median`. Use the same step id and profile for every sample;
+for example, compare only `diagnostics:nightly` duration samples from identical
+manual reruns of one `main` commit.
 
 Until then, performance reports are observability evidence. They should guide
 review and refactoring, not block correctness work.

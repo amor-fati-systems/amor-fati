@@ -84,8 +84,18 @@ def main(argv: list[str]) -> int:
         return 0
 
     try:
-        payload = request_json(f"https://api.github.com/repos/{args.repo}/actions/artifacts?per_page=100", token)
-        artifact = select_artifact(payload.get("artifacts", []), args.artifact_prefix, args.branch)
+        artifact = None
+        page = 1
+        while artifact is None:
+            payload = request_json(
+                f"https://api.github.com/repos/{args.repo}/actions/artifacts?per_page=100&page={page}",
+                token,
+            )
+            artifacts = payload.get("artifacts", [])
+            artifact = select_artifact(artifacts, args.artifact_prefix, args.branch)
+            if artifact is not None or len(artifacts) < 100:
+                break
+            page += 1
         if artifact is None:
             print(f"No baseline artifact found for prefix {args.artifact_prefix!r} on branch {args.branch!r}.")
             outputs = empty_outputs | {"status": "not-found"}
