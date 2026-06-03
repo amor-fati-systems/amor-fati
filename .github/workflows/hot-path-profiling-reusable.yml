@@ -1,45 +1,35 @@
-name: Hot-Path Profiling
+name: Hot-Path Profiling Reusable
 
 on:
-  schedule:
-    # GitHub cron is UTC; this runs weekly at 02:00 Warsaw during CEST.
-    # Profiling is intentionally low-frequency and separate from PR CI.
-    - cron: "0 0 * * 0"
-  workflow_dispatch:
+  workflow_call:
     inputs:
       profile:
-        description: "Diagnostics workload profile to run from the assembled jar"
         required: true
-        default: nightly
-        type: choice
-        options:
-          - smoke
-          - nightly
-          - extended
+        type: string
       jfr_settings:
-        description: "JFR event settings"
-        required: true
+        required: false
         default: profile
-        type: choice
-        options:
-          - profile
-          - default
+        type: string
+      run_kind:
+        required: true
+        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: hot-path-profiling-${{ github.event_name == 'workflow_dispatch' && inputs.profile || 'nightly' }}
+  group: hot-path-profiling-${{ inputs.profile }}
   cancel-in-progress: false
 
 jobs:
   profile:
-    name: Profile ${{ github.event_name == 'workflow_dispatch' && inputs.profile || 'nightly' }} hot paths
+    name: Profile ${{ inputs.profile }} hot paths
     runs-on: ubuntu-latest
     timeout-minutes: 360
     env:
-      PROFILE: ${{ github.event_name == 'workflow_dispatch' && inputs.profile || 'nightly' }}
-      JFR_SETTINGS: ${{ github.event_name == 'workflow_dispatch' && inputs.jfr_settings || 'profile' }}
+      PROFILE: ${{ inputs.profile }}
+      JFR_SETTINGS: ${{ inputs.jfr_settings }}
+      RUN_KIND: ${{ inputs.run_kind }}
       OUT_DIR: target/hot-path-profiling
       JAR_PATH: target/scala-3.8.2/amor-fati.jar
     steps:
@@ -62,7 +52,7 @@ jobs:
           sha="$(git rev-parse HEAD)"
           short_sha="$(git rev-parse --short HEAD)"
           warsaw_time="$(TZ=Europe/Warsaw date '+%Y-%m-%d %H:%M:%S %Z')"
-          if [[ "${GITHUB_EVENT_NAME}" == "schedule" ]]; then
+          if [[ "${RUN_KIND}" == "scheduled" ]]; then
             run_id="hotpath-${PROFILE}-$(date -u +%Y%m%d)-${short_sha}"
           else
             run_id="hotpath-${PROFILE}-manual-$(date -u +%Y%m%d-%H%M)-${short_sha}"

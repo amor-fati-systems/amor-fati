@@ -16,17 +16,29 @@ performance gates belong to a later baseline and regression-budget workflow.
 
 ## Workflow
 
-GitHub Actions workflow:
+GitHub Actions workflows:
 
 ```text
-.github/workflows/hot-path-profiling.yml
+.github/workflows/hot-path-profiling-smoke.yml
+.github/workflows/hot-path-profiling-nightly.yml
+.github/workflows/hot-path-profiling-extended.yml
 ```
 
 Triggers:
 
-- `workflow_dispatch`: maintainers can profile `smoke`, `nightly`, or
-  `extended`.
-- `schedule`: runs weekly against `HEAD` of `main`.
+- `workflow_dispatch`: maintainers can profile the selected workflow's fixed
+  profile with `profile` or `default` JFR settings.
+- `schedule`: each profile runs weekly against `HEAD` of `main`, staggered by
+  profile.
+
+The visible workflows delegate to:
+
+```text
+.github/workflows/hot-path-profiling-reusable.yml
+```
+
+This keeps the Actions UI and README badges profile-specific without copying
+the JFR orchestration logic.
 
 The workflow is intentionally not attached to `pull_request`. It should not
 slow down PR feedback and should not duplicate correctness checks already owned
@@ -111,11 +123,15 @@ partial manifests remain available for review.
 
 Artifact retention is profile-specific:
 
-| Profile | Retention |
-| --- | --- |
-| `smoke` | 14 days |
-| `nightly` | 30 days |
-| `extended` | 60 days |
+| Profile | Workflow | Schedule | Retention |
+| --- | --- | --- | --- |
+| `smoke` | `hot-path-profiling-smoke.yml` | weekly, Sunday `00:00` UTC | 14 days |
+| `nightly` | `hot-path-profiling-nightly.yml` | weekly, Sunday `02:00` UTC | 30 days |
+| `extended` | `hot-path-profiling-extended.yml` | weekly, Sunday `04:00` UTC | 60 days |
+
+GitHub cron is UTC. During CEST, these correspond to 02:00, 04:00, and
+06:00 Europe/Warsaw respectively. GitHub cron does not track local daylight
+saving time.
 
 ## Interpretation
 

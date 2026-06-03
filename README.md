@@ -24,9 +24,9 @@
 
 ### Operational Diagnostics
 
-| Nightly diagnostics | Hot-path profiling | Diagnostic profiles |
-| --- | --- | --- |
-| [![Nightly Diagnostics](https://github.com/boombustgroup/amor-fati/actions/workflows/nightly-diagnostics.yml/badge.svg?branch=main)](https://github.com/boombustgroup/amor-fati/actions/workflows/nightly-diagnostics.yml) | [![Hot-Path Profiling](https://github.com/boombustgroup/amor-fati/actions/workflows/hot-path-profiling.yml/badge.svg?branch=main)](https://github.com/boombustgroup/amor-fati/actions/workflows/hot-path-profiling.yml) | [![Diagnostics profiles](https://img.shields.io/badge/diagnostics-smoke_%7C_nightly_%7C_extended-8A2BE2.svg)](docs/nightly-diagnostics.md) |
+| Nightly diagnostics | Profiling smoke | Profiling nightly | Profiling extended | Diagnostic profiles |
+| --- | --- | --- | --- | --- |
+| [![Nightly Diagnostics](https://github.com/boombustgroup/amor-fati/actions/workflows/nightly-diagnostics.yml/badge.svg?branch=main)](https://github.com/boombustgroup/amor-fati/actions/workflows/nightly-diagnostics.yml) | [![Hot-Path Profiling Smoke](https://github.com/boombustgroup/amor-fati/actions/workflows/hot-path-profiling-smoke.yml/badge.svg?branch=main)](https://github.com/boombustgroup/amor-fati/actions/workflows/hot-path-profiling-smoke.yml) | [![Hot-Path Profiling Nightly](https://github.com/boombustgroup/amor-fati/actions/workflows/hot-path-profiling-nightly.yml/badge.svg?branch=main)](https://github.com/boombustgroup/amor-fati/actions/workflows/hot-path-profiling-nightly.yml) | [![Hot-Path Profiling Extended](https://github.com/boombustgroup/amor-fati/actions/workflows/hot-path-profiling-extended.yml/badge.svg?branch=main)](https://github.com/boombustgroup/amor-fati/actions/workflows/hot-path-profiling-extended.yml) | [![Diagnostics profiles](https://img.shields.io/badge/diagnostics-smoke_%7C_nightly_%7C_extended-8A2BE2.svg)](docs/nightly-diagnostics.md) |
 
 ---
 
