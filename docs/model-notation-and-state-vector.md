@@ -21,22 +21,22 @@ stochasticity, SFC-mapping, calibration, or paper-facing overview material.
 
 Implementation anchors:
 
-- `engine/flows/FlowSimulation.scala`
-- `engine/World.scala`
-- `engine/WorldStateSegments.scala`
-- `engine/ledger/LedgerFinancialState.scala`
-- `agents/Household.scala`
-- `agents/Firm.scala`
-- `agents/Banking.scala`
-- `types.scala`
-- `engine/MonthRandomness.scala`
+- [`engine/flows/FlowSimulation.scala`](../src/main/scala/com/boombustgroup/amorfati/engine/flows/FlowSimulation.scala)
+- [`engine/World.scala`](../src/main/scala/com/boombustgroup/amorfati/engine/World.scala)
+- [`engine/WorldStateSegments.scala`](../src/main/scala/com/boombustgroup/amorfati/engine/WorldStateSegments.scala)
+- [`engine/ledger/LedgerFinancialState.scala`](../src/main/scala/com/boombustgroup/amorfati/engine/ledger/LedgerFinancialState.scala)
+- [`agents/Household.scala`](../src/main/scala/com/boombustgroup/amorfati/agents/Household.scala)
+- [`agents/Firm.scala`](../src/main/scala/com/boombustgroup/amorfati/agents/Firm.scala)
+- [`agents/Banking.scala`](../src/main/scala/com/boombustgroup/amorfati/agents/Banking.scala)
+- [`types.scala`](../src/main/scala/com/boombustgroup/amorfati/types.scala)
+- [`engine/MonthRandomness.scala`](../src/main/scala/com/boombustgroup/amorfati/engine/MonthRandomness.scala)
 
 ## Notation Rules
 
 The notation follows the runtime ownership model:
 
 - boundary stocks carry a time subscript, e.g. `X_t`, `D^H_{h,t}`;
-- monthly flows use the execution-month subscript, e.g. `C^H_{h,\tau}`;
+- monthly flows use the execution-month subscript, e.g. `c^H_{h,\tau}`;
 - `\tau = t + 1` denotes the month executed from boundary state `X_t`;
 - rates are annual unless explicitly marked as monthly;
 - shares are dimensionless and bounded in `[0, 1]` unless the source rule
@@ -56,7 +56,7 @@ completed. In code this is `FlowSimulation.SimState` with
 One execution month is a transition:
 
 ```text
-Phi_tau : (X_t, R_tau, theta) -> (X_tau, E_tau)
+Phi_tau : (X_t, RND_tau, theta) -> (X_tau, E_tau)
 tau = t + 1
 ```
 
@@ -65,7 +65,7 @@ where:
 | Symbol | Meaning | Implementation anchor |
 | --- | --- | --- |
 | `X_t` | start boundary after completed month `t` | `FlowSimulation.SimState` |
-| `R_tau` | explicit randomness contract for month `tau` | `MonthRandomness.Contract` |
+| `RND_tau` | explicit randomness contract for month `tau` | `MonthRandomness.Contract` |
 | `theta` | model parameters and scenario-adjusted configuration | `SimParams` and scenario registry |
 | `Phi_tau` | executable one-month transition | `FlowSimulation.step` |
 | `E_tau` | transition evidence: trace, emitted flows, SFC validation, deltas, diagnostics | `FlowSimulation.StepOutput`, `MonthTrace` |
@@ -152,7 +152,7 @@ with the main stock families:
 | --- | --- | --- | --- |
 | `D^H_{h,t}` | `HouseholdBalances.demandDeposit` | stock, PLN | household demand-deposit asset |
 | `M^H_{h,t}` | `HouseholdBalances.mortgageLoan` | stock, PLN | household mortgage principal liability |
-| `C^H_{h,t}` | `HouseholdBalances.consumerLoan` | stock, PLN | household consumer-loan principal liability |
+| `CL^H_{h,t}` | `HouseholdBalances.consumerLoan` | stock, PLN | household consumer-loan principal liability |
 | `E^H_{h,t}` | `HouseholdBalances.equity` | stock, PLN | listed-equity asset |
 | `IR^{life}_{h,t}` | `HouseholdBalances.lifeReserveAsset` | stock, PLN | life-insurance reserve asset |
 | `IR^{nonlife}_{h,t}` | `HouseholdBalances.nonLifeReserveAsset` | stock, PLN | non-life insurance reserve asset |
@@ -357,7 +357,7 @@ sectoral weights.
 The model is deterministic conditional on:
 
 ```text
-(X_t, R_tau, theta)
+(X_t, RND_tau, theta)
 ```
 
 Random variables should be written as:
@@ -398,7 +398,7 @@ an explicit seed contract.
 | Household aggregate state `A^H_t` | `Household.Aggregates` | aggregate diagnostics and market aggregates |
 | Runtime monetary flow | `FlowMechanism`, `MonthFlowEmitter`, `RuntimeFlowExecutor` | executed through verified ledger topology |
 | SFC semantic validation | `Sfc`, `SfcSemanticProjection` | exact SFC identities and semantic stock-flow terms |
-| Randomness contract `R_tau` | `MonthRandomness.Contract` | named deterministic seed streams |
+| Randomness contract `RND_tau` | `MonthRandomness.Contract` | named deterministic seed streams |
 | Parameter vector `theta` | `SimParams`, scenario deltas | calibrated defaults plus explicit scenario mutations |
 
 ## Usage Rules For Future Specification Tickets
