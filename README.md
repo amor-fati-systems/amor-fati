@@ -24,9 +24,9 @@
 
 ### Operational Diagnostics
 
-| Diagnostics smoke | Diagnostics nightly | Diagnostics extended | Diagnostic profiles |
-| --- | --- | --- | --- |
-| [![Diagnostics Smoke](https://github.com/boombustgroup/amor-fati/actions/workflows/diagnostics-smoke.yml/badge.svg?branch=main)](https://github.com/boombustgroup/amor-fati/actions/workflows/diagnostics-smoke.yml) | [![Diagnostics Nightly](https://github.com/boombustgroup/amor-fati/actions/workflows/diagnostics-nightly.yml/badge.svg?branch=main)](https://github.com/boombustgroup/amor-fati/actions/workflows/diagnostics-nightly.yml) | [![Diagnostics Extended](https://github.com/boombustgroup/amor-fati/actions/workflows/diagnostics-extended.yml/badge.svg?branch=main)](https://github.com/boombustgroup/amor-fati/actions/workflows/diagnostics-extended.yml) | [![Diagnostics profiles](https://img.shields.io/badge/diagnostics-smoke_%7C_nightly_%7C_extended-8A2BE2.svg)](docs/nightly-diagnostics.md) |
+| Diagnostics smoke | Diagnostics nightly | Diagnostics extended |
+| --- | --- | --- |
+| [![Diagnostics Smoke](https://github.com/boombustgroup/amor-fati/actions/workflows/diagnostics-smoke.yml/badge.svg?branch=main)](https://github.com/boombustgroup/amor-fati/actions/workflows/diagnostics-smoke.yml) | [![Diagnostics Nightly](https://github.com/boombustgroup/amor-fati/actions/workflows/diagnostics-nightly.yml/badge.svg?branch=main)](https://github.com/boombustgroup/amor-fati/actions/workflows/diagnostics-nightly.yml) | [![Diagnostics Extended](https://github.com/boombustgroup/amor-fati/actions/workflows/diagnostics-extended.yml/badge.svg?branch=main)](https://github.com/boombustgroup/amor-fati/actions/workflows/diagnostics-extended.yml) |
 
 | Profiling smoke | Profiling nightly | Profiling extended |
 | --- | --- | --- |
