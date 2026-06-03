@@ -6,6 +6,8 @@ rules, not a normative target model.
 
 The document complements:
 
+- `docs/model-specification.md`, which is the canonical publication-facing
+  model entry point;
 - `docs/odd-model-documentation.md`, which describes the model using the ODD
   and ODD+D structure;
 - `docs/sfc-matrix-evidence.md`, which documents the symbolic Balance Sheet
