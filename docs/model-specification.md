@@ -14,6 +14,7 @@ below.
 | Source | Role in the model specification |
 | --- | --- |
 | [Model notation and state vector](model-notation-and-state-vector.md) | Canonical symbols, state vector, time indexing, quantity classes, stochastic notation, and implementation anchors. |
+| [Model-spec completeness checklist](model-spec-completeness-checklist.md) | Review control surface for model-family coverage, detailed sources, visible gaps, and remaining publication-readiness work. |
 | [ODD / ODD+D model documentation](odd-model-documentation.md) | ODD/ODD+D description of purpose, entities, scales, scheduling, initialization, inputs, submodels, observation surfaces, and decisions. |
 | [Behavioral equations and decision rules](behavioral-equations-and-decision-rules.md) | Implemented equations and algorithmic decision rules by model family. |
 | [SFC matrix evidence](sfc-matrix-evidence.md) | Balance Sheet Matrix, Transactions Flow Matrix, stock-flow reconciliation evidence, sign conventions, and generated matrix artifacts. |
@@ -288,18 +289,20 @@ auditable.
 For a first academic review:
 
 1. Read this document for the model spine.
-2. Read [model-notation-and-state-vector.md](model-notation-and-state-vector.md)
+2. Skim [model-spec-completeness-checklist.md](model-spec-completeness-checklist.md)
+   for current coverage and visible publication-readiness gaps.
+3. Read [model-notation-and-state-vector.md](model-notation-and-state-vector.md)
    for notation and state ownership.
-3. Read [odd-model-documentation.md](odd-model-documentation.md) for ODD/ODD+D
+4. Read [odd-model-documentation.md](odd-model-documentation.md) for ODD/ODD+D
    structure and agent/entity description.
-4. Read [behavioral-equations-and-decision-rules.md](behavioral-equations-and-decision-rules.md)
+5. Read [behavioral-equations-and-decision-rules.md](behavioral-equations-and-decision-rules.md)
    for implemented rule families.
-5. Read [sfc-matrix-evidence.md](sfc-matrix-evidence.md) and generated matrix
+6. Read [sfc-matrix-evidence.md](sfc-matrix-evidence.md) and generated matrix
    artifacts for the accounting contract.
-6. Read [calibration-register.md](calibration-register.md),
+7. Read [calibration-register.md](calibration-register.md),
    [data-bridge-national-financial-accounts.md](data-bridge-national-financial-accounts.md),
    and [empirical-validation-report.md](empirical-validation-report.md) for
    calibration and validation evidence.
-7. Read [engine-invariants-and-semantics.md](engine-invariants-and-semantics.md)
+8. Read [engine-invariants-and-semantics.md](engine-invariants-and-semantics.md)
    and [validation-matrix.md](validation-matrix.md) for failure semantics and
    review routing.
