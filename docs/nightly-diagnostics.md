@@ -57,6 +57,12 @@ Every run should include a manifest with at least:
 - start and end timestamps
 - Nix, Java, sbt, and project versions where practical
 
+Every non-dry-run profile should also include compact health summaries:
+
+- `health-summary.json`: machine-readable profile verdict, thresholded metrics,
+  and hard-failure counts
+- `health-summary.md`: reviewer-facing table with the same verdict and metrics
+
 ## Jar / Nix Execution
 
 Build the assembled jar from the project Nix environment:
@@ -103,12 +109,33 @@ The runner writes:
 
 ```text
 target/nightly-diagnostics/<profile>/<run-id>/run-manifest.json
+target/nightly-diagnostics/<profile>/<run-id>/health-summary.json
+target/nightly-diagnostics/<profile>/<run-id>/health-summary.md
 ```
 
 The manifest records the profile, resolved git ref, dirty-tree status, jar path
 and SHA-256 when available, command line, tool versions, step seed/month
 settings, step output directories, artifact paths, timestamps, and final
 status.
+
+The health summary reuses artifacts emitted by the configured diagnostics. It
+does not launch additional simulations. The first threshold layer reads the
+baseline Monte Carlo seed CSVs and manifest step statuses to produce a stable
+normal-path verdict over:
+
+- diagnostic completion by step classification
+- baseline artifact completeness (`seeds × months` monthly rows)
+- normal-path bank failures and bank-resolution invariant counters
+- positive GDP proxy direction, with terminal decline reported as a warning
+- total credit to GDP blow-up bounds
+- default/NPL ratio bounds
+- bank-capital and flow-of-funds residual guards relative to annualized GDP
+- household negative-deposit diagnostic counts as warnings
+
+Hard threshold breaches in normal-validation evidence fail the runner after the
+summary files have been written. Exploratory and stress steps remain visible in
+completion metrics, but their economic outcomes are not reclassified as
+scheduled normal-path failures.
 
 ## Scheduled Workflow
 
@@ -147,12 +174,13 @@ required during CET months. A single cron is intentional because it avoids
 duplicate scheduled workflow runs in the Actions UI.
 
 The job summary reports the profile, commit SHA, run id, runtime, manifest path,
-terminal status, build/runtime exit codes, and failure reason when either the
-build or diagnostics runner produces one. The workflow also uploads a GitHub
-Actions artifact named `amor-fati-diagnostics-<run-id>` containing the profile
-run directory, `build.log`, and `diagnostics.log` when those files exist. Failed
-runs still upload partial logs and manifests when the build has progressed far
-enough to create them.
+health-summary status, terminal status, build/runtime exit codes, and failure
+reason when either the build or diagnostics runner produces one. The workflow
+also uploads a GitHub Actions artifact named
+`amor-fati-diagnostics-<run-id>` containing the profile run directory,
+`build.log`, and `diagnostics.log` when those files exist. Failed runs still
+upload partial logs, manifests, and health summaries when the build has
+progressed far enough to create them.
 
 Artifact retention is profile-specific:
 
@@ -254,6 +282,7 @@ Primary artifacts:
 - HH-bank lead-lag outputs
 - loan-origination quality outputs
 - profile manifest and logs
+- health-summary JSON and Markdown verdicts
 
 ## Extended Profile
 
