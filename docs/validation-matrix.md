@@ -58,9 +58,10 @@ from ad hoc local classpaths.
 | `nightly` | Scheduled daily on `main`, manual dispatch | Standard 60-month validation horizon | Hard invariants fail; soft calibration guardrails warn unless promoted |
 | `extended` | Manual dispatch, future weekly use | Wider seed/scenario/diagnostic surface at the current 60-month horizon | Same hard invariants; broader research envelope reporting |
 
-The profile definitions live in
+The profile definitions and per-step semantic classifications live in
 `NightlyDiagnosticsProfileRunner.Profiles` and are documented in
-[nightly-diagnostics.md](nightly-diagnostics.md). Comparison semantics live in
+[nightly-diagnostics.md](nightly-diagnostics.md). Every nightly manifest records
+each step's classification and failure policy. Comparison semantics live in
 [nightly-baseline-comparison.md](nightly-baseline-comparison.md).
 
 ## Normal, Stress, Exploratory, And Benchmark Semantics
@@ -75,9 +76,11 @@ Validation results must be interpreted by profile class:
 | Benchmark | Snapshot or balance-sheet evidence used for review/calibration | Fail malformed output or hard accounting errors; economic deltas require explicit thresholds |
 | Profiling | Runtime and allocation observability | Start as report/warn; fail only after a stable baseline and budget are defined |
 
-#684 owns the explicit classification of existing nightly steps into these
-classes. Until that lands, reviewers should not interpret every nightly
-diagnostic failure as a normal-path calibration failure.
+Existing nightly steps are explicitly classified into these classes in the
+runner manifest. Scheduled `nightly` evidence excludes stress-only diagnostics;
+manual `extended` evidence may include stress-validation steps, which must be
+interpreted by their stress semantics rather than as normal-path calibration
+failures.
 
 ## Where New Validation Belongs
 
@@ -113,7 +116,7 @@ Observatory:
 
 - #683 adds the missing PR-level non-CSV normal-path integration gate.
 - #684 separates normal-validation diagnostics from stress and exploratory
-  profiles.
+  profile semantics.
 - #685 adds thresholded nightly health summaries from existing artifacts.
 - #686 captures performance telemetry in nightly manifests.
 - #687 adds a manual or weekly hot-path profiling workflow under Nix.
