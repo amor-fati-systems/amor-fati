@@ -4,6 +4,7 @@ import org.scalatest.EitherValues.*
 import org.scalatest.OptionValues.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import zio.Cause
 
 import java.nio.file.{Files, Path}
 import java.time.Instant
@@ -174,6 +175,11 @@ class NightlyDiagnosticsProfileRunnerSpec extends AnyFlatSpec with Matchers:
   it should "derive manual UTC run ids from profile and short commit" in {
     NightlyDiagnosticsProfileRunner.autoRunId("nightly", "abcdef0", Instant.parse("2026-05-26T12:34:00Z")) shouldBe
       "nightly-manual-20260526-1234-abcdef0"
+  }
+
+  it should "render typed and defect causes for manifest failure fields" in {
+    NightlyDiagnosticsProfileRunner.renderCause("step-x", Cause.fail("typed failure")) shouldBe "typed failure"
+    NightlyDiagnosticsProfileRunner.renderCause("step-x", Cause.die(RuntimeException("boom"))) should include("step-x crashed")
   }
 
   "NightlyHealthSummary" should "pass when baseline CSVs satisfy normal-path thresholds" in {

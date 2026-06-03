@@ -2,9 +2,10 @@ package com.boombustgroup.amorfati.diagnostics
 
 import com.boombustgroup.amorfati.config.RobustnessScenarios.ScenarioSet
 import com.boombustgroup.amorfati.config.{ScenarioRegistry, SimParams}
+import com.boombustgroup.amorfati.engine.EngineFailure
 import com.boombustgroup.amorfati.montecarlo.{McRunConfig, McRunner}
 import com.boombustgroup.amorfati.util.BuildInfo
-import zio.{Clock, Ref, ZIO}
+import zio.{Cause, Clock, Exit, Ref, ZIO}
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path}
@@ -363,33 +364,37 @@ object NightlyDiagnosticsProfileRunner:
           for
             started   <- Clock.instant
             before    <- ZIO.succeed(StepRuntimeCounters.capture())
-            outcome   <- step.run(ctx).either
+            outcome   <- step.run(ctx).exit
             finished  <- Clock.instant
             after     <- ZIO.succeed(StepRuntimeCounters.capture())
-            paths      = outcome.toOption.getOrElse(Vector.empty)
+            paths      = outcome match
+              case Exit.Success(paths) => paths
+              case Exit.Failure(_)     => Vector.empty
             telemetry <- collectStepTelemetry(ctx, step, started, finished, before, after, paths)
             _         <- outcome match
-              case Right(paths) =>
+              case Exit.Success(paths) =>
                 val done = step.completed(ctx, started, finished, paths, Some(telemetry))
                 for
                   _       <- completedRef.update(_ :+ done)
                   current <- completedRef.get
                   _       <- writeManifest(ctx, mergeSteps(steps, current, None, ctx), "RUNNING", None, None)
                 yield ()
-              case Left(err)    =>
+              case Exit.Failure(cause) =>
+                val err = renderCause(step.id, cause)
                 failedRef.set(Some(step.failed(ctx, started, finished, err, Some(telemetry)))) *>
-                  ZIO.fail(err)
+                  ZIO.failCause(cause)
           yield ()
-        .foldZIO(
-          err =>
+        .foldCauseZIO(
+          cause =>
             for
               finished  <- Clock.instant
               completed <- completedRef.get
               failed    <- failedRef.get
+              err        = renderCause("Nightly diagnostics profile", cause)
               terminal   = mergeSteps(steps, completed, failed, ctx)
               _         <- NightlyHealthSummary.write(ctx, terminal)
               manifest  <- writeManifest(ctx, terminal, "FAILED", Some(finished), Some(err))
-              _         <- ZIO.fail(err)
+              _         <- ZIO.failCause(cause)
             yield RunResult(manifest, ctx.runRoot, "FAILED"),
           _ =>
             for
@@ -1140,6 +1145,13 @@ object NightlyDiagnosticsProfileRunner:
 
   private def knownFlag(flag: String): Boolean =
     flag == "--profile" || flag == "--out" || flag == "--run-id" || flag == "--jar-path" || flag == "--jar"
+
+  private[diagnostics] def renderCause(context: String, cause: Cause[String]): String =
+    cause.failureOption.getOrElse:
+      EngineFailure
+        .firstIn(cause.defects)
+        .map(failure => s"$context crashed: ${failure.diagnosticMessage}")
+        .getOrElse(s"$context crashed: ${cause.prettyPrint}")
 
   private def message(err: Throwable): String =
     Option(err.getMessage).filter(_.trim.nonEmpty).getOrElse(err.getClass.getSimpleName)
