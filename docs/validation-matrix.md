@@ -69,6 +69,8 @@ post-processes existing artifacts into `health-summary.json` and
 `health-summary.md`; it is the current owner of thresholded nightly verdicts.
 Comparison semantics live in
 [nightly-baseline-comparison.md](nightly-baseline-comparison.md).
+The reviewer-facing invariant and economic-semantics index lives in
+[engine-invariants-and-semantics.md](engine-invariants-and-semantics.md).
 
 ## Normal, Stress, Exploratory, And Benchmark Semantics
 
