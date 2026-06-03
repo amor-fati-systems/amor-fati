@@ -202,6 +202,7 @@ matrix artifacts:
 | [Transactions Flow Matrix (TFM)](docs/sfc-matrix-artifacts/symbolic-tfm.md) | Symbolic monthly flow matrix by sector, including income, taxes, transfers, interest, trade, credit, bonds, and deposit changes. |
 | [Stock-Flow Reconciliation and Revaluation Evidence](docs/sfc-matrix-artifacts/stock-flow-reconciliation.md) | Executed-run evidence comparing observed stock deltas or level identities with independent transaction, revaluation, default, write-off, and other-change channels. |
 | [Symbolic-row to runtime mapping](docs/sfc-matrix-artifacts/matrix-mapping.md) | Traceability table linking each symbolic matrix row to runtime assets, mechanisms, ids, and coverage notes. |
+| [Flow mechanism semantics](docs/sfc-matrix-artifacts/flow-mechanism-semantics.md) | Audit map for every runtime `FlowMechanism`, including family, topology, asset class, SFC/reconciliation impact, survivability, and test/diagnostic coverage. |
 
 These snapshots are generated from an executed deterministic simulation step
 and committed as versioned evidence. The regeneration commands, sign
