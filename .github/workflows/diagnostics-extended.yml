@@ -1,0 +1,17 @@
+name: Diagnostics Extended
+
+on:
+  schedule:
+    # GitHub cron is UTC; this runs weekly at 03:00 Warsaw during CEST.
+    - cron: "0 1 * * 6"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  extended:
+    uses: ./.github/workflows/diagnostics-reusable.yml
+    with:
+      profile: extended
+      run_kind: ${{ github.event_name == 'schedule' && 'scheduled' || 'manual' }}

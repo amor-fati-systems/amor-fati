@@ -1,0 +1,17 @@
+name: Diagnostics Smoke
+
+on:
+  schedule:
+    # GitHub cron is UTC; this runs daily at 01:00 Warsaw during CEST.
+    - cron: "0 23 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    uses: ./.github/workflows/diagnostics-reusable.yml
+    with:
+      profile: smoke
+      run_kind: ${{ github.event_name == 'schedule' && 'scheduled' || 'manual' }}
