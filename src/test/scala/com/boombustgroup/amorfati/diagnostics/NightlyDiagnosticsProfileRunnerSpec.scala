@@ -5,7 +5,7 @@ import org.scalatest.OptionValues.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import java.nio.file.Path
+import java.nio.file.{Files, Path}
 import java.time.Instant
 
 class NightlyDiagnosticsProfileRunnerSpec extends AnyFlatSpec with Matchers:
@@ -136,14 +136,58 @@ class NightlyDiagnosticsProfileRunnerSpec extends AnyFlatSpec with Matchers:
       "nightly-manual-20260526-1234-abcdef0"
   }
 
-  private def context(profileId: String): NightlyDiagnosticsProfileRunner.RunContext =
+  "NightlyHealthSummary" should "pass when baseline CSVs satisfy normal-path thresholds" in {
+    val ctx = context("smoke", tempOut("health-pass"), runId = "health-pass")
+    writeBaselineSeedCsv(ctx, seed = 1, rows = healthyRows(months = 12))
+
+    val result = DiagnosticIo.unsafeRun(NightlyHealthSummary.write(ctx, succeededSteps(ctx))).value
+
+    result.status shouldBe NightlyHealthSummary.HealthStatus.Passed
+    result.hardFailureCount shouldBe 0
+    Files.readString(result.jsonPath) should include(""""id":"normal.bank_failures"""")
+    Files.readString(result.markdownPath) should include("Nightly Health Summary")
+  }
+
+  it should "fail on normal-path bank failures from baseline CSVs" in {
+    val ctx = context("smoke", tempOut("health-bank-fail"), runId = "health-bank-fail")
+    writeBaselineSeedCsv(ctx, seed = 1, rows = healthyRows(months = 12).updated(5, healthyRow(month = 6, bankFailures = 1, newFailures = 1)))
+
+    val result = DiagnosticIo.unsafeRun(NightlyHealthSummary.write(ctx, succeededSteps(ctx))).value
+
+    result.status shouldBe NightlyHealthSummary.HealthStatus.Failed
+    result.hardFailureCount should be > 0
+    Files.readString(result.jsonPath) should include(""""id":"normal.bank_failures"""")
+    Files.readString(result.jsonPath) should include(""""status":"FAIL"""")
+  }
+
+  it should "warn without hard-failing on household negative-deposit diagnostics" in {
+    val ctx = context("smoke", tempOut("health-warning"), runId = "health-warning")
+    writeBaselineSeedCsv(
+      ctx,
+      seed = 1,
+      rows = healthyRows(months = 12).updated(2, healthyRow(month = 3, negativeDepositCount = 2, negativeDepositShare = "0.004")),
+    )
+
+    val result = DiagnosticIo.unsafeRun(NightlyHealthSummary.write(ctx, succeededSteps(ctx))).value
+
+    result.status shouldBe NightlyHealthSummary.HealthStatus.Warning
+    result.hardFailureCount shouldBe 0
+    Files.readString(result.jsonPath) should include(""""id":"normal.negative_stock_counts"""")
+    Files.readString(result.jsonPath) should include(""""status":"WARN"""")
+  }
+
+  private def context(
+      profileId: String,
+      out: Path = Path.of("target/nightly-diagnostics"),
+      runId: String = "run-1",
+  ): NightlyDiagnosticsProfileRunner.RunContext =
     val profile = NightlyDiagnosticsProfileRunner.profileById(profileId).value
-    val config  = NightlyDiagnosticsProfileRunner.Config(profile = profileId, out = Path.of("target/nightly-diagnostics"), runId = Some("run-1"))
+    val config  = NightlyDiagnosticsProfileRunner.Config(profile = profileId, out = out, runId = Some(runId))
     NightlyDiagnosticsProfileRunner.RunContext(
       config = config,
       profile = profile,
-      runId = "run-1",
-      runRoot = config.out.resolve(profileId).resolve("run-1"),
+      runId = runId,
+      runRoot = config.out.resolve(profileId).resolve(runId),
       metadata = NightlyDiagnosticsProfileRunner.RuntimeMetadata(
         commit = "abcdef0123456789",
         shortCommit = "abcdef0",
@@ -161,3 +205,81 @@ class NightlyDiagnosticsProfileRunnerSpec extends AnyFlatSpec with Matchers:
       ),
       startedAt = Instant.parse("2026-05-26T00:00:00Z"),
     )
+
+  private def succeededSteps(ctx: NightlyDiagnosticsProfileRunner.RunContext): Vector[NightlyDiagnosticsProfileRunner.ManifestStep] =
+    ctx.profile
+      .steps(ctx)
+      .map: step =>
+        step.completed(
+          ctx,
+          startedAt = Instant.parse("2026-05-26T00:00:01Z"),
+          finishedAt = Instant.parse("2026-05-26T00:00:02Z"),
+          artifacts = Vector(step.outputDir(ctx)),
+        )
+
+  private def tempOut(name: String): Path =
+    val path = Path.of("target", "nightly-health-summary-spec", s"$name-${System.nanoTime()}")
+    Files.createDirectories(path)
+    path
+
+  private def writeBaselineSeedCsv(ctx: NightlyDiagnosticsProfileRunner.RunContext, seed: Int, rows: Vector[String]): Path =
+    val baselineStep = ctx.profile.steps(ctx).find(_.id == "baseline-monte-carlo").value
+    val months       = baselineStep.months.value
+    val dir          = baselineStep.outputDir(ctx)
+    Files.createDirectories(dir)
+    val path         = dir.resolve(f"baseline_${ctx.runId}_${months}m_seed$seed%03d.csv")
+    Files.writeString(path, (HealthCsvHeader +: rows).mkString("\n") + "\n")
+    path
+
+  private def healthyRows(months: Int): Vector[String] =
+    (1 to months).toVector.map(month => healthyRow(month))
+
+  private def healthyRow(
+      month: Int,
+      bankFailures: Int = 0,
+      newFailures: Int = 0,
+      negativeDepositCount: Int = 0,
+      negativeDepositShare: String = "0",
+  ): String =
+    Vector(
+      month.toString,
+      (100 + month).toString,
+      ((100 + month) * 12).toString,
+      "0.55",
+      bankFailures.toString,
+      newFailures.toString,
+      "0",
+      "0",
+      "0",
+      "0",
+      "0",
+      "0.01",
+      "0.02",
+      "0.03",
+      "0.04",
+      "0.05",
+      negativeDepositCount.toString,
+      negativeDepositShare,
+    ).mkString(";")
+
+  private val HealthCsvHeader: String =
+    Vector(
+      "Month",
+      "MonthlyGdpProxy",
+      "AnnualizedGdpProxy",
+      "TotalCreditToGdp",
+      "BankFailures",
+      "BankResolution_NewFailures",
+      "BankResolution_AllFailedFallback",
+      "BankResolution_InvalidActiveBankInvariant",
+      "BankCapital_WaterfallResidual",
+      "BankCapital_ReconciliationResidual",
+      "FofResidual",
+      "BankCreditLoss_FirmDefaultRate",
+      "BankCreditLoss_MortgageDefaultRate",
+      "BankCreditLoss_ConsumerLoanDefaultRate",
+      "BankCreditLoss_CorpBondDefaultRate",
+      "ConsumerCredit_NplRatioGross",
+      "HouseholdLiquidity_NegativeDepositCount",
+      "HouseholdLiquidity_NegativeDepositShare",
+    ).mkString(";")

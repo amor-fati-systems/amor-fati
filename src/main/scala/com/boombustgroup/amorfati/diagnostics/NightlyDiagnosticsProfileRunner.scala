@@ -276,15 +276,26 @@ object NightlyDiagnosticsProfileRunner:
               finished  <- Clock.instant
               completed <- completedRef.get
               failed    <- failedRef.get
-              manifest  <- writeManifest(ctx, mergeSteps(steps, completed, failed, ctx), "FAILED", Some(finished), Some(err))
+              terminal   = mergeSteps(steps, completed, failed, ctx)
+              _         <- NightlyHealthSummary.write(ctx, terminal)
+              manifest  <- writeManifest(ctx, terminal, "FAILED", Some(finished), Some(err))
               _         <- ZIO.fail(err)
             yield RunResult(manifest, ctx.runRoot, "FAILED"),
           _ =>
             for
-              finished  <- Clock.instant
               completed <- completedRef.get
-              manifest  <- writeManifest(ctx, mergeSteps(steps, completed, None, ctx), "SUCCEEDED", Some(finished), None)
-            yield RunResult(manifest, ctx.runRoot, "SUCCEEDED"),
+              terminal   = mergeSteps(steps, completed, None, ctx)
+              health    <- NightlyHealthSummary.write(ctx, terminal)
+              finished  <- Clock.instant
+              result    <- health.status match
+                case NightlyHealthSummary.HealthStatus.Failed =>
+                  val err = health.hardFailureMessage
+                  writeManifest(ctx, terminal, "FAILED", Some(finished), Some(err)) *>
+                    ZIO.fail(err)
+                case _                                        =>
+                  writeManifest(ctx, terminal, "SUCCEEDED", Some(finished), None)
+              status     = if health.status == NightlyHealthSummary.HealthStatus.Failed then "FAILED" else "SUCCEEDED"
+            yield RunResult(result, ctx.runRoot, status),
         )
     yield stepResult
 
