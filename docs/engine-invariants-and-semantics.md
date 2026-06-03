@@ -58,7 +58,7 @@ known-limitation tracking.
 | Informal economy and tax evasion | `normal_path_expectation` plus `stress_or_exploratory_diagnostic` | Informal-sector adjustments and tax-evasion flows affect PIT/VAT/CIT/excise and employment diagnostics; they are bounded model channels, not residual balancing rows. | [behavioral equations](behavioral-equations-and-decision-rules.md), `engine/mechanisms/InformalEconomy.scala` | `engine/mechanisms/InformalEconomy.scala`, firm/household/public-finance stages | `InformalEconomySpec`, tax-flow diagnostics in timeseries | Hard fail for impossible bounded share logic; report/warn for calibration |
 | Scenario and robustness semantics | `stress_or_exploratory_diagnostic` | Named scenarios are executable economic stories with provenance; sensitivity runs are one-at-a-time local checks, not normal-path verdicts. | [scenario registry](scenario-registry.md), [sensitivity and robustness workflow](sensitivity-robustness-workflow.md), [validation matrix](validation-matrix.md) | `config/ScenarioRegistry.scala`, `diagnostics/ScenarioRunExport.scala`, `diagnostics/SensitivityRobustnessExport.scala` | scenario run exports, robustness reports, nightly step classification | Report only unless a hard accounting/runtime invariant fails |
 | Empirical validation and source bridges | `calibration_warning` plus `known_limitation` | External data bridges define initialization, calibration, scenario, and validation targets; incomplete source rows are explicit publication-readiness gaps. | [data bridge](data-bridge-national-financial-accounts.md), [empirical validation report](empirical-validation-report.md), [calibration register](calibration-register.md) | `diagnostics/EmpiricalValidationExport.scala`, `config/CalibrationProvenance.scala`, committed source manifests | `EmpiricalValidationManifestSpec`, `EmpiricalValidationExportSpec`, generated-output guard | Warning/report unless a required generated output is stale or malformed |
-| Performance and profiling evidence | `stress_or_exploratory_diagnostic` | Runtime telemetry and JFR artifacts show where the engine spends time and allocates; they are observability evidence before stable budgets exist. | [hot-path profiling](hot-path-profiling.md), [validation matrix](validation-matrix.md), #688 | `diagnostics/NightlyDiagnosticsProfileRunner.scala`, hot-path profiling workflows | profiling artifacts, runner telemetry specs | Report only until selected low-noise budgets are promoted |
+| Performance and profiling evidence | `stress_or_exploratory_diagnostic` | Runtime telemetry, soft regression-budget reports, and JFR artifacts show where the engine spends time and allocates; they are observability evidence before stable hard budgets exist. | [hot-path profiling](hot-path-profiling.md), [performance regression budgets](performance-regression-budgets.md), [validation matrix](validation-matrix.md) | `diagnostics/NightlyDiagnosticsProfileRunner.scala`, diagnostics/profiling workflows, `scripts/performance-regression-report.py` | profiling artifacts, runner telemetry specs, performance-regression reports | Soft warnings until selected low-noise budgets are promoted |
 
 ## Minimal Hard-Fail Set
 
@@ -104,8 +104,8 @@ rationale in the comparison or diagnostics contract.
 - Empirical source extraction is not yet fully manifest-backed for several
   domains, especially household microdata, firm demography, holder-resolved
   financial accounts, and scenario-specific shocks.
-- Performance budgets are not yet hard gates; profiling evidence is currently
-  observational.
+- Performance budgets are soft warning reports; hard gates require documented
+  promotion after comparable `main` runs.
 
 ## Maintenance Rule
 

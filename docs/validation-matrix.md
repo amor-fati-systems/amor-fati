@@ -32,9 +32,9 @@ duplicating those layers.
 | Coverage upload | PR and push | `.github/workflows/ci.yml` `test` job | `codecov/codecov-action` | Publish non-heavy unit coverage | Non-blocking upload; CI does not fail if Codecov upload fails |
 | Nightly diagnostics | Scheduled on `main`; manual dispatch | `.github/workflows/diagnostics-{smoke,nightly,extended}.yml` via reusable diagnostics workflow | Build `sbt assembly` under Nix, then run `NightlyDiagnosticsProfileRunner` from the jar | Long validation and diagnostics artifacts over `smoke`, `nightly`, and `extended` profiles | Hard fail on runner/build failure and hard invariants; economic outcomes are interpreted by profile classification |
 | Nightly health summary | After a non-dry-run diagnostics profile completes | `NightlyHealthSummary` via `NightlyDiagnosticsProfileRunner` | Reuse `run-manifest.json` and baseline Monte Carlo seed CSVs to write `health-summary.json` and `health-summary.md` | Compact machine/human verdict answering whether `main` stayed normal-path healthy overnight | Hard fail on normal-validation threshold breaches; warn/report for soft research signals; do not turn stress/exploratory outcomes into normal-path failures |
-| Nightly performance telemetry | Every diagnostics profile step | `NightlyDiagnosticsProfileRunner` manifest telemetry | Per-step duration, seed-month throughput, artifact size/row counts, and JVM memory/GC observations in `run-manifest.json` | Lightweight regression visibility before heavier profilers exist | Report-only initially; hard performance budgets belong to later baseline/regression work |
+| Nightly performance telemetry | Every diagnostics profile step | `NightlyDiagnosticsProfileRunner` manifest telemetry plus [performance regression budgets](performance-regression-budgets.md) | Per-step duration, seed-month throughput, artifact size/row counts, JVM memory/GC observations, and soft same-profile baseline comparisons in `run-manifest.json` and `performance-regression-report.*` | Lightweight regression visibility before heavier profilers exist | Soft warnings only; hard budgets require documented promotion |
 | Manual diagnostics | Local or workflow dispatch | Maintainer | `nix develop --command java -cp target/scala-3.8.2/amor-fati.jar com.boombustgroup.amorfati.diagnostics.NightlyDiagnosticsProfileRunner ...` | Reproduce or inspect profile outputs outside PR CI | Evidence only unless explicitly promoted to a CI/nightly gate |
-| Hot-path profiling | Manual or weekly on `main` | `.github/workflows/hot-path-profiling-{smoke,nightly,extended}.yml` via reusable profiling workflow | Build `sbt assembly` under Nix, then run a profiled diagnostics workload with JFR | Hot-path timing/allocation visibility for FlowSimulation, banking, firms, households, runtime ledger execution, SFC projection, and diagnostics exports | Report-only; workflow fails on build/profiling/JFR capture failure, but hard performance budgets belong to #688 |
+| Hot-path profiling | Manual or weekly on `main` | `.github/workflows/hot-path-profiling-{smoke,nightly,extended}.yml` via reusable profiling workflow plus [performance regression budgets](performance-regression-budgets.md) | Build `sbt assembly` under Nix, then run a profiled diagnostics workload with JFR and a manifest-to-manifest budget report | Hot-path timing/allocation visibility for FlowSimulation, banking, firms, households, runtime ledger execution, SFC projection, and diagnostics exports | Report-only; workflow fails on build/profiling/JFR capture failure, not on soft performance-budget warnings |
 
 ## Existing Integration Ownership
 
@@ -116,8 +116,8 @@ A check can become a hard gate only when the contract is clear:
 - stress-profile findings must not mask normal-profile health;
 - health-summary hard thresholds must reuse existing nightly artifacts instead
   of launching another simulation path;
-- profiling budgets should start as warnings and become hard gates only for
-  low-noise metrics tied to commit/profile metadata.
+- profiling budgets start as warnings and become hard gates only for low-noise
+  metrics tied to commit/profile metadata.
 
 ## Relationship To Milestone #28
 
@@ -130,6 +130,6 @@ Observatory:
 - #685 adds thresholded nightly health summaries from existing artifacts.
 - #686 captures performance telemetry in nightly manifests.
 - #687 adds a manual or weekly hot-path profiling workflow under Nix.
-- #688 introduces performance baselines and regression budgets.
+- #688 introduces soft performance baselines and regression-budget reports.
 - #689 creates the canonical invariants and economic-semantics index.
 - #690 maps `FlowMechanism` semantics to ledger legs, SFC identities, and tests.

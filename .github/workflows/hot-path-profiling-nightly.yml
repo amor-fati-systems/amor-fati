@@ -17,6 +17,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   nightly:
@@ -25,3 +26,5 @@ jobs:
       profile: nightly
       jfr_settings: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.jfr_settings || 'profile' }}
       run_kind: ${{ github.event_name == 'schedule' && 'scheduled' || 'manual' }}
+      checkout_ref: ${{ github.event_name == 'schedule' && 'main' || github.ref_name }}
+      require_main: ${{ github.event_name == 'schedule' }}

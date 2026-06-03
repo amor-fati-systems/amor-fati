@@ -13,9 +13,16 @@ on:
       run_kind:
         required: true
         type: string
+      checkout_ref:
+        required: true
+        type: string
+      require_main:
+        required: true
+        type: boolean
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: hot-path-profiling-${{ inputs.profile }}
@@ -30,13 +37,15 @@ jobs:
       PROFILE: ${{ inputs.profile }}
       JFR_SETTINGS: ${{ inputs.jfr_settings }}
       RUN_KIND: ${{ inputs.run_kind }}
+      CHECKOUT_REF: ${{ inputs.checkout_ref }}
+      REQUIRE_MAIN: ${{ inputs.require_main }}
       OUT_DIR: target/hot-path-profiling
       JAR_PATH: target/scala-3.8.2/amor-fati.jar
     steps:
-      - name: Check out HEAD of main
+      - name: Check out profiling ref
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
-          ref: main
+          ref: ${{ inputs.checkout_ref }}
           fetch-depth: 0
           submodules: recursive
           persist-credentials: false
@@ -89,6 +98,8 @@ jobs:
             echo "- Profile: \`${PROFILE}\`"
             echo "- JFR settings: \`${JFR_SETTINGS}\`"
             echo "- Commit: \`${sha}\`"
+            echo "- Checkout ref: \`${CHECKOUT_REF}\`"
+            echo "- Require main: \`${REQUIRE_MAIN}\`"
             echo "- Run id: \`${run_id}\`"
             echo "- Output root: \`${run_root}\`"
             echo "- JFR: \`${jfr_path}\`"
@@ -131,20 +142,26 @@ jobs:
         run: |
           set -euo pipefail
 
-          export GITHUB_REF_NAME=main
+          export GITHUB_REF_NAME="${CHECKOUT_REF}"
           export GITHUB_SHA="${COMMIT_SHA}"
+
+          runner_args=(
+            com.boombustgroup.amorfati.diagnostics.NightlyDiagnosticsProfileRunner
+            --profile "${PROFILE}"
+            --out "${OUT_DIR}"
+            --run-id "${RUN_ID}"
+            --jar-path "${JAR_PATH}"
+          )
+          if [[ "${REQUIRE_MAIN}" == "true" ]]; then
+            runner_args+=(--require-main)
+          fi
 
           start_seconds="$(date +%s)"
           set +e
           nix develop --command java \
             "-XX:StartFlightRecording=filename=${JFR_PATH},settings=${JFR_SETTINGS},dumponexit=true,disk=true" \
             -cp "${JAR_PATH}" \
-            com.boombustgroup.amorfati.diagnostics.NightlyDiagnosticsProfileRunner \
-            --profile "${PROFILE}" \
-            --out "${OUT_DIR}" \
-            --run-id "${RUN_ID}" \
-            --jar-path "${JAR_PATH}" \
-            --require-main 2>&1 | tee "${PROFILING_LOG_PATH}"
+            "${runner_args[@]}" 2>&1 | tee "${PROFILING_LOG_PATH}"
           exit_code="${PIPESTATUS[0]}"
           set -e
           end_seconds="$(date +%s)"
@@ -251,6 +268,8 @@ jobs:
               "workload_duration_seconds": os.environ.get("WORKLOAD_DURATION_SECONDS") or "not-recorded",
               "artifact_name": os.environ.get("ARTIFACT_NAME", "not-created"),
               "retention_days": os.environ.get("RETENTION_DAYS", "not-configured"),
+              "checkout_ref": os.environ.get("CHECKOUT_REF", "unknown"),
+              "require_main": os.environ.get("REQUIRE_MAIN", "false").lower() == "true",
               "warsaw_time": os.environ.get("WARSAW_TIME", "unknown"),
               "created_at_utc": datetime.now(timezone.utc).isoformat(),
               "workflow": "hot-path-profiling",
@@ -269,7 +288,8 @@ jobs:
                   " -cp target/scala-3.8.2/amor-fati.jar "
                   "com.boombustgroup.amorfati.diagnostics.NightlyDiagnosticsProfileRunner "
                   f"--profile {os.environ.get('PROFILE', 'nightly')} --out target/hot-path-profiling "
-                  f"--run-id {os.environ.get('RUN_ID', '')} --jar-path target/scala-3.8.2/amor-fati.jar --require-main"
+                  f"--run-id {os.environ.get('RUN_ID', '')} --jar-path target/scala-3.8.2/amor-fati.jar"
+                  + (" --require-main" if os.environ.get("REQUIRE_MAIN", "false").lower() == "true" else "")
               ),
           }
 
@@ -291,6 +311,71 @@ jobs:
               out.write(f"- Health summary present: `{health_path.is_file()}`\n")
               out.write(f"- Artifact: `{metadata['artifact_name']}`\n")
           PY
+
+      - name: Download performance baseline artifact
+        if: ${{ always() && inputs.profile != 'extended' }}
+        id: performance_baseline
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_PREFIX: amor-fati-hot-path-profiling-hotpath-${{ inputs.profile }}-
+          BASELINE_DIR: target/performance-baseline/hot-path-profiling-${{ inputs.profile }}
+        run: |
+          set -euo pipefail
+
+          selection_json="${BASELINE_DIR}/selection.json"
+          python3 scripts/select-performance-baseline.py \
+            --repo "${GITHUB_REPOSITORY}" \
+            --artifact-prefix "${ARTIFACT_PREFIX}" \
+            --out-json "${selection_json}" \
+            --github-output "${GITHUB_OUTPUT}"
+
+          artifact_name="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("artifact_name", ""))' "${selection_json}")"
+          run_id="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("run_id", ""))' "${selection_json}")"
+          if [[ -n "${artifact_name}" && -n "${run_id}" ]]; then
+            artifact_dir="${BASELINE_DIR}/artifact"
+            rm -rf "${artifact_dir}"
+            mkdir -p "${artifact_dir}"
+            timeout 120s gh run download "${run_id}" --name "${artifact_name}" --dir "${artifact_dir}" || true
+            manifest="$(find "${artifact_dir}" -name run-manifest.json -print -quit)"
+            echo "manifest=${manifest}" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Write performance regression report
+        if: ${{ always() }}
+        shell: bash
+        env:
+          RUN_ROOT: ${{ steps.meta.outputs.run_root }}
+          CURRENT_MANIFEST: ${{ steps.meta.outputs.run_root }}/run-manifest.json
+          BASELINE_MANIFEST: ${{ steps.performance_baseline.outputs.manifest }}
+          BASELINE_ARTIFACT: ${{ steps.performance_baseline.outputs.artifact_name }}
+          SKIP_REASON: "${{ inputs.profile == 'extended' && 'extended profile remains report-only for performance budgets until #718 resolves all-failed bank stress semantics.' || '' }}"
+        run: |
+          set -euo pipefail
+
+          report_dir="${RUN_ROOT}/performance"
+          mkdir -p "${report_dir}"
+          args=(
+            --current "${CURRENT_MANIFEST}"
+            --out-json "${report_dir}/performance-regression-report.json"
+            --out-md "${report_dir}/performance-regression-report.md"
+            --profile "${PROFILE}"
+            --source "hot-path-profiling"
+            --baseline-artifact "${BASELINE_ARTIFACT:-}"
+          )
+          if [[ -n "${BASELINE_MANIFEST:-}" ]]; then
+            args+=(--baseline "${BASELINE_MANIFEST}")
+          fi
+          if [[ -n "${SKIP_REASON:-}" ]]; then
+            args+=(--skip-reason "${SKIP_REASON}")
+          fi
+
+          python3 scripts/performance-regression-report.py "${args[@]}"
+          {
+            echo
+            cat "${report_dir}/performance-regression-report.md"
+          } >> "${GITHUB_STEP_SUMMARY}"
 
       - name: Upload profiling artifacts
         if: ${{ always() && steps.meta.outputs.artifact_name != '' }}
