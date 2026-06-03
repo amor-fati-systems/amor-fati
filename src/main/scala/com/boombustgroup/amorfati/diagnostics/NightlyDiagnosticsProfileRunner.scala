@@ -77,6 +77,7 @@ object NightlyDiagnosticsProfileRunner:
   private[diagnostics] final case class ManifestStep(
       id: String,
       label: String,
+      classification: DiagnosticClass,
       entrypoint: String,
       seedStart: Option[Long],
       seeds: Option[Int],
@@ -111,6 +112,36 @@ object NightlyDiagnosticsProfileRunner:
       steps: RunContext => Vector[DiagnosticStep],
   )
 
+  /** Semantic interpretation class for a diagnostic step.
+    *
+    * The runner still fails on runtime errors, malformed artifacts, SFC
+    * violations, and impossible accounting states. This class tells reviewers
+    * whether an economic outcome such as bank failure should be read as a
+    * normal-path alarm, an expected stress-channel signal, or research
+    * evidence.
+    */
+  private[diagnostics] enum DiagnosticClass(val id: String, val failurePolicy: String):
+    case NormalValidation
+        extends DiagnosticClass(
+          "normal_validation",
+          "Hard accounting/runtime failures fail; economic failures are interpreted as normal-path engine or calibration alarms.",
+        )
+    case StressValidation
+        extends DiagnosticClass(
+          "stress_validation",
+          "Hard accounting/runtime failures fail; expected stress outcomes are interpreted through stress-channel semantics.",
+        )
+    case Exploratory
+        extends DiagnosticClass(
+          "exploratory",
+          "Hard accounting/runtime failures fail; economic metrics are report-only until thresholds are explicitly promoted.",
+        )
+    case Benchmark
+        extends DiagnosticClass(
+          "benchmark",
+          "Malformed output and hard accounting errors fail; economic deltas require explicit benchmark thresholds.",
+        )
+
   /** Thin adapter around an existing diagnostic export. The step owns no model
     * logic; it only maps a profile contract to that export's Config and output
     * directory.
@@ -118,6 +149,7 @@ object NightlyDiagnosticsProfileRunner:
   private[diagnostics] final case class DiagnosticStep(
       id: String,
       label: String,
+      classification: DiagnosticClass,
       entrypoint: String,
       seedStart: Option[Long],
       seeds: Option[Int],
@@ -130,6 +162,7 @@ object NightlyDiagnosticsProfileRunner:
       ManifestStep(
         id = id,
         label = label,
+        classification = classification,
         entrypoint = entrypoint,
         seedStart = seedStart,
         seeds = seeds,
@@ -339,7 +372,6 @@ object NightlyDiagnosticsProfileRunner:
             robustnessReport(scenarioSet = ScenarioSet.Smoke, seeds = 1, months = 6),
             bankBalanceSheetBenchmark(seeds = 2),
             householdCreditStress(seeds = 1, months = 12),
-            bankFailureAblations(seeds = 1, months = 12),
           ),
       ),
       ProfileSpec(
@@ -354,7 +386,6 @@ object NightlyDiagnosticsProfileRunner:
             robustnessReport(scenarioSet = ScenarioSet.Core, seeds = 2, months = 24),
             bankBalanceSheetBenchmark(seeds = 10),
             householdCreditStress(seeds = 5, months = 60),
-            bankFailureAblations(seeds = 5, months = 60),
             hhBankLeadLag(seeds = 5, months = 60, lagMax = 6),
             loanOriginationQuality(seeds = 2, months = 60, outcomeWindow = 12),
           ),
@@ -381,6 +412,7 @@ object NightlyDiagnosticsProfileRunner:
     DiagnosticStep(
       id = "baseline-monte-carlo",
       label = "Baseline Monte Carlo",
+      classification = DiagnosticClass.NormalValidation,
       entrypoint = "com.boombustgroup.amorfati.montecarlo.McRunner",
       seedStart = Some(1L),
       seeds = Some(seeds),
@@ -397,6 +429,7 @@ object NightlyDiagnosticsProfileRunner:
     DiagnosticStep(
       id = "sfc-matrix",
       label = "SFC Matrix Evidence",
+      classification = DiagnosticClass.NormalValidation,
       entrypoint = "com.boombustgroup.amorfati.diagnostics.SfcMatrixExport",
       seedStart = Some(seed),
       seeds = Some(1),
@@ -413,6 +446,7 @@ object NightlyDiagnosticsProfileRunner:
     DiagnosticStep(
       id = "scenario-run",
       label = "Scenario Registry Run",
+      classification = scenarioClassification(selection),
       entrypoint = "com.boombustgroup.amorfati.diagnostics.ScenarioRunExport",
       seedStart = Some(1L),
       seeds = Some(seeds),
@@ -439,6 +473,7 @@ object NightlyDiagnosticsProfileRunner:
     DiagnosticStep(
       id = "robustness-report",
       label = "Sensitivity Robustness Report",
+      classification = DiagnosticClass.Exploratory,
       entrypoint = "com.boombustgroup.amorfati.diagnostics.SensitivityRobustnessExport",
       seedStart = Some(1L),
       seeds = Some(seeds),
@@ -463,6 +498,7 @@ object NightlyDiagnosticsProfileRunner:
     DiagnosticStep(
       id = "empirical-validation",
       label = "Empirical Validation Snapshot",
+      classification = DiagnosticClass.NormalValidation,
       entrypoint = "com.boombustgroup.amorfati.diagnostics.EmpiricalValidationExport",
       seedStart = Some(1L),
       seeds = Some(baselineSeeds),
@@ -494,6 +530,7 @@ object NightlyDiagnosticsProfileRunner:
     DiagnosticStep(
       id = "bank-balance-sheet-benchmark",
       label = "Bank Balance-Sheet Benchmark",
+      classification = DiagnosticClass.Benchmark,
       entrypoint = "com.boombustgroup.amorfati.diagnostics.BankBalanceSheetBenchmarkExport",
       seedStart = Some(1L),
       seeds = Some(seeds),
@@ -515,6 +552,7 @@ object NightlyDiagnosticsProfileRunner:
     DiagnosticStep(
       id = "household-credit-stress",
       label = "Household Credit-Stress Calibration",
+      classification = DiagnosticClass.Exploratory,
       entrypoint = "com.boombustgroup.amorfati.diagnostics.HouseholdCreditStressCalibrationExport",
       seedStart = Some(1L),
       seeds = Some(seeds),
@@ -539,6 +577,7 @@ object NightlyDiagnosticsProfileRunner:
     DiagnosticStep(
       id = "bank-failure-ablations",
       label = "Bank Failure Ablations",
+      classification = DiagnosticClass.StressValidation,
       entrypoint = "com.boombustgroup.amorfati.diagnostics.BankFailureAblationExport",
       seedStart = Some(1L),
       seeds = Some(seeds),
@@ -563,6 +602,7 @@ object NightlyDiagnosticsProfileRunner:
     DiagnosticStep(
       id = "hh-bank-lead-lag",
       label = "HH-Bank Lead-Lag Diagnostics",
+      classification = DiagnosticClass.Exploratory,
       entrypoint = "com.boombustgroup.amorfati.diagnostics.HhBankLeadLagDiagnosticsExport",
       seedStart = Some(1L),
       seeds = Some(seeds),
@@ -588,6 +628,7 @@ object NightlyDiagnosticsProfileRunner:
     DiagnosticStep(
       id = "loan-origination-quality",
       label = "Loan Origination Quality",
+      classification = DiagnosticClass.Exploratory,
       entrypoint = "com.boombustgroup.amorfati.diagnostics.LoanOriginationQualityExport",
       seedStart = Some(1L),
       seeds = Some(seeds),
@@ -613,6 +654,15 @@ object NightlyDiagnosticsProfileRunner:
 
   private def baselineMonteCarloDir(ctx: RunContext): Path =
     ctx.runRoot.resolve("baseline-monte-carlo").resolve(ctx.runId)
+
+  private def scenarioClassification(selection: String): DiagnosticClass =
+    val includesStress = resolveScenarios(selection).toOption.exists(_.exists(isStressScenario))
+    if includesStress then DiagnosticClass.StressValidation
+    else if selection.trim == "baseline" then DiagnosticClass.NormalValidation
+    else DiagnosticClass.Exploratory
+
+  private def isStressScenario(scenario: ScenarioRegistry.ScenarioSpec): Boolean =
+    scenario.deltas.exists(_.provenance.classification == ScenarioRegistry.ProvenanceClassification.HistoricalAnalogue)
 
   private def resolveScenarios(selection: String): Either[String, Vector[ScenarioRegistry.ScenarioSpec]] =
     selection match
@@ -730,19 +780,21 @@ object NightlyDiagnosticsProfileRunner:
   private def renderStep(step: ManifestStep): String =
     renderObject(
       Vector(
-        "id"          -> json(step.id),
-        "label"       -> json(step.label),
-        "entrypoint"  -> json(step.entrypoint),
-        "seed_start"  -> step.seedStart.fold("null")(_.toString),
-        "seeds"       -> step.seeds.fold("null")(_.toString),
-        "months"      -> step.months.fold("null")(_.toString),
-        "output_dir"  -> json(step.outputDir.toString),
-        "details"     -> renderObject(step.details.map((key, value) => key -> json(value))),
-        "status"      -> json(step.status),
-        "started_at"  -> step.startedAt.fold("null")(value => json(instant(value))),
-        "finished_at" -> step.finishedAt.fold("null")(value => json(instant(value))),
-        "artifacts"   -> renderArray(step.artifacts.map(path => json(path.toString))),
-        "error"       -> step.error.fold("null")(json),
+        "id"             -> json(step.id),
+        "label"          -> json(step.label),
+        "classification" -> json(step.classification.id),
+        "failure_policy" -> json(step.classification.failurePolicy),
+        "entrypoint"     -> json(step.entrypoint),
+        "seed_start"     -> step.seedStart.fold("null")(_.toString),
+        "seeds"          -> step.seeds.fold("null")(_.toString),
+        "months"         -> step.months.fold("null")(_.toString),
+        "output_dir"     -> json(step.outputDir.toString),
+        "details"        -> renderObject(step.details.map((key, value) => key -> json(value))),
+        "status"         -> json(step.status),
+        "started_at"     -> step.startedAt.fold("null")(value => json(instant(value))),
+        "finished_at"    -> step.finishedAt.fold("null")(value => json(instant(value))),
+        "artifacts"      -> renderArray(step.artifacts.map(path => json(path.toString))),
+        "error"          -> step.error.fold("null")(json),
       ),
     )
 

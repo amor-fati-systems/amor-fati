@@ -52,6 +52,7 @@ Every run should include a manifest with at least:
 - seed policy and seed range
 - month horizon
 - logical diagnostic steps
+- per-step semantic classification and failure policy
 - output paths
 - start and end timestamps
 - Nix, Java, sbt, and project versions where practical
@@ -161,11 +162,26 @@ Artifact retention is profile-specific:
 
 ## Profile Matrix
 
-| Profile | Intended Trigger | Horizon | Purpose |
-| --- | --- | --- | --- |
-| `smoke` | local, manual, possibly PR if runtime stays acceptable | 12 months | Fast sanity check and invariant validation |
-| `nightly` | scheduled daily on `main`, plus manual dispatch | 60 months | Daily research validation over the standard five-year horizon |
-| `extended` | weekly or manual | 60 months | Wider seed, scenario, and diagnostic coverage over the same five-year horizon |
+| Profile | Intended Trigger | Horizon | Primary Semantics | Purpose |
+| --- | --- | --- | --- | --- |
+| `smoke` | local, manual, possibly PR if runtime stays acceptable | 12 months | normal validation plus benchmark/exploratory evidence | Fast sanity check and invariant validation without stress-only assumptions |
+| `nightly` | scheduled daily on `main`, plus manual dispatch | 60 months | normal validation plus benchmark/exploratory evidence | Daily research validation over the standard five-year horizon without stress-only assumptions |
+| `extended` | weekly or manual | 60 months | exploratory and stress validation | Wider seed, scenario, and diagnostic coverage over the same five-year horizon |
+
+## Step Classification
+
+Each manifest step carries a `classification` and `failure_policy`:
+
+| Classification | Meaning | Failure Policy |
+| --- | --- | --- |
+| `normal_validation` | Intended baseline-path evidence for the model's current operational horizon | Hard accounting/runtime failures fail; economic failures are interpreted as normal-path engine or calibration alarms |
+| `stress_validation` | Deliberately adverse assumptions used to exercise stress channels | Hard accounting/runtime failures fail; expected stress outcomes are interpreted through stress-channel semantics |
+| `exploratory` | Research probes or comparison surfaces without stable thresholds | Hard accounting/runtime failures fail; economic metrics are report-only until thresholds are explicitly promoted |
+| `benchmark` | Opening balance-sheet or snapshot evidence for review/calibration | Malformed output and hard accounting errors fail; economic deltas require explicit benchmark thresholds |
+
+Scheduled `nightly` evidence must not silently include stress-only assumptions.
+Stress-channel diagnostics such as bank-failure ablations belong to manual
+`extended` evidence until a dedicated stress workflow/profile is introduced.
 
 ## Smoke Profile
 
@@ -182,12 +198,13 @@ Recommended steps:
 - robustness smoke: `--scenario-set smoke`, 1 seed, 6 months
 - bank balance-sheet benchmark: 2 seeds
 - household credit-stress calibration: 1 seed, 12 months
-- bank failure ablations: 1 seed, 12 months
 
 Comparison mode:
 
 - hard-fail only on invariants and malformed output
 - report research metrics without tight thresholds
+- no stress-only assumptions; bank-failure ablations are excluded from this
+  normal-validation smoke profile
 
 Primary artifacts:
 
@@ -212,7 +229,6 @@ Recommended steps:
 - robustness report: `--scenario-set core`, 2 seeds, 24 months
 - bank balance-sheet benchmark: 10 seeds
 - household credit-stress calibration: 5 seeds, 60 months
-- bank failure ablations: 5 seeds, 60 months
 - HH-bank lead-lag diagnostics: 5 seeds, 60 months, lag max 6
 - loan-origination quality diagnostics: 2 seeds, 60 months, outcome window 12
 
@@ -224,6 +240,8 @@ Comparison mode:
   total credit to GDP, debt to GDP, current account to GDP, bank failures,
   credit losses, household bankruptcies, credit rejection rates, and approval
   stochasticity
+- no stress-only assumptions; expected stress-channel failures are not part of
+  scheduled normal-validation evidence
 
 Primary artifacts:
 
@@ -233,7 +251,6 @@ Primary artifacts:
 - robustness envelope and sensitivity reports
 - household credit-stress outputs
 - bank balance-sheet benchmark outputs
-- bank failure ablation outputs
 - HH-bank lead-lag outputs
 - loan-origination quality outputs
 - profile manifest and logs
@@ -253,7 +270,8 @@ Recommended steps:
 - robustness report: `--scenario-set core`, 5 seeds, 60 months
 - bank balance-sheet benchmark: 10 seeds
 - household credit-stress calibration: 10 seeds, 60 months
-- bank failure ablations: 10 seeds, 60 months
+- bank failure ablations: 10 seeds, 60 months, classified as
+  `stress_validation`
 - HH-bank lead-lag diagnostics: 10 seeds, 60 months, lag max 12
 - loan-origination quality diagnostics: 5 seeds, 60 months, outcome window 12
 
@@ -261,6 +279,8 @@ Comparison mode:
 
 - same hard invariants as `nightly`
 - wider research comparison envelope over a larger seed and scenario surface
+- stress-channel findings are interpreted by `stress_validation` semantics and
+  do not define scheduled normal-path health
 - no long-horizon cycle or regime interpretation
 
 Primary artifacts:
