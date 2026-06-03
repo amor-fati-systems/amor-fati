@@ -431,8 +431,8 @@ object NightlyDiagnosticsProfileRunner:
   ): ZIO[Any, Nothing, StepTelemetry] =
     ZIO
       .attemptBlocking(collectStepTelemetryBlocking(ctx, step, startedAt, finishedAt, before, after, artifacts))
-      .orElseSucceed:
-        fallbackStepTelemetry(step, startedAt, finishedAt, before, after, Some("telemetry collection crashed"))
+      .catchAll: err =>
+        ZIO.succeed(fallbackStepTelemetry(step, startedAt, finishedAt, before, after, Some(message(err))))
 
   private def collectStepTelemetryBlocking(
       ctx: RunContext,
