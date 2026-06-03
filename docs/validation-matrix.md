@@ -34,7 +34,7 @@ duplicating those layers.
 | Nightly health summary | After a non-dry-run diagnostics profile completes | `NightlyHealthSummary` via `NightlyDiagnosticsProfileRunner` | Reuse `run-manifest.json` and baseline Monte Carlo seed CSVs to write `health-summary.json` and `health-summary.md` | Compact machine/human verdict answering whether `main` stayed normal-path healthy overnight | Hard fail on normal-validation threshold breaches; warn/report for soft research signals; do not turn stress/exploratory outcomes into normal-path failures |
 | Nightly performance telemetry | Every diagnostics profile step | `NightlyDiagnosticsProfileRunner` manifest telemetry | Per-step duration, seed-month throughput, artifact size/row counts, and JVM memory/GC observations in `run-manifest.json` | Lightweight regression visibility before heavier profilers exist | Report-only initially; hard performance budgets belong to later baseline/regression work |
 | Manual diagnostics | Local or workflow dispatch | Maintainer | `nix develop --command java -cp target/scala-3.8.2/amor-fati.jar com.boombustgroup.amorfati.diagnostics.NightlyDiagnosticsProfileRunner ...` | Reproduce or inspect profile outputs outside PR CI | Evidence only unless explicitly promoted to a CI/nightly gate |
-| Future profiling | Manual or weekly | #687 / #688 | To be added under Nix | Hot-path timing/allocation visibility for FlowSimulation, banking, firms, households, runtime ledger execution, SFC projection, and diagnostics exports | Initially warning/report-only; hard budgets require low-noise baseline evidence |
+| Hot-path profiling | Manual or weekly on `main` | `.github/workflows/hot-path-profiling.yml` | Build `sbt assembly` under Nix, then run a profiled diagnostics workload with JFR | Hot-path timing/allocation visibility for FlowSimulation, banking, firms, households, runtime ledger execution, SFC projection, and diagnostics exports | Report-only; workflow fails on build/profiling/JFR capture failure, but hard performance budgets belong to #688 |
 
 ## Existing Integration Ownership
 
@@ -100,7 +100,7 @@ Use this routing rule before adding a new check:
 | Generated docs/resources consistency | Existing generated-output script | Unit tests |
 | Long Monte Carlo, scenario, robustness, diagnostic export validation | Nightly diagnostics profile | PR unit tests |
 | Stress/failure-channel experiments | Stress/exploratory nightly class | Normal-validation gate |
-| Hot-path timing or allocation visibility | Profiling workflow/telemetry artifacts | Correctness unit tests |
+| Hot-path timing or allocation visibility | [Hot-path profiling](hot-path-profiling.md) and telemetry artifacts | Correctness unit tests |
 | Thresholded nightly health summary | `NightlyHealthSummary` and docs/nightly comparison contract | Diagnostic exporters themselves |
 
 ## Promotion Policy

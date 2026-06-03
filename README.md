@@ -24,9 +24,9 @@
 
 ### Operational Diagnostics
 
-| Nightly diagnostics | Diagnostic profiles |
-| --- | --- |
-| [![Nightly Diagnostics](https://github.com/boombustgroup/amor-fati/actions/workflows/nightly-diagnostics.yml/badge.svg?branch=main)](https://github.com/boombustgroup/amor-fati/actions/workflows/nightly-diagnostics.yml) | [![Diagnostics profiles](https://img.shields.io/badge/diagnostics-smoke_%7C_nightly_%7C_extended-8A2BE2.svg)](docs/nightly-diagnostics.md) |
+| Nightly diagnostics | Hot-path profiling | Diagnostic profiles |
+| --- | --- | --- |
+| [![Nightly Diagnostics](https://github.com/boombustgroup/amor-fati/actions/workflows/nightly-diagnostics.yml/badge.svg?branch=main)](https://github.com/boombustgroup/amor-fati/actions/workflows/nightly-diagnostics.yml) | [![Hot-Path Profiling](https://github.com/boombustgroup/amor-fati/actions/workflows/hot-path-profiling.yml/badge.svg?branch=main)](https://github.com/boombustgroup/amor-fati/actions/workflows/hot-path-profiling.yml) | [![Diagnostics profiles](https://img.shields.io/badge/diagnostics-smoke_%7C_nightly_%7C_extended-8A2BE2.svg)](docs/nightly-diagnostics.md) |
 
 ---
 

@@ -1,0 +1,334 @@
+name: Hot-Path Profiling
+
+on:
+  schedule:
+    # GitHub cron is UTC; this runs weekly at 02:00 Warsaw during CEST.
+    # Profiling is intentionally low-frequency and separate from PR CI.
+    - cron: "0 0 * * 0"
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: "Diagnostics workload profile to run from the assembled jar"
+        required: true
+        default: nightly
+        type: choice
+        options:
+          - smoke
+          - nightly
+          - extended
+      jfr_settings:
+        description: "JFR event settings"
+        required: true
+        default: profile
+        type: choice
+        options:
+          - profile
+          - default
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hot-path-profiling-${{ github.event_name == 'workflow_dispatch' && inputs.profile || 'nightly' }}
+  cancel-in-progress: false
+
+jobs:
+  profile:
+    name: Profile ${{ github.event_name == 'workflow_dispatch' && inputs.profile || 'nightly' }} hot paths
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    env:
+      PROFILE: ${{ github.event_name == 'workflow_dispatch' && inputs.profile || 'nightly' }}
+      JFR_SETTINGS: ${{ github.event_name == 'workflow_dispatch' && inputs.jfr_settings || 'profile' }}
+      OUT_DIR: target/hot-path-profiling
+      JAR_PATH: target/scala-3.8.2/amor-fati.jar
+    steps:
+      - name: Check out HEAD of main
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: main
+          fetch-depth: 0
+          submodules: recursive
+          persist-credentials: false
+
+      - uses: cachix/install-nix-action@8aa03977d8d733052d78f4e008a241fd1dbf36b3
+
+      - name: Resolve profiling run metadata
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          sha="$(git rev-parse HEAD)"
+          short_sha="$(git rev-parse --short HEAD)"
+          warsaw_time="$(TZ=Europe/Warsaw date '+%Y-%m-%d %H:%M:%S %Z')"
+          if [[ "${GITHUB_EVENT_NAME}" == "schedule" ]]; then
+            run_id="hotpath-${PROFILE}-$(date -u +%Y%m%d)-${short_sha}"
+          else
+            run_id="hotpath-${PROFILE}-manual-$(date -u +%Y%m%d-%H%M)-${short_sha}"
+          fi
+
+          run_root="${OUT_DIR}/${PROFILE}/${run_id}"
+          profiling_dir="${run_root}/profiling"
+          jfr_path="${profiling_dir}/amor-fati-${run_id}.jfr"
+          artifact_name="amor-fati-hot-path-profiling-${run_id}"
+          case "${PROFILE}" in
+            smoke) retention_days=14 ;;
+            nightly) retention_days=30 ;;
+            extended) retention_days=60 ;;
+            *) retention_days=30 ;;
+          esac
+
+          mkdir -p "${profiling_dir}"
+
+          {
+            echo "sha=${sha}"
+            echo "short_sha=${short_sha}"
+            echo "run_id=${run_id}"
+            echo "run_root=${run_root}"
+            echo "profiling_dir=${profiling_dir}"
+            echo "jfr_path=${jfr_path}"
+            echo "artifact_name=${artifact_name}"
+            echo "retention_days=${retention_days}"
+            echo "warsaw_time=${warsaw_time}"
+          } >> "${GITHUB_OUTPUT}"
+
+          {
+            echo "### Hot-Path Profiling"
+            echo
+            echo "- Profile: \`${PROFILE}\`"
+            echo "- JFR settings: \`${JFR_SETTINGS}\`"
+            echo "- Commit: \`${sha}\`"
+            echo "- Run id: \`${run_id}\`"
+            echo "- Output root: \`${run_root}\`"
+            echo "- JFR: \`${jfr_path}\`"
+            echo "- Artifact: \`${artifact_name}\`"
+            echo "- Artifact retention: \`${retention_days} days\`"
+            echo "- Warsaw run time: \`${warsaw_time}\`"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Build assembled jar under Nix
+        id: build
+        shell: bash
+        env:
+          BUILD_LOG_PATH: ${{ steps.meta.outputs.profiling_dir }}/build.log
+        run: |
+          set -euo pipefail
+
+          start_seconds="$(date +%s)"
+          set +e
+          nix develop --command sbt assembly 2>&1 | tee "${BUILD_LOG_PATH}"
+          exit_code="${PIPESTATUS[0]}"
+          set -e
+          end_seconds="$(date +%s)"
+
+          {
+            echo "exit_code=${exit_code}"
+            echo "duration_seconds=$((end_seconds - start_seconds))"
+          } >> "${GITHUB_OUTPUT}"
+
+          exit 0
+
+      - name: Run profiled diagnostics workload
+        if: ${{ steps.build.outputs.exit_code == '0' }}
+        id: workload
+        shell: bash
+        env:
+          RUN_ID: ${{ steps.meta.outputs.run_id }}
+          JFR_PATH: ${{ steps.meta.outputs.jfr_path }}
+          PROFILING_LOG_PATH: ${{ steps.meta.outputs.profiling_dir }}/profiling.log
+          COMMIT_SHA: ${{ steps.meta.outputs.sha }}
+        run: |
+          set -euo pipefail
+
+          export GITHUB_REF_NAME=main
+          export GITHUB_SHA="${COMMIT_SHA}"
+
+          start_seconds="$(date +%s)"
+          set +e
+          nix develop --command java \
+            "-XX:StartFlightRecording=filename=${JFR_PATH},settings=${JFR_SETTINGS},dumponexit=true,disk=true" \
+            -cp "${JAR_PATH}" \
+            com.boombustgroup.amorfati.diagnostics.NightlyDiagnosticsProfileRunner \
+            --profile "${PROFILE}" \
+            --out "${OUT_DIR}" \
+            --run-id "${RUN_ID}" \
+            --jar-path "${JAR_PATH}" \
+            --require-main 2>&1 | tee "${PROFILING_LOG_PATH}"
+          exit_code="${PIPESTATUS[0]}"
+          set -e
+          end_seconds="$(date +%s)"
+
+          {
+            echo "exit_code=${exit_code}"
+            echo "duration_seconds=$((end_seconds - start_seconds))"
+          } >> "${GITHUB_OUTPUT}"
+
+          exit 0
+
+      - name: Render JFR summaries
+        if: ${{ always() && steps.build.outputs.exit_code == '0' }}
+        shell: bash
+        env:
+          JFR_PATH: ${{ steps.meta.outputs.jfr_path }}
+          PROFILING_DIR: ${{ steps.meta.outputs.profiling_dir }}
+        run: |
+          set -euo pipefail
+
+          if [[ ! -f "${JFR_PATH}" ]]; then
+            echo "JFR recording was not produced: ${JFR_PATH}" | tee "${PROFILING_DIR}/jfr-summary-error.txt"
+            exit 0
+          fi
+
+          nix develop --command jfr summary "${JFR_PATH}" > "${PROFILING_DIR}/jfr-summary.txt" || true
+
+          for view in \
+            recording \
+            jvm-flags \
+            hot-methods \
+            allocation-by-class \
+            allocation-by-site \
+            gc \
+            gc-pauses \
+            thread-cpu-load \
+            file-reads-by-path \
+            file-writes-by-path
+          do
+            nix develop --command jfr view --width 180 "${view}" "${JFR_PATH}" > "${PROFILING_DIR}/jfr-${view}.txt" || true
+          done
+
+      - name: Write profiling metadata and summary
+        if: ${{ always() }}
+        shell: bash
+        env:
+          RUN_ID: ${{ steps.meta.outputs.run_id }}
+          RUN_ROOT: ${{ steps.meta.outputs.run_root }}
+          PROFILING_DIR: ${{ steps.meta.outputs.profiling_dir }}
+          JFR_PATH: ${{ steps.meta.outputs.jfr_path }}
+          COMMIT_SHA: ${{ steps.meta.outputs.sha }}
+          WARSAW_TIME: ${{ steps.meta.outputs.warsaw_time }}
+          ARTIFACT_NAME: ${{ steps.meta.outputs.artifact_name }}
+          RETENTION_DAYS: ${{ steps.meta.outputs.retention_days }}
+          BUILD_EXIT_CODE: ${{ steps.build.outputs.exit_code }}
+          BUILD_DURATION_SECONDS: ${{ steps.build.outputs.duration_seconds }}
+          WORKLOAD_EXIT_CODE: ${{ steps.workload.outputs.exit_code }}
+          WORKLOAD_DURATION_SECONDS: ${{ steps.workload.outputs.duration_seconds }}
+          MANIFEST_PATH: ${{ steps.meta.outputs.run_root }}/run-manifest.json
+          HEALTH_PATH: ${{ steps.meta.outputs.run_root }}/health-summary.json
+        run: |
+          set -euo pipefail
+
+          python3 <<'PY'
+          import json
+          import os
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          profiling_dir = Path(os.environ["PROFILING_DIR"])
+          profiling_dir.mkdir(parents=True, exist_ok=True)
+          jfr_path = Path(os.environ["JFR_PATH"])
+          manifest_path = Path(os.environ["MANIFEST_PATH"])
+          health_path = Path(os.environ["HEALTH_PATH"])
+          build_exit_code = os.environ.get("BUILD_EXIT_CODE") or "not-run"
+          workload_exit_code = os.environ.get("WORKLOAD_EXIT_CODE") or "not-run"
+
+          if build_exit_code not in ("0", "not-run"):
+              status = "BUILD_FAILED"
+          elif workload_exit_code not in ("0", "not-run"):
+              status = "WORKLOAD_FAILED"
+          elif jfr_path.is_file():
+              status = "PROFILED"
+          else:
+              status = "MISSING_JFR"
+
+          metadata = {
+              "schema_version": 1,
+              "status": status,
+              "profile": os.environ.get("PROFILE", "unknown"),
+              "jfr_settings": os.environ.get("JFR_SETTINGS", "unknown"),
+              "commit_sha": os.environ.get("COMMIT_SHA", "unknown"),
+              "run_id": os.environ.get("RUN_ID", "unknown"),
+              "run_root": os.environ.get("RUN_ROOT", ""),
+              "jfr_path": str(jfr_path),
+              "jfr_bytes": jfr_path.stat().st_size if jfr_path.is_file() else 0,
+              "manifest_path": str(manifest_path),
+              "manifest_present": manifest_path.is_file(),
+              "health_summary_path": str(health_path),
+              "health_summary_present": health_path.is_file(),
+              "build_exit_code": build_exit_code,
+              "build_duration_seconds": os.environ.get("BUILD_DURATION_SECONDS") or "not-recorded",
+              "workload_exit_code": workload_exit_code,
+              "workload_duration_seconds": os.environ.get("WORKLOAD_DURATION_SECONDS") or "not-recorded",
+              "artifact_name": os.environ.get("ARTIFACT_NAME", "not-created"),
+              "retention_days": os.environ.get("RETENTION_DAYS", "not-configured"),
+              "warsaw_time": os.environ.get("WARSAW_TIME", "unknown"),
+              "created_at_utc": datetime.now(timezone.utc).isoformat(),
+              "workflow": "hot-path-profiling",
+              "hot_path_coverage": [
+                  "FlowSimulation and month calculus",
+                  "runtime ledger execution",
+                  "SFC semantic projection",
+                  "banking economics",
+                  "firm economics",
+                  "household economics",
+                  "diagnostics CSV export paths",
+              ],
+              "command": (
+                  "nix develop --command java "
+                  f"-XX:StartFlightRecording=filename={jfr_path},settings={os.environ.get('JFR_SETTINGS', 'profile')},dumponexit=true,disk=true "
+                  " -cp target/scala-3.8.2/amor-fati.jar "
+                  "com.boombustgroup.amorfati.diagnostics.NightlyDiagnosticsProfileRunner "
+                  f"--profile {os.environ.get('PROFILE', 'nightly')} --out target/hot-path-profiling "
+                  f"--run-id {os.environ.get('RUN_ID', '')} --jar-path target/scala-3.8.2/amor-fati.jar --require-main"
+              ),
+          }
+
+          metadata_path = profiling_dir / "profiling-metadata.json"
+          metadata_path.write_text(json.dumps(metadata, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+          summary = Path(os.environ["GITHUB_STEP_SUMMARY"])
+          with summary.open("a", encoding="utf-8") as out:
+              out.write("\n")
+              out.write("### Profiling Result\n\n")
+              out.write(f"- Status: `{status}`\n")
+              out.write(f"- Build exit code: `{build_exit_code}`\n")
+              out.write(f"- Build runtime seconds: `{metadata['build_duration_seconds']}`\n")
+              out.write(f"- Workload exit code: `{workload_exit_code}`\n")
+              out.write(f"- Workload runtime seconds: `{metadata['workload_duration_seconds']}`\n")
+              out.write(f"- JFR bytes: `{metadata['jfr_bytes']}`\n")
+              out.write(f"- Metadata: `{metadata_path}`\n")
+              out.write(f"- Manifest: `{manifest_path}`\n")
+              out.write(f"- Health summary present: `{health_path.is_file()}`\n")
+              out.write(f"- Artifact: `{metadata['artifact_name']}`\n")
+          PY
+
+      - name: Upload profiling artifacts
+        if: ${{ always() && steps.meta.outputs.artifact_name != '' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ${{ steps.meta.outputs.artifact_name }}
+          path: ${{ steps.meta.outputs.run_root }}/
+          if-no-files-found: warn
+          retention-days: ${{ steps.meta.outputs.retention_days }}
+          compression-level: 6
+
+      - name: Fail workflow on unsuccessful profiling run
+        if: ${{ always() }}
+        shell: bash
+        env:
+          BUILD_EXIT_CODE: ${{ steps.build.outputs.exit_code }}
+          WORKLOAD_EXIT_CODE: ${{ steps.workload.outputs.exit_code }}
+          JFR_PATH: ${{ steps.meta.outputs.jfr_path }}
+        run: |
+          set -euo pipefail
+
+          if [[ "${BUILD_EXIT_CODE:-}" =~ ^[0-9]+$ ]] && [[ "${BUILD_EXIT_CODE}" != "0" ]]; then
+            exit "${BUILD_EXIT_CODE}"
+          fi
+          if [[ "${WORKLOAD_EXIT_CODE:-}" =~ ^[0-9]+$ ]] && [[ "${WORKLOAD_EXIT_CODE}" != "0" ]]; then
+            exit "${WORKLOAD_EXIT_CODE}"
+          fi
+          if [[ ! -f "${JFR_PATH}" ]]; then
+            echo "Missing JFR recording: ${JFR_PATH}" >&2
+            exit 1
+          fi
