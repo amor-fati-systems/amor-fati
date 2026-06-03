@@ -118,18 +118,3 @@ A check can become a hard gate only when the contract is clear:
   of launching another simulation path;
 - profiling budgets start as warnings and become hard gates only for low-noise
   metrics tied to commit/profile metadata.
-
-## Relationship To Milestone #28
-
-This matrix is the base layer for the rest of Engine Validation & Performance
-Observatory:
-
-- #683 adds the missing PR-level non-CSV normal-path integration gate.
-- #684 separates normal-validation diagnostics from stress and exploratory
-  profile semantics.
-- #685 adds thresholded nightly health summaries from existing artifacts.
-- #686 captures performance telemetry in nightly manifests.
-- #687 adds a manual or weekly hot-path profiling workflow under Nix.
-- #688 introduces soft performance baselines and regression-budget reports.
-- #689 creates the canonical invariants and economic-semantics index.
-- #690 maps `FlowMechanism` semantics to ledger legs, SFC identities, and tests.
