@@ -1,9 +1,13 @@
 # ODD and ODD+D Model Documentation
 
-This document is the paper-facing model description for Amor Fati as a
-stock-flow consistent agent-based macroeconomic model of the Polish economy.
-It follows the ODD protocol structure and adds ODD+D notes for human and
-institutional decision making.
+This document is the ODD/ODD+D source document for Amor Fati as a stock-flow
+consistent agent-based macroeconomic model of the Polish economy. It follows
+the ODD protocol structure and adds ODD+D notes for human and institutional
+decision making.
+
+For the canonical publication-facing model entry point, see
+[`docs/model-specification.md`](model-specification.md). This document remains
+the ODD/ODD+D source for entities, scheduling, submodels, and decisions.
 
 The document describes the current implementation, not an idealized target
 model. Open gaps are listed explicitly at the end.
