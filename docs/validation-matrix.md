@@ -30,7 +30,8 @@ duplicating those layers.
 | Heavy unit tests | PR and push | `.github/workflows/ci.yml` `test` job | `nix develop --command sbt -DamorFati.includeHeavyTests=true "root / Test / testOnly * -- -n com.boombustgroup.amorfati.tags.Heavy"` | Selected expensive unit/property checks that should not run under coverage | Hard fail on broken heavy invariant |
 | Integration smoke | PR and push | `.github/workflows/ci.yml` `test` job | `nix develop --command sbt "integrationTests / Test / test"` | End-to-end smoke over the root project and integration-test project | Hard fail on integration-level regression |
 | Coverage upload | PR and push | `.github/workflows/ci.yml` `test` job | `codecov/codecov-action` | Publish non-heavy unit coverage | Non-blocking upload; CI does not fail if Codecov upload fails |
-| Nightly diagnostics | Scheduled daily on `main`; manual dispatch | `.github/workflows/nightly-diagnostics.yml` | Build `sbt assembly` under Nix, then run `NightlyDiagnosticsProfileRunner` from the jar | Long validation and diagnostics artifacts over `smoke`, `nightly`, and `extended` profiles | Hard fail on runner/build failure and hard invariants; research metrics are interpreted by profile policy |
+| Nightly diagnostics | Scheduled daily on `main`; manual dispatch | `.github/workflows/nightly-diagnostics.yml` | Build `sbt assembly` under Nix, then run `NightlyDiagnosticsProfileRunner` from the jar | Long validation and diagnostics artifacts over `smoke`, `nightly`, and `extended` profiles | Hard fail on runner/build failure and hard invariants; economic outcomes are interpreted by profile classification |
+| Nightly health summary | After a non-dry-run diagnostics profile completes | `NightlyHealthSummary` via `NightlyDiagnosticsProfileRunner` | Reuse `run-manifest.json` and baseline Monte Carlo seed CSVs to write `health-summary.json` and `health-summary.md` | Compact machine/human verdict answering whether `main` stayed normal-path healthy overnight | Hard fail on normal-validation threshold breaches; warn/report for soft research signals; do not turn stress/exploratory outcomes into normal-path failures |
 | Manual diagnostics | Local or workflow dispatch | Maintainer | `nix develop --command java -cp target/scala-3.8.2/amor-fati.jar com.boombustgroup.amorfati.diagnostics.NightlyDiagnosticsProfileRunner ...` | Reproduce or inspect profile outputs outside PR CI | Evidence only unless explicitly promoted to a CI/nightly gate |
 | Future profiling | Manual or weekly | #687 / #688 | To be added under Nix | Hot-path timing/allocation visibility for FlowSimulation, banking, firms, households, runtime ledger execution, SFC projection, and diagnostics exports | Initially warning/report-only; hard budgets require low-noise baseline evidence |
 
@@ -48,9 +49,10 @@ invariant gate.
 
 ## Nightly Profile Ownership
 
-The nightly workflow is the owner for long-running diagnostics and research
-health evidence. It runs from the assembled jar under the Nix environment, not
-from ad hoc local classpaths.
+The nightly workflow is the owner for long-running diagnostics, research health
+evidence, and the compact health verdict derived from those artifacts. It runs
+from the assembled jar under the Nix environment, not from ad hoc local
+classpaths.
 
 | Profile | Trigger | Current intent | Typical interpretation |
 | --- | --- | --- | --- |
@@ -61,7 +63,10 @@ from ad hoc local classpaths.
 The profile definitions and per-step semantic classifications live in
 `NightlyDiagnosticsProfileRunner.Profiles` and are documented in
 [nightly-diagnostics.md](nightly-diagnostics.md). Every nightly manifest records
-each step's classification and failure policy. Comparison semantics live in
+each step's classification and failure policy. `NightlyHealthSummary` then
+post-processes existing artifacts into `health-summary.json` and
+`health-summary.md`; it is the current owner of thresholded nightly verdicts.
+Comparison semantics live in
 [nightly-baseline-comparison.md](nightly-baseline-comparison.md).
 
 ## Normal, Stress, Exploratory, And Benchmark Semantics
@@ -70,7 +75,7 @@ Validation results must be interpreted by profile class:
 
 | Class | Meaning | Failure policy |
 | --- | --- | --- |
-| Normal validation | Intended baseline path for the model's current operational horizon | Hard accounting/runtime failures fail; normal-path bank failure or impossible stock states should fail once encoded |
+| Normal validation | Intended baseline path for the model's current operational horizon | Hard accounting/runtime failures fail; encoded normal-path bank failures, artifact gaps, impossible ratios, and material accounting residuals fail through integration gates or nightly health summary |
 | Stress validation | Deliberately adverse assumptions used to test failure channels | Accounting/runtime failures fail; expected economic stress outcomes are reported with stress semantics |
 | Exploratory diagnostics | Research probes without stable thresholds | Report-only unless a hard invariant is breached |
 | Benchmark | Snapshot or balance-sheet evidence used for review/calibration | Fail malformed output or hard accounting errors; economic deltas require explicit thresholds |
@@ -95,7 +100,7 @@ Use this routing rule before adding a new check:
 | Long Monte Carlo, scenario, robustness, diagnostic export validation | Nightly diagnostics profile | PR unit tests |
 | Stress/failure-channel experiments | Stress/exploratory nightly class | Normal-validation gate |
 | Hot-path timing or allocation visibility | Profiling workflow/telemetry artifacts | Correctness unit tests |
-| Thresholded nightly health summary | Nightly comparison/health layer | Diagnostic exporters themselves |
+| Thresholded nightly health summary | `NightlyHealthSummary` and docs/nightly comparison contract | Diagnostic exporters themselves |
 
 ## Promotion Policy
 
@@ -106,6 +111,8 @@ A check can become a hard gate only when the contract is clear:
 - calibration and research metrics require a written threshold rationale before
   they can fail CI;
 - stress-profile findings must not mask normal-profile health;
+- health-summary hard thresholds must reuse existing nightly artifacts instead
+  of launching another simulation path;
 - profiling budgets should start as warnings and become hard gates only for
   low-noise metrics tied to commit/profile metadata.
 
