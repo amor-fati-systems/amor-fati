@@ -285,6 +285,7 @@ object SfcSymbolicMatrices:
             FlowMechanism.GovBondPrimaryMarket,
             FlowMechanism.GovBondForeignPurchase,
             FlowMechanism.NbpQeGovBondPurchase,
+            FlowMechanism.PpkBondPurchase,
             FlowMechanism.InsuranceGovBondPurchase,
             FlowMechanism.TfiGovBondPurchase,
             FlowMechanism.QuasiFiscalBondIssuance,

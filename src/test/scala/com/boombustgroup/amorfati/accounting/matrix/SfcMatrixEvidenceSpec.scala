@@ -4,6 +4,7 @@ import com.boombustgroup.amorfati.accounting.matrix.SfcMatrixEvidence.*
 import com.boombustgroup.amorfati.accounting.Sfc
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.flows.FlowMechanism
+import com.boombustgroup.amorfati.engine.ledger.RuntimeMechanismSurvivability
 import com.boombustgroup.ledger.{AssetType, BatchedFlow, EntitySector}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -210,6 +211,26 @@ class SfcMatrixEvidenceSpec extends AnyFlatSpec with Matchers:
     bundle.metadata.sfcStatus shouldBe "pass"
     bundle.metadata.matrixStatus shouldBe "pass"
     bundle.validation.isValid shouldBe true
+  }
+
+  "FlowMechanismSemantics" should "cover every emitted mechanism with audit metadata" in {
+    val rows = FlowMechanismSemantics.rows
+
+    rows.map(_.mechanism).toSet shouldBe FlowMechanism.emittedRuntimeMechanisms
+    rows.map(_.mechanism.toInt).distinct should have size rows.size
+    all(rows.map(_.flowFamily.trim.nonEmpty)) shouldBe true
+    all(rows.map(_.expectedTopology.trim.nonEmpty)) shouldBe true
+    all(rows.map(_.assetClass.trim.nonEmpty)) shouldBe true
+    all(rows.map(_.sfcImpact.trim.nonEmpty)) shouldBe true
+    all(rows.map(_.coverage.trim.nonEmpty)) shouldBe true
+
+    val bankCapital = rows.find(_.mechanism == FlowMechanism.BankNplLoss).get
+    bankCapital.sfcImpact should include("BankCapital")
+    bankCapital.survivability shouldBe RuntimeMechanismSurvivability.Classification.UnsupportedOrMetricOnly
+
+    val backstop = rows.find(_.mechanism == FlowMechanism.BankStandingFacilityBackstop).get
+    backstop.survivability shouldBe RuntimeMechanismSurvivability.Classification.UnsupportedOrMetricOnly
+    backstop.assetClass should include("StandingFacility")
   }
 
   "StockFlowReconciliationEvidence" should "render exact identity rows from independent semantic flow channels" in {

@@ -28,6 +28,8 @@ class SfcMatrixRenderersSpec extends AnyFlatSpec with Matchers:
       "symbolic-tfm.md",
       "matrix-mapping.tex",
       "matrix-mapping.md",
+      "flow-mechanism-semantics.tex",
+      "flow-mechanism-semantics.md",
       "stock-flow-reconciliation.tex",
       "stock-flow-reconciliation.md",
     )
@@ -40,6 +42,10 @@ class SfcMatrixRenderersSpec extends AnyFlatSpec with Matchers:
     byName("matrix-mapping.md") should include("Demand deposits")
     byName("matrix-mapping.md") should include("Household consumption")
     byName("matrix-mapping.md") should include("Equity revaluation [id: 57]")
+    byName("flow-mechanism-semantics.md") should include("114 runtime-emitted `FlowMechanism` entries")
+    byName("flow-mechanism-semantics.md") should include("Bank firm-loan interest")
+    byName("flow-mechanism-semantics.md") should include("BankCapital SFC identity")
+    byName("flow-mechanism-semantics.tex") should include("\\begin{longtable}")
     byName("stock-flow-reconciliation.md") should include("Net foreign assets")
     byName("stock-flow-reconciliation.md") should include("FX valuation")
     byName("stock-flow-reconciliation.tex") should include("\\begin{longtable}")

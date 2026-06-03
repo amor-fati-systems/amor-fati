@@ -7,7 +7,9 @@ an executed deterministic simulation step:
 - a symbolic Transactions Flow Matrix (TFM);
 - a Stock-Flow Reconciliation and Revaluation Evidence table;
 - a mapping from symbolic rows to runtime `AssetType` and `FlowMechanism`
-  concepts.
+  concepts;
+- a per-mechanism semantic coverage map for every runtime-emitted
+  `FlowMechanism`.
 
 The matrices are intentionally symbolic. They are meant to look like the tables
 used in SFC papers and reports.
@@ -37,6 +39,8 @@ does not dirty the repository. The output set is:
 - `stock-flow-reconciliation.md`
 - `matrix-mapping.tex`
 - `matrix-mapping.md`
+- `flow-mechanism-semantics.tex`
+- `flow-mechanism-semantics.md`
 
 The repository also keeps a canonical Markdown snapshot under
 `docs/sfc-matrix-artifacts/`. Refresh it with:
@@ -65,12 +69,14 @@ The export still executes the deterministic runtime before writing artifacts:
    row sums, stock-flow reconciliation, and the underlying `Sfc.validate`
    status.
 5. Render symbolic Balance Sheet Matrix, symbolic Transactions Flow Matrix,
-   Stock-Flow Reconciliation and Revaluation Evidence, and the mapping table
-   for the selected run.
+   Stock-Flow Reconciliation and Revaluation Evidence, the symbolic-row mapping
+   table, and the flow-mechanism semantics map for the selected run.
 
 The symbolic matrix definitions live in `SfcSymbolicMatrices`. The registry in
 `SfcMatrixRegistry` fixes sector metadata, instrument metadata, mechanism
-labels, LaTeX symbols, and row coverage policy.
+labels, LaTeX symbols, and row coverage policy. `FlowMechanismSemantics`
+composes that registry with `RuntimeMechanismSurvivability` and test/diagnostic
+ownership so every runtime `FlowMechanism` has one reviewer-facing audit row.
 
 ## Sign Conventions
 
@@ -169,5 +175,10 @@ balancing rows.
 - `stock-flow-reconciliation.*` contains exact SFC identity evidence with
   expected, actual, residual, status, and runtime channels.
 - `matrix-mapping.*` links each symbolic row to runtime assets and mechanisms.
+- `flow-mechanism-semantics.*` links every runtime mechanism to its family,
+  topology, asset class, SFC/reconciliation impact, survivability, and
+  test/diagnostic coverage.
 - `matrix-mapping.tex` is included with `\usepackage{longtable}`.
+- `flow-mechanism-semantics.tex` is included with
+  `\usepackage{longtable}`.
 - `stock-flow-reconciliation.tex` is included with `\usepackage{longtable}`.

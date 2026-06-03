@@ -50,10 +50,13 @@ object SfcMatrixRenderers:
     val mappingArtifacts = formats.map: format =>
       RenderedArtifact(s"matrix-mapping.${format.extension}", renderMapping(bundle.metadata, format))
 
+    val mechanismArtifacts = formats.map: format =>
+      RenderedArtifact(s"flow-mechanism-semantics.${format.extension}", renderFlowMechanismSemantics(bundle.metadata, format))
+
     val reconciliationArtifacts = formats.map: format =>
       RenderedArtifact(s"stock-flow-reconciliation.${format.extension}", renderReconciliation(bundle, format))
 
-    matrixArtifacts ++ mappingArtifacts ++ reconciliationArtifacts
+    matrixArtifacts ++ mappingArtifacts ++ mechanismArtifacts ++ reconciliationArtifacts
 
   def writeSymbolicBundle(
       bundle: MatrixEvidenceBundle,
@@ -172,6 +175,91 @@ object SfcMatrixRenderers:
       rows,
     )
 
+  private def renderFlowMechanismSemantics(metadata: MatrixMetadata, format: OutputFormat): String =
+    format match
+      case OutputFormat.Latex    => renderFlowMechanismSemanticsLatex(metadata)
+      case OutputFormat.Markdown => renderFlowMechanismSemanticsMarkdown(metadata)
+
+  private def renderFlowMechanismSemanticsLatex(metadata: MatrixMetadata): String =
+    val header = Vector(
+      "ID",
+      "Mechanism",
+      "Family",
+      "Topology",
+      "Asset class",
+      "Matrix rows",
+      "Survivability",
+      "SFC / reconciliation impact",
+      "Coverage",
+    ).map(escapeLatex).mkString(" & ")
+    val body   = FlowMechanismSemantics.rows.map: row =>
+      Vector(
+        escapeLatex(row.mechanism.toInt.toString),
+        escapeLatex(row.label),
+        escapeLatex(row.flowFamily),
+        escapeLatex(row.expectedTopology),
+        escapeLatex(row.assetClass),
+        latexTextList(symbolicRows(row)),
+        escapeLatex(row.survivability.toString),
+        escapeLatex(row.sfcImpact),
+        escapeLatex(row.coverage),
+      ).mkString(" & ") + " \\\\"
+
+    s"""% schema=${metadata.schemaVersion} seed=${metadata.seed} month=${metadata.executionMonth} commit=${escapeLatex(
+        metadata.commit,
+      )} sfc=${metadata.sfcStatus} matrix=${metadata.matrixStatus} output=flow-mechanism-semantics
+       |% requires \\usepackage{longtable}
+       |\\begingroup
+       |\\scriptsize
+       |\\setlength{\\tabcolsep}{2pt}
+       |\\renewcommand{\\arraystretch}{1.12}
+       |\\begin{longtable}{p{0.03\\linewidth}p{0.12\\linewidth}p{0.10\\linewidth}p{0.15\\linewidth}p{0.12\\linewidth}p{0.11\\linewidth}p{0.08\\linewidth}p{0.17\\linewidth}p{0.13\\linewidth}}
+       |$header \\\\
+       |\\hline
+       |\\endfirsthead
+       |$header \\\\
+       |\\hline
+       |\\endhead
+       |${body.mkString("\n")}
+       |\\end{longtable}
+       |\\endgroup
+       |""".stripMargin
+
+  private def renderFlowMechanismSemanticsMarkdown(metadata: MatrixMetadata): String =
+    val rows = FlowMechanismSemantics.rows.map: row =>
+      Vector(
+        row.mechanism.toInt.toString,
+        row.label,
+        row.flowFamily,
+        row.expectedTopology,
+        row.assetClass,
+        symbolicRows(row).mkString("<br>"),
+        row.survivability.toString,
+        row.sfcImpact,
+        row.coverage,
+      )
+
+    renderMarkdownTable(
+      s"""<!-- schema=${metadata.schemaVersion} seed=${metadata.seed} month=${metadata.executionMonth} commit=${metadata.commit} sfc=${metadata.sfcStatus} matrix=${metadata.matrixStatus} output=flow-mechanism-semantics -->
+         |
+         |# Flow Mechanism Semantics
+         |
+         |Every one of the ${FlowMechanismSemantics.rows.size} runtime-emitted `FlowMechanism` entries appears exactly once in this table. The map composes `FlowMechanism`, `SfcMatrixRegistry`, `SfcSymbolicMatrices`, `RuntimeMechanismSurvivability`, and existing test/diagnostic ownership into one reviewer-facing audit surface.
+         |""".stripMargin,
+      Vector(
+        "ID",
+        "Mechanism",
+        "Family",
+        "Topology",
+        "Asset class",
+        "Matrix rows",
+        "Survivability",
+        "SFC / reconciliation impact",
+        "Coverage",
+      ),
+      rows,
+    )
+
   private def renderReconciliation(bundle: MatrixEvidenceBundle, format: OutputFormat): String =
     format match
       case OutputFormat.Latex    => renderReconciliationLatex(bundle)
@@ -262,6 +350,9 @@ object SfcMatrixRenderers:
   private def reconciliationChannels(row: StockFlowReconciliationCell): Vector[String] =
     val channels = (row.assets.map(assetLabel) ++ row.mechanisms.map(mechanismLabel)).distinct
     if channels.nonEmpty then channels else Vector("No first-class runtime asset or mechanism")
+
+  private def symbolicRows(row: FlowMechanismSemantics.Row): Vector[String] =
+    if row.symbolicRows.nonEmpty then row.symbolicRows else Vector("No symbolic row; see SFC / reconciliation impact")
 
   private def formatAmountRaw(value: Long): String =
     val scale = 10000L
