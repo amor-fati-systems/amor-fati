@@ -12,7 +12,7 @@ import java.nio.file.{Files, Path}
 import java.security.MessageDigest
 import java.lang.management.ManagementFactory
 import java.time.format.DateTimeFormatter
-import java.time.{Duration, Instant, ZoneOffset}
+import java.time.{Instant, ZoneOffset}
 import java.util.Locale
 import scala.jdk.CollectionConverters.*
 import scala.util.{Try, Using}
@@ -362,16 +362,22 @@ object NightlyDiagnosticsProfileRunner:
       stepResult   <- ZIO
         .foreachDiscard(steps): step =>
           for
-            started   <- Clock.instant
-            before    <- ZIO.succeed(StepRuntimeCounters.capture())
-            outcome   <- step.run(ctx).exit
-            finished  <- Clock.instant
-            after     <- ZIO.succeed(StepRuntimeCounters.capture())
-            paths      = outcome match
+            started     <- Clock.instant
+            startNano   <- ZIO.succeed(System.nanoTime())
+            before      <- ZIO.succeed(StepRuntimeCounters.capture())
+            outcome     <- step.run(ctx).exit
+            endNano     <- ZIO.succeed(System.nanoTime())
+            finished    <- Clock.instant
+            after       <- ZIO.succeed(StepRuntimeCounters.capture())
+            elapsedNanos = math.max(0L, endNano - startNano)
+            paths        = outcome match
               case Exit.Success(paths) => paths
               case Exit.Failure(_)     => Vector.empty
-            telemetry <- collectStepTelemetry(ctx, step, started, finished, before, after, paths)
-            _         <- outcome match
+            stepError    = outcome match
+              case Exit.Success(_)     => None
+              case Exit.Failure(cause) => Some(renderCause(step.id, cause))
+            telemetry   <- collectStepTelemetry(ctx, step, elapsedNanos, before, after, paths, stepError)
+            _           <- outcome match
               case Exit.Success(paths) =>
                 val done = step.completed(ctx, started, finished, paths, Some(telemetry))
                 for
@@ -380,7 +386,7 @@ object NightlyDiagnosticsProfileRunner:
                   _       <- writeManifest(ctx, mergeSteps(steps, current, None, ctx), "RUNNING", None, None)
                 yield ()
               case Exit.Failure(cause) =>
-                val err = renderCause(step.id, cause)
+                val err = stepError.getOrElse(renderCause(step.id, cause))
                 failedRef.set(Some(step.failed(ctx, started, finished, err, Some(telemetry)))) *>
                   ZIO.failCause(cause)
           yield ()
@@ -423,36 +429,32 @@ object NightlyDiagnosticsProfileRunner:
   private def collectStepTelemetry(
       ctx: RunContext,
       step: DiagnosticStep,
-      startedAt: Instant,
-      finishedAt: Instant,
+      elapsedNanos: Long,
       before: StepRuntimeCounters,
       after: StepRuntimeCounters,
       artifacts: Vector[Path],
+      stepError: Option[String],
   ): ZIO[Any, Nothing, StepTelemetry] =
     ZIO
-      .attemptBlocking(collectStepTelemetryBlocking(ctx, step, startedAt, finishedAt, before, after, artifacts))
+      .attemptBlocking(collectStepTelemetryBlocking(ctx, step, elapsedNanos, before, after, artifacts, stepError))
       .catchAll: err =>
-        ZIO.succeed(fallbackStepTelemetry(step, startedAt, finishedAt, before, after, Some(message(err))))
+        ZIO.succeed(fallbackStepTelemetry(step, elapsedNanos, before, after, combineCollectionErrors(stepError, Some(message(err)))))
 
   private def collectStepTelemetryBlocking(
       ctx: RunContext,
       step: DiagnosticStep,
-      startedAt: Instant,
-      finishedAt: Instant,
+      elapsedNanos: Long,
       before: StepRuntimeCounters,
       after: StepRuntimeCounters,
       artifacts: Vector[Path],
+      stepError: Option[String],
   ): StepTelemetry =
-    val durationMillis       = math.max(0L, Duration.between(startedAt, finishedAt).toMillis)
+    val durationMillis       = durationMillisFromNanos(elapsedNanos)
     val seedMonths           = for
       seeds  <- step.seeds
       months <- step.months
     yield seeds.toLong * months.toLong
-    val seedMonthsPerSecond  =
-      seedMonths
-        .filter(_ > 0)
-        .flatMap: value =>
-          Option.when(durationMillis > 0)(round6(BigDecimal(value) * BigDecimal(1000) / BigDecimal(durationMillis)))
+    val seedMonthsPerSecond  = throughputPerSecond(seedMonths, elapsedNanos)
     val artifactPaths        = (artifacts :+ step.outputDir(ctx)).distinct
     val artifactTelemetry    = collectArtifactTelemetry(artifactPaths)
     val (artifactStats, err) = artifactTelemetry match
@@ -467,18 +469,17 @@ object NightlyDiagnosticsProfileRunner:
       memoryBefore = before.memory,
       memoryAfter = after.memory,
       gc = gcDelta(before.gc, after.gc),
-      collectionError = err,
+      collectionError = combineCollectionErrors(stepError, err),
     )
 
   private def fallbackStepTelemetry(
       step: DiagnosticStep,
-      startedAt: Instant,
-      finishedAt: Instant,
+      elapsedNanos: Long,
       before: StepRuntimeCounters,
       after: StepRuntimeCounters,
       collectionError: Option[String],
   ): StepTelemetry =
-    val durationMillis = math.max(0L, Duration.between(startedAt, finishedAt).toMillis)
+    val durationMillis = durationMillisFromNanos(elapsedNanos)
     val seedMonths     = for
       seeds  <- step.seeds
       months <- step.months
@@ -486,7 +487,7 @@ object NightlyDiagnosticsProfileRunner:
     StepTelemetry(
       durationMillis = durationMillis,
       seedMonths = seedMonths,
-      seedMonthsPerSecond = seedMonths.filter(_ > 0).flatMap(value => Option.when(durationMillis > 0)(round6(BigDecimal(value) * 1000 / durationMillis))),
+      seedMonthsPerSecond = throughputPerSecond(seedMonths, elapsedNanos),
       artifacts = ArtifactTelemetry(fileCount = 0L, bytes = 0L, csvFileCount = 0L, csvRowCount = 0L),
       memoryBefore = before.memory,
       memoryAfter = after.memory,
@@ -1143,6 +1144,20 @@ object NightlyDiagnosticsProfileRunner:
   private def round6(value: BigDecimal): BigDecimal =
     value.setScale(6, BigDecimal.RoundingMode.HALF_UP)
 
+  private def durationMillisFromNanos(elapsedNanos: Long): Long =
+    math.max(0L, elapsedNanos) / NanosPerMillisecond
+
+  private def throughputPerSecond(seedMonths: Option[Long], elapsedNanos: Long): Option[BigDecimal] =
+    val safeElapsedNanos = math.max(0L, elapsedNanos)
+    seedMonths
+      .filter(_ > 0)
+      .flatMap: value =>
+        Option.when(safeElapsedNanos > 0L)(round6(BigDecimal(value) * NanosPerSecond / BigDecimal(safeElapsedNanos)))
+
+  private def combineCollectionErrors(first: Option[String], second: Option[String]): Option[String] =
+    val messages = Vector(first, second).flatten.map(_.trim).filter(_.nonEmpty)
+    Option.when(messages.nonEmpty)(messages.mkString("; "))
+
   private def knownFlag(flag: String): Boolean =
     flag == "--profile" || flag == "--out" || flag == "--run-id" || flag == "--jar-path" || flag == "--jar"
 
@@ -1155,6 +1170,9 @@ object NightlyDiagnosticsProfileRunner:
 
   private def message(err: Throwable): String =
     Option(err.getMessage).filter(_.trim.nonEmpty).getOrElse(err.getClass.getSimpleName)
+
+  private val NanosPerSecond: BigDecimal = BigDecimal(1000000000L)
+  private val NanosPerMillisecond: Long  = 1000000L
 
   private val usage: String =
     """Usage: NightlyDiagnosticsProfileRunner [--profile smoke|nightly|extended] [--out DIR] [--run-id ID] [--jar-path PATH] [--dry-run] [--allow-dirty] [--require-main]
