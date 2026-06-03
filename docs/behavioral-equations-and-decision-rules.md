@@ -53,6 +53,8 @@ Those CSV outputs are the primary numeric evidence surface for these rules.
 
 One model month follows the deterministic same-month economics pipeline below,
 then emits runtime ledger flows and validates SFC identities.
+The formal `X_t -> X_tau` transition contract is documented in
+[monthly-transition-function.md](monthly-transition-function.md).
 
 | Module | Rule surface |
 | --- | --- |

@@ -12,6 +12,7 @@ stochasticity, SFC-mapping, calibration, or paper-facing overview material.
 
 | Source | Role |
 | --- | --- |
+| [Monthly transition function](monthly-transition-function.md) | Formal `X_t -> X_tau` transition, randomness contract, phase timeline, emitted evidence, and month-step invariants. |
 | [ODD / ODD+D model documentation](odd-model-documentation.md) | Purpose, entities, state variables, scales, scheduling, initialization, and decision-making context. |
 | [Behavioral equations and decision rules](behavioral-equations-and-decision-rules.md) | Implemented household, firm, bank, fiscal, monetary, external, insurance, NBFI, quasi-fiscal, and JST rule surfaces. |
 | [SFC matrix evidence](sfc-matrix-evidence.md) | Balance Sheet Matrix, Transactions Flow Matrix, stock-flow reconciliation evidence, sign conventions, and generated matrix artifacts. |
@@ -74,13 +75,14 @@ where:
 The temporal order is:
 
 ```text
-pre boundary -> same-month economics -> flow plan -> runtime ledger execution
--> SFC validation -> closed month -> next-pre boundary
+pre boundary -> same-month economics -> same-month boundary views
+-> semantic closed month and seed extraction -> flow emission
+-> runtime ledger execution -> next-pre materialization -> SFC validation gate
 ```
 
-This order is described operationally in
-`src/main/scala/com/boombustgroup/amorfati/engine/README.md` and is the target
-surface for the monthly-transition ticket.
+This order is formalized in [monthly-transition-function.md](monthly-transition-function.md)
+and described operationally in
+`src/main/scala/com/boombustgroup/amorfati/engine/README.md`.
 
 ## Full State Vector
 
