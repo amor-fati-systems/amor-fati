@@ -28,7 +28,9 @@ GitHub Actions workflows:
 Triggers:
 
 - `workflow_dispatch`: maintainers can profile the selected workflow's fixed
-  profile with `profile` or `default` JFR settings.
+  profile with `profile` or `default` JFR settings. Dispatching with `--ref`
+  checks out that branch so profiling workflow changes can be validated before
+  merge.
 - `schedule`: each profile runs weekly against `HEAD` of `main`, staggered by
   profile.
 

@@ -71,6 +71,8 @@ reports under `performance/`. These reports compare the current manifest to the
 newest same-profile baseline artifact on `main` when one is available. The
 policy is documented in
 [performance-regression-budgets.md](performance-regression-budgets.md).
+Manual workflow dispatch can run against a feature branch for pre-merge
+validation; scheduled diagnostics remain pinned to clean `main`.
 
 ## Jar / Nix Execution
 

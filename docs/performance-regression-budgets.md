@@ -63,6 +63,20 @@ bank stress semantics in #718 are resolved. The extended profile currently
 includes stress paths that can terminate before later steps run, which makes
 step-to-step performance comparisons misleading.
 
+## Branch Validation
+
+Manual workflow dispatch can validate a feature branch before merge:
+
+```bash
+gh workflow run diagnostics-smoke.yml --ref <branch>
+gh workflow run hot-path-profiling-smoke.yml --ref <branch> -f jfr_settings=profile
+```
+
+Scheduled runs always check out `main` and pass `--require-main` to the
+diagnostics runner. Manual runs check out the dispatched branch and do not pass
+`--require-main`, so branch PRs can verify workflow wiring and inspect the
+generated performance reports before merging.
+
 ## Promotion Policy
 
 A metric can become a hard gate only after:

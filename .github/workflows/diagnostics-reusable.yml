@@ -9,6 +9,12 @@ on:
       run_kind:
         required: true
         type: string
+      checkout_ref:
+        required: true
+        type: string
+      require_main:
+        required: true
+        type: boolean
 
 permissions:
   contents: read
@@ -26,13 +32,15 @@ jobs:
     env:
       PROFILE: ${{ inputs.profile }}
       RUN_KIND: ${{ inputs.run_kind }}
+      CHECKOUT_REF: ${{ inputs.checkout_ref }}
+      REQUIRE_MAIN: ${{ inputs.require_main }}
       OUT_DIR: target/nightly-diagnostics
       JAR_PATH: target/scala-3.8.2/amor-fati.jar
     steps:
-      - name: Check out HEAD of main
+      - name: Check out diagnostics ref
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
-          ref: main
+          ref: ${{ inputs.checkout_ref }}
           fetch-depth: 0
           submodules: recursive
           persist-credentials: false
@@ -77,6 +85,8 @@ jobs:
             echo
             echo "- Profile: \`${PROFILE}\`"
             echo "- Commit: \`${sha}\`"
+            echo "- Checkout ref: \`${CHECKOUT_REF}\`"
+            echo "- Require main: \`${REQUIRE_MAIN}\`"
             echo "- Run id: \`${run_id}\`"
             echo "- Output root: \`${run_root}\`"
             echo "- Artifact: \`${artifact_name}\`"
@@ -113,18 +123,23 @@ jobs:
           set -euo pipefail
 
           mkdir -p "${OUT_DIR}"
-          export GITHUB_REF_NAME=main
+          export GITHUB_REF_NAME="${CHECKOUT_REF}"
           export GITHUB_SHA="${{ steps.meta.outputs.sha }}"
+
+          runner_args=(
+            com.boombustgroup.amorfati.diagnostics.NightlyDiagnosticsProfileRunner
+            --profile "${PROFILE}"
+            --out "${OUT_DIR}"
+            --run-id "${{ steps.meta.outputs.run_id }}"
+            --jar-path "${JAR_PATH}"
+          )
+          if [[ "${REQUIRE_MAIN}" == "true" ]]; then
+            runner_args+=(--require-main)
+          fi
 
           start_seconds="$(date +%s)"
           set +e
-          nix develop --command java -cp "${JAR_PATH}" \
-            com.boombustgroup.amorfati.diagnostics.NightlyDiagnosticsProfileRunner \
-            --profile "${PROFILE}" \
-            --out "${OUT_DIR}" \
-            --run-id "${{ steps.meta.outputs.run_id }}" \
-            --jar-path "${JAR_PATH}" \
-            --require-main 2>&1 | tee "${OUT_DIR}/diagnostics.log"
+          nix develop --command java -cp "${JAR_PATH}" "${runner_args[@]}" 2>&1 | tee "${OUT_DIR}/diagnostics.log"
           exit_code="${PIPESTATUS[0]}"
           set -e
           end_seconds="$(date +%s)"

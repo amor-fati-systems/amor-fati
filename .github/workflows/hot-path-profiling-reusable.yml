@@ -13,6 +13,12 @@ on:
       run_kind:
         required: true
         type: string
+      checkout_ref:
+        required: true
+        type: string
+      require_main:
+        required: true
+        type: boolean
 
 permissions:
   contents: read
@@ -31,13 +37,15 @@ jobs:
       PROFILE: ${{ inputs.profile }}
       JFR_SETTINGS: ${{ inputs.jfr_settings }}
       RUN_KIND: ${{ inputs.run_kind }}
+      CHECKOUT_REF: ${{ inputs.checkout_ref }}
+      REQUIRE_MAIN: ${{ inputs.require_main }}
       OUT_DIR: target/hot-path-profiling
       JAR_PATH: target/scala-3.8.2/amor-fati.jar
     steps:
-      - name: Check out HEAD of main
+      - name: Check out profiling ref
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
-          ref: main
+          ref: ${{ inputs.checkout_ref }}
           fetch-depth: 0
           submodules: recursive
           persist-credentials: false
@@ -90,6 +98,8 @@ jobs:
             echo "- Profile: \`${PROFILE}\`"
             echo "- JFR settings: \`${JFR_SETTINGS}\`"
             echo "- Commit: \`${sha}\`"
+            echo "- Checkout ref: \`${CHECKOUT_REF}\`"
+            echo "- Require main: \`${REQUIRE_MAIN}\`"
             echo "- Run id: \`${run_id}\`"
             echo "- Output root: \`${run_root}\`"
             echo "- JFR: \`${jfr_path}\`"
@@ -132,20 +142,26 @@ jobs:
         run: |
           set -euo pipefail
 
-          export GITHUB_REF_NAME=main
+          export GITHUB_REF_NAME="${CHECKOUT_REF}"
           export GITHUB_SHA="${COMMIT_SHA}"
+
+          runner_args=(
+            com.boombustgroup.amorfati.diagnostics.NightlyDiagnosticsProfileRunner
+            --profile "${PROFILE}"
+            --out "${OUT_DIR}"
+            --run-id "${RUN_ID}"
+            --jar-path "${JAR_PATH}"
+          )
+          if [[ "${REQUIRE_MAIN}" == "true" ]]; then
+            runner_args+=(--require-main)
+          fi
 
           start_seconds="$(date +%s)"
           set +e
           nix develop --command java \
             "-XX:StartFlightRecording=filename=${JFR_PATH},settings=${JFR_SETTINGS},dumponexit=true,disk=true" \
             -cp "${JAR_PATH}" \
-            com.boombustgroup.amorfati.diagnostics.NightlyDiagnosticsProfileRunner \
-            --profile "${PROFILE}" \
-            --out "${OUT_DIR}" \
-            --run-id "${RUN_ID}" \
-            --jar-path "${JAR_PATH}" \
-            --require-main 2>&1 | tee "${PROFILING_LOG_PATH}"
+            "${runner_args[@]}" 2>&1 | tee "${PROFILING_LOG_PATH}"
           exit_code="${PIPESTATUS[0]}"
           set -e
           end_seconds="$(date +%s)"
@@ -252,6 +268,8 @@ jobs:
               "workload_duration_seconds": os.environ.get("WORKLOAD_DURATION_SECONDS") or "not-recorded",
               "artifact_name": os.environ.get("ARTIFACT_NAME", "not-created"),
               "retention_days": os.environ.get("RETENTION_DAYS", "not-configured"),
+              "checkout_ref": os.environ.get("CHECKOUT_REF", "unknown"),
+              "require_main": os.environ.get("REQUIRE_MAIN", "false").lower() == "true",
               "warsaw_time": os.environ.get("WARSAW_TIME", "unknown"),
               "created_at_utc": datetime.now(timezone.utc).isoformat(),
               "workflow": "hot-path-profiling",
@@ -270,7 +288,8 @@ jobs:
                   " -cp target/scala-3.8.2/amor-fati.jar "
                   "com.boombustgroup.amorfati.diagnostics.NightlyDiagnosticsProfileRunner "
                   f"--profile {os.environ.get('PROFILE', 'nightly')} --out target/hot-path-profiling "
-                  f"--run-id {os.environ.get('RUN_ID', '')} --jar-path target/scala-3.8.2/amor-fati.jar --require-main"
+                  f"--run-id {os.environ.get('RUN_ID', '')} --jar-path target/scala-3.8.2/amor-fati.jar"
+                  + (" --require-main" if os.environ.get("REQUIRE_MAIN", "false").lower() == "true" else "")
               ),
           }
 

@@ -16,3 +16,5 @@ jobs:
     with:
       profile: nightly
       run_kind: ${{ github.event_name == 'schedule' && 'scheduled' || 'manual' }}
+      checkout_ref: ${{ github.event_name == 'schedule' && 'main' || github.ref_name }}
+      require_main: ${{ github.event_name == 'schedule' }}
