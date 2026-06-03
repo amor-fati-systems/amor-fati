@@ -148,19 +148,34 @@ summary files have been written. Exploratory and stress steps remain visible in
 completion metrics, but their economic outcomes are not reclassified as
 scheduled normal-path failures.
 
-## Scheduled Workflow
+## Scheduled Workflows
 
-The GitHub Actions workflow `.github/workflows/nightly-diagnostics.yml` runs the
-same jar/Nix path. It is intentionally not attached to `pull_request`, so long
-diagnostics do not block normal PR feedback.
+The GitHub Actions workflows below run the same jar/Nix path:
+
+```text
+.github/workflows/diagnostics-smoke.yml
+.github/workflows/diagnostics-nightly.yml
+.github/workflows/diagnostics-extended.yml
+```
+
+They delegate to:
+
+```text
+.github/workflows/diagnostics-reusable.yml
+```
+
+This keeps the Actions UI and README badges profile-specific without copying
+the build/run/upload implementation. These workflows are intentionally not
+attached to `pull_request`, so long diagnostics do not block normal PR
+feedback.
 
 Triggers:
 
-- `schedule`: runs the `nightly` profile against `HEAD` of `main`
-- `workflow_dispatch`: lets maintainers manually select `smoke`, `nightly`, or
-  `extended`
+- `schedule`: runs each fixed profile against `HEAD` of `main`
+- `workflow_dispatch`: lets maintainers manually launch the selected fixed
+  profile
 
-The workflow checks out `main`, builds the assembled jar with:
+Each workflow checks out `main`, builds the assembled jar with:
 
 ```bash
 nix develop --command sbt assembly
@@ -178,11 +193,18 @@ nix develop --command java -cp target/scala-3.8.2/amor-fati.jar \
   --require-main
 ```
 
-The scheduled workflow uses a single GitHub cron, `0 0 * * *` UTC. During CEST
-this runs at 02:00 Europe/Warsaw. GitHub cron does not track local daylight
-saving time, so maintainers should adjust the cron if exact 02:00 local time is
-required during CET months. A single cron is intentional because it avoids
-duplicate scheduled workflow runs in the Actions UI.
+Scheduled workflows use profile-specific crons:
+
+| Profile | Workflow | Schedule |
+| --- | --- | --- |
+| `smoke` | `diagnostics-smoke.yml` | daily `23:00` UTC |
+| `nightly` | `diagnostics-nightly.yml` | daily `00:00` UTC |
+| `extended` | `diagnostics-extended.yml` | weekly, Saturday `01:00` UTC |
+
+During CEST, these correspond to 01:00, 02:00, and 03:00 Europe/Warsaw
+respectively. GitHub cron does not track local daylight saving time, so
+maintainers should adjust the cron if exact local wall-clock timing is required
+during CET months.
 
 The job summary reports the profile, commit SHA, run id, runtime, manifest path,
 health-summary status, terminal status, build/runtime exit codes, and failure

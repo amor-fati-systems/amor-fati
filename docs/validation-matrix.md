@@ -30,7 +30,7 @@ duplicating those layers.
 | Heavy unit tests | PR and push | `.github/workflows/ci.yml` `test` job | `nix develop --command sbt -DamorFati.includeHeavyTests=true "root / Test / testOnly * -- -n com.boombustgroup.amorfati.tags.Heavy"` | Selected expensive unit/property checks that should not run under coverage | Hard fail on broken heavy invariant |
 | Integration smoke | PR and push | `.github/workflows/ci.yml` `test` job | `nix develop --command sbt "integrationTests / Test / test"` | End-to-end smoke over the root project and integration-test project | Hard fail on integration-level regression |
 | Coverage upload | PR and push | `.github/workflows/ci.yml` `test` job | `codecov/codecov-action` | Publish non-heavy unit coverage | Non-blocking upload; CI does not fail if Codecov upload fails |
-| Nightly diagnostics | Scheduled daily on `main`; manual dispatch | `.github/workflows/nightly-diagnostics.yml` | Build `sbt assembly` under Nix, then run `NightlyDiagnosticsProfileRunner` from the jar | Long validation and diagnostics artifacts over `smoke`, `nightly`, and `extended` profiles | Hard fail on runner/build failure and hard invariants; economic outcomes are interpreted by profile classification |
+| Nightly diagnostics | Scheduled on `main`; manual dispatch | `.github/workflows/diagnostics-{smoke,nightly,extended}.yml` via reusable diagnostics workflow | Build `sbt assembly` under Nix, then run `NightlyDiagnosticsProfileRunner` from the jar | Long validation and diagnostics artifacts over `smoke`, `nightly`, and `extended` profiles | Hard fail on runner/build failure and hard invariants; economic outcomes are interpreted by profile classification |
 | Nightly health summary | After a non-dry-run diagnostics profile completes | `NightlyHealthSummary` via `NightlyDiagnosticsProfileRunner` | Reuse `run-manifest.json` and baseline Monte Carlo seed CSVs to write `health-summary.json` and `health-summary.md` | Compact machine/human verdict answering whether `main` stayed normal-path healthy overnight | Hard fail on normal-validation threshold breaches; warn/report for soft research signals; do not turn stress/exploratory outcomes into normal-path failures |
 | Nightly performance telemetry | Every diagnostics profile step | `NightlyDiagnosticsProfileRunner` manifest telemetry | Per-step duration, seed-month throughput, artifact size/row counts, and JVM memory/GC observations in `run-manifest.json` | Lightweight regression visibility before heavier profilers exist | Report-only initially; hard performance budgets belong to later baseline/regression work |
 | Manual diagnostics | Local or workflow dispatch | Maintainer | `nix develop --command java -cp target/scala-3.8.2/amor-fati.jar com.boombustgroup.amorfati.diagnostics.NightlyDiagnosticsProfileRunner ...` | Reproduce or inspect profile outputs outside PR CI | Evidence only unless explicitly promoted to a CI/nightly gate |
@@ -57,9 +57,9 @@ environment, not from ad hoc local classpaths.
 
 | Profile | Trigger | Current intent | Typical interpretation |
 | --- | --- | --- | --- |
-| `smoke` | Manual dispatch, local reproduction | Fast profile contract and artifact sanity | Hard invariants only; research metrics are informational |
+| `smoke` | Scheduled daily on `main`, manual dispatch, local reproduction | Fast profile contract and artifact sanity | Hard invariants only; research metrics are informational |
 | `nightly` | Scheduled daily on `main`, manual dispatch | Standard 60-month validation horizon | Hard invariants fail; soft calibration guardrails warn unless promoted |
-| `extended` | Manual dispatch, future weekly use | Wider seed/scenario/diagnostic surface at the current 60-month horizon | Same hard invariants; broader research envelope reporting |
+| `extended` | Scheduled weekly on `main`, manual dispatch | Wider seed/scenario/diagnostic surface at the current 60-month horizon | Same hard invariants; broader research envelope reporting |
 
 The profile definitions and per-step semantic classifications live in
 `NightlyDiagnosticsProfileRunner.Profiles` and are documented in

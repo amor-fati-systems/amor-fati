@@ -1,36 +1,30 @@
-name: Nightly Diagnostics
+name: Diagnostics Reusable
 
 on:
-  schedule:
-    # GitHub cron is UTC; this runs at 02:00 Warsaw during CEST.
-    # A single cron avoids duplicate scheduled workflow runs in the Actions UI.
-    - cron: "0 0 * * *"
-  workflow_dispatch:
+  workflow_call:
     inputs:
       profile:
-        description: "Diagnostics profile to run from the assembled jar"
         required: true
-        default: nightly
-        type: choice
-        options:
-          - smoke
-          - nightly
-          - extended
+        type: string
+      run_kind:
+        required: true
+        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: nightly-diagnostics-${{ github.event_name == 'workflow_dispatch' && inputs.profile || 'nightly' }}
+  group: diagnostics-${{ inputs.profile }}
   cancel-in-progress: false
 
 jobs:
   diagnostics:
-    name: Run ${{ github.event_name == 'workflow_dispatch' && inputs.profile || 'nightly' }} diagnostics
+    name: Run ${{ inputs.profile }} diagnostics
     runs-on: ubuntu-latest
     timeout-minutes: 360
     env:
-      PROFILE: ${{ github.event_name == 'workflow_dispatch' && inputs.profile || 'nightly' }}
+      PROFILE: ${{ inputs.profile }}
+      RUN_KIND: ${{ inputs.run_kind }}
       OUT_DIR: target/nightly-diagnostics
       JAR_PATH: target/scala-3.8.2/amor-fati.jar
     steps:
@@ -53,7 +47,7 @@ jobs:
           sha="$(git rev-parse HEAD)"
           short_sha="$(git rev-parse --short HEAD)"
           warsaw_time="$(TZ=Europe/Warsaw date '+%Y-%m-%d %H:%M:%S %Z')"
-          if [[ "${GITHUB_EVENT_NAME}" == "schedule" ]]; then
+          if [[ "${RUN_KIND}" == "scheduled" ]]; then
             run_id="${PROFILE}-$(date -u +%Y%m%d)-${short_sha}"
           else
             run_id="${PROFILE}-manual-$(date -u +%Y%m%d-%H%M)-${short_sha}"
