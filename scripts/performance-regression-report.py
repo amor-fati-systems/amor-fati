@@ -235,7 +235,7 @@ def build_report(
 
 def render_markdown(report: dict[str, Any]) -> str:
     lines = [
-        "# Performance Regression Report",
+        "### Performance Regression Report",
         "",
         f"- Status: `{report['status']}`",
         f"- Profile: `{report['profile']}`",
