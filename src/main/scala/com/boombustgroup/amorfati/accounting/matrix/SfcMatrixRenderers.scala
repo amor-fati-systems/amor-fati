@@ -244,7 +244,7 @@ object SfcMatrixRenderers:
          |
          |# Flow Mechanism Semantics
          |
-         |Every runtime-emitted `FlowMechanism` appears exactly once in this table. The map composes `FlowMechanism`, `SfcMatrixRegistry`, `SfcSymbolicMatrices`, `RuntimeMechanismSurvivability`, and existing test/diagnostic ownership into one reviewer-facing audit surface.
+         |Every one of the ${FlowMechanismSemantics.rows.size} runtime-emitted `FlowMechanism` entries appears exactly once in this table. The map composes `FlowMechanism`, `SfcMatrixRegistry`, `SfcSymbolicMatrices`, `RuntimeMechanismSurvivability`, and existing test/diagnostic ownership into one reviewer-facing audit surface.
          |""".stripMargin,
       Vector(
         "ID",
