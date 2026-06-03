@@ -1,0 +1,27 @@
+name: Hot-Path Profiling Extended
+
+on:
+  schedule:
+    # GitHub cron is UTC; this runs weekly at 06:00 Warsaw during CEST.
+    - cron: "0 4 * * 0"
+  workflow_dispatch:
+    inputs:
+      jfr_settings:
+        description: "JFR event settings"
+        required: true
+        default: profile
+        type: choice
+        options:
+          - profile
+          - default
+
+permissions:
+  contents: read
+
+jobs:
+  extended:
+    uses: ./.github/workflows/hot-path-profiling-reusable.yml
+    with:
+      profile: extended
+      jfr_settings: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.jfr_settings || 'profile' }}
+      run_kind: ${{ github.event_name == 'schedule' && 'scheduled' || 'manual' }}
