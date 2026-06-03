@@ -174,10 +174,10 @@ Each manifest step carries a `classification` and `failure_policy`:
 
 | Classification | Meaning | Failure Policy |
 | --- | --- | --- |
-| `normal_validation` | Intended baseline-path evidence for the model's current operational horizon | Hard accounting/runtime failures fail; economic failures are interpreted as normal-path engine or calibration alarms |
-| `stress_validation` | Deliberately adverse assumptions used to exercise stress channels | Hard accounting/runtime failures fail; expected stress outcomes are interpreted through stress-channel semantics |
-| `exploratory` | Research probes or comparison surfaces without stable thresholds | Hard accounting/runtime failures fail; economic metrics are report-only until thresholds are explicitly promoted |
-| `benchmark` | Opening balance-sheet or snapshot evidence for review/calibration | Malformed output and hard accounting errors fail; economic deltas require explicit benchmark thresholds |
+| `normal_validation` | Intended baseline-path evidence for the model's current operational horizon | Hard accounting/runtime failures fail; economic failures are interpreted as normal-path engine or calibration alarms. |
+| `stress_validation` | Deliberately adverse assumptions used to exercise stress channels | Hard accounting/runtime failures fail; expected stress outcomes are interpreted through stress-channel semantics. |
+| `exploratory` | Research probes or comparison surfaces without stable thresholds | Hard accounting/runtime failures fail; economic metrics are report-only until thresholds are explicitly promoted. |
+| `benchmark` | Opening balance-sheet or snapshot evidence for review/calibration | Malformed output and hard accounting errors fail; economic deltas require explicit benchmark thresholds. |
 
 Scheduled `nightly` evidence must not silently include stress-only assumptions.
 Stress-channel diagnostics such as bank-failure ablations belong to manual
