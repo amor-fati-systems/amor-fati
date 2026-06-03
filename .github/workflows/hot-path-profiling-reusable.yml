@@ -350,7 +350,7 @@ jobs:
           CURRENT_MANIFEST: ${{ steps.meta.outputs.run_root }}/run-manifest.json
           BASELINE_MANIFEST: ${{ steps.performance_baseline.outputs.manifest }}
           BASELINE_ARTIFACT: ${{ steps.performance_baseline.outputs.artifact_name }}
-          SKIP_REASON: ${{ inputs.profile == 'extended' && 'extended profile remains report-only for performance budgets until #718 resolves all-failed bank stress semantics.' || '' }}
+          SKIP_REASON: ${{ inputs.profile == 'extended' && 'extended profile remains report-only for performance budgets until issue 718 resolves all-failed bank stress semantics.' || '' }}
         run: |
           set -euo pipefail
 
