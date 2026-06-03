@@ -16,6 +16,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: hot-path-profiling-${{ inputs.profile }}
@@ -291,6 +292,71 @@ jobs:
               out.write(f"- Health summary present: `{health_path.is_file()}`\n")
               out.write(f"- Artifact: `{metadata['artifact_name']}`\n")
           PY
+
+      - name: Download performance baseline artifact
+        if: ${{ always() && inputs.profile != 'extended' }}
+        id: performance_baseline
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_PREFIX: amor-fati-hot-path-profiling-hotpath-${{ inputs.profile }}-
+          BASELINE_DIR: target/performance-baseline/hot-path-profiling-${{ inputs.profile }}
+        run: |
+          set -euo pipefail
+
+          selection_json="${BASELINE_DIR}/selection.json"
+          python3 scripts/select-performance-baseline.py \
+            --repo "${GITHUB_REPOSITORY}" \
+            --artifact-prefix "${ARTIFACT_PREFIX}" \
+            --out-json "${selection_json}" \
+            --github-output "${GITHUB_OUTPUT}"
+
+          artifact_name="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("artifact_name", ""))' "${selection_json}")"
+          run_id="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("run_id", ""))' "${selection_json}")"
+          if [[ -n "${artifact_name}" && -n "${run_id}" ]]; then
+            artifact_dir="${BASELINE_DIR}/artifact"
+            rm -rf "${artifact_dir}"
+            mkdir -p "${artifact_dir}"
+            timeout 120s gh run download "${run_id}" --name "${artifact_name}" --dir "${artifact_dir}" || true
+            manifest="$(find "${artifact_dir}" -name run-manifest.json -print -quit)"
+            echo "manifest=${manifest}" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Write performance regression report
+        if: ${{ always() }}
+        shell: bash
+        env:
+          RUN_ROOT: ${{ steps.meta.outputs.run_root }}
+          CURRENT_MANIFEST: ${{ steps.meta.outputs.run_root }}/run-manifest.json
+          BASELINE_MANIFEST: ${{ steps.performance_baseline.outputs.manifest }}
+          BASELINE_ARTIFACT: ${{ steps.performance_baseline.outputs.artifact_name }}
+          SKIP_REASON: ${{ inputs.profile == 'extended' && 'extended profile remains report-only for performance budgets until #718 resolves all-failed bank stress semantics.' || '' }}
+        run: |
+          set -euo pipefail
+
+          report_dir="${RUN_ROOT}/performance"
+          mkdir -p "${report_dir}"
+          args=(
+            --current "${CURRENT_MANIFEST}"
+            --out-json "${report_dir}/performance-regression-report.json"
+            --out-md "${report_dir}/performance-regression-report.md"
+            --profile "${PROFILE}"
+            --source "hot-path-profiling"
+            --baseline-artifact "${BASELINE_ARTIFACT:-}"
+          )
+          if [[ -n "${BASELINE_MANIFEST:-}" ]]; then
+            args+=(--baseline "${BASELINE_MANIFEST}")
+          fi
+          if [[ -n "${SKIP_REASON:-}" ]]; then
+            args+=(--skip-reason "${SKIP_REASON}")
+          fi
+
+          python3 scripts/performance-regression-report.py "${args[@]}"
+          {
+            echo
+            cat "${report_dir}/performance-regression-report.md"
+          } >> "${GITHUB_STEP_SUMMARY}"
 
       - name: Upload profiling artifacts
         if: ${{ always() && steps.meta.outputs.artifact_name != '' }}

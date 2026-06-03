@@ -188,6 +188,7 @@ replication, calibration, validation, and publication work:
 | [Empirical validation report](docs/empirical-validation-report.md) | Workflow for the empirical-validation snapshot: the curated source manifest is the editable input, while generated baseline artifacts live under `docs/empirical-validation/`. |
 | [Engine invariants and economic semantics](docs/engine-invariants-and-semantics.md) | Canonical reviewer-facing index of hard invariants, normal-path expectations, stress/exploratory diagnostics, calibration warnings, known limitations, enforcement points, and coverage. |
 | [Validation matrix and ownership boundaries](docs/validation-matrix.md) | CI, integration-test, generated-output, nightly, stress, and profiling ownership rules so new validation work lands in the right layer. |
+| [Performance regression budgets](docs/performance-regression-budgets.md) | Soft baseline comparisons for diagnostics and profiling telemetry, using existing run manifests without adding duplicate simulations. |
 | [Sensitivity and robustness workflow](docs/sensitivity-robustness-workflow.md) | Seed envelopes and one-at-a-time parameter-sensitivity artifacts generated from the Monte Carlo runner. |
 | [Reproducible scenario registry](docs/scenario-registry.md) | Named policy and shock scenarios with exact parameter deltas from baseline, expected channels, seed/run metadata, and the `scenarioRun` execution path. |
 

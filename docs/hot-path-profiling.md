@@ -11,8 +11,9 @@ Profiling answers where the engine spends time, allocates memory, blocks,
 compiles hot methods, or triggers GC while running representative workloads.
 
 The workflow exists to produce reproducible artifacts after large refactors and
-before introducing performance budgets. Initial results are report-only. Hard
-performance gates belong to a later baseline and regression-budget workflow.
+to feed the soft [performance regression budget](performance-regression-budgets.md)
+reports. Initial results remain report-only. Hard performance gates require a
+documented promotion step.
 
 ## Workflow
 
@@ -112,6 +113,9 @@ The uploaded artifact contains the profile run directory, including:
 - `profiling/profiling.log`: profiled workload stdout/stderr
 - `profiling/profiling-metadata.json`: commit, command, profile, runtime, and
   artifact metadata
+- `performance/performance-regression-report.json` and
+  `performance/performance-regression-report.md`: soft comparison against the
+  newest same-profile baseline artifact on `main`, when available
 - `run-manifest.json`, `health-summary.json`, and `health-summary.md` when the
   diagnostics runner reaches the point where it can write them
 
@@ -142,8 +146,12 @@ Profiling evidence is initially report-only:
 - It does not mean performance is good.
 - It does not mean the economic path is calibrated.
 
-Performance budgets should be introduced only after several comparable runs
-exist for the same profile, commit metadata, JVM, and machine class.
+Soft performance-budget reports compare the current manifest to the newest
+same-profile baseline artifact on `main`. They warn about large step-level
+changes in duration, seed-month throughput, post-step heap use, and GC time.
+They do not fail the workflow. Hard gates can be introduced only after several
+comparable runs exist for the same profile, commit metadata, JVM, and machine
+class.
 
 ## Relationship To Other Validation Layers
 
@@ -153,3 +161,6 @@ exist for the same profile, commit metadata, JVM, and machine class.
 - Nightly per-step telemetry owns lightweight step-level runtime visibility.
 - Hot-path profiling owns low-frequency JFR evidence for runtime and allocation
   investigation.
+- [Performance regression budgets](performance-regression-budgets.md) own the
+  soft manifest-to-manifest comparison policy and the criteria for promoting a
+  metric to a hard gate.

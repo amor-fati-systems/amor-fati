@@ -66,6 +66,12 @@ Every non-dry-run profile should also include compact health summaries:
   and hard-failure counts
 - `health-summary.md`: reviewer-facing table with the same verdict and metrics
 
+GitHub Actions diagnostics runs additionally write soft performance-budget
+reports under `performance/`. These reports compare the current manifest to the
+newest same-profile baseline artifact on `main` when one is available. The
+policy is documented in
+[performance-regression-budgets.md](performance-regression-budgets.md).
+
 ## Jar / Nix Execution
 
 Build the assembled jar from the project Nix environment:
@@ -114,6 +120,8 @@ The runner writes:
 target/nightly-diagnostics/<profile>/<run-id>/run-manifest.json
 target/nightly-diagnostics/<profile>/<run-id>/health-summary.json
 target/nightly-diagnostics/<profile>/<run-id>/health-summary.md
+target/nightly-diagnostics/<profile>/<run-id>/performance/performance-regression-report.json
+target/nightly-diagnostics/<profile>/<run-id>/performance/performance-regression-report.md
 ```
 
 The manifest records the profile, resolved git ref, dirty-tree status, jar path
@@ -128,6 +136,9 @@ counts where available, and before/after memory plus GC deltas when the JVM
 exposes them. Missing or partial telemetry is represented in the manifest rather
 than launching duplicate simulations or adding assertions inside diagnostic
 exporters.
+
+The performance-regression report is also orchestration-level evidence. It is a
+soft warning surface, not a diagnostics failure gate.
 
 The health summary reuses artifacts emitted by the configured diagnostics. It
 does not launch additional simulations. The first threshold layer reads the
@@ -316,6 +327,7 @@ Primary artifacts:
 - loan-origination quality outputs
 - profile manifest and logs
 - health-summary JSON and Markdown verdicts
+- performance-regression JSON and Markdown report
 
 ## Extended Profile
 
