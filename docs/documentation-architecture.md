@@ -24,31 +24,24 @@ without deleting evidence.
 
 ## First-Pass Reviewer Path
 
-For a scientific reviewer, the intended first-pass path is:
+The canonical first-pass reviewer path is maintained in
+[model-specification.md#reviewer-reading-path](model-specification.md#reviewer-reading-path).
+README links to that path as the public front door; this inventory exists to
+classify the remaining documentation surfaces and prevent secondary documents
+from creating competing top-level reading orders.
 
-1. [README.md](../README.md) for project identity and status.
-2. [model-specification.md](model-specification.md) as the canonical model entry
-   point.
-3. [model-notation-and-state-vector.md](model-notation-and-state-vector.md) for
-   symbols and state.
-4. [monthly-transition-function.md](monthly-transition-function.md) for month
-   timing and execution boundaries.
-5. Sector equations:
-   [household](household-equations.md),
-   [firm](firm-equations.md),
-   [banking and financial sector](banking-and-financial-sector-equations.md),
-   and [institutional sector](institutional-sector-equations.md).
-6. [stochastic-processes-and-replay.md](stochastic-processes-and-replay.md) for
-   randomness and reproducibility.
-7. [model-equations-to-sfc-map.md](model-equations-to-sfc-map.md) plus
-   [sfc-matrix-evidence.md](sfc-matrix-evidence.md) for accounting evidence and
-   generated SFC artifacts.
-8. [model-spec-completeness-checklist.md](model-spec-completeness-checklist.md)
-   as a QA checklist, not as prose to read before the model specification.
+That canonical path separates:
 
-Operational, diagnostic, calibration, profiling, and scenario documents are
-appendices. They provide evidence and workflow detail after the reviewer
-understands the model contract.
+1. model specification and executable model contract;
+2. sector and behavior detail;
+3. generated SFC evidence;
+4. calibration evidence;
+5. validation evidence;
+6. operational appendices.
+
+Operational, diagnostic, calibration, profiling, and scenario documents remain
+appendices unless the model specification explicitly promotes them into the
+first-pass path.
 
 ## Inventory
 
@@ -81,7 +74,7 @@ understands the model contract.
 | [docs/model-equations-to-sfc-map.md](model-equations-to-sfc-map.md) | Hand-maintained companion to generated evidence | Human-maintained bridge from equation families to generated SFC rows, identities, mechanisms, and known accounting limits. |
 | [docs/model-notation-and-state-vector.md](model-notation-and-state-vector.md) | Canonical reviewer spine | Canonical notation, state-vector definitions, symbols, ownership boundaries, and implementation anchors. |
 | [docs/model-spec-completeness-checklist.md](model-spec-completeness-checklist.md) | Canonical reviewer spine | Publication-readiness QA checklist for coverage across notation, equations, implementation anchors, outputs, SFC mapping, calibration, and validation. |
-| [docs/model-specification.md](model-specification.md) | Canonical reviewer spine | Canonical publication-facing model specification and first scientific entry point. |
+| [docs/model-specification.md](model-specification.md) | Canonical reviewer spine | Canonical publication-facing model specification, reviewer reading path, and first scientific entry point. |
 | [docs/monthly-transition-function.md](monthly-transition-function.md) | Canonical reviewer spine | Formal monthly transition contract from pre-boundary state through same-month economics, ledger execution, SFC validation, and next-pre materialization. |
 | [docs/nightly-baseline-comparison.md](nightly-baseline-comparison.md) | Operational appendix | Nightly diagnostic baseline comparison policy and report semantics. |
 | [docs/nightly-diagnostics.md](nightly-diagnostics.md) | Operational appendix | Diagnostic profile taxonomy, nightly/extended execution semantics, and manifest policy. |
@@ -133,8 +126,8 @@ merge or consolidation candidates for later cleanup tickets:
 When adding or changing documentation:
 
 1. Assign exactly one owner class in this inventory.
-2. Decide whether the file belongs on the first-pass reviewer path or an
-   appendix path.
+2. Decide whether the file belongs on the canonical first-pass reviewer path in
+   [model-specification.md](model-specification.md) or an appendix path.
 3. If the file is generated, document the owning generator and keep it under
    generated-output checks where practical.
 4. If the file is hand-maintained but coupled to generated evidence, name the

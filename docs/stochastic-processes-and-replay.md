@@ -12,7 +12,7 @@ assumptions, new probability distributions, or new seed scheduling rules.
 
 | Source | Role |
 | --- | --- |
-| [Model specification](model-specification.md) | Canonical model overview and reading order. |
+| [Model specification](model-specification.md#reviewer-reading-path) | Canonical reviewer path and model overview. |
 | [Model notation and state vector](model-notation-and-state-vector.md#stochastic-variables) | Stochastic notation, `RND_tau`, and stream-key notation. |
 | [Monthly transition function](monthly-transition-function.md#randomness-contract) | Formal one-month replay contract. |
 | [`random/RandomStream.scala`](../src/main/scala/com/boombustgroup/amorfati/random/RandomStream.scala) | Project-wide RNG facade. |

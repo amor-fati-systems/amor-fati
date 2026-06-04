@@ -176,55 +176,28 @@ That distinction matters. A nonlinear ABM can explore unstable, surprising, even
 
 ## Model Documentation
 
-Amor Fati now includes a research-readiness documentation spine for review,
-replication, calibration, validation, and publication work:
+Start with the [model specification](docs/model-specification.md). Its
+[Reviewer Reading Path](docs/model-specification.md#reviewer-reading-path) is
+the canonical first-pass path for scientific review:
 
-| Artifact | Purpose |
-| --- | --- |
-| [Model specification](docs/model-specification.md) | Canonical publication-facing entry point: model identity, scope, state vector, monthly transition, equation families, SFC/accounting contract, stochasticity, calibration, validation, limitations, and reading order. |
-| [Model-spec completeness checklist](docs/model-spec-completeness-checklist.md) | Review checklist for model-family coverage across notation, equations, implementation anchors, output columns, SFC/ledger mapping, calibration references, validation diagnostics, and visible gaps. |
-| [Model notation and state vector](docs/model-notation-and-state-vector.md) | Canonical publication-facing notation for time, agents, sectors, stocks, flows, rates, shares, stochastic variables, the full model state vector, and runtime implementation anchors. |
-| [Monthly transition function](docs/monthly-transition-function.md) | Mathematical month-step contract from `X_t` to `X_tau`: randomness, same-month economics, flow emission, runtime ledger execution, closed-month state, SFC validation, trace evidence, and next-pre boundary. |
-| [Stochastic processes and replay](docs/stochastic-processes-and-replay.md) | Publication-facing randomness contract: initialization streams, month streams, stochastic decision surfaces, Monte Carlo seed policy, deterministic replay, validation, and limitations. |
-| [Household equations](docs/household-equations.md) | Publication-facing household-sector equations: state, income/PIT/transfers, consumption, mortgage service, consumer credit, liquidity shortfall, distress, retraining, remittances, outputs, validation, and limitations. |
-| [Firm equations](docs/firm-equations.md) | Publication-facing firm-sector equations: firm state, production/capacity, labor, pricing, inventory, investment, technology adoption, financing, default/NPL, entry/exit, outputs, validation, and limitations. |
-| [Banking and financial-sector equations](docs/banking-and-financial-sector-equations.md) | Publication-facing banking and financial-stability section: bank state, rates, approval gates, ratios, ECL, interbank, bond waterfall, capital, failure/resolution, financial-sector interfaces, outputs, validation, and limitations. |
-| [Institutional sector equations](docs/institutional-sector-equations.md) | Publication-facing central-government, social-fund, JST, NBP, external-sector, insurance, NBFI/TFI, quasi-fiscal, SFC, output, validation, and limitation surface. |
-| [Model equations to SFC map](docs/model-equations-to-sfc-map.md) | Reviewer-facing bridge from equation families and state variables to generated BSM/TFM rows, exact SFC identities, runtime evidence, and known accounting limitations. |
-| [ODD / ODD+D model documentation](docs/odd-model-documentation.md) | ODD/ODD+D source document: purpose, entities, state variables, scales, scheduling, initialization, inputs, submodels, observation surfaces, and decision-making notes. |
-| [Behavioral equations and decision rules](docs/behavioral-equations-and-decision-rules.md) | Household, firm, bank, fiscal, monetary, external, insurance, NBFI, quasi-fiscal, and JST rules linked to implementation modules and numeric output columns. |
-| [Calibration register](docs/calibration-register.md) | Key parameter values, units, implementation owners, empirical targets, transformations, provenance status, and searchable gaps. |
-| [Data bridge to national and financial accounts](docs/data-bridge-national-financial-accounts.md) | Official Polish, EU, and financial-account sources mapped to initialization stocks, calibrated parameters, scenario inputs, validation targets, transformations, and prioritized empirical gaps. |
-| [Empirical validation report](docs/empirical-validation-report.md) | Workflow for the empirical-validation snapshot: the curated source manifest is the editable input, while generated baseline artifacts live under `docs/empirical-validation/`. |
-| [Engine invariants and economic semantics](docs/engine-invariants-and-semantics.md) | Canonical reviewer-facing index of hard invariants, normal-path expectations, stress/exploratory diagnostics, calibration warnings, known limitations, enforcement points, and coverage. |
-| [Validation matrix and ownership boundaries](docs/validation-matrix.md) | CI, integration-test, generated-output, nightly, stress, and profiling ownership rules so new validation work lands in the right layer. |
-| [Performance regression budgets](docs/performance-regression-budgets.md) | Soft baseline comparisons for diagnostics and profiling telemetry, using existing run manifests without adding duplicate simulations. |
-| [Sensitivity and robustness workflow](docs/sensitivity-robustness-workflow.md) | Seed envelopes and one-at-a-time parameter-sensitivity artifacts generated from the Monte Carlo runner. |
-| [Reproducible scenario registry](docs/scenario-registry.md) | Named policy and shock scenarios with exact parameter deltas from baseline, expected channels, seed/run metadata, and the `scenarioRun` execution path. |
-| [Documentation architecture](docs/documentation-architecture.md) | Ownership map for canonical, generated, calibration, operational, diagnostics, ADR, and merge-candidate documentation artifacts. |
+| Step | Entry point | Boundary |
+| --- | --- | --- |
+| 1. Model specification | [Model specification](docs/model-specification.md) | Model identity, scope, state vector, month timing, equation families, stochasticity, limitations, and pointers to detailed sector documents. |
+| 2. Generated SFC evidence | [SFC matrix evidence](docs/sfc-matrix-evidence.md) and [model equations to SFC map](docs/model-equations-to-sfc-map.md) | Ledger-derived BSM/TFM snapshots, exact identities, runtime mechanism mapping, and stock-flow reconciliation evidence. |
+| 3. Calibration evidence | [Calibration register](docs/calibration-register.md) and [data bridge](docs/data-bridge-national-financial-accounts.md) | Parameter provenance, empirical sources, transformations, assumptions, and visible calibration gaps. |
+| 4. Validation evidence | [Empirical validation report](docs/empirical-validation-report.md) and [engine invariants](docs/engine-invariants-and-semantics.md) | Empirical snapshot workflow, normal-path expectations, hard invariants, warnings, and known limitation surfaces. |
+| 5. Operational appendices | [Operations](docs/operations.md), [validation matrix](docs/validation-matrix.md), and [documentation architecture](docs/documentation-architecture.md) | Commands, CI ownership, diagnostics/profiling routing, generated-output guards, and full documentation inventory. |
 
 ## Ledger-Derived Matrix Artifacts
 
-The project includes committed Markdown snapshots of the paper-facing SFC
-matrix artifacts:
-
-| Artifact | Purpose |
-| --- | --- |
-| [Balance Sheet Matrix (BSM)](docs/sfc-matrix-artifacts/symbolic-bsm.md) | Symbolic stock matrix by instrument and sector, using SFC asset/liability signs and explicit row sums. |
-| [Transactions Flow Matrix (TFM)](docs/sfc-matrix-artifacts/symbolic-tfm.md) | Symbolic monthly flow matrix by sector, including income, taxes, transfers, interest, trade, credit, bonds, and deposit changes. |
-| [Stock-Flow Reconciliation and Revaluation Evidence](docs/sfc-matrix-artifacts/stock-flow-reconciliation.md) | Executed-run evidence comparing observed stock deltas or level identities with independent transaction, revaluation, default, write-off, and other-change channels. |
-| [Symbolic-row to runtime mapping](docs/sfc-matrix-artifacts/matrix-mapping.md) | Traceability table linking each symbolic matrix row to runtime assets, mechanisms, ids, and coverage notes. |
-| [Economic flow-channel semantics](docs/sfc-matrix-artifacts/flow-mechanism-semantics.md) | Reviewer-facing audit map for executed economic flow channels, including family, topology, asset class, SFC/reconciliation impact, ledger survivability, and test/diagnostic coverage. |
-
-These snapshots are generated from an executed deterministic simulation step
-and committed as versioned evidence. The regeneration commands, sign
-conventions, coverage gaps, exact reconciliation rows, and review checklist are
-documented in
-[docs/sfc-matrix-evidence.md](docs/sfc-matrix-evidence.md).
-
-The hand-written [model equations to SFC map](docs/model-equations-to-sfc-map.md)
-connects model equation families to these generated rows, identities, and
-runtime evidence without being part of the generated snapshot set.
+Generated SFC snapshots live under
+[docs/sfc-matrix-artifacts/](docs/sfc-matrix-artifacts/), but they are not a
+separate README reading path. Start with
+[docs/sfc-matrix-evidence.md](docs/sfc-matrix-evidence.md) for regeneration
+commands, sign conventions, exact reconciliation rows, and coverage gaps. The
+hand-written [model equations to SFC map](docs/model-equations-to-sfc-map.md)
+connects model equation families to those generated rows, identities, and
+runtime evidence.
 
 ## Tech Stack
 

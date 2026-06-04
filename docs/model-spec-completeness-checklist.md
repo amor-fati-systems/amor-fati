@@ -5,11 +5,12 @@ model specification. It links each major model family to the current notation,
 rules, implementation anchors, output surfaces, SFC/ledger mapping,
 calibration evidence, and validation coverage.
 
-It does not define new model behavior. The canonical overview remains
-[model-specification.md](model-specification.md), while detailed equations,
-ODD/ODD+D notes, the [model equations to SFC map](model-equations-to-sfc-map.md),
-generated SFC artifacts, calibration evidence, and validation ownership remain
-in their source documents.
+It does not define new model behavior. The canonical overview and reviewer path
+remain in [model-specification.md](model-specification.md#reviewer-reading-path),
+while detailed equations, ODD/ODD+D notes, the
+[model equations to SFC map](model-equations-to-sfc-map.md), generated SFC
+artifacts, calibration evidence, and validation ownership remain in their source
+documents.
 
 ## Status Legend
 

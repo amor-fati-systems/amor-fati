@@ -13,7 +13,7 @@ implementation anchors listed below.
 
 | Source | Role |
 | --- | --- |
-| [Model specification](model-specification.md) | Canonical model overview and reading order. |
+| [Model specification](model-specification.md#reviewer-reading-path) | Canonical reviewer path and model overview. |
 | [Model notation and state vector](model-notation-and-state-vector.md) | Public, NBP, external, social-fund, insurance, NBFI, and quasi-fiscal state notation. |
 | [Monthly transition function](monthly-transition-function.md) | `X_t -> X_tau` timing, same-month economics, flow emission, SFC validation, and next-pre boundary. |
 | [Banking and financial-sector equations](banking-and-financial-sector-equations.md) | Commercial-bank, financial-stability, and bank-facing financial-sector interface equations. |

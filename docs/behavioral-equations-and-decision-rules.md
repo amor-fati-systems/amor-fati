@@ -4,10 +4,11 @@ This document is the paper-facing rule book for Amor Fati's current
 SFC-ABM implementation. It describes implemented equations and algorithmic
 rules, not a normative target model.
 
-The document complements:
+The document complements the canonical reviewer path in
+[docs/model-specification.md](model-specification.md#reviewer-reading-path)
+with rule-level detail. Its companion links are local source anchors, not a
+separate top-level reading order:
 
-- `docs/model-specification.md`, which is the canonical publication-facing
-  model entry point;
 - `docs/odd-model-documentation.md`, which describes the model using the ODD
   and ODD+D structure;
 - `docs/sfc-matrix-evidence.md`, which documents the symbolic Balance Sheet
