@@ -996,6 +996,11 @@ failure-event diagnostics do not reconcile to the new-failure count.
 
 ## Fiscal, Monetary, Bond-Market, And External Rules
 
+The consolidated publication-facing institutional-sector section lives in
+[institutional-sector-equations.md](institutional-sector-equations.md). The
+material below remains the implementation-oriented fiscal, monetary,
+bond-market, and external rule catalog.
+
 Implementation anchors:
 
 - `engine/markets/FiscalBudget.scala`
@@ -1164,6 +1169,11 @@ NFA updates by the current account plus a partial exchange-rate valuation effect
 on foreign assets.
 
 ## Insurance, NBFI, Quasi-Fiscal, And JST Rules
+
+The consolidated publication-facing institutional-sector section lives in
+[institutional-sector-equations.md](institutional-sector-equations.md). The
+material below remains the implementation-oriented insurance, NBFI,
+quasi-fiscal, and JST rule catalog.
 
 Implementation anchors:
 
