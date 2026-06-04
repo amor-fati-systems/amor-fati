@@ -510,6 +510,20 @@ Generated local outputs normally belong in ignored paths:
 | `docs/sfc-matrix-artifacts/` | Intentional committed matrix snapshots | Yes, only when refreshed intentionally |
 | `docs/empirical-validation/` | Empirical-validation snapshot bundle | Yes, only when refreshed intentionally |
 
+### Documentation Hygiene Guard
+
+Pull-request CI also runs `scripts/check-docs.py` under the same Nix
+development shell. The documentation hygiene guard validates local Markdown
+links, local Markdown anchors, and the `docs/documentation-architecture.md`
+inventory coverage for every committed `docs/` artifact. It does not lint prose
+style or check external URLs.
+
+Run the documentation hygiene check locally with:
+
+```bash
+nix develop --command python3 scripts/check-docs.py
+```
+
 ### Generated Output Guard
 
 Pull-request CI runs `scripts/check-generated-outputs.sh` under the Nix
