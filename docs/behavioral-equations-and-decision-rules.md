@@ -554,6 +554,10 @@ capital.
 
 ## Firm Rules
 
+The consolidated publication-facing firm-sector section lives in
+[firm-equations.md](firm-equations.md). The material below remains the
+implementation-oriented rule catalog and output-column map.
+
 Implementation anchors:
 
 - `agents/Firm.scala`
