@@ -18,7 +18,6 @@ second reading order; the canonical first-pass path is in
 | Source | Role in the model specification |
 | --- | --- |
 | [Model notation and state vector](model-notation-and-state-vector.md) | Canonical symbols, state vector, time indexing, quantity classes, stochastic notation, and implementation anchors. |
-| [Model-spec completeness checklist](model-spec-completeness-checklist.md) | Review control surface for model-family coverage, detailed sources, visible gaps, and remaining publication-readiness work. |
 | [Monthly transition function](monthly-transition-function.md) | Formal `X_t -> X_tau` month-step contract, including randomness, same-month economics, closed-month state, flow emission, runtime ledger execution, SFC validation, and next-pre boundary. |
 | [Stochastic processes and replay](stochastic-processes-and-replay.md) | Publication-facing randomness contract: initialization streams, month streams, stochastic decision surfaces, Monte Carlo seed policy, deterministic replay, validation, and limitations. |
 | [Household equations](household-equations.md) | Publication-facing household-sector state, income, PIT, transfers, consumption, mortgage service, consumer credit, liquidity shortfall, distress, retraining, remittances, evidence, and limitations. |
