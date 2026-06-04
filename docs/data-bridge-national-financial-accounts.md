@@ -9,6 +9,9 @@ scripts should use this file as the reference for source selection,
 transformation rules, vintages, and model ownership. The calibration register
 documents current parameter provenance; the empirical validation report
 documents model-output comparisons. This bridge connects both to external data.
+It does not define the long-term parameter governance policy; deeper
+source-of-truth, versioning, and lifecycle decisions belong to Calibration
+Governance (#27).
 
 ## Boundary And Data Roles
 

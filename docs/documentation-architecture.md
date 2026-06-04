@@ -16,7 +16,7 @@ without deleting evidence.
 | Canonical reviewer spine | Paper-facing model contract or primary reviewer reference. These files define how the implemented model should be read. |
 | Generated evidence | Committed output produced by a task or exporter. Do not edit by hand; regenerate through the owning command. |
 | Hand-maintained companion to generated evidence | Human-written bridge, index, or workflow note that explains generated evidence and must stay aligned with it. |
-| Calibration or empirical evidence | Parameter, source, calibration, or empirical-validation evidence. Deeper governance belongs to Calibration Governance (#27). |
+| Calibration or empirical evidence | Parameter, source, calibration, or empirical-validation evidence. These files do not define parameter governance policy; deeper governance belongs to Calibration Governance (#27). |
 | Operational appendix | Commands, CI, validation ownership, scenarios, robustness, and runbook material. Useful, but not the first scientific reading path. |
 | Diagnostics or profiling appendix | Specific diagnostic/profiling methodology, exporter interpretation, or investigation evidence. |
 | ADR or decision record | Durable architectural or semantic decision record. Preserve history unless superseded explicitly. |
