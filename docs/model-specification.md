@@ -16,6 +16,7 @@ below.
 | [Model notation and state vector](model-notation-and-state-vector.md) | Canonical symbols, state vector, time indexing, quantity classes, stochastic notation, and implementation anchors. |
 | [Model-spec completeness checklist](model-spec-completeness-checklist.md) | Review control surface for model-family coverage, detailed sources, visible gaps, and remaining publication-readiness work. |
 | [Monthly transition function](monthly-transition-function.md) | Formal `X_t -> X_tau` month-step contract, including randomness, same-month economics, closed-month state, flow emission, runtime ledger execution, SFC validation, and next-pre boundary. |
+| [Stochastic processes and replay](stochastic-processes-and-replay.md) | Publication-facing randomness contract: initialization streams, month streams, stochastic decision surfaces, Monte Carlo seed policy, deterministic replay, validation, and limitations. |
 | [Household equations](household-equations.md) | Publication-facing household-sector state, income, PIT, transfers, consumption, mortgage service, consumer credit, liquidity shortfall, distress, retraining, remittances, evidence, and limitations. |
 | [Firm equations](firm-equations.md) | Publication-facing firm-sector state, production, P&L, labor, pricing, inventory, investment, technology, financing, default/NPL, entry/exit, evidence, and limitations. |
 | [Institutional sector equations](institutional-sector-equations.md) | Publication-facing central-government, social-fund, JST, NBP, external-sector, insurance, NBFI/TFI, quasi-fiscal, SFC, output, validation, and limitation surface. |
@@ -214,6 +215,11 @@ Monte Carlo output is distributional across seeds. Within one seed and one
 month boundary, replay requires the same state, same parameter vector, and same
 randomness contract.
 
+The publication-facing seed policy, initialization streams, monthly stream map,
+stochastic decision surfaces, diagnostic seed semantics, validation coverage,
+and limitations live in
+[stochastic-processes-and-replay.md](stochastic-processes-and-replay.md).
+
 ## Calibration And Empirical Evidence
 
 Calibration is currently documented through:
@@ -302,23 +308,26 @@ For a first academic review:
    for notation and state ownership.
 4. Read [monthly-transition-function.md](monthly-transition-function.md) for
    the formal month-step contract.
-5. Read [odd-model-documentation.md](odd-model-documentation.md) for ODD/ODD+D
+5. Read [stochastic-processes-and-replay.md](stochastic-processes-and-replay.md)
+   for initialization seeds, monthly streams, Monte Carlo seed policy, and
+   deterministic replay.
+6. Read [odd-model-documentation.md](odd-model-documentation.md) for ODD/ODD+D
    structure and agent/entity description.
-6. Read [behavioral-equations-and-decision-rules.md](behavioral-equations-and-decision-rules.md)
+7. Read [behavioral-equations-and-decision-rules.md](behavioral-equations-and-decision-rules.md)
    for implemented rule families.
-7. Read [household-equations.md](household-equations.md) for the consolidated
+8. Read [household-equations.md](household-equations.md) for the consolidated
    publication-facing household-sector section.
-8. Read [firm-equations.md](firm-equations.md) for the consolidated
+9. Read [firm-equations.md](firm-equations.md) for the consolidated
    publication-facing firm-sector section.
-9. Read [institutional-sector-equations.md](institutional-sector-equations.md)
+10. Read [institutional-sector-equations.md](institutional-sector-equations.md)
    for the consolidated public, monetary, external, insurance, NBFI, and
    quasi-fiscal section.
-10. Read [sfc-matrix-evidence.md](sfc-matrix-evidence.md) and generated matrix
+11. Read [sfc-matrix-evidence.md](sfc-matrix-evidence.md) and generated matrix
    artifacts for the accounting contract.
-11. Read [calibration-register.md](calibration-register.md),
+12. Read [calibration-register.md](calibration-register.md),
    [data-bridge-national-financial-accounts.md](data-bridge-national-financial-accounts.md),
    and [empirical-validation-report.md](empirical-validation-report.md) for
    calibration and validation evidence.
-12. Read [engine-invariants-and-semantics.md](engine-invariants-and-semantics.md)
+13. Read [engine-invariants-and-semantics.md](engine-invariants-and-semantics.md)
    and [validation-matrix.md](validation-matrix.md) for failure semantics and
    review routing.

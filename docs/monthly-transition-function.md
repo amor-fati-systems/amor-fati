@@ -14,6 +14,7 @@ or validation documents.
 | --- | --- |
 | [Model specification](model-specification.md) | Publication-facing model overview. |
 | [Model notation and state vector](model-notation-and-state-vector.md) | Canonical symbols, state vector, time indices, stocks, flows, rates, shares, and stochastic notation. |
+| [Stochastic processes and replay](stochastic-processes-and-replay.md) | Detailed seed policy, initialization and month stream maps, stochastic decision surfaces, Monte Carlo replay, and validation coverage. |
 | [Behavioral equations and decision rules](behavioral-equations-and-decision-rules.md) | Detailed rule families used by the same-month economics stages. |
 | [SFC matrix evidence](sfc-matrix-evidence.md) | Accounting matrix evidence, sign conventions, generated artifacts, and reconciliation surface. |
 | [Engine invariants and semantics](engine-invariants-and-semantics.md) | Hard invariants, failure semantics, known limitations, and validation routing. |
@@ -79,6 +80,9 @@ streams:
 
 Fixing `X_t`, `theta`, and `RND_tau.rootSeed` fixes all named streams and
 therefore fixes the one-month replay.
+
+The full production seed policy and stochastic surface map are documented in
+[stochastic-processes-and-replay.md](stochastic-processes-and-replay.md).
 
 ## Phase Timeline
 
