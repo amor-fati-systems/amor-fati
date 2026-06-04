@@ -16,6 +16,7 @@ below.
 | [Model notation and state vector](model-notation-and-state-vector.md) | Canonical symbols, state vector, time indexing, quantity classes, stochastic notation, and implementation anchors. |
 | [Model-spec completeness checklist](model-spec-completeness-checklist.md) | Review control surface for model-family coverage, detailed sources, visible gaps, and remaining publication-readiness work. |
 | [Monthly transition function](monthly-transition-function.md) | Formal `X_t -> X_tau` month-step contract, including randomness, same-month economics, closed-month state, flow emission, runtime ledger execution, SFC validation, and next-pre boundary. |
+| [Household equations](household-equations.md) | Publication-facing household-sector state, income, PIT, transfers, consumption, mortgage service, consumer credit, liquidity shortfall, distress, retraining, remittances, evidence, and limitations. |
 | [Firm equations](firm-equations.md) | Publication-facing firm-sector state, production, P&L, labor, pricing, inventory, investment, technology, financing, default/NPL, entry/exit, evidence, and limitations. |
 | [ODD / ODD+D model documentation](odd-model-documentation.md) | ODD/ODD+D description of purpose, entities, scales, scheduling, initialization, inputs, submodels, observation surfaces, and decisions. |
 | [Behavioral equations and decision rules](behavioral-equations-and-decision-rules.md) | Implemented equations and algorithmic decision rules by model family. |
@@ -155,7 +156,7 @@ The canonical detailed rule source remains
 
 | Rule family | Model role | Current source of truth |
 | --- | --- | --- |
-| Household income, tax, transfers, consumption, saving, credit, distress | Maps employment and financial state into disposable income, consumption, debt service, defaults, liquidity stress, and household aggregates | `Household.scala`, `HouseholdIncomeEconomics.scala`, `HouseholdFinancialEconomics.scala`, household sections in behavioral equations |
+| Household income, tax, transfers, consumption, saving, credit, distress | Maps employment and financial state into disposable income, consumption, debt service, defaults, liquidity stress, and household aggregates | [household equations](household-equations.md), `Household.scala`, `HouseholdIncomeEconomics.scala`, `HouseholdFinancialEconomics.scala`, household sections in behavioral equations |
 | Labor, wages, demographics, social funds | Determines market wage, employment, immigration, retirements, ZUS/NFZ/PPK and earmarked fund flows | `LaborEconomics.scala`, `LaborMarket.scala`, `SocialSecurity.scala`, `EarmarkedFunds.scala` |
 | Demand, GDP, prices, equity, macroprudential | Allocates demand, computes GDP proxy, inflation, price index, equity market updates, and credit-gap policy state | `DemandEconomics.scala`, `PriceEquityEconomics.scala`, `GdpAccounting.scala`, macroprudential mechanisms |
 | Firm production, investment, technology, financing, default, entry | Computes production/capacity, pricing, labor adjustment, investment, financing mix, credit rejection, default/NPL, births/deaths | [firm equations](firm-equations.md), `agents/firm/*`, `FirmEconomics.scala`, `engine/economics/firm/*` |
@@ -304,14 +305,16 @@ For a first academic review:
    structure and agent/entity description.
 6. Read [behavioral-equations-and-decision-rules.md](behavioral-equations-and-decision-rules.md)
    for implemented rule families.
-7. Read [firm-equations.md](firm-equations.md) for the consolidated
+7. Read [household-equations.md](household-equations.md) for the consolidated
+   publication-facing household-sector section.
+8. Read [firm-equations.md](firm-equations.md) for the consolidated
    publication-facing firm-sector section.
-8. Read [sfc-matrix-evidence.md](sfc-matrix-evidence.md) and generated matrix
+9. Read [sfc-matrix-evidence.md](sfc-matrix-evidence.md) and generated matrix
    artifacts for the accounting contract.
-9. Read [calibration-register.md](calibration-register.md),
+10. Read [calibration-register.md](calibration-register.md),
    [data-bridge-national-financial-accounts.md](data-bridge-national-financial-accounts.md),
    and [empirical-validation-report.md](empirical-validation-report.md) for
    calibration and validation evidence.
-10. Read [engine-invariants-and-semantics.md](engine-invariants-and-semantics.md)
+11. Read [engine-invariants-and-semantics.md](engine-invariants-and-semantics.md)
    and [validation-matrix.md](validation-matrix.md) for failure semantics and
    review routing.

@@ -83,6 +83,10 @@ The formal `X_t -> X_tau` transition contract is documented in
 
 ## Household Rules
 
+The consolidated publication-facing household-sector section lives in
+[household-equations.md](household-equations.md). The material below remains
+the implementation-oriented rule catalog and output-column map.
+
 Implementation anchors:
 
 - `agents/Household.scala`
