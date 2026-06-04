@@ -73,7 +73,6 @@ first-pass path.
 | [docs/loan-origination-quality-diagnostics.md](loan-origination-quality-diagnostics.md) | Diagnostics or profiling appendix | Loan-origination quality diagnostic methodology and interpretation. |
 | [docs/model-equations-to-sfc-map.md](model-equations-to-sfc-map.md) | Hand-maintained companion to generated evidence | Human-maintained bridge from equation families to generated SFC rows, identities, mechanisms, and known accounting limits. |
 | [docs/model-notation-and-state-vector.md](model-notation-and-state-vector.md) | Canonical reviewer spine | Canonical notation, state-vector definitions, symbols, ownership boundaries, and implementation anchors. |
-| [docs/model-spec-completeness-checklist.md](model-spec-completeness-checklist.md) | Canonical reviewer spine | Publication-readiness QA checklist for coverage across notation, equations, implementation anchors, outputs, SFC mapping, calibration, and validation. |
 | [docs/model-specification.md](model-specification.md) | Canonical reviewer spine | Canonical publication-facing model specification, reviewer reading path, and first scientific entry point. |
 | [docs/monthly-transition-function.md](monthly-transition-function.md) | Canonical reviewer spine | Formal monthly transition contract from pre-boundary state through same-month economics, ledger execution, SFC validation, and next-pre materialization. |
 | [docs/nightly-baseline-comparison.md](nightly-baseline-comparison.md) | Operational appendix | Nightly diagnostic baseline comparison policy and report semantics. |
@@ -119,17 +118,21 @@ must identify the generated artifacts they track:
 | `docs/empirical-validation-report.md` | `docs/empirical-validation/*.csv` |
 | `docs/empirical-validation/README.md` | `docs/empirical-validation/*.csv` |
 
-## Deprecated And Merge Candidates
+## Deprecated, Merged, And Merge Candidates
 
-No documentation artifact is deprecated as of this inventory. The following are
-merge or consolidation candidates for later cleanup tickets:
+The following documentation surface was removed after the inventory review:
+
+| Surface | Replacement | Rationale |
+| --- | --- | --- |
+| `model-spec-completeness-checklist.md` | [model-specification.md](model-specification.md), [documentation-architecture.md](documentation-architecture.md), and the sector equation documents linked from the reviewer path | The checklist had become a second hand-maintained coverage matrix beside the canonical reviewer path and inventory. Removing it reduces stale-review risk without deleting model behavior, generated evidence, or ADR history. |
+
+The following surfaces remain consolidation candidates:
 
 | Candidate group | Current files | Proposed direction |
 | --- | --- | --- |
 | Operational validation appendix | `operations.md`, `validation-matrix.md`, `nightly-diagnostics.md`, `nightly-baseline-comparison.md`, `performance-regression-budgets.md` | Use `operations.md#operational-appendix-index` as the operational entry point and keep detailed policy pages cross-linked from it. |
 | Diagnostic-method appendix | `bank-balance-sheet-benchmark.md`, `bank-failure-ablations.md`, `hh-bank-lead-lag-diagnostics.md`, `loan-origination-quality-diagnostics.md`, `hot-path-profiling.md` | Route diagnostic/profiling discovery through `operations.md#operational-appendix-index` so README and model spec do not enumerate each diagnostic document. |
 | Calibration evidence notes | `household-credit-stress-calibration.md`, `external-sector-baseline-calibration.md`, `private-credit-renewal-calibration.md` | Keep as evidence notes, but route them through calibration governance and data-bridge indexes. |
-| Publication QA checklist | `model-spec-completeness-checklist.md` | Keep as QA appendix unless #739 proves it duplicates the documentation architecture inventory. |
 
 ## Review Rules
 

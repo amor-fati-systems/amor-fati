@@ -36,7 +36,7 @@
 
 A ledger-first SFC-ABM of the Polish economy where **every monetary flow is accounted for**. Firms produce, households consume, banks lend, the central bank sets policy, the government taxes and spends, the external sector trades and moves capital — and the books must balance. Always.
 
-Amor Fati is a **stock-flow consistent** (SFC) **agent-based model** (ABM) that simulates the Polish economy at the level of individual households, heterogeneous firms, and a realistic multi-bank financial system. The engine enforces 15 exact accounting identities each month — if a single zloty goes missing, the simulation fails.
+Amor Fati is a **stock-flow consistent** (SFC) **agent-based model** (ABM) that simulates the Polish economy at the level of individual households, heterogeneous firms, and a ten-row banking-sector archetype system. The engine enforces 15 exact accounting identities each month — if a single zloty goes missing, the simulation fails.
 
 The key design principle is simple:
 
@@ -51,7 +51,6 @@ That is the hard floor under every experiment in the model. Behavioral rules, po
 ## Table of Contents
 
 - [Quick Start](#quick-start)
-- [Operational Documentation](#operational-documentation)
 - [Why](#why)
 - [What Is Technically Distinctive](#what-is-technically-distinctive)
 - [Core Invariants](#core-invariants)
@@ -64,59 +63,32 @@ That is the hard floor under every experiment in the model. Behavioral rules, po
 
 ## Quick Start
 
-Amor Fati is currently operated as a source-first research engine: clone the
-repo, run the tests, then run the model or a diagnostic from `sbt`.
-
-Requirements:
-
-- JDK 21 as the supported baseline, matching CI's Temurin 21 runtime
-- sbt 1.11.6, pinned in `project/build.properties`
-
-Alternatively, enter the optional Nix developer shell:
-
-```bash
-nix develop
-```
-
-The flake provides JDK 21, the nixpkgs sbt launcher, Python 3, Z3, Git,
-standard shell utilities, and the same `SBT_OPTS` baseline used by CI. The sbt
-launcher respects `project/build.properties`, so the root build still runs with
-the pinned sbt version. `flake.lock` pins the nixpkgs revision used by both
-local Nix shells and CI.
-
-Clone the repository with its ledger submodule:
+Use the Nix shell for the CI-like local toolchain, then run the test suite:
 
 ```bash
 git clone --recurse-submodules https://github.com/boombustgroup/amor-fati.git
 cd amor-fati
+nix develop
+sbt test
 ```
 
-If the repository was cloned without submodules:
+If you are not using Nix, install JDK 21 and use the sbt version pinned in
+`project/build.properties`. If the repository was cloned without submodules,
+initialize the ledger module before running the build:
 
 ```bash
 git submodule update --init --recursive
 ```
 
-Validate the checkout:
-
-```bash
-sbt test
-```
-
-Run a one-seed, 12-month local smoke simulation:
+Run a one-seed, 12-month smoke simulation:
 
 ```bash
 sbt "runMain com.boombustgroup.amorfati.Main 1 local-smoke --duration 12 --run-id smoke"
 ```
 
 This writes generated CSV outputs under `mc/`, which is intentionally ignored
-by git.
-
-## Operational Documentation
-
-Day-to-day commands, test tiers, diagnostics, scenario runs, output locations,
-and troubleshooting notes live in
-[docs/operations.md](docs/operations.md).
+by git. Diagnostics, generated-output checks, CI parity, output paths, and local
+troubleshooting live in [docs/operations.md](docs/operations.md).
 
 ## Why
 
@@ -182,7 +154,7 @@ the canonical first-pass path for scientific review:
 
 | Step | Entry point | Boundary |
 | --- | --- | --- |
-| 1. Model specification | [Model specification](docs/model-specification.md) | Model identity, scope, state vector, month timing, equation families, stochasticity, limitations, and pointers to detailed sector documents. |
+| 1. Model specification and ODD | [Model specification](docs/model-specification.md) and [ODD / ODD+D model documentation](docs/odd-model-documentation.md) | Model identity, scope, entities, scheduling, state vector, month timing, equation families, stochasticity, limitations, and pointers to detailed sector documents. |
 | 2. SFC evidence boundary | [SFC matrix evidence](docs/sfc-matrix-evidence.md) and [model equations to SFC map](docs/model-equations-to-sfc-map.md) | Hand-maintained entry points for generated BSM/TFM snapshots, exact identities, runtime mechanism mapping, and stock-flow reconciliation evidence. |
 | 3. Calibration evidence | [Calibration register](docs/calibration-register.md) and [data bridge](docs/data-bridge-national-financial-accounts.md) | Parameter provenance, empirical sources, transformations, assumptions, and visible calibration gaps. |
 | 4. Validation evidence | [Empirical validation report](docs/empirical-validation-report.md) and [engine invariants](docs/engine-invariants-and-semantics.md) | Empirical snapshot workflow, normal-path expectations, hard invariants, warnings, and known limitation surfaces. |
