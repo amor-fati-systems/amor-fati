@@ -14,6 +14,7 @@ stochasticity, SFC-mapping, calibration, or paper-facing overview material.
 | --- | --- |
 | [Monthly transition function](monthly-transition-function.md) | Formal `X_t -> X_tau` transition, randomness contract, phase timeline, emitted evidence, and month-step invariants. |
 | [Stochastic processes and replay](stochastic-processes-and-replay.md) | Publication-facing seed contracts, stream maps, Monte Carlo seed policy, deterministic replay, and stochastic limitations. |
+| [Banking and financial-sector equations](banking-and-financial-sector-equations.md) | Publication-facing bank, financial-stability, and financial-sector interface equations. |
 | [ODD / ODD+D model documentation](odd-model-documentation.md) | Purpose, entities, state variables, scales, scheduling, initialization, and decision-making context. |
 | [Behavioral equations and decision rules](behavioral-equations-and-decision-rules.md) | Implemented household, firm, bank, fiscal, monetary, external, insurance, NBFI, quasi-fiscal, and JST rule surfaces. |
 | [SFC matrix evidence](sfc-matrix-evidence.md) | Balance Sheet Matrix, Transactions Flow Matrix, stock-flow reconciliation evidence, sign conventions, and generated matrix artifacts. |

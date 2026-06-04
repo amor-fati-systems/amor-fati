@@ -19,6 +19,7 @@ below.
 | [Stochastic processes and replay](stochastic-processes-and-replay.md) | Publication-facing randomness contract: initialization streams, month streams, stochastic decision surfaces, Monte Carlo seed policy, deterministic replay, validation, and limitations. |
 | [Household equations](household-equations.md) | Publication-facing household-sector state, income, PIT, transfers, consumption, mortgage service, consumer credit, liquidity shortfall, distress, retraining, remittances, evidence, and limitations. |
 | [Firm equations](firm-equations.md) | Publication-facing firm-sector state, production, P&L, labor, pricing, inventory, investment, technology, financing, default/NPL, entry/exit, evidence, and limitations. |
+| [Banking and financial-sector equations](banking-and-financial-sector-equations.md) | Publication-facing banking and financial-stability section: bank state, rates, approval gates, ratios, ECL, interbank, bond waterfall, capital, failure/resolution, financial-sector interfaces, outputs, validation, and limitations. |
 | [Institutional sector equations](institutional-sector-equations.md) | Publication-facing central-government, social-fund, JST, NBP, external-sector, insurance, NBFI/TFI, quasi-fiscal, SFC, output, validation, and limitation surface. |
 | [ODD / ODD+D model documentation](odd-model-documentation.md) | ODD/ODD+D description of purpose, entities, scales, scheduling, initialization, inputs, submodels, observation surfaces, and decisions. |
 | [Behavioral equations and decision rules](behavioral-equations-and-decision-rules.md) | Implemented equations and algorithmic decision rules by model family. |
@@ -143,7 +144,7 @@ signals. The formal transition contract lives in
 | --- | --- | --- |
 | Households | Labor supply, income, consumption, savings, rent, mortgages, consumer credit, remittances, retraining, distress, bankruptcy, social-neighbor effects | [ODD](odd-model-documentation.md), [behavioral equations](behavioral-equations-and-decision-rules.md#household-rules) |
 | Firms | Production, capacity, hiring/firing, inventory, investment, technology adoption, credit demand, bond/equity financing, default, entry/exit | [ODD](odd-model-documentation.md), [behavioral equations](behavioral-equations-and-decision-rules.md#firm-rules) |
-| Banks | Lending, deposits, interest margins, CAR/NPL/LCR/NSFR, ECL staging, interbank, bond portfolio, failures, resolution, bail-in, BFG levy | [behavioral equations](behavioral-equations-and-decision-rules.md#banking-rules), [ADR 0001](adr/0001-bank-capital-sfc-semantics.md) |
+| Banks | Lending, deposits, interest margins, CAR/NPL/LCR/NSFR, ECL staging, interbank, bond portfolio, failures, resolution, bail-in, BFG levy | [banking and financial-sector equations](banking-and-financial-sector-equations.md), [behavioral equations](behavioral-equations-and-decision-rules.md#banking-rules), [ADR 0001](adr/0001-bank-capital-sfc-semantics.md) |
 | Central government | Taxes, spending, transfers, fiscal-rule constraints, bond issuance, public debt and deficit metrics | [institutional sector equations](institutional-sector-equations.md), [behavioral equations](behavioral-equations-and-decision-rules.md#government-budget-and-debt) |
 | NBP | Reference rate, monetary policy, reserves, standing facilities, QE, FX operations, monetary aggregates | [institutional sector equations](institutional-sector-equations.md), [behavioral equations](behavioral-equations-and-decision-rules.md#nbp-policy-bond-yield-qe-fx) |
 | External sector | Exports, imports, current account, capital account, FDI, remittances, tourism, foreign holdings, NFA | [institutional sector equations](institutional-sector-equations.md), [external-sector calibration](external-sector-baseline-calibration.md), [behavioral equations](behavioral-equations-and-decision-rules.md#external-sector) |
@@ -162,7 +163,7 @@ The canonical detailed rule source remains
 | Labor, wages, demographics, social funds | Determines market wage, employment, immigration, retirements, ZUS/NFZ/PPK and earmarked fund flows | `LaborEconomics.scala`, `LaborMarket.scala`, `SocialSecurity.scala`, `EarmarkedFunds.scala` |
 | Demand, GDP, prices, equity, macroprudential | Allocates demand, computes GDP proxy, inflation, price index, equity market updates, and credit-gap policy state | `DemandEconomics.scala`, `PriceEquityEconomics.scala`, `GdpAccounting.scala`, macroprudential mechanisms |
 | Firm production, investment, technology, financing, default, entry | Computes production/capacity, pricing, labor adjustment, investment, financing mix, credit rejection, default/NPL, births/deaths | [firm equations](firm-equations.md), `agents/firm/*`, `FirmEconomics.scala`, `engine/economics/firm/*` |
-| Banking and monetary plumbing | Updates bank P&L, capital, provisioning, credit approval, rates, interbank, bond waterfall, failures/resolution, monetary aggregates | `agents/banking/*`, `BankingEconomics.scala`, `engine/economics/banking/*` |
+| Banking and monetary plumbing | Updates bank P&L, capital, provisioning, credit approval, rates, interbank, bond waterfall, failures/resolution, monetary aggregates | [banking and financial-sector equations](banking-and-financial-sector-equations.md), `agents/banking/*`, `BankingEconomics.scala`, `engine/economics/banking/*` |
 | Housing and mortgages | Updates housing prices, mortgage stock, origination, repayment, default, and mortgage-to-GDP outputs | `HousingMarket.scala`, banking housing stage, mortgage flow modules |
 | Fiscal, NBP, bonds, external sector | Computes public budget, public debt, rates, QE, bond yields, BoP/forex, GVC, trade, and current-account closure | [institutional sector equations](institutional-sector-equations.md), fiscal, NBP, open-economy, bond-market, and external-sector modules |
 | Insurance, NBFI, quasi-fiscal, JST | Computes premiums, claims, reserves, NBFI credit, fund AUM, PPK holdings, quasi-fiscal issuance/lending, and local-government flows | [institutional sector equations](institutional-sector-equations.md), insurance, NBFI, quasi-fiscal, PPK, JST modules |
@@ -319,15 +320,17 @@ For a first academic review:
    publication-facing household-sector section.
 9. Read [firm-equations.md](firm-equations.md) for the consolidated
    publication-facing firm-sector section.
-10. Read [institutional-sector-equations.md](institutional-sector-equations.md)
+10. Read [banking-and-financial-sector-equations.md](banking-and-financial-sector-equations.md)
+   for the consolidated banking and financial-stability section.
+11. Read [institutional-sector-equations.md](institutional-sector-equations.md)
    for the consolidated public, monetary, external, insurance, NBFI, and
    quasi-fiscal section.
-11. Read [sfc-matrix-evidence.md](sfc-matrix-evidence.md) and generated matrix
+12. Read [sfc-matrix-evidence.md](sfc-matrix-evidence.md) and generated matrix
    artifacts for the accounting contract.
-12. Read [calibration-register.md](calibration-register.md),
+13. Read [calibration-register.md](calibration-register.md),
    [data-bridge-national-financial-accounts.md](data-bridge-national-financial-accounts.md),
    and [empirical-validation-report.md](empirical-validation-report.md) for
    calibration and validation evidence.
-13. Read [engine-invariants-and-semantics.md](engine-invariants-and-semantics.md)
+14. Read [engine-invariants-and-semantics.md](engine-invariants-and-semantics.md)
    and [validation-matrix.md](validation-matrix.md) for failure semantics and
    review routing.
