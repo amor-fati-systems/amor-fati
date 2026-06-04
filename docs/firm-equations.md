@@ -23,6 +23,7 @@ behavior and does not replace the implementation anchors listed below.
 | [`engine/economics/FirmEconomics.scala`](../src/main/scala/com/boombustgroup/amorfati/engine/economics/FirmEconomics.scala) and [`engine/economics/firm/*`](../src/main/scala/com/boombustgroup/amorfati/engine/economics/firm) | Same-month firm-sector runner, lending surface, financing split, market stages, output assembly, and downstream monthly calculus boundary. |
 | [`engine/mechanisms/FirmEntry.scala`](../src/main/scala/com/boombustgroup/amorfati/engine/mechanisms/FirmEntry.scala) | Endogenous replacement and net firm entry. |
 | [`montecarlo/McTimeseriesSchema.scala`](../src/main/scala/com/boombustgroup/amorfati/montecarlo/McTimeseriesSchema.scala) | Public numeric output columns for firm behavior and diagnostics. |
+| [`diagnostics/LoanOriginationQualityExport.scala`](../src/main/scala/com/boombustgroup/amorfati/diagnostics/LoanOriginationQualityExport.scala), [`diagnostics/ScenarioRunExport.scala`](../src/main/scala/com/boombustgroup/amorfati/diagnostics/ScenarioRunExport.scala), and [`diagnostics/SensitivityRobustnessExport.scala`](../src/main/scala/com/boombustgroup/amorfati/diagnostics/SensitivityRobustnessExport.scala) | Borrower-level underwriting outcomes, scenario diagnostics, and robustness surfaces that expose firm-credit, investment, entry, and default behavior. |
 
 ## State
 
@@ -273,6 +274,41 @@ three deterministic or stochastic market surfaces:
    energy-cost pressure;
 3. labor-market matching, immigration/remigration, wage updates, and firm
    staffing synchronization.
+
+The markup update is a Calvo lottery. With probability `theta`, firm `f` resets
+its markup; otherwise it keeps the previous markup:
+
+```text
+mu_{f,tau} =
+  mu^*_{f,tau}    if U^{price}_{f,tau} < theta
+  mu_{f,t}        otherwise
+```
+
+The reset markup is:
+
+```text
+mu^*_{f,tau} =
+  clamp(
+    baseMarkup *
+    [1
+     + min(max(DPressure_{s,tau} - 1, 0) demandSensitivity, demandCap)
+     + min(max(WageGrowth_tau, 0) costPassthrough, costCap)
+     + min(max(EnergyPressure_{s,tau}, 0), energyCap)],
+    minMarkup,
+    maxMarkup)
+```
+
+where `EnergyPressure` depends on the commodity-price index, sector energy-cost
+share, and the state-owned energy pass-through modifier. The aggregate markup
+inflation contribution is the annualized capacity-weighted average markup
+change:
+
+```text
+pi^{markup}_{tau} =
+  annualize(
+    sum_f C^eff_{f,tau} (mu_{f,tau} - mu_{f,t})
+    / sum_f C^eff_{f,tau})
+```
 
 Inventory is adjusted after the primary decision:
 
@@ -538,6 +574,11 @@ cash/debt before and after, P&L, capex, credit decisions, bank approval
 probabilities and rolls, technology feasibility, adoption roll, implementation
 roll, efficiency draw, investment-credit audit, digital-readiness investment,
 and labor-adjustment residual rolls.
+
+Loan-origination quality diagnostics link firm credit observations to later
+bankruptcy outcomes over an outcome window. Scenario and sensitivity diagnostics
+then aggregate firm deaths, credit, investment, and macro feedback for
+publication-facing validation runs.
 
 ## Validation Coverage
 
