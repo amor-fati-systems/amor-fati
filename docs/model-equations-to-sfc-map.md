@@ -97,6 +97,6 @@ Use this document as the bridge from equations to accounting evidence:
 4. Use the generated matrix mapping and flow-channel semantics to inspect
    runtime assets, mechanisms, ids, survivability class, and test/diagnostic
    coverage.
-5. Treat any `Diagnostic only`, `Execution delta only`, `Unsupported persisted
-   stock`, or `Known limitation` note as part of the model contract, not as an
-   implicit missing flow.
+5. Treat any `Diagnostic only`, `Execution delta only`,
+   `Unsupported persisted stock`, or `Known limitation` note as part of the
+   model contract, not as an implicit missing flow.
