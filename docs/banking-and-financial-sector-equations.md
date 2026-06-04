@@ -231,10 +231,12 @@ NPLRatio =
   FirmNplStock / FirmLoans
 ```
 
-Consumer NPL stock is carried separately and enters ECL and bank-capital
-diagnostics through the consumer-credit loss surfaces. Per-bank and aggregate
-CAR, NPL, LCR, and NSFR values are regulatory diagnostic and decision inputs.
-They are not themselves monetary flows.
+Consumer loan stock is included in the ECL covered-loan base, but consumer
+defaults and consumer NPL are carried separately from ECL Stage 3 migration.
+Realized consumer-credit losses enter bank-capital diagnostics through the
+consumer-credit loss surfaces. Per-bank and aggregate CAR, NPL, LCR, and NSFR
+values are regulatory diagnostic and decision inputs. They are not themselves
+monetary flows.
 
 ## IFRS 9 ECL Staging
 
@@ -283,6 +285,10 @@ S3_{b,tau} = max(S3_{b,t} + S2ToS3_b - S3Cure_b, 0)
 S2_{b,tau} = max(S2_{b,t} + S1ToS2_b - S2ToS3_b + S3Cure_b, 0)
 S1_{b,tau} = max(TotalCoveredLoans_{b,tau} - S2_{b,tau} - S3_{b,tau}, 0)
 ```
+
+In the current runtime, `newDefaults_b` is the bank's new firm-loan NPL flow.
+Consumer-credit defaults do not enter `S2ToS3_b`; they are realized separately
+as consumer-credit loss terms in the bank-capital waterfall.
 
 The provision change is:
 
