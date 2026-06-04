@@ -190,6 +190,7 @@ replication, calibration, validation, and publication work:
 | [Firm equations](docs/firm-equations.md) | Publication-facing firm-sector equations: firm state, production/capacity, labor, pricing, inventory, investment, technology adoption, financing, default/NPL, entry/exit, outputs, validation, and limitations. |
 | [Banking and financial-sector equations](docs/banking-and-financial-sector-equations.md) | Publication-facing banking and financial-stability section: bank state, rates, approval gates, ratios, ECL, interbank, bond waterfall, capital, failure/resolution, financial-sector interfaces, outputs, validation, and limitations. |
 | [Institutional sector equations](docs/institutional-sector-equations.md) | Publication-facing central-government, social-fund, JST, NBP, external-sector, insurance, NBFI/TFI, quasi-fiscal, SFC, output, validation, and limitation surface. |
+| [Model equations to SFC map](docs/model-equations-to-sfc-map.md) | Reviewer-facing bridge from equation families and state variables to generated BSM/TFM rows, exact SFC identities, runtime evidence, and known accounting limitations. |
 | [ODD / ODD+D model documentation](docs/odd-model-documentation.md) | ODD/ODD+D source document: purpose, entities, state variables, scales, scheduling, initialization, inputs, submodels, observation surfaces, and decision-making notes. |
 | [Behavioral equations and decision rules](docs/behavioral-equations-and-decision-rules.md) | Household, firm, bank, fiscal, monetary, external, insurance, NBFI, quasi-fiscal, and JST rules linked to implementation modules and numeric output columns. |
 | [Calibration register](docs/calibration-register.md) | Key parameter values, units, implementation owners, empirical targets, transformations, provenance status, and searchable gaps. |
@@ -219,6 +220,10 @@ and committed as versioned evidence. The regeneration commands, sign
 conventions, coverage gaps, exact reconciliation rows, and review checklist are
 documented in
 [docs/sfc-matrix-evidence.md](docs/sfc-matrix-evidence.md).
+
+The hand-written [model equations to SFC map](docs/model-equations-to-sfc-map.md)
+connects model equation families to these generated rows, identities, and
+runtime evidence without being part of the generated snapshot set.
 
 ## Tech Stack
 
