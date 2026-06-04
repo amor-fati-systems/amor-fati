@@ -1,6 +1,10 @@
 # Ledger-Derived SFC Matrix Artifacts
 
-This workflow generates paper-facing Stock-Flow Consistent matrix artifacts from
+This document is hand-maintained and not generated. It is the source contract
+and workflow companion for the generated SFC matrix artifacts under
+`docs/sfc-matrix-artifacts/`.
+
+The workflow generates paper-facing Stock-Flow Consistent matrix artifacts from
 an executed deterministic simulation step:
 
 - a symbolic Balance Sheet Matrix (BSM);
@@ -53,6 +57,10 @@ The committed matrix snapshot is pinned independently from empirical-validation
 snapshots. The current matrix artifacts use seed `1`, month `12`, and the
 stable metadata label `committed-snapshot`; scratch exports can omit
 `--commit` to record the current build commit.
+
+Do not edit generated files under `docs/sfc-matrix-artifacts/` by hand. Update
+the generator or source registry first, then rerun the committed snapshot
+command above and let `scripts/check-generated-outputs.sh` verify freshness.
 
 The Balance Sheet Matrix and Transactions Flow Matrix LaTeX files are plain
 `tabular` fragments. The reconciliation and mapping LaTeX files use `longtable`

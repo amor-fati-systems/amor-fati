@@ -10,7 +10,7 @@ surface.
 
 The register is generated from `CalibrationProvenance.Baseline`; edit the
 typed provenance registry first, then regenerate this Markdown artifact with
-`sbt calibrationRegister`.
+`sbt "calibrationRegister --out docs/calibration-register.md"`.
 
 The register is intentionally useful before every value has a final data
 source. Missing or weak provenance is marked explicitly with searchable tokens:

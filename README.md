@@ -183,7 +183,7 @@ the canonical first-pass path for scientific review:
 | Step | Entry point | Boundary |
 | --- | --- | --- |
 | 1. Model specification | [Model specification](docs/model-specification.md) | Model identity, scope, state vector, month timing, equation families, stochasticity, limitations, and pointers to detailed sector documents. |
-| 2. Generated SFC evidence | [SFC matrix evidence](docs/sfc-matrix-evidence.md) and [model equations to SFC map](docs/model-equations-to-sfc-map.md) | Ledger-derived BSM/TFM snapshots, exact identities, runtime mechanism mapping, and stock-flow reconciliation evidence. |
+| 2. SFC evidence boundary | [SFC matrix evidence](docs/sfc-matrix-evidence.md) and [model equations to SFC map](docs/model-equations-to-sfc-map.md) | Hand-maintained entry points for generated BSM/TFM snapshots, exact identities, runtime mechanism mapping, and stock-flow reconciliation evidence. |
 | 3. Calibration evidence | [Calibration register](docs/calibration-register.md) and [data bridge](docs/data-bridge-national-financial-accounts.md) | Parameter provenance, empirical sources, transformations, assumptions, and visible calibration gaps. |
 | 4. Validation evidence | [Empirical validation report](docs/empirical-validation-report.md) and [engine invariants](docs/engine-invariants-and-semantics.md) | Empirical snapshot workflow, normal-path expectations, hard invariants, warnings, and known limitation surfaces. |
 | 5. Operational appendices | [Operations](docs/operations.md), [validation matrix](docs/validation-matrix.md), and [documentation architecture](docs/documentation-architecture.md) | Commands, CI ownership, diagnostics/profiling routing, generated-output guards, and full documentation inventory. |
@@ -195,7 +195,7 @@ Generated SFC snapshots live under
 separate README reading path. Start with
 [docs/sfc-matrix-evidence.md](docs/sfc-matrix-evidence.md) for regeneration
 commands, sign conventions, exact reconciliation rows, and coverage gaps. The
-hand-written [model equations to SFC map](docs/model-equations-to-sfc-map.md)
+hand-maintained [model equations to SFC map](docs/model-equations-to-sfc-map.md)
 connects model equation families to those generated rows, identities, and
 runtime evidence.
 

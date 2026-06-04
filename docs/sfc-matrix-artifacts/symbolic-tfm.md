@@ -1,5 +1,7 @@
 <!-- schema=sfc-matrix-v1 seed=1 month=12 commit=committed-snapshot sfc=pass matrix=pass output=symbolic -->
 
+Generated artifact. Do not edit by hand; regenerate with `sbt "sfcMatrices --seed 1 --months 12 --out docs/sfc-matrix-artifacts --format md --commit committed-snapshot"`.
+
 # Symbolic Transactions Flow Matrix
 
 | Flow \\ Sector | Households | Firms | Banks | Government | NBP | Insurance | Funds | Foreign | Sum |

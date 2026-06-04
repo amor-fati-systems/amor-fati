@@ -1,5 +1,7 @@
 <!-- schema=sfc-matrix-v1 seed=1 month=12 commit=committed-snapshot sfc=pass matrix=pass output=stock-flow-reconciliation -->
 
+Generated artifact. Do not edit by hand; regenerate with `sbt "sfcMatrices --seed 1 --months 12 --out docs/sfc-matrix-artifacts --format md --commit committed-snapshot"`.
+
 # Stock-Flow Reconciliation and Revaluation Evidence
 
 Rows compare independently sourced transaction, revaluation, default, write-off, and other-change channels with observed stock deltas or level identities. Residual is actual minus expected.
