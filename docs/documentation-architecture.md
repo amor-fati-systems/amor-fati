@@ -4,9 +4,10 @@ This inventory is the documentation ownership map for Amor Fati. It exists to
 keep the research-facing documentation navigable after the model specification,
 SFC evidence, diagnostics, calibration, and performance work.
 
-It covers `README.md` and every committed artifact under `docs/`. It does not
-define model behavior. It classifies ownership, reader role, and source-of-truth
-status so future cleanup can reduce confusion without deleting evidence.
+The inventory covers `README.md` and every committed artifact under `docs/`.
+This document does not define model behavior. Instead, it classifies ownership,
+reader role, and source-of-truth status so future cleanup can reduce confusion
+without deleting evidence.
 
 ## Owner Classes
 
