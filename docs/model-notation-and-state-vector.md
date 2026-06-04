@@ -13,6 +13,7 @@ stochasticity, SFC-mapping, calibration, or paper-facing overview material.
 | Source | Role |
 | --- | --- |
 | [Monthly transition function](monthly-transition-function.md) | Formal `X_t -> X_tau` transition, randomness contract, phase timeline, emitted evidence, and month-step invariants. |
+| [Stochastic processes and replay](stochastic-processes-and-replay.md) | Publication-facing seed contracts, stream maps, Monte Carlo seed policy, deterministic replay, and stochastic limitations. |
 | [ODD / ODD+D model documentation](odd-model-documentation.md) | Purpose, entities, state variables, scales, scheduling, initialization, and decision-making context. |
 | [Behavioral equations and decision rules](behavioral-equations-and-decision-rules.md) | Implemented household, firm, bank, fiscal, monetary, external, insurance, NBFI, quasi-fiscal, and JST rule surfaces. |
 | [SFC matrix evidence](sfc-matrix-evidence.md) | Balance Sheet Matrix, Transactions Flow Matrix, stock-flow reconciliation evidence, sign conventions, and generated matrix artifacts. |
@@ -376,7 +377,7 @@ where `k` names a stream from `MonthRandomness.StreamKey`.
 | `FirmEconomics` | firm decision, labor adjustment, pricing, credit and production-stage randomness | `stages.firmEconomics` |
 | `HouseholdFinancialEconomics` | household financial-stage randomness | `stages.householdFinancialEconomics` |
 | `OpenEconEconomics` | external, commodity, market, and open-economy stage randomness | `stages.openEconEconomics` |
-| `BankingEconomics` | banking-stage credit, interbank, and resolution randomness | `stages.bankingEconomics` |
+| `BankingEconomics` | banking-stage deposit-mobility randomness and stochastic choices executed inside the banking stage; firm/household approval gates use their invoking stage streams | `stages.bankingEconomics` |
 | `FdiMa` | closed-month FDI M&A ownership transition | `closing.fdiMa` |
 | `FirmEntry` | closed-month firm-entry transition | `closing.firmEntry` |
 | `StartupStaffing` | closed-month startup staffing transition | `closing.startupStaffing` |
