@@ -15,6 +15,9 @@ jobs:
 
       - uses: cachix/install-nix-action@8aa03977d8d733052d78f4e008a241fd1dbf36b3
 
+      - name: Check documentation hygiene
+        run: nix develop --command python3 scripts/check-docs.py
+
       - name: Check generated repository outputs
         run: nix develop --command bash scripts/check-generated-outputs.sh
 

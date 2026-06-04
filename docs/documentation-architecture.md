@@ -144,3 +144,5 @@ When adding or changing documentation:
    generated artifacts it must track.
 5. Do not delete or merge documentation without listing the replacement path and
    preserving generated evidence.
+6. Run `nix develop --command python3 scripts/check-docs.py` before review when
+   changing local links, headings, or committed `docs/` artifacts.

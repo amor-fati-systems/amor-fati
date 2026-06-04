@@ -29,6 +29,7 @@ from the operations index.
 | Layer | Trigger | Owner | Command / workflow | Primary purpose | Failure semantics |
 | --- | --- | --- | --- | --- | --- |
 | Generated outputs | PR and push | `.github/workflows/ci.yml` `generated-outputs` job | `nix develop --command bash scripts/check-generated-outputs.sh` | Prove generated docs/resources match checked-in sources | Hard fail on stale or missing generated output |
+| Documentation hygiene | PR and push | `.github/workflows/ci.yml` `generated-outputs` job | `nix develop --command python3 scripts/check-docs.py` | Validate local Markdown links, local anchors, and documentation inventory coverage | Hard fail on broken local documentation links, missing anchors, or unclassified committed `docs/` artifacts |
 | Nix environment | PR and push | `.github/workflows/ci.yml` `test` job | `nix flake check --print-build-logs`; dev-shell version checks | Ensure the reproducible build shell works | Hard fail on broken Nix flake or missing toolchain |
 | Formatting | PR and push | `.github/workflows/ci.yml` `test` job | `nix develop --command sbt scalafmtCheckAll` | Keep Scala formatting deterministic | Hard fail on formatting drift |
 | Non-heavy unit tests | PR and push | `.github/workflows/ci.yml` `test` job | `nix develop --command sbt coverage "root / Test / test" coverageReport` | Fast correctness for mechanisms, economics boundaries, flows, SFC, ledger projection, diagnostics helpers, and schemas | Hard fail on broken local invariant or regression |
@@ -104,6 +105,7 @@ Use this routing rule before adding a new check:
 | Local mechanism invariant, algebraic identity, schema rule, parser behavior | Root unit/property tests | Nightly diagnostics |
 | Slow but focused mechanism/property test | Heavy-tagged root test | Integration tests unless it needs end-to-end state |
 | Short multi-month normal-path engine health | `integrationTests / Test / test` | CSV determinism tests |
+| Markdown links, anchors, and documentation ownership inventory | `scripts/check-docs.py` in the generated-output CI job | Prose style linting |
 | Generated docs/resources consistency | Existing generated-output script | Unit tests |
 | Long Monte Carlo, scenario, robustness, diagnostic export validation | Nightly diagnostics profile | PR unit tests |
 | Stress/failure-channel experiments | Stress/exploratory nightly class | Normal-validation gate |
