@@ -4,6 +4,23 @@ This document is the command-oriented operating guide for Amor Fati. It is not
 model documentation; it records how to run, test, inspect, and compare the
 current codebase from a local checkout.
 
+## Operational Appendix Index
+
+This document is the entry point for operational appendices. Use the table
+below to find the owning page for CI, generated outputs, diagnostics,
+profiling, scenarios, and local run artifacts. Detailed appendices should link
+back here instead of each maintaining a separate top-level operations map.
+
+| Need | Start here | Detail owner |
+| --- | --- | --- |
+| Local setup, test commands, Nix shell, heavy tests, integration tests, output paths | This document | Sections below |
+| CI, generated-output guard, validation ownership, failure semantics | [Validation matrix](validation-matrix.md) | `docs/validation-matrix.md` |
+| Nightly diagnostics profiles, health summary, run manifests, artifact retention | [Nightly diagnostics](nightly-diagnostics.md) | `docs/nightly-diagnostics.md` |
+| Nightly baseline comparison and threshold promotion policy | [Nightly baseline comparison](nightly-baseline-comparison.md) | `docs/nightly-baseline-comparison.md` |
+| Hot-path profiling, JFR artifacts, performance telemetry | [Hot-path profiling](hot-path-profiling.md) and [performance regression budgets](performance-regression-budgets.md) | `docs/hot-path-profiling.md`, `docs/performance-regression-budgets.md` |
+| Named scenario runs and robustness envelopes | [Scenario registry](scenario-registry.md) and [sensitivity robustness workflow](sensitivity-robustness-workflow.md) | `docs/scenario-registry.md`, `docs/sensitivity-robustness-workflow.md` |
+| Focused banking/household/credit diagnostics | [Household credit stress calibration](household-credit-stress-calibration.md), [bank balance-sheet benchmark](bank-balance-sheet-benchmark.md), [bank failure ablations](bank-failure-ablations.md), [HH-bank lead-lag diagnostics](hh-bank-lead-lag-diagnostics.md), [loan-origination quality diagnostics](loan-origination-quality-diagnostics.md) | Diagnostic-specific appendices |
+
 ## Requirements
 
 Use the same toolchain shape as CI:

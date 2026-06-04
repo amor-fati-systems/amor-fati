@@ -4,6 +4,11 @@ Issue #590 adds an optional diagnostic export that links household and firm
 credit-origination quality to later arrears, default, write-off, or bankruptcy
 outcomes. The export does not change production behavior.
 
+Operational appendix entry point:
+[operations.md#operational-appendix-index](operations.md#operational-appendix-index).
+Use this page for loan-origination diagnostic details after starting from the
+operations index.
+
 Run the standard review fixture with:
 
 ```bash

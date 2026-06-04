@@ -126,8 +126,8 @@ merge or consolidation candidates for later cleanup tickets:
 
 | Candidate group | Current files | Proposed direction |
 | --- | --- | --- |
-| Operational validation appendix | `validation-matrix.md`, `nightly-diagnostics.md`, `nightly-baseline-comparison.md`, `operations.md`, `performance-regression-budgets.md` | Keep one operational entry point and cross-link detailed policy pages from it. |
-| Diagnostic-method appendix | `bank-balance-sheet-benchmark.md`, `bank-failure-ablations.md`, `hh-bank-lead-lag-diagnostics.md`, `loan-origination-quality-diagnostics.md`, `hot-path-profiling.md` | Create or use one diagnostic/profiling index so README and model spec do not need to enumerate each diagnostic document. |
+| Operational validation appendix | `operations.md`, `validation-matrix.md`, `nightly-diagnostics.md`, `nightly-baseline-comparison.md`, `performance-regression-budgets.md` | Use `operations.md#operational-appendix-index` as the operational entry point and keep detailed policy pages cross-linked from it. |
+| Diagnostic-method appendix | `bank-balance-sheet-benchmark.md`, `bank-failure-ablations.md`, `hh-bank-lead-lag-diagnostics.md`, `loan-origination-quality-diagnostics.md`, `hot-path-profiling.md` | Route diagnostic/profiling discovery through `operations.md#operational-appendix-index` so README and model spec do not enumerate each diagnostic document. |
 | Calibration evidence notes | `household-credit-stress-calibration.md`, `external-sector-baseline-calibration.md`, `private-credit-renewal-calibration.md` | Keep as evidence notes, but route them through calibration governance and data-bridge indexes. |
 | Publication QA checklist | `model-spec-completeness-checklist.md` | Keep as QA appendix unless #739 proves it duplicates the documentation architecture inventory. |
 

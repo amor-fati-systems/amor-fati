@@ -4,6 +4,11 @@ This diagnostic export supports issue #584. It connects household stress flows
 to bank outcomes by `BankId` and month, then separates descriptive lead-lag
 correlation from controlled counterfactual evidence.
 
+Operational appendix entry point:
+[operations.md#operational-appendix-index](operations.md#operational-appendix-index).
+Use this page for HH-bank lead-lag diagnostic details after starting from the
+operations index.
+
 Run:
 
 ```bash

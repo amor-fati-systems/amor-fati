@@ -16,6 +16,11 @@ This is not a full global sensitivity design. It is a local research-review
 workflow that should stay cheap enough to run before larger empirical and
 scenario work.
 
+Operational appendix entry point:
+[operations.md#operational-appendix-index](operations.md#operational-appendix-index).
+Use this page for robustness workflow details after starting from the operations
+index.
+
 ## Command
 
 Local review default:

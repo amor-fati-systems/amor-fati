@@ -6,6 +6,11 @@ replacement for CI, integration tests, generated-output checks, or nightly
 diagnostics; it is the routing rule that keeps future validation work from
 duplicating those layers.
 
+Operational appendix entry point:
+[operations.md#operational-appendix-index](operations.md#operational-appendix-index).
+Use this page for validation ownership and failure semantics after starting
+from the operations index.
+
 ## Principles
 
 - PR feedback should stay fast enough for normal development.

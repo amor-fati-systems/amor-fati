@@ -10,6 +10,11 @@ The source of truth is
 The executable runner is
 `src/main/scala/com/boombustgroup/amorfati/diagnostics/ScenarioRunExport.scala`.
 
+Operational appendix entry point:
+[operations.md#operational-appendix-index](operations.md#operational-appendix-index).
+Use this page for named scenario execution details after starting from the
+operations index.
+
 ## Command
 
 Run the baseline plus two nontrivial scenarios:

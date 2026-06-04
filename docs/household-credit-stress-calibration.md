@@ -6,6 +6,11 @@ converts existing Monte Carlo outputs and terminal household aggregates into
 Poland-relevant guardrail ratios for the same `2026-04-30` model-start baseline
 used by the production calibration surface.
 
+Operational appendix entry point:
+[operations.md#operational-appendix-index](operations.md#operational-appendix-index).
+Use this page for household credit-stress diagnostic details after starting
+from the operations index.
+
 Run the standard fixture with:
 
 ```bash
