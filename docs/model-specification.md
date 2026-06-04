@@ -325,11 +325,11 @@ supporting source rather than a competing entry point:
    [behavioral-equations-and-decision-rules.md](behavioral-equations-and-decision-rules.md)
    and [odd-model-documentation.md](odd-model-documentation.md) as companion
    references when implementation-level rule detail or ODD structure is needed.
-4. Generated SFC evidence: read
+4. SFC evidence boundary: read
    [model-equations-to-sfc-map.md](model-equations-to-sfc-map.md) and
-   [sfc-matrix-evidence.md](sfc-matrix-evidence.md), then inspect generated
-   `docs/sfc-matrix-artifacts/*` only for the specific matrix rows or
-   reconciliation evidence under review.
+   [sfc-matrix-evidence.md](sfc-matrix-evidence.md) as hand-maintained entry
+   points, then inspect generated `docs/sfc-matrix-artifacts/*` only for the
+   specific matrix rows or reconciliation evidence under review.
 5. Calibration evidence: read [calibration-register.md](calibration-register.md)
    and [data-bridge-national-financial-accounts.md](data-bridge-national-financial-accounts.md).
 6. Validation evidence: read

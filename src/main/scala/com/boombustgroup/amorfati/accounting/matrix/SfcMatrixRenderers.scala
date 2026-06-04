@@ -112,6 +112,8 @@ object SfcMatrixRenderers:
     renderMarkdownTable(
       s"""<!-- schema=${metadata.schemaVersion} seed=${metadata.seed} month=${metadata.executionMonth} commit=${metadata.commit} sfc=${metadata.sfcStatus} matrix=${metadata.matrixStatus} output=symbolic -->
          |
+         |${markdownSourceContract}
+         |
          |# ${matrix.title}
          |""".stripMargin,
       header,
@@ -168,6 +170,8 @@ object SfcMatrixRenderers:
 
     renderMarkdownTable(
       s"""<!-- schema=${metadata.schemaVersion} seed=${metadata.seed} month=${metadata.executionMonth} commit=${metadata.commit} sfc=${metadata.sfcStatus} matrix=${metadata.matrixStatus} output=symbolic-mapping -->
+         |
+         |${markdownSourceContract}
          |
          |# Symbolic Matrix Mapping
          |""".stripMargin,
@@ -242,6 +246,8 @@ object SfcMatrixRenderers:
     renderMarkdownTable(
       s"""<!-- schema=${metadata.schemaVersion} seed=${metadata.seed} month=${metadata.executionMonth} commit=${metadata.commit} sfc=${metadata.sfcStatus} matrix=${metadata.matrixStatus} output=flow-mechanism-semantics -->
          |
+         |${markdownSourceContract}
+         |
          |# Flow Mechanism Semantics
          |
          |Every one of the ${FlowMechanismSemantics.rows.size} runtime-emitted `FlowMechanism` entries appears exactly once in this table. The map composes `FlowMechanism`, `SfcMatrixRegistry`, `SfcSymbolicMatrices`, `RuntimeMechanismSurvivability`, and existing test/diagnostic ownership into one reviewer-facing audit surface.
@@ -315,6 +321,8 @@ object SfcMatrixRenderers:
     renderMarkdownTable(
       s"""<!-- schema=${metadata.schemaVersion} seed=${metadata.seed} month=${metadata.executionMonth} commit=${metadata.commit} sfc=${metadata.sfcStatus} matrix=${metadata.matrixStatus} output=stock-flow-reconciliation -->
          |
+         |${markdownSourceContract}
+         |
          |# Stock-Flow Reconciliation and Revaluation Evidence
          |
          |Rows compare independently sourced transaction, revaluation, default, write-off, and other-change channels with observed stock deltas or level identities. Residual is actual minus expected.
@@ -328,6 +336,9 @@ object SfcMatrixRenderers:
     val separator   = markdownRow(header.map(_ => "---"))
     val body        = rows.map(markdownRow)
     (Vector(prefix.trim, "", tableHeader, separator) ++ body).mkString("\n") + "\n"
+
+  private def markdownSourceContract: String =
+    "Generated artifact. Do not edit by hand; regenerate with `sbt \"sfcMatrices --seed 1 --months 12 --out docs/sfc-matrix-artifacts --format md --commit committed-snapshot\"`."
 
   private def markdownRow(values: Vector[String]): String =
     values.map(escapeMarkdown).mkString("| ", " | ", " |")

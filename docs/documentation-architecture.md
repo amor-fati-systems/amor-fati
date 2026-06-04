@@ -34,7 +34,7 @@ That canonical path separates:
 
 1. model specification and executable model contract;
 2. sector and behavior detail;
-3. generated SFC evidence;
+3. SFC evidence boundary;
 4. calibration evidence;
 5. validation evidence;
 6. operational appendices.
@@ -108,6 +108,16 @@ The existing `scripts/check-generated-outputs.sh` guard covers
 `docs/calibration-register.md` and `docs/sfc-matrix-artifacts/`. Empirical
 validation snapshots are intentionally separate because they are refreshed only
 when the validation snapshot is intentionally updated.
+
+Hand-maintained companion documents must say that they are not generated and
+must identify the generated artifacts they track:
+
+| Companion surface | Generated artifacts it tracks |
+| --- | --- |
+| `docs/sfc-matrix-evidence.md` | `docs/sfc-matrix-artifacts/*` |
+| `docs/model-equations-to-sfc-map.md` | `docs/sfc-matrix-artifacts/*` |
+| `docs/empirical-validation-report.md` | `docs/empirical-validation/*.csv` |
+| `docs/empirical-validation/README.md` | `docs/empirical-validation/*.csv` |
 
 ## Deprecated And Merge Candidates
 

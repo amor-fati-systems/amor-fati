@@ -1,11 +1,11 @@
 # Model Equations To SFC Map
 
-This document maps Amor Fati's publication-facing equation families to the
-ledger-derived SFC matrix rows, runtime stock families, flow-channel semantics,
-and exact reconciliation identities.
+This hand-maintained document maps Amor Fati's publication-facing equation
+families to the ledger-derived SFC matrix rows, runtime stock families,
+flow-channel semantics, and exact reconciliation identities.
 
-It is a reviewer-facing index. It does not define new model behavior and does
-not duplicate the generated matrix tables.
+It is not generated, does not define new model behavior, and does not duplicate
+the generated matrix tables.
 
 ## Source Contract
 
@@ -18,7 +18,7 @@ The authoritative SFC artifacts are generated automatically:
 - [flow-channel semantics](sfc-matrix-artifacts/flow-mechanism-semantics.md);
 - [stock-flow reconciliation](sfc-matrix-artifacts/stock-flow-reconciliation.md).
 
-This map is intentionally hand-written because it explains how model equation
+This map is intentionally hand-maintained because it explains how model equation
 families should be read against those generated artifacts. The generated
 artifacts remain the source of truth for exact row names, runtime mechanisms,
 asset families, identity status, and per-run evidence.

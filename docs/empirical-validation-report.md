@@ -1,10 +1,10 @@
 # Empirical Validation Report
 
-This report defines how Amor Fati outputs should be compared with empirical
-macro, meso, and micro stylized facts. It is the workflow document for the
-curated source manifest and generated baseline snapshot; readiness metadata
-lives in `docs/empirical-validation-source-manifest.csv`, while pass/fail
-baseline results live in
+This hand-maintained report defines how Amor Fati outputs should be compared
+with empirical macro, meso, and micro stylized facts. It is the workflow
+companion for the curated source manifest and generated baseline snapshot;
+readiness metadata lives in `docs/empirical-validation-source-manifest.csv`,
+while pass/fail baseline results live in
 `docs/empirical-validation/baseline-validation-snapshot.csv`.
 
 The goal is to keep failed, missing, or weak validation targets visible. A row

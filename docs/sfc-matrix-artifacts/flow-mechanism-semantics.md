@@ -1,5 +1,7 @@
 <!-- schema=sfc-matrix-v1 seed=1 month=12 commit=committed-snapshot sfc=pass matrix=pass output=flow-mechanism-semantics -->
 
+Generated artifact. Do not edit by hand; regenerate with `sbt "sfcMatrices --seed 1 --months 12 --out docs/sfc-matrix-artifacts --format md --commit committed-snapshot"`.
+
 # Flow Mechanism Semantics
 
 Every one of the 114 runtime-emitted `FlowMechanism` entries appears exactly once in this table. The map composes `FlowMechanism`, `SfcMatrixRegistry`, `SfcSymbolicMatrices`, `RuntimeMechanismSurvivability`, and existing test/diagnostic ownership into one reviewer-facing audit surface.
