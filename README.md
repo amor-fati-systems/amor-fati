@@ -201,6 +201,7 @@ replication, calibration, validation, and publication work:
 | [Performance regression budgets](docs/performance-regression-budgets.md) | Soft baseline comparisons for diagnostics and profiling telemetry, using existing run manifests without adding duplicate simulations. |
 | [Sensitivity and robustness workflow](docs/sensitivity-robustness-workflow.md) | Seed envelopes and one-at-a-time parameter-sensitivity artifacts generated from the Monte Carlo runner. |
 | [Reproducible scenario registry](docs/scenario-registry.md) | Named policy and shock scenarios with exact parameter deltas from baseline, expected channels, seed/run metadata, and the `scenarioRun` execution path. |
+| [Documentation architecture](docs/documentation-architecture.md) | Ownership map for canonical, generated, calibration, operational, diagnostics, ADR, and merge-candidate documentation artifacts. |
 
 ## Ledger-Derived Matrix Artifacts
 
