@@ -490,7 +490,7 @@ If a primary failure occurs, interbank contagion applies counterparty losses
 from failed-bank exposures. A secondary failure check then re-runs on the
 post-contagion bank rows.
 
-Bail-in is event based:
+Bail-in is event-based:
 
 ```text
 UnprocessedDeposits_b =
