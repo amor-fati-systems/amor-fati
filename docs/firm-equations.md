@@ -13,7 +13,7 @@ behavior and does not replace the implementation anchors listed below.
 
 | Source | Role |
 | --- | --- |
-| [Model specification](model-specification.md) | Canonical model overview and reading order. |
+| [Model specification](model-specification.md#reviewer-reading-path) | Canonical reviewer path and model overview. |
 | [Model notation and state vector](model-notation-and-state-vector.md#firms) | Firm state, ledger-owned firm balances, and major symbol families. |
 | [Monthly transition function](monthly-transition-function.md) | `X_t -> X_tau` timing, randomness, flow emission, SFC validation, and next-pre boundary. |
 | [Behavioral equations and decision rules](behavioral-equations-and-decision-rules.md#firm-rules) | Detailed implementation-oriented rule catalog and output-column map. |

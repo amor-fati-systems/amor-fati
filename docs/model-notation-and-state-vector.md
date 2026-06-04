@@ -10,6 +10,11 @@ stochasticity, SFC-mapping, calibration, or paper-facing overview material.
 
 ## Source Documents
 
+The canonical reviewer path lives in
+[model-specification.md#reviewer-reading-path](model-specification.md#reviewer-reading-path).
+The table below is a local source map for notation work, not a separate
+top-level reading order.
+
 | Source | Role |
 | --- | --- |
 | [Monthly transition function](monthly-transition-function.md) | Formal `X_t -> X_tau` transition, randomness contract, phase timeline, emitted evidence, and month-step invariants. |

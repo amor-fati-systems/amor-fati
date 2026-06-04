@@ -11,6 +11,10 @@ below.
 
 ## Source Map
 
+This table lists the detailed sources used by the specification. It is not a
+second reading order; the canonical first-pass path is in
+[Reviewer Reading Path](#reviewer-reading-path).
+
 | Source | Role in the model specification |
 | --- | --- |
 | [Model notation and state vector](model-notation-and-state-vector.md) | Canonical symbols, state vector, time indexing, quantity classes, stochastic notation, and implementation anchors. |
@@ -303,40 +307,36 @@ behavioral mechanisms can be revised, calibration can be improved, and
 extensions can be added, but the accounting and validation surfaces must remain
 auditable.
 
-## Reviewer Reading Order
+## Reviewer Reading Path
 
-For a first academic review:
+For a first academic review, use this path and treat every other document as a
+supporting source rather than a competing entry point:
 
-1. Read this document for the model spine.
-2. Skim [model-spec-completeness-checklist.md](model-spec-completeness-checklist.md)
-   for current coverage and visible publication-readiness gaps.
-3. Read [model-notation-and-state-vector.md](model-notation-and-state-vector.md)
-   for notation and state ownership.
-4. Read [monthly-transition-function.md](monthly-transition-function.md) for
-   the formal month-step contract.
-5. Read [stochastic-processes-and-replay.md](stochastic-processes-and-replay.md)
-   for initialization seeds, monthly streams, Monte Carlo seed policy, and
-   deterministic replay.
-6. Read [odd-model-documentation.md](odd-model-documentation.md) for ODD/ODD+D
-   structure and agent/entity description.
-7. Read [behavioral-equations-and-decision-rules.md](behavioral-equations-and-decision-rules.md)
-   for implemented rule families.
-8. Read [household-equations.md](household-equations.md) for the consolidated
-   publication-facing household-sector section.
-9. Read [firm-equations.md](firm-equations.md) for the consolidated
-   publication-facing firm-sector section.
-10. Read [banking-and-financial-sector-equations.md](banking-and-financial-sector-equations.md)
-   for the consolidated banking and financial-stability section.
-11. Read [institutional-sector-equations.md](institutional-sector-equations.md)
-   for the consolidated public, monetary, external, insurance, NBFI, and
-   quasi-fiscal section.
-12. Read [model-equations-to-sfc-map.md](model-equations-to-sfc-map.md),
-   [sfc-matrix-evidence.md](sfc-matrix-evidence.md), and generated matrix
-   artifacts for the accounting contract.
-13. Read [calibration-register.md](calibration-register.md),
-   [data-bridge-national-financial-accounts.md](data-bridge-national-financial-accounts.md),
-   and [empirical-validation-report.md](empirical-validation-report.md) for
-   calibration and validation evidence.
-14. Read [engine-invariants-and-semantics.md](engine-invariants-and-semantics.md)
-   and [validation-matrix.md](validation-matrix.md) for failure semantics and
-   review routing.
+1. Model spine: read this document first.
+2. Executable model contract: read
+   [model-notation-and-state-vector.md](model-notation-and-state-vector.md),
+   [monthly-transition-function.md](monthly-transition-function.md), and
+   [stochastic-processes-and-replay.md](stochastic-processes-and-replay.md).
+3. Sector and behavior detail: read the sector equation documents for the
+   mechanism families relevant to the review:
+   [household](household-equations.md), [firm](firm-equations.md),
+   [banking and financial sector](banking-and-financial-sector-equations.md),
+   and [institutional sector](institutional-sector-equations.md). Use
+   [behavioral-equations-and-decision-rules.md](behavioral-equations-and-decision-rules.md)
+   and [odd-model-documentation.md](odd-model-documentation.md) as companion
+   references when implementation-level rule detail or ODD structure is needed.
+4. Generated SFC evidence: read
+   [model-equations-to-sfc-map.md](model-equations-to-sfc-map.md) and
+   [sfc-matrix-evidence.md](sfc-matrix-evidence.md), then inspect generated
+   `docs/sfc-matrix-artifacts/*` only for the specific matrix rows or
+   reconciliation evidence under review.
+5. Calibration evidence: read [calibration-register.md](calibration-register.md)
+   and [data-bridge-national-financial-accounts.md](data-bridge-national-financial-accounts.md).
+6. Validation evidence: read
+   [empirical-validation-report.md](empirical-validation-report.md) and
+   [engine-invariants-and-semantics.md](engine-invariants-and-semantics.md).
+7. Operational appendices: use [operations.md](operations.md),
+   [validation-matrix.md](validation-matrix.md), and
+   [documentation-architecture.md](documentation-architecture.md) only when
+   reproducing runs, changing CI/diagnostics, or navigating the full document
+   inventory.

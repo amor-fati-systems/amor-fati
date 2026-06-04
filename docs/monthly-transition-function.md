@@ -12,7 +12,7 @@ or validation documents.
 
 | Source | Role |
 | --- | --- |
-| [Model specification](model-specification.md) | Publication-facing model overview. |
+| [Model specification](model-specification.md#reviewer-reading-path) | Canonical reviewer path and publication-facing model overview. |
 | [Model notation and state vector](model-notation-and-state-vector.md) | Canonical symbols, state vector, time indices, stocks, flows, rates, shares, and stochastic notation. |
 | [Stochastic processes and replay](stochastic-processes-and-replay.md) | Detailed seed policy, initialization and month stream maps, stochastic decision surfaces, Monte Carlo replay, and validation coverage. |
 | [Behavioral equations and decision rules](behavioral-equations-and-decision-rules.md) | Detailed rule families used by the same-month economics stages. |

@@ -15,7 +15,7 @@ financial-stability block.
 
 | Source | Role |
 | --- | --- |
-| [Model specification](model-specification.md) | Publication-facing model entry point and reading order. |
+| [Model specification](model-specification.md#reviewer-reading-path) | Canonical reviewer path and model overview. |
 | [Model notation and state vector](model-notation-and-state-vector.md#banks) | Bank state, ledger stock, rate, ratio, and flow notation. |
 | [Monthly transition function](monthly-transition-function.md) | Month-step timing and deterministic transition contract. |
 | [Behavioral rule catalog](behavioral-equations-and-decision-rules.md#banking-rules) | Implementation-oriented banking rules and output-column map. |
