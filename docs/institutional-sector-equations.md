@@ -16,6 +16,7 @@ implementation anchors listed below.
 | [Model specification](model-specification.md) | Canonical model overview and reading order. |
 | [Model notation and state vector](model-notation-and-state-vector.md) | Public, NBP, external, social-fund, insurance, NBFI, and quasi-fiscal state notation. |
 | [Monthly transition function](monthly-transition-function.md) | `X_t -> X_tau` timing, same-month economics, flow emission, SFC validation, and next-pre boundary. |
+| [Banking and financial-sector equations](banking-and-financial-sector-equations.md) | Commercial-bank, financial-stability, and bank-facing financial-sector interface equations. |
 | [Fiscal, monetary, bond-market, and external rules](behavioral-equations-and-decision-rules.md#fiscal-monetary-bond-market-and-external-rules) and [insurance, NBFI, quasi-fiscal, and JST rules](behavioral-equations-and-decision-rules.md#insurance-nbfi-quasi-fiscal-and-jst-rules) | Implementation-oriented institutional-sector rule catalogs. |
 | [SFC matrix evidence](sfc-matrix-evidence.md) | Accounting matrix evidence, generated BSM/TFM artifacts, mechanism semantics, and stock-flow reconciliation. |
 | [Calibration register](calibration-register.md) and [data bridge](data-bridge-national-financial-accounts.md) | Parameter provenance, official source bridge, empirical transformation rules, and visible calibration gaps. |

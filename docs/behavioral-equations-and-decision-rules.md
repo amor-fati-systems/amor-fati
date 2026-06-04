@@ -739,6 +739,10 @@ threshold and a probability draw succeeds.
 
 ## Banking Rules
 
+The consolidated publication-facing banking and financial-stability section
+lives in [banking-and-financial-sector-equations.md](banking-and-financial-sector-equations.md).
+The material below remains the implementation-oriented banking rule catalog.
+
 Implementation anchors:
 
 - `agents/Banking.scala`
