@@ -194,6 +194,7 @@ The project maintains generated SFC evidence:
 | [Matrix mapping](sfc-matrix-artifacts/matrix-mapping.md) | Symbolic row to runtime asset/mechanism/coverage mapping |
 | [Flow-channel semantics](sfc-matrix-artifacts/flow-mechanism-semantics.md) | Economic meaning of runtime flow mechanisms |
 | [Stock-flow reconciliation](sfc-matrix-artifacts/stock-flow-reconciliation.md) | Executed-run evidence for stock deltas, levels, revaluation, defaults, write-offs, and other changes |
+| [Model equations to SFC map](model-equations-to-sfc-map.md) | Human-maintained bridge from equation families and state variables to generated matrix rows and exact identities |
 
 Known unsupported, diagnostic-only, or non-holder-resolved stock families must
 remain explicit. In particular, bank capital is a persisted bank regulatory and
@@ -325,7 +326,8 @@ For a first academic review:
 11. Read [institutional-sector-equations.md](institutional-sector-equations.md)
    for the consolidated public, monetary, external, insurance, NBFI, and
    quasi-fiscal section.
-12. Read [sfc-matrix-evidence.md](sfc-matrix-evidence.md) and generated matrix
+12. Read [model-equations-to-sfc-map.md](model-equations-to-sfc-map.md),
+   [sfc-matrix-evidence.md](sfc-matrix-evidence.md), and generated matrix
    artifacts for the accounting contract.
 13. Read [calibration-register.md](calibration-register.md),
    [data-bridge-national-financial-accounts.md](data-bridge-national-financial-accounts.md),
