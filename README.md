@@ -36,7 +36,7 @@
 
 A ledger-first SFC-ABM of the Polish economy where **every monetary flow is accounted for**. Firms produce, households consume, banks lend, the central bank sets policy, the government taxes and spends, the external sector trades and moves capital — and the books must balance. Always.
 
-Amor Fati is a **stock-flow consistent** (SFC) **agent-based model** (ABM) that simulates the Polish economy at the level of individual households, heterogeneous firms, and a realistic multi-bank financial system. The engine enforces 15 exact accounting identities each month — if a single zloty goes missing, the simulation fails.
+Amor Fati is a **stock-flow consistent** (SFC) **agent-based model** (ABM) that simulates the Polish economy at the level of individual households, heterogeneous firms, and a ten-row banking-sector archetype system. The engine enforces 15 exact accounting identities each month — if a single zloty goes missing, the simulation fails.
 
 The key design principle is simple:
 
@@ -154,7 +154,7 @@ the canonical first-pass path for scientific review:
 
 | Step | Entry point | Boundary |
 | --- | --- | --- |
-| 1. Model specification | [Model specification](docs/model-specification.md) | Model identity, scope, state vector, month timing, equation families, stochasticity, limitations, and pointers to detailed sector documents. |
+| 1. Model specification and ODD | [Model specification](docs/model-specification.md) and [ODD / ODD+D model documentation](docs/odd-model-documentation.md) | Model identity, scope, entities, scheduling, state vector, month timing, equation families, stochasticity, limitations, and pointers to detailed sector documents. |
 | 2. SFC evidence boundary | [SFC matrix evidence](docs/sfc-matrix-evidence.md) and [model equations to SFC map](docs/model-equations-to-sfc-map.md) | Hand-maintained entry points for generated BSM/TFM snapshots, exact identities, runtime mechanism mapping, and stock-flow reconciliation evidence. |
 | 3. Calibration evidence | [Calibration register](docs/calibration-register.md) and [data bridge](docs/data-bridge-national-financial-accounts.md) | Parameter provenance, empirical sources, transformations, assumptions, and visible calibration gaps. |
 | 4. Validation evidence | [Empirical validation report](docs/empirical-validation-report.md) and [engine invariants](docs/engine-invariants-and-semantics.md) | Empirical snapshot workflow, normal-path expectations, hard invariants, warnings, and known limitation surfaces. |
