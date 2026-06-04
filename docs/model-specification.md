@@ -244,9 +244,12 @@ Calibration is currently documented through:
 - targeted calibration notes for external sector, household credit stress, and
   private credit renewal.
 
-Calibration governance is intentionally treated as a separate design problem.
-This model specification references current calibration artifacts but does not
-declare a new parameter source-of-truth policy.
+Use these artifacts after the model-equation and SFC review when the question
+becomes "which sources, transformations, snapshots, and visible gaps support
+the current parameterization?" They are evidence surfaces, not a second
+equation narrative. Calibration governance is intentionally treated as a
+separate design problem; this model specification references current
+calibration artifacts but does not declare a parameter source-of-truth policy.
 
 ## Validation And Diagnostics
 
@@ -332,8 +335,11 @@ supporting source rather than a competing entry point:
    [sfc-matrix-evidence.md](sfc-matrix-evidence.md) as hand-maintained entry
    points, then inspect generated `docs/sfc-matrix-artifacts/*` only for the
    specific matrix rows or reconciliation evidence under review.
-5. Calibration evidence: read [calibration-register.md](calibration-register.md)
-   and [data-bridge-national-financial-accounts.md](data-bridge-national-financial-accounts.md).
+5. Calibration evidence: after the equation and SFC review, use
+   [calibration-register.md](calibration-register.md) and
+   [data-bridge-national-financial-accounts.md](data-bridge-national-financial-accounts.md)
+   to inspect current parameter evidence, external-source bridges, and visible
+   provenance gaps.
 6. Validation evidence: read
    [empirical-validation-report.md](empirical-validation-report.md) and
    [engine-invariants-and-semantics.md](engine-invariants-and-semantics.md).

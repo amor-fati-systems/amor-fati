@@ -10,6 +10,9 @@ while pass/fail baseline results live in
 The goal is to keep failed, missing, or weak validation targets visible. A row
 with `MISSING_OUTPUT`, `MISSING_DATA_BRIDGE`, `MISSING_SOURCE_DETAIL`, or
 `BRIDGE_ASSUMPTION` is part of the report surface, not an omission.
+This report is empirical evidence, not calibration governance policy; deeper
+source-of-truth, versioning, and parameter lifecycle decisions belong to the
+[Calibration Governance milestone](https://github.com/boombustgroup/amor-fati/milestone/27).
 
 ## Validation Boundary
 
