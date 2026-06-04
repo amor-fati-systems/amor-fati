@@ -177,14 +177,19 @@ FlowSimulation.step(state: SimState, randomness: MonthRandomness.Contract)
 The high-level order is fixed:
 
 1. Read the start-of-month state and explicit randomness contract.
-2. Compute same-month economics in a nine-stage deterministic pipeline.
-3. Translate calculated quantities into typed monetary-flow mechanisms.
-4. Emit batched flows into the runtime ledger topology.
-5. Execute flows through the ledger interpreter.
-6. Project supported runtime deltas back into ledger-owned financial state.
-7. Run exact SFC validation.
-8. Extract end-of-month outputs and next-month decision signals.
+2. Compute same-month economics in an ordered deterministic pipeline.
+3. Narrow same-month outputs into flow-plan, signal, closing, semantic, and
+   evidence views.
+4. Build the semantic closed-month state and extract next-month decision
+   signals.
+5. Translate calculated quantities into typed monetary-flow mechanisms.
+6. Emit and execute batched flows through the runtime ledger topology.
+7. Project supported runtime deltas back into ledger-owned financial state.
+8. Run exact SFC validation for the `X_t -> X_tau` transition.
 9. Return `StepOutput` with `nextState`, trace, flows, validation, and deltas.
+
+The mathematical transition contract is documented in
+[`docs/monthly-transition-function.md`](monthly-transition-function.md).
 
 ### Economics Pipeline
 

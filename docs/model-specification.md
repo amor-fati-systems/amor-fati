@@ -15,6 +15,7 @@ below.
 | --- | --- |
 | [Model notation and state vector](model-notation-and-state-vector.md) | Canonical symbols, state vector, time indexing, quantity classes, stochastic notation, and implementation anchors. |
 | [Model-spec completeness checklist](model-spec-completeness-checklist.md) | Review control surface for model-family coverage, detailed sources, visible gaps, and remaining publication-readiness work. |
+| [Monthly transition function](monthly-transition-function.md) | Formal `X_t -> X_tau` month-step contract, including randomness, same-month economics, closed-month state, flow emission, runtime ledger execution, SFC validation, and next-pre boundary. |
 | [ODD / ODD+D model documentation](odd-model-documentation.md) | ODD/ODD+D description of purpose, entities, scales, scheduling, initialization, inputs, submodels, observation surfaces, and decisions. |
 | [Behavioral equations and decision rules](behavioral-equations-and-decision-rules.md) | Implemented equations and algorithmic decision rules by model family. |
 | [SFC matrix evidence](sfc-matrix-evidence.md) | Balance Sheet Matrix, Transactions Flow Matrix, stock-flow reconciliation evidence, sign conventions, and generated matrix artifacts. |
@@ -119,15 +120,18 @@ where:
 The execution order is:
 
 ```text
-pre boundary -> same-month economics -> flow plan -> runtime ledger execution
--> SFC validation -> closed month -> next-pre boundary
+pre boundary -> same-month economics -> same-month boundary views
+-> semantic closed month and seed extraction -> flow emission
+-> runtime ledger execution -> next-pre materialization -> SFC validation gate
 ```
 
 Same-month economics calculates decisions, prices, rates, quantities, and
 closing projections. The flow layer translates those quantities into typed
 monetary mechanisms, executes them through the ledger topology, and validates
-semantic stock-flow identities. Closed-month logic then materializes the next
-boundary state and next-period decision signals.
+semantic stock-flow identities before the step result is accepted. Closed-month
+and next-pre logic materialize the next boundary state and next-period decision
+signals. The formal transition contract lives in
+[monthly-transition-function.md](monthly-transition-function.md).
 
 ## Entity And Institution Families
 
@@ -293,16 +297,18 @@ For a first academic review:
    for current coverage and visible publication-readiness gaps.
 3. Read [model-notation-and-state-vector.md](model-notation-and-state-vector.md)
    for notation and state ownership.
-4. Read [odd-model-documentation.md](odd-model-documentation.md) for ODD/ODD+D
+4. Read [monthly-transition-function.md](monthly-transition-function.md) for
+   the formal month-step contract.
+5. Read [odd-model-documentation.md](odd-model-documentation.md) for ODD/ODD+D
    structure and agent/entity description.
-5. Read [behavioral-equations-and-decision-rules.md](behavioral-equations-and-decision-rules.md)
+6. Read [behavioral-equations-and-decision-rules.md](behavioral-equations-and-decision-rules.md)
    for implemented rule families.
-6. Read [sfc-matrix-evidence.md](sfc-matrix-evidence.md) and generated matrix
+7. Read [sfc-matrix-evidence.md](sfc-matrix-evidence.md) and generated matrix
    artifacts for the accounting contract.
-7. Read [calibration-register.md](calibration-register.md),
+8. Read [calibration-register.md](calibration-register.md),
    [data-bridge-national-financial-accounts.md](data-bridge-national-financial-accounts.md),
    and [empirical-validation-report.md](empirical-validation-report.md) for
    calibration and validation evidence.
-8. Read [engine-invariants-and-semantics.md](engine-invariants-and-semantics.md)
+9. Read [engine-invariants-and-semantics.md](engine-invariants-and-semantics.md)
    and [validation-matrix.md](validation-matrix.md) for failure semantics and
    review routing.
