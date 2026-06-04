@@ -392,11 +392,17 @@ Down_path = downShare_path * Capex_path
 A candidate is feasible when all of the following hold:
 
 ```text
-expected monthly cost clears the path profitability threshold
+current cost base exceeds the path cost threshold adjusted by sigma_s
 Cash^F_{f,t} >= Down_path
 DR_{f,t} >= readinessMin_path
 relationship bank approves Loan_path
 ```
+
+For traditional-firm upgrades, the path cost threshold is divided by the
+sectoral substitution threshold `sigmaThreshold(sigma_s)`, matching the runtime
+use of current sector technology substitutability in upgrade feasibility. Hybrid
+to full-AI upgrades use the full-AI margin threshold without that additional
+sector-sigma divisor.
 
 Adoption probabilities combine:
 
