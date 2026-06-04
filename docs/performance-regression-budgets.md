@@ -7,6 +7,11 @@ The layer is intentionally soft. It produces reviewer-facing regression reports
 from existing run manifests; it does not launch extra simulations and it does
 not fail workflows on performance drift.
 
+Operational appendix entry point:
+[operations.md#operational-appendix-index](operations.md#operational-appendix-index).
+Use this page for performance-budget policy after starting from the operations
+index.
+
 ## Source Artifacts
 
 Performance comparisons reuse `run-manifest.json` files already produced by

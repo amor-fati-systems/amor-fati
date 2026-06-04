@@ -5,6 +5,11 @@ baseline evidence. It is the comparison contract for the nightly validation
 milestone. It intentionally comes before the jar runner and scheduled workflow
 so automation does not encode unclear regression semantics.
 
+Operational appendix entry point:
+[operations.md#operational-appendix-index](operations.md#operational-appendix-index).
+Use this page for nightly comparison policy after starting from the operations
+index.
+
 The comparison layer has two jobs:
 
 - fail fast on accounting and output invariants that must never drift;

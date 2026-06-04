@@ -32,7 +32,7 @@ second reading order; the canonical first-pass path is in
 | [Calibration register](calibration-register.md) | Parameter names, units, owners, empirical targets, transformations, provenance status, and searchable gaps. |
 | [Data bridge to national and financial accounts](data-bridge-national-financial-accounts.md) | Official data sources and empirical bridges used for initialization, calibration, scenarios, and validation. |
 | [Empirical validation report](empirical-validation-report.md) | Empirical-validation workflow and current snapshot artifacts. |
-| [Validation matrix](validation-matrix.md) | Ownership boundary for CI, integration tests, generated outputs, nightly diagnostics, stress profiles, profiling, and observability. |
+| [Operational appendix index](operations.md#operational-appendix-index) | Entry point for CI, integration tests, generated outputs, nightly diagnostics, stress profiles, profiling, scenarios, robustness, and observability appendices. |
 
 ## Model Identity
 
@@ -171,7 +171,7 @@ The canonical detailed rule source remains
 | Housing and mortgages | Updates housing prices, mortgage stock, origination, repayment, default, and mortgage-to-GDP outputs | `HousingMarket.scala`, banking housing stage, mortgage flow modules |
 | Fiscal, NBP, bonds, external sector | Computes public budget, public debt, rates, QE, bond yields, BoP/forex, GVC, trade, and current-account closure | [institutional sector equations](institutional-sector-equations.md), fiscal, NBP, open-economy, bond-market, and external-sector modules |
 | Insurance, NBFI, quasi-fiscal, JST | Computes premiums, claims, reserves, NBFI credit, fund AUM, PPK holdings, quasi-fiscal issuance/lending, and local-government flows | [institutional sector equations](institutional-sector-equations.md), insurance, NBFI, quasi-fiscal, PPK, JST modules |
-| Scenario, robustness, diagnostics | Defines executable counterfactuals, sensitivity envelopes, health summaries, and profiling evidence | [scenario registry](scenario-registry.md), [sensitivity workflow](sensitivity-robustness-workflow.md), [nightly diagnostics](nightly-diagnostics.md), [hot-path profiling](hot-path-profiling.md) |
+| Scenario, robustness, diagnostics | Defines executable counterfactuals, sensitivity envelopes, health summaries, and profiling evidence | [operational appendix index](operations.md#operational-appendix-index), which routes to the detailed scenario, robustness, diagnostics, and profiling appendices |
 
 When writing publication equations, use the notation in
 [model-notation-and-state-vector.md](model-notation-and-state-vector.md) and
@@ -268,7 +268,9 @@ breaks are hard failures. Calibration metrics, stress outcomes, exploratory
 diagnostics, and performance budgets start as warning/report evidence unless a
 written threshold rationale promotes them.
 
-The routing contract lives in [validation-matrix.md](validation-matrix.md).
+The operational appendix index in
+[operations.md](operations.md#operational-appendix-index) routes to the detailed
+validation, diagnostics, profiling, scenario, and generated-output contracts.
 
 ## Observation Surfaces
 
@@ -335,8 +337,7 @@ supporting source rather than a competing entry point:
 6. Validation evidence: read
    [empirical-validation-report.md](empirical-validation-report.md) and
    [engine-invariants-and-semantics.md](engine-invariants-and-semantics.md).
-7. Operational appendices: use [operations.md](operations.md),
-   [validation-matrix.md](validation-matrix.md), and
-   [documentation-architecture.md](documentation-architecture.md) only when
-   reproducing runs, changing CI/diagnostics, or navigating the full document
-   inventory.
+7. Operational appendices: use
+   [operations.md](operations.md#operational-appendix-index) as the entry point
+   only when reproducing runs, changing CI/diagnostics, or navigating local
+   run artifacts.

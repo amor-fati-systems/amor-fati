@@ -4,6 +4,11 @@ This document defines the manual and weekly profiling workflow for Amor Fati's
 main engine paths. It is an observability workflow, not a replacement for CI,
 integration tests, nightly diagnostics, or nightly health summaries.
 
+Operational appendix entry point:
+[operations.md#operational-appendix-index](operations.md#operational-appendix-index).
+Use this page for profiling workflow details after starting from the operations
+index.
+
 ## Purpose
 
 Correctness checks answer whether the engine still respects its contracts.

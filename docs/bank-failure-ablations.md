@@ -6,6 +6,11 @@ baseline and targeted neutralization scenarios, then compares first failure
 timing, terminal failures, cumulative credit losses, ECL provisions, bail-in
 losses, capital destruction, and reconciliation residuals.
 
+Operational appendix entry point:
+[operations.md#operational-appendix-index](operations.md#operational-appendix-index).
+Use this page for bank-failure diagnostic details after starting from the
+operations index.
+
 Run the standard review fixture with:
 
 ```bash

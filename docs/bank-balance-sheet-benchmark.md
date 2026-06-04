@@ -6,6 +6,11 @@ seed range, computes banking-sector and per-bank balance-sheet ratios, and
 compares them with the same stylized `2026-04-30` Poland baseline used by the
 rest of the calibration surface.
 
+Operational appendix entry point:
+[operations.md#operational-appendix-index](operations.md#operational-appendix-index).
+Use this page for bank balance-sheet benchmark details after starting from the
+operations index.
+
 Run the standard fixture with:
 
 ```bash

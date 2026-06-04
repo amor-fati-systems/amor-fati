@@ -10,6 +10,11 @@ operational horizon of the model. They are not long-horizon cycle claims.
 The comparison semantics for these profiles are defined in
 [nightly-baseline-comparison.md](nightly-baseline-comparison.md).
 
+Operational appendix entry point:
+[operations.md#operational-appendix-index](operations.md#operational-appendix-index).
+Use this page for diagnostics profile semantics after starting from the
+operations index.
+
 ## Principles
 
 - Run against a clean `main` ref, not a dirty local checkout.
