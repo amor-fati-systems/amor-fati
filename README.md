@@ -214,13 +214,16 @@ matrix artifacts:
 | [Stock-Flow Reconciliation and Revaluation Evidence](docs/sfc-matrix-artifacts/stock-flow-reconciliation.md) | Executed-run evidence comparing observed stock deltas or level identities with independent transaction, revaluation, default, write-off, and other-change channels. |
 | [Symbolic-row to runtime mapping](docs/sfc-matrix-artifacts/matrix-mapping.md) | Traceability table linking each symbolic matrix row to runtime assets, mechanisms, ids, and coverage notes. |
 | [Economic flow-channel semantics](docs/sfc-matrix-artifacts/flow-mechanism-semantics.md) | Reviewer-facing audit map for executed economic flow channels, including family, topology, asset class, SFC/reconciliation impact, ledger survivability, and test/diagnostic coverage. |
-| [Model equations to SFC map](docs/model-equations-to-sfc-map.md) | Human-maintained index from equation families to generated matrix rows and exact identities. |
 
 These snapshots are generated from an executed deterministic simulation step
 and committed as versioned evidence. The regeneration commands, sign
 conventions, coverage gaps, exact reconciliation rows, and review checklist are
 documented in
 [docs/sfc-matrix-evidence.md](docs/sfc-matrix-evidence.md).
+
+The hand-written [model equations to SFC map](docs/model-equations-to-sfc-map.md)
+connects model equation families to these generated rows, identities, and
+runtime evidence without being part of the generated snapshot set.
 
 ## Tech Stack
 
