@@ -49,29 +49,6 @@ private[agents] object BankRegulatoryMetrics:
   def capitalAdequacyRatio(capital: PLN, exposure: BankRiskWeightedAssets.Exposure)(using SimParams): Multiplier =
     BankRiskWeightedAssets.capitalAdequacyRatio(capital, exposure)
 
-  /** Computes the capital adequacy ratio from legacy loan/bond inputs.
-    *
-    * Prefer passing a full `Exposure` when mortgage, interbank, sovereign, or
-    * reserve stocks are available.
-    */
-  def capitalAdequacyRatio(
-      capital: PLN,
-      firmLoans: PLN,
-      consumerLoans: PLN,
-      corpBondHoldings: PLN,
-      mortgageLoans: PLN = PLN.Zero,
-  )(using SimParams): Multiplier =
-    capitalAdequacyRatio(
-      capital,
-      BankRiskWeightedAssets.Exposure(
-        firmLoans = firmLoans,
-        consumerLoans = consumerLoans,
-        mortgageLoans = mortgageLoans,
-        corpBondHoldings = corpBondHoldings,
-        capitalBackstop = capital.max(PLN.Zero),
-      ),
-    )
-
   /** Builds the aggregate banking-sector view from aligned operational and
     * financial stock rows.
     */
@@ -104,9 +81,7 @@ private[agents] object BankRegulatoryMetrics:
   def nplRatio(bank: BankState, stocks: BankFinancialStocks): Share =
     nplRatio(stocks.firmLoan, bank.nplAmount)
 
-  /** Computes CAR for a bank row using explicit firm, consumer, and corporate
-    * bond exposures.
-    */
+  /** Computes CAR for a bank row using the configured explicit RWA perimeter. */
   def car(bank: BankState, stocks: BankFinancialStocks, corpBondHoldings: PLN)(using SimParams): Multiplier =
     capitalAdequacyRatio(bank.capital, BankRiskWeightedAssets.exposure(bank, stocks, corpBondHoldings))
 

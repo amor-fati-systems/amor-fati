@@ -25,15 +25,6 @@ object Banking:
   def nplRatio(totalLoans: PLN, nplAmount: PLN): Share =
     BankRegulatoryMetrics.nplRatio(totalLoans, nplAmount)
 
-  def capitalAdequacyRatio(
-      capital: PLN,
-      firmLoans: PLN,
-      consumerLoans: PLN,
-      corpBondHoldings: PLN,
-      mortgageLoans: PLN = PLN.Zero,
-  )(using SimParams): Multiplier =
-    BankRegulatoryMetrics.capitalAdequacyRatio(capital, firmLoans, consumerLoans, corpBondHoldings, mortgageLoans)
-
   // ---------------------------------------------------------------------------
   // ADT: BankStatus
   // ---------------------------------------------------------------------------
