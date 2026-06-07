@@ -108,6 +108,7 @@ object BankBalanceSheetBenchmarkExport:
   private final case class MetricDef(target: TargetBand, compute: SeedContext => ObservedValue)
 
   private final case class SeedContext(seed: Long, init: WorldInit.InitResult)(using p: SimParams):
+    val params: SimParams                                       = p
     val bankBalances: Vector[LedgerFinancialState.BankBalances] = init.ledgerFinancialState.banks
     val bankStocks: Vector[Banking.BankFinancialStocks]         = bankBalances.map(LedgerFinancialState.projectBankFinancialStocks)
     val corpBondHoldings: Banking.BankCorpBondHoldings          =
@@ -221,7 +222,7 @@ object BankBalanceSheetBenchmarkExport:
       lower = Some(BigDecimal("0.191")),
       upper = Some(BigDecimal("0.231")),
       sourceNote =
-        "KNF February 2026 total-capital ratio anchor near 21.1%, mapped from BankState.capital to the model's simplified RWA perimeter with +/-2pp tolerance.",
+        "KNF February 2026 total-capital ratio anchor near 21.1%, mapped from BankState.capital to the model's explicit regulatory RWA perimeter with +/-2pp tolerance.",
       interpretation = "The sector should not start close to regulatory capital failure.",
     ),
     TargetBand(
@@ -415,7 +416,7 @@ object BankBalanceSheetBenchmarkExport:
 
   private val Metrics: Vector[MetricDef] = Vector(
     metric("CapitalToAssets")(ctx => ctx.ratio(ctx.capital, ctx.assets)),
-    metric("AggregateCar")(ctx => ObservedValue.Finite(rawDecimal(ctx.aggregate.car.toLong))),
+    metric("AggregateCar")(ctx => ObservedValue.Finite(rawDecimal(ctx.aggregate.car(using ctx.params).toLong))),
     metric("MinimumCar")(ctx => finiteMinimum(ctx.rows.map(_.capitalAdequacyRatio))),
     metric("MinimumEffectiveCarBuffer")(ctx => finiteMinimum(ctx.rows.map(_.carBuffer))),
     metric("BanksBelowEffectiveCar")(ctx => ObservedValue.Finite(BigDecimal(ctx.rows.count(_.carBuffer < BigDecimal(0))))),

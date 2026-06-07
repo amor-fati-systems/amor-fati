@@ -217,7 +217,7 @@ private[banking] object BankMultiBankStage:
           val bankIndex    = bank.id.toInt
           val mortgageLoan =
             if bank.failed then PLN.Zero
-            else in.ledgerFinancialState.banks.lift(bankIndex).fold(PLN.Zero)(_.mortgageLoan)
+            else stocks.mortgageLoan
           LedgerFinancialState.bankBalances(
             stocks,
             finalCorpBondHoldings.lift(bankIndex).getOrElse(PLN.Zero),

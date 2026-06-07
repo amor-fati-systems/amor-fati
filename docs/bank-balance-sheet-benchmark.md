@@ -60,7 +60,7 @@ These ratios guide follow-up calibration and source-bridge work.
 | Metric | Class | Vintage | Band | Unit | Interpretation |
 | --- | --- | --- | --- | --- | --- |
 | `CapitalToAssets` | `SOFT_CALIBRATION_WARNING` | `2026-04-30 model-start baseline` | `0.06` to `0.12` | ratio | Checks whether the opening balance sheet is thinly capitalised before any macro shock. |
-| `AggregateCar` | `SOFT_CALIBRATION_WARNING` | `2026-04-30 model-start baseline` | `0.191` to `0.231` | ratio | Aggregate CAR should sit near the KNF February 2026 total-capital-ratio bridge, mapped to the model's simplified RWA perimeter. |
+| `AggregateCar` | `SOFT_CALIBRATION_WARNING` | `2026-04-30 model-start baseline` | `0.191` to `0.231` | ratio | Aggregate CAR should sit near the KNF February 2026 total-capital-ratio bridge, mapped to the model's explicit regulatory RWA perimeter. |
 | `MinimumCar` | `HARD_INVARIANT` | `2026-04-30 model-start baseline` | `0.08` to n/a | ratio | No bank should start below the base Basel III CRR 8% capital requirement. |
 | `MinimumEffectiveCarBuffer` | `HARD_INVARIANT` | `2026-04-30 model-start baseline` | `0.00` to n/a | ratio | No bank should start below its effective minimum CAR after O-SII and P2R add-ons. |
 | `BanksBelowEffectiveCar` | `HARD_INVARIANT` | `2026-04-30 model-start baseline` | `0` to `0` | count | No bank should require resolution before the first simulated month. |
@@ -84,9 +84,10 @@ These ratios guide follow-up calibration and source-bridge work.
 The current bands are guardrails for the `2026-04-30` Poland model-start
 baseline, not final empirical validation. `AggregateCar` is anchored to the KNF
 February 2026 total-capital-ratio bridge already recorded in calibration
-provenance, using `BankState.capital` as the capital numerator. This benchmark
-does not assert household, fund, insurer, government or foreign ownership of
-bank capital. `ConsumerLoansToGdp` and `MortgageLoansToGdp` reuse the household
+provenance, using `BankState.capital` as the capital numerator and the explicit
+regulatory RWA perimeter as the denominator. This benchmark does not assert
+household, fund, insurer, government or foreign ownership of bank capital.
+`ConsumerLoansToGdp` and `MortgageLoansToGdp` reuse the household
 credit-stress calibration ranges. ECL bands are model-semantics checks: they ask
 whether the opening loan book is already staged and provisioned before monthly
 ECL dynamics begin. The current opening ECL bridge assigns the covered firm and

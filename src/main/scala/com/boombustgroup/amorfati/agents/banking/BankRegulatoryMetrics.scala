@@ -14,9 +14,8 @@ import com.boombustgroup.amorfati.types.*
   */
 private[agents] object BankRegulatoryMetrics:
 
-  val CorpBondRiskWeight: Share  = Share.decimal(50, 2)
-  val SafeRatioFloor: Multiplier = Multiplier(10)
-  val MinBalanceThreshold: PLN   = PLN(1)
+  val SafeRatioFloor: Multiplier = BankRiskWeightedAssets.SafeRatioFloor
+  val MinBalanceThreshold: PLN   = BankRiskWeightedAssets.MinBalanceThreshold
 
   private val AsfTermWeight: Share   = Share.decimal(95, 2)
   private val AsfDemandWeight: Share = Share.decimal(90, 2)
@@ -41,14 +40,37 @@ private[agents] object BankRegulatoryMetrics:
   def nplRatio(totalLoans: PLN, nplAmount: PLN): Share =
     if totalLoans > MinBalanceThreshold then nplAmount.ratioTo(totalLoans).toShare else Share.Zero
 
-  /** Computes bank risk-weighted assets for CAR checks. */
-  private[banking] def riskWeightedAssets(firmLoans: PLN, consumerLoans: PLN, corpBondHoldings: PLN): PLN =
-    firmLoans + consumerLoans + corpBondHoldings * CorpBondRiskWeight
+  /** Computes total bank RWA from the explicit regulatory exposure perimeter.
+    */
+  private[banking] def riskWeightedAssets(exposure: BankRiskWeightedAssets.Exposure)(using SimParams): PLN =
+    BankRiskWeightedAssets.total(exposure)
 
-  /** Computes the capital adequacy ratio with a safe zero-RWA floor. */
-  def capitalAdequacyRatio(capital: PLN, firmLoans: PLN, consumerLoans: PLN, corpBondHoldings: PLN): Multiplier =
-    val totalRwa = riskWeightedAssets(firmLoans, consumerLoans, corpBondHoldings)
-    if totalRwa > MinBalanceThreshold then capital.ratioTo(totalRwa).toMultiplier else SafeRatioFloor
+  /** Computes the capital adequacy ratio over explicit RWA exposure. */
+  def capitalAdequacyRatio(capital: PLN, exposure: BankRiskWeightedAssets.Exposure)(using SimParams): Multiplier =
+    BankRiskWeightedAssets.capitalAdequacyRatio(capital, exposure)
+
+  /** Computes the capital adequacy ratio from legacy loan/bond inputs.
+    *
+    * Prefer passing a full `Exposure` when mortgage, interbank, sovereign, or
+    * reserve stocks are available.
+    */
+  def capitalAdequacyRatio(
+      capital: PLN,
+      firmLoans: PLN,
+      consumerLoans: PLN,
+      corpBondHoldings: PLN,
+      mortgageLoans: PLN = PLN.Zero,
+  )(using SimParams): Multiplier =
+    capitalAdequacyRatio(
+      capital,
+      BankRiskWeightedAssets.Exposure(
+        firmLoans = firmLoans,
+        consumerLoans = consumerLoans,
+        mortgageLoans = mortgageLoans,
+        corpBondHoldings = corpBondHoldings,
+        capitalBackstop = capital.max(PLN.Zero),
+      ),
+    )
 
   /** Builds the aggregate banking-sector view from aligned operational and
     * financial stock rows.
@@ -69,6 +91,9 @@ private[agents] object BankRegulatoryMetrics:
       consumerLoans = rows.foldLeft(PLN.Zero)((acc, _, stocks) => acc + stocks.consumerLoan),
       consumerNpl = rows.foldLeft(PLN.Zero)((acc, bank, _) => acc + bank.consumerNpl),
       corpBondHoldings = rows.foldLeft(PLN.Zero)((acc, bank, _) => acc + bankCorpBondHoldings(bank.id)),
+      mortgageLoans = rows.foldLeft(PLN.Zero)((acc, _, stocks) => acc + stocks.mortgageLoan),
+      reserves = rows.foldLeft(PLN.Zero)((acc, _, stocks) => acc + stocks.reserve),
+      interbankAssets = rows.foldLeft(PLN.Zero)((acc, _, stocks) => acc + stocks.interbankLoan.max(PLN.Zero)),
     )
 
   /** Returns total government-bond holdings across AFS and HTM buckets. */
@@ -82,8 +107,8 @@ private[agents] object BankRegulatoryMetrics:
   /** Computes CAR for a bank row using explicit firm, consumer, and corporate
     * bond exposures.
     */
-  def car(bank: BankState, stocks: BankFinancialStocks, corpBondHoldings: PLN): Multiplier =
-    capitalAdequacyRatio(bank.capital, stocks.firmLoan, stocks.consumerLoan, corpBondHoldings)
+  def car(bank: BankState, stocks: BankFinancialStocks, corpBondHoldings: PLN)(using SimParams): Multiplier =
+    capitalAdequacyRatio(bank.capital, BankRiskWeightedAssets.exposure(bank, stocks, corpBondHoldings))
 
   /** Computes the HQLA stock used by the simplified LCR check. */
   def hqla(stocks: BankFinancialStocks): PLN =

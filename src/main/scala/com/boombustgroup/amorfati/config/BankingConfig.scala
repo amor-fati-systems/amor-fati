@@ -18,7 +18,7 @@ import com.boombustgroup.amorfati.types.*
   *
   * @param initCapital
   *   initial aggregate regulatory-capital proxy; calibrated to KNF TCR 21.1% on
-  *   the model's simplified RWA perimeter, not book equity
+  *   the model's explicit regulatory RWA perimeter, not book equity
   * @param initDeposits
   *   initial aggregate deposits (KNF monthly banking data, February 2026:
   *   ~2,542.3 bn PLN)
@@ -39,6 +39,26 @@ import com.boombustgroup.amorfati.types.*
   *   spread increase per unit NPL ratio
   * @param minCar
   *   minimum capital adequacy ratio (Basel III CRR: 8%)
+  * @param firmLoanRiskWeight
+  *   standardized RWA weight for corporate/nonfinancial firm loans
+  * @param consumerLoanRiskWeight
+  *   standardized RWA weight for unsecured household consumer loans
+  * @param mortgageLoanRiskWeight
+  *   standardized RWA weight for residential mortgage exposures
+  * @param corpBondRiskWeight
+  *   standardized RWA weight for bank-held corporate bonds
+  * @param interbankAssetRiskWeight
+  *   standardized RWA weight for positive interbank lending exposures
+  * @param sovereignRiskWeight
+  *   policy weight for domestic-government bond holdings in bank RWA
+  * @param reserveRiskWeight
+  *   policy weight for NBP reserve balances in bank RWA
+  * @param rwaOperationalRiskFloor
+  *   minimum RWA floor as a share of explicit banking assets, used as a
+  *   stylized operational-risk proxy
+  * @param rwaCapitalBackstop
+  *   minimum RWA floor as a share of positive bank capital, used only to keep
+  *   empty live shells from exposing economically meaningless zero-RWA CAR
   * @param loanRecovery
   *   loss-given-default recovery rate on corporate loans
   * @param profitRetention
@@ -130,7 +150,7 @@ import com.boombustgroup.amorfati.types.*
   */
 case class BankingConfig(
     // Initial balance sheet (raw — scaled by gdpRatio in SimParams.defaults)
-    initCapital: PLN = PLN(168000000000L),
+    initCapital: PLN = PLN(199000000000L),
     initDeposits: PLN = PLN(2542300000000L),
     initLoans: PLN = PLN(557400000000L),
     initGovBonds: PLN = PLN(400000000000L),
@@ -140,6 +160,15 @@ case class BankingConfig(
     baseSpread: Rate = Rate.decimal(15, 3),
     nplSpreadFactor: Multiplier = Multiplier(5),
     minCar: Multiplier = Multiplier.decimal(8, 2),
+    firmLoanRiskWeight: Share = Share.One,
+    consumerLoanRiskWeight: Share = Share.One,
+    mortgageLoanRiskWeight: Share = Share.decimal(35, 2),
+    corpBondRiskWeight: Share = Share.decimal(50, 2),
+    interbankAssetRiskWeight: Share = Share.decimal(20, 2),
+    sovereignRiskWeight: Share = Share.Zero,
+    reserveRiskWeight: Share = Share.Zero,
+    rwaOperationalRiskFloor: Share = Share.decimal(1, 2),
+    rwaCapitalBackstop: Share = Share.decimal(10, 2),
     loanRecovery: Share = Share.decimal(30, 2),
     firmLoanAmortRate: Rate = Rate.fraction(1, 60),          // monthly: 1/60 ≈ 5-year avg maturity (NBP bridge prior)
     profitRetention: Share = Share.decimal(30, 2),
@@ -212,6 +241,19 @@ case class BankingConfig(
     eclCureRate: Share = Share.decimal(2, 2),
 ):
   require(minCar > Multiplier.Zero && minCar < Multiplier.One, s"minCar must be in (0,1): $minCar")
+  private val rwaWeights = Vector(
+    "firmLoanRiskWeight"       -> firmLoanRiskWeight,
+    "consumerLoanRiskWeight"   -> consumerLoanRiskWeight,
+    "mortgageLoanRiskWeight"   -> mortgageLoanRiskWeight,
+    "corpBondRiskWeight"       -> corpBondRiskWeight,
+    "interbankAssetRiskWeight" -> interbankAssetRiskWeight,
+    "sovereignRiskWeight"      -> sovereignRiskWeight,
+    "reserveRiskWeight"        -> reserveRiskWeight,
+    "rwaOperationalRiskFloor"  -> rwaOperationalRiskFloor,
+    "rwaCapitalBackstop"       -> rwaCapitalBackstop,
+  )
+  rwaWeights.foreach: (name, value) =>
+    require(value >= Share.Zero && value <= Share.One, s"$name must be in [0,1]: $value")
   require(initCapital >= PLN.Zero, s"initCapital must be non-negative: $initCapital")
   require(initDeposits >= PLN.Zero, s"initDeposits must be non-negative: $initDeposits")
   require(p2rAddons.nonEmpty, "p2rAddons must be non-empty")

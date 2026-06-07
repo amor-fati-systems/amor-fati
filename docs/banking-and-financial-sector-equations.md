@@ -139,9 +139,16 @@ stochastic draw:
 
 ```text
 ProjectedRWA_b(A) =
-  L^{B,F}_{b,t} + L^{B,H}_{b,t}
-  + 0.50 * CB^B_{b,t}
-  + A
+  RWA_b(
+    firmLoans = L^{B,F}_{b,t} + A,
+    consumerLoans = L^{B,CC}_{b,t},
+    mortgageLoans = L^{B,M}_{b,t},
+    corpBondHoldings = CB^B_{b,t},
+    interbankAssets = max(IB^B_{b,t}, 0),
+    govBondHoldings = GB^B_{b,t},
+    reserves = Res^B_{b,t},
+    capitalBackstop = max(K^B_{b,t}, 0)
+  )
 
 ProjectedCAR_b(A) = K^B_{b,t} / ProjectedRWA_b(A)
 
@@ -176,14 +183,39 @@ diagnostic surfaces.
 
 ## Regulatory Ratios
 
-Risk-weighted assets use firm loans, consumer loans, and a 50 percent
-corporate-bond risk weight:
+Risk-weighted assets use an explicit regulatory perimeter. Default weights are
+100 percent for firm and unsecured consumer loans, 35 percent for mortgages, 50
+percent for bank-held corporate bonds, 20 percent for positive interbank assets,
+and 0 percent for domestic sovereign bonds and NBP reserves. Two floors prevent
+economically meaningless zero-RWA CAR for live shells:
 
 ```text
+WeightedExposureRWA_b =
+    firmLoanRiskWeight        * L^{B,F}_{b,t}
+  + consumerLoanRiskWeight    * L^{B,CC}_{b,t}
+  + mortgageLoanRiskWeight    * L^{B,M}_{b,t}
+  + corpBondRiskWeight        * CB^B_{b,t}
+  + interbankAssetRiskWeight  * max(IB^B_{b,t}, 0)
+  + sovereignRiskWeight       * GB^B_{b,t}
+  + reserveRiskWeight         * Res^B_{b,t}
+
+OperationalRiskFloor_b =
+  rwaOperationalRiskFloor
+  * (L^{B,F}_{b,t}
+     + L^{B,CC}_{b,t}
+     + L^{B,M}_{b,t}
+     + CB^B_{b,t}
+     + max(IB^B_{b,t}, 0)
+     + GB^B_{b,t}
+     + Res^B_{b,t})
+
+CapitalBackstopFloor_b =
+  rwaCapitalBackstop * max(K^B_{b,t}, 0)
+
 RWA_b =
-  L^{B,F}_{b,t}
-  + L^{B,H}_{b,t}
-  + 0.50 * CB^B_{b,t}
+  max(WeightedExposureRWA_b,
+      OperationalRiskFloor_b,
+      CapitalBackstopFloor_b)
 
 CAR_b = K^B_{b,t} / RWA_b
 ```
@@ -549,7 +581,7 @@ interfaces matter for bank and financial-stability analysis:
 | --- | --- |
 | Insurance | Premiums and claims move deposits; reserve investment income uses government bonds, corporate bonds, and equity; insurance government-bond purchases participate in the bank bond waterfall. |
 | TFI/NBFI | TFI fund inflows drain bank deposits; TFI government-bond demand participates in the bank bond waterfall; NBFI credit origination rises with bank NPL tightness. |
-| Corporate bonds | Firm issuance can substitute for bank loans; bank holdings carry 50 percent RWA weight; bank-held corporate-bond default loss hits bank capital. |
+| Corporate bonds | Firm issuance can substitute for bank loans; bank holdings enter the explicit RWA perimeter with the configured corporate-bond risk weight; bank-held corporate-bond default loss hits bank capital. |
 | Quasi-fiscal BGK/PFR | Quasi-fiscal bank-held bond issuance and amortization affect bank bond holdings; subsidized lending has a matching bank-deposit creation/destruction leg. |
 | NBP | Reserve remuneration, standing facility, QE purchases, FX intervention, and reserve-settlement backstops connect the central bank to commercial-bank reserves and income. |
 

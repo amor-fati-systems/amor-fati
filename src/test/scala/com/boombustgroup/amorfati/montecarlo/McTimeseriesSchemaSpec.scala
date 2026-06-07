@@ -177,6 +177,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     "CreditMultiplier",
     "FofResidual",
     "InterbankRate",
+    "AggregateBankCAR",
     "MinBankCAR",
     "MaxBankNPL",
     "BankFailures",
@@ -527,7 +528,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     MetricValue.fromRaw(Share.fraction(numerator, denominator).toLong)
 
   "McTimeseriesSchema" should "expose the stable schema contract" in {
-    McTimeseriesSchema.nCols shouldBe 465
+    McTimeseriesSchema.nCols shouldBe 466
     McTimeseriesSchema.colNames.toVector shouldBe expectedColNames
   }
 
