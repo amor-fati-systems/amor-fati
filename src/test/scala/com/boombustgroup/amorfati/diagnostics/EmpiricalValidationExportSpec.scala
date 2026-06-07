@@ -253,8 +253,8 @@ class EmpiricalValidationExportSpec extends AnyFlatSpec with Matchers:
     try {
       write(
         mc.resolve("fixture_real-economy_1m_seed001.csv"),
-        """Month;MonthlyGdpProxy;Inflation;Unemployment;MarketWage;CreditToGdpGap;DebtToGdp;Esa2010DebtToGdp;CurrentAccount;FirmDeaths;MinBankCAR;MinBankLCR;Manuf_Output;ExRate;HousingPriceIndex;MortgageToGdp;MortgageDefault;DeficitToGdp;GovDomesticBudgetOutlays;RefRate
-          |1;1000000;0.030;0.061;9652.19;0.50;0.538;0.597;0.01;102;0.18;1.30;200000;4.25;100;0.1217;0;0.073;918900000000;0.0375
+        """Month;MonthlyGdpProxy;Inflation;Unemployment;MarketWage;CreditToGdpGap;DebtToGdp;Esa2010DebtToGdp;CurrentAccount;FirmDeaths;AggregateBankCAR;MinBankCAR;MinBankLCR;Manuf_Output;ExRate;HousingPriceIndex;MortgageToGdp;MortgageDefault;DeficitToGdp;GovDomesticBudgetOutlays;RefRate
+          |1;1000000;0.030;0.061;9652.19;0.50;0.538;0.597;0.01;102;0.211;0.18;1.30;200000;4.25;100;0.1217;0;0.073;918900000000;0.0375
           |""".stripMargin,
       )
       write(
