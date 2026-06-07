@@ -348,16 +348,28 @@ Cash investment is funded first:
 I^{cash}_{f,tau} = min(I^{des}_{f,tau}, max(Cash^F_{f,t}, 0))
 ```
 
-The remaining desired investment can generate bank-credit demand:
+Desired investment generates a target bank-credit request before the firm falls
+back to internal cash. A separate shortfall leg still lets cash-constrained
+firms request credit for unfunded investment:
 
 ```text
+I^{targetDebt}_{f,tau} =
+  I^{des}_{f,tau} * investmentDebtTargetShare
+
+I^{shortfallDebt}_{f,tau} =
+  max(I^{des}_{f,tau} - max(Cash^F_{f,t}, 0), 0) * investmentCreditShare
+
 Demand^{invCredit}_{f,tau} =
-  max(I^{des}_{f,tau} - I^{cash}_{f,tau}, 0) * investmentCreditShare
+  min(max(I^{targetDebt}_{f,tau}, I^{shortfallDebt}_{f,tau}), I^{des}_{f,tau})
+
+I^{cash}_{f,tau} =
+  min(I^{des}_{f,tau} - Credit^{approved}_{f,tau}, max(Cash^F_{f,t}, 0))
 ```
 
 Approved investment credit increases both cash and firm-loan principal before
 being spent on capital. Rejected credit is exposed by reason in the
-`FirmCredit_*` diagnostics.
+`FirmCredit_*` diagnostics. If target-debt credit is rejected but the firm has
+enough cash, the real investment can still proceed as self-financed CAPEX.
 
 Green investment follows the same target-gap idea using sector green
 capital-labor ratios, green depreciation, a green adjustment speed, and a

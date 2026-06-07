@@ -151,23 +151,22 @@ class BankingSectorSpec extends AnyFlatSpec with Matchers:
     healthyAudit.approvalRoll should not be empty
   }
 
-  it should "apply reserve-pressure approval penalty to the requested firm loan" in {
-    val tightLiquidity = mkBankRow(deposits = PLN(1000000), loans = PLN(900000), capital = PLN(300000))
-    val approval       = Banking.creditApproval(tightLiquidity.bank, tightLiquidity.stocks, PLN(100000), RandomStream.seeded(42), Multiplier.Zero, PLN.Zero)
+  it should "not treat existing consumer loans or government bonds as reducing firm-credit approval probability" in {
+    val plain      = mkBankRow(deposits = PLN(1000000), loans = PLN(800000), capital = PLN(500000), reservesAtNbp = PLN(50000))
+    val withAssets = mkBankRow(
+      deposits = PLN(1000000),
+      loans = PLN(800000),
+      capital = PLN(500000),
+      consumerLoans = PLN(100000),
+      govBondHoldings = PLN(300000),
+      reservesAtNbp = PLN(50000),
+    )
 
-    approval.approvalProbability shouldBe Some(Share.decimal(5, 1))
-    approval.approvalRoll should not be empty
-  }
-
-  it should "include consumer loans in reserve-pressure approval penalty" in {
-    val withoutConsumer = mkBankRow(deposits = PLN(1000000), loans = PLN(800000), capital = PLN(500000))
-    val withConsumer    = mkBankRow(deposits = PLN(1000000), loans = PLN(800000), capital = PLN(500000), consumerLoans = PLN(100000))
-
-    val noPressure = Banking.creditApproval(withoutConsumer.bank, withoutConsumer.stocks, PLN(100000), RandomStream.seeded(42), Multiplier.Zero, PLN.Zero)
-    val pressured  = Banking.creditApproval(withConsumer.bank, withConsumer.stocks, PLN(100000), RandomStream.seeded(42), Multiplier.Zero, PLN.Zero)
+    val noPressure    = Banking.creditApproval(plain.bank, plain.stocks, PLN(100000), RandomStream.seeded(42), Multiplier.Zero, PLN.Zero)
+    val assetPressure = Banking.creditApproval(withAssets.bank, withAssets.stocks, PLN(100000), RandomStream.seeded(42), Multiplier.Zero, PLN.Zero)
 
     noPressure.approvalProbability shouldBe Some(Share.One)
-    pressured.approvalProbability shouldBe Some(Share.decimal(5, 1))
+    assetPressure.approvalProbability shouldBe Some(Share.One)
   }
 
   "Banking.car" should "include mortgages in the configured RWA perimeter" in {
@@ -438,6 +437,38 @@ class BankingSectorSpec extends AnyFlatSpec with Matchers:
     agg.deposits shouldBe PLN(1000000)
     agg.capital shouldBe PLN(100000)
     agg.totalLoans shouldBe PLN.Zero
+  }
+
+  it should "decompose aggregate RWA into weighted exposures and floors" in {
+    val agg = Banking.Aggregate(
+      totalLoans = PLN(1000),
+      nplAmount = PLN.Zero,
+      capital = PLN(300),
+      deposits = PLN(5000),
+      afsBonds = PLN(2000),
+      htmBonds = PLN(1000),
+      consumerLoans = PLN(500),
+      consumerNpl = PLN.Zero,
+      corpBondHoldings = PLN(200),
+      mortgageLoans = PLN(1000),
+      reserves = PLN(400),
+      interbankAssets = PLN(100),
+    )
+
+    val rwa = agg.rwaBreakdown
+
+    rwa.explicitAssetBase shouldBe PLN(6200)
+    rwa.firmLoanRwa shouldBe PLN(1000)
+    rwa.consumerLoanRwa shouldBe PLN(500)
+    rwa.mortgageLoanRwa shouldBe PLN(350)
+    rwa.corpBondRwa shouldBe PLN(100)
+    rwa.interbankAssetRwa shouldBe PLN(20)
+    rwa.sovereignRwa shouldBe PLN.Zero
+    rwa.reserveRwa shouldBe PLN.Zero
+    rwa.weightedExposureRwa shouldBe PLN(1970)
+    rwa.operationalRiskFloor shouldBe PLN(62)
+    rwa.capitalBackstopFloor shouldBe PLN(30)
+    rwa.totalRwa shouldBe PLN(1970)
   }
 
   "Banking.processHtmForcedSale" should "reclassify HTM to AFS and realize loss only under LCR stress" in {

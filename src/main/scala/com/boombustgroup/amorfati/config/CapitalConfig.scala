@@ -27,6 +27,9 @@ import com.boombustgroup.amorfati.types.*
   * @param investmentCreditShare
   *   share of cash-unfunded desired physical investment eligible for bank
   *   credit
+  * @param investmentDebtTargetShare
+  *   target share of desired physical investment requested as bank debt before
+  *   firms fall back to internal cash
   * @param prodElast
   *   capital share α in CES production function (also Cobb-Douglas when σ≈1)
   * @param costReplace
@@ -56,6 +59,7 @@ case class CapitalConfig(
     adjustSpeed: Coefficient = Coefficient.decimal(10, 2),
     demandExpansionSensitivity: Coefficient = Coefficient.decimal(30, 2),
     investmentCreditShare: Share = Share.One,
+    investmentDebtTargetShare: Share = Share.decimal(7, 2),
     prodElast: Share = Share.decimal(30, 2),
     costReplace: Share = Share.decimal(50, 2),
     // Inventories (GUS bridge prior)
@@ -78,4 +82,12 @@ case class CapitalConfig(
   require(
     inventorySpoilageRates.length == 6,
     s"inventorySpoilageRates must have 6 sectors: ${inventorySpoilageRates.length}",
+  )
+  require(
+    investmentCreditShare >= Share.Zero && investmentCreditShare <= Share.One,
+    s"investmentCreditShare must be in [0,1]: $investmentCreditShare",
+  )
+  require(
+    investmentDebtTargetShare >= Share.Zero && investmentDebtTargetShare <= Share.One,
+    s"investmentDebtTargetShare must be in [0,1]: $investmentDebtTargetShare",
   )

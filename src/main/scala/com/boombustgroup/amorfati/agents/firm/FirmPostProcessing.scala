@@ -67,13 +67,16 @@ private[agents] object FirmPostProcessing:
     val targetK            = baseTargetK * (Multiplier.One + demandTargetBoost)
     val gap                = (targetK - postDepK).max(PLN.Zero)
     val desiredInv         = depn + (gap * p.capital.adjustSpeed * invMult)
-    val cashInv            = desiredInv.min(stocks.cash.max(PLN.Zero))
-    val creditNeed         = (desiredInv - cashInv).max(PLN.Zero) * p.capital.investmentCreditShare
+    val availableCash      = stocks.cash.max(PLN.Zero)
+    val targetDebtNeed     = desiredInv * p.capital.investmentDebtTargetShare
+    val shortfallDebtNeed  = (desiredInv - availableCash).max(PLN.Zero) * p.capital.investmentCreditShare
+    val creditNeed         = targetDebtNeed.max(shortfallDebtNeed).min(desiredInv)
     val creditDecision     = if creditNeed > PLN.Zero then Some(bankCreditDecision(creditNeed)) else None
     val creditInv          = if creditDecision.exists(_.approved) then creditNeed else PLN.Zero
     val rejectedCredit     = (creditNeed - creditInv).max(PLN.Zero)
     val rejectionBreakdown =
       creditDecision.fold(CreditRejectionBreakdown.zero)(credit => CreditRejectionBreakdown.from(credit.audit.rejectionReason, rejectedCredit))
+    val cashInv            = (desiredInv - creditInv).max(PLN.Zero).min(availableCash)
     val actualInv          = (cashInv + creditInv).min(desiredInv)
     val newK               = postDepK + actualInv
     val investmentTrace    = r.decisionTrace.map: trace =>

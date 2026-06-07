@@ -76,9 +76,9 @@ a concrete diagnostic artifact path.
 
 | Validation mode | Count | Linked evidence paths | Missing evidence paths |
 | --- | ---: | ---: | ---: |
-| `HISTORICAL_FIT` | 32 | 5 | 27 |
+| `HISTORICAL_FIT` | 33 | 5 | 28 |
 | `STYLIZED_FACT_TARGET` | 11 | 7 | 4 |
-| `SENSITIVITY_RANGE` | 32 | 5 | 27 |
+| `SENSITIVITY_RANGE` | 31 | 5 | 26 |
 | `MODEL_BEHAVIOR_CALIBRATION` | 14 | 0 | 14 |
 
 ### Evidence Paths
@@ -130,7 +130,7 @@ a concrete diagnostic artifact path.
 | `capital.importShare` | `HISTORICAL_FIT` | `MISSING_VALIDATION_EVIDENCE` |  |  | Import share of investment | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
 | `capital.adjustSpeed` | `SENSITIVITY_RANGE` | docs/sensitivity-robustness-workflow.md | sensitivity-summary.csv | investment-fast | Investment and balance-sheet sensitivity | SensitivityRobustnessExport varies capital adjustment speed and records terminal deltas against baseline. |
 | `capital.demandExpansionSensitivity` | `HISTORICAL_FIT` | `MISSING_VALIDATION_EVIDENCE` |  |  | Target-capital uplift under persistent excess demand | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
-| `capital.investmentCreditShare` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` |  |  | Credit-financed share of cash-unfunded desired investment | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `capital.investmentCreditShare`, `investmentDebtTargetShare` | `HISTORICAL_FIT` | `MISSING_VALIDATION_EVIDENCE` |  |  | Cash-shortfall credit eligibility and target bank-debt share of desired investment | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
 | `climate.greenBudgetShare` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` |  |  | Green investment budget share | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
 | `fiscal.govWageIndexShare` | `HISTORICAL_FIT` | `MISSING_VALIDATION_EVIDENCE` |  |  | Labor-cost indexation of government purchases | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
 | `fiscal.fofConsWeights`, `fofGovWeights` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` |  |  | Flow-of-funds allocation of household consumption and government purchases | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
@@ -148,7 +148,7 @@ a concrete diagnostic artifact path.
 | `monetary.taylorInertia` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` |  |  | Policy-rate smoothing | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
 | `monetary.maxRateChange` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` |  |  | Monthly policy-rate adjustment cap | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
 | `monetary.nairu` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` |  |  | NAIRU | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
-| `banking.firmCreditMinApprovalProb`, `firmCreditNplApprovalPenalty`, `firmCreditReserveDeficitPenalty` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` |  |  | Firm-credit stochastic approval after CAR/LCR/NSFR gates pass | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `banking.firmCreditMinApprovalProb`, `firmCreditNplApprovalPenalty`, `firmCreditReserveDeficitPenalty` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` |  |  | Firm-credit stochastic approval after CAR/LCR/NSFR gates pass; reserve penalty is legacy scenario compatibility only | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
 | `banking.depositPanicRate` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` |  |  | Panic switching after failure | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
 | `banking.eclMigrationSensitivity`, `eclGdpSensitivity`, `eclMaxMigration` | `HISTORICAL_FIT` | `MISSING_VALIDATION_EVIDENCE` |  |  | Stage 1 to Stage 2 migration under unemployment deterioration or GDP contraction | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
 | `forex.irpSensitivity`, `exRateAdjSpeed` | `SENSITIVITY_RANGE` | docs/sensitivity-robustness-workflow.md | sensitivity-summary.csv | external-risk-off | FX and external-balance sensitivity | SensitivityRobustnessExport varies IRP sensitivity in the external-risk-off scenario and reports FX/current-account metrics. |
@@ -292,7 +292,7 @@ a concrete diagnostic artifact path.
 | `capital.importShare` | `0.18` | share | #461 GDP-growth calibration | Import share of investment | Direct | `CapitalConfig` | `TUNED_NEEDS_VALIDATION` |
 | `capital.adjustSpeed` | `0.10` | monthly coefficient | #461 fiscal-investment/GDP calibration | Capital partial-adjustment speed | Direct | `CapitalConfig` | `TUNED_NEEDS_VALIDATION` |
 | `capital.demandExpansionSensitivity` | `0.30` | coefficient | #461 GDP-growth calibration | Target-capital uplift under persistent excess demand | Direct | `CapitalConfig` | `TUNED_NEEDS_VALIDATION` |
-| `capital.investmentCreditShare` | `1.0` | share | #461 calibration | Credit-financed share of cash-unfunded desired investment | Direct | `CapitalConfig` | `TUNED_NEEDS_VALIDATION` |
+| `capital.investmentCreditShare`, `investmentDebtTargetShare` | `1.0, 0.07` | share | #461 calibration + #763 bank-credit stock baseline | Cash-shortfall credit eligibility and target bank-debt share of desired investment | Direct | `CapitalConfig`, `FirmPostProcessing` | `TUNED_NEEDS_VALIDATION` |
 | `capital.inventoryTargetRatios` | `[0.05, 0.25, 0.15, 0.10, 0.02, 0.30]` | share by sector | Code note bridge: GUS bridge prior | Inventory/revenue targets | Direct | `CapitalConfig` | `CODE_NOTE_EMPIRICAL` |
 | `climate.energyCostShares` | `[0.02, 0.10, 0.04, 0.05, 0.03, 0.06]` | share of revenue | Code note bridge: Eurostat/GUS 2023 | Energy burden by sector | Direct | `ClimateConfig` | `CODE_NOTE_EMPIRICAL` |
 | `climate.etsBasePrice` | `80` | EUR/tCO2 | Code note bridge: KOBiZE bridge prior | EU ETS starting price | Direct | `ClimateConfig` | `CODE_NOTE_EMPIRICAL` |
@@ -359,7 +359,7 @@ a concrete diagnostic artifact path.
 | `banking.firmLoanRiskWeight`, `consumerLoanRiskWeight`, `mortgageLoanRiskWeight`, `corpBondRiskWeight`, `interbankAssetRiskWeight`, `sovereignRiskWeight`, `reserveRiskWeight`, `rwaOperationalRiskFloor`, `rwaCapitalBackstop` | `1.00, 1.00, 0.35, 0.50, 0.20, 0.00, 0.00, 0.01, 0.10` | share | Code note bridge: Basel/CRR standardized exposure classes | Regulatory RWA perimeter for bank CAR | Direct | `BankingConfig`, `BankRiskWeightedAssets` | `CODE_NOTE_EMPIRICAL` |
 | `banking.loanRecovery` | `0.30` | share | Structural corporate-loan workout recovery prior | Corporate loan recovery | Direct | `BankingConfig` | `ASSUMED` |
 | `banking.firmLoanAmortRate` | `1/60` | monthly rate | Code note bridge: NBP bridge prior maturity | Five-year average loan maturity | Direct | `BankingConfig` | `CODE_NOTE_EMPIRICAL` |
-| `banking.firmCreditMinApprovalProb`, `firmCreditNplApprovalPenalty`, `firmCreditReserveDeficitPenalty` | `0.10, 3.0, 0.50` | share/coefficient | #523 candidate-gate diagnostic prior | Firm-credit stochastic approval after CAR/LCR/NSFR gates pass | Direct | `BankingConfig`, `Banking.creditApproval` | `TUNED_NEEDS_VALIDATION` |
+| `banking.firmCreditMinApprovalProb`, `firmCreditNplApprovalPenalty`, `firmCreditReserveDeficitPenalty` | `0.10, 3.0, 0.50` | share/coefficient | #523 candidate-gate diagnostic prior; #763 reserve-gate removal | Firm-credit stochastic approval after CAR/LCR/NSFR gates pass; reserve penalty is legacy scenario compatibility only | Direct / legacy | `BankingConfig`, `Banking.creditApproval` | `TUNED_NEEDS_VALIDATION` |
 | `banking.reserveReq` | `0.035` | share | Code note bridge: NBP bridge prior | Required reserve ratio | Direct | `BankingConfig` | `EMPIRICAL` |
 | `banking.lcrMin`, `nsfrMin` | `1.0, 1.0` | multiplier | Basel III | Minimum LCR/NSFR | Direct | `BankingConfig` | `EMPIRICAL` |
 | `banking.p2rAddons` | `[0.015, 0.010, 0.030, 0.015, 0.020, 0.025, 0.020, 0.020, 0.025, 0.020]` | multiplier by bank | Code note bridge: KNF bridge prior | SREP/P2R add-ons | Direct | `BankingConfig` | `CODE_NOTE_EMPIRICAL` |

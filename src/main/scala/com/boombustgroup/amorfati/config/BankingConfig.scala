@@ -131,7 +131,9 @@ import com.boombustgroup.amorfati.types.*
   * @param firmCreditNplApprovalPenalty
   *   stochastic approval penalty per unit bank NPL ratio
   * @param firmCreditReserveDeficitPenalty
-  *   stochastic approval penalty when free reserves are negative
+  *   legacy calibration field retained for scenario compatibility; current
+  *   firm-credit approval treats reserves through LCR/NSFR gates and bank P&L,
+  *   not through a per-loan reserve gate
   * @param eclRate1
   *   Stage 1 (performing) ECL provision rate (12-month ECL, KNF: ~1%)
   * @param eclRate2

@@ -682,8 +682,19 @@ a sector target capital-labor ratio:
 desiredInvestment_f =
   depreciation_f
   + max(targetK_f - postDepreciationK_f, 0) * capitalAdjustSpeed
-actualInvestment_f = min(desiredInvestment_f, max(cash_f, 0))
+targetDebtNeed_f = desiredInvestment_f * investmentDebtTargetShare
+shortfallDebtNeed_f =
+  max(desiredInvestment_f - max(cash_f, 0), 0) * investmentCreditShare
+creditNeed_f = min(max(targetDebtNeed_f, shortfallDebtNeed_f), desiredInvestment_f)
+cashInvestment_f =
+  min(desiredInvestment_f - approvedCredit_f, max(cash_f, 0))
+actualInvestment_f = min(cashInvestment_f + approvedCredit_f, desiredInvestment_f)
 ```
+
+The target-debt leg prevents cash-rich firms from mechanically self-financing
+all investment before approaching their relationship bank. If the target-debt
+request is rejected and the firm still has enough cash, investment can proceed
+with internal funds; rejected credit remains visible in diagnostics.
 
 The timeseries exposes `FirmCredit_*` diagnostics for the stock-flow and
 financing surface. `FirmCredit_NewLoans`, `FirmCredit_PrincipalRepaid`,
@@ -693,7 +704,9 @@ financing surface. `FirmCredit_NewLoans`, `FirmCredit_PrincipalRepaid`,
 rejection, and cash-financed investment. Demand and approval diagnostics are
 measured before equity and corporate-bond channel substitution; final bank-loan
 origination is `FirmCredit_NewLoans`. The `Tech*` columns perform the same audit
-for automation and hybrid-upgrade credit.
+for automation and hybrid-upgrade credit; candidate diagnostics include
+otherwise feasible rejected candidates and should not be read as selected-loan
+approval rates.
 
 Green investment mirrors this logic with green capital-labor targets, green
 depreciation, and a separate share of available cash.
@@ -898,8 +911,10 @@ banks receive a fixed penalty spread and cannot lend.
 
 Credit approval requires projected CAR above the macroprudential effective
 minimum, LCR and NSFR above regulatory minima, and a stochastic approval draw.
-The approval probability falls with NPL ratio and reserve deficit but has a
-configured floor.
+The approval probability falls with NPL ratio but has a configured floor.
+Reserve requirements are not a per-loan approval gate; reserves and government
+bonds affect credit supply through LCR/NSFR, settlement cost, standing
+facilities, and lending spreads.
 
 ### Interbank, Facilities, And Monetary Aggregates
 

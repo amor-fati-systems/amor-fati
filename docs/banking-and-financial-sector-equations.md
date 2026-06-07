@@ -160,21 +160,14 @@ nsfrOk = NSFR_b >= nsfrMin
 If all hard gates pass:
 
 ```text
-freeReserves_b =
-  D^B_{b,t} * (1 - reserveReq)
-  - L^{B,F}_{b,t}
-  - L^{B,H}_{b,t}
-  - GB^B_{b,t}
-
-postLoanFreeReserves_b(A) = freeReserves_b - A
-
 approvalP_b =
-  max(1 - nplPenalty_b - reservePenalty_b,
+  max(1 - nplPenalty_b,
       firmCreditMinApprovalProb)
 ```
 
-where `reservePenalty_b` activates when `postLoanFreeReserves_b(A) <= 0`.
 The proposal is approved when the stochastic roll is below `approvalP_b`.
+Reserve requirements are not a per-loan approval gate. They are handled through
+LCR/NSFR, reserve settlement, standing facilities, and bank P&L.
 
 This approval rule is a regulatory heuristic and behavioral credit-supply
 surface, not an SFC identity. The resulting origination, repayment, default,
