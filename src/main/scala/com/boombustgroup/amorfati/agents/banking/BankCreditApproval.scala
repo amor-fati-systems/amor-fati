@@ -78,10 +78,9 @@ private[agents] object BankCreditApproval:
         audit = CreditApprovalAudit(rejectionReason = Some(CreditRejectionReason.FailedBank)),
       )
     else
-      val projectedRwa                                                      = stocks.firmLoan + stocks.consumerLoan + corpBondHoldings * BankRegulatoryMetrics.CorpBondRiskWeight + amount
-      val projectedCar                                                      =
-        if projectedRwa > BankRegulatoryMetrics.MinBalanceThreshold then bank.capital.ratioTo(projectedRwa).toMultiplier
-        else BankRegulatoryMetrics.SafeRatioFloor
+      val projectedExposure                                                 =
+        BankRiskWeightedAssets.exposure(bank, stocks, corpBondHoldings).withAdditionalFirmLoan(amount)
+      val projectedCar                                                      = BankRegulatoryMetrics.capitalAdequacyRatio(bank.capital, projectedExposure)
       val minCar                                                            = Macroprudential.effectiveMinCar(bank.id.toInt, ccyb)
       val carOk                                                             = projectedCar >= minCar
       val currentLcr                                                        = BankRegulatoryMetrics.lcr(stocks)

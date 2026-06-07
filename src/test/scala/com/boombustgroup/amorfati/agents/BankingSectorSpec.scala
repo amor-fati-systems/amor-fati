@@ -37,6 +37,7 @@ class BankingSectorSpec extends AnyFlatSpec with Matchers:
       loansMedium: PLN = PLN.Zero,
       loansLong: PLN = PLN.Zero,
       consumerLoans: PLN = PLN.Zero,
+      mortgageLoans: PLN = PLN.Zero,
       consumerNpl: PLN = PLN.Zero,
   ): BankRow =
     BankRow(
@@ -61,6 +62,7 @@ class BankingSectorSpec extends AnyFlatSpec with Matchers:
         demandDeposit = demandDeposits,
         termDeposit = termDeposits,
         consumerLoan = consumerLoans,
+        mortgageLoan = mortgageLoans,
       ),
     )
 
@@ -166,6 +168,24 @@ class BankingSectorSpec extends AnyFlatSpec with Matchers:
 
     noPressure.approvalProbability shouldBe Some(Share.One)
     pressured.approvalProbability shouldBe Some(Share.decimal(5, 1))
+  }
+
+  "Banking.car" should "include mortgages in the configured RWA perimeter" in {
+    val noMortgage   = mkBankRow(loans = PLN(1000000), capital = PLN(500000), mortgageLoans = PLN.Zero)
+    val withMortgage = mkBankRow(loans = PLN(1000000), capital = PLN(500000), mortgageLoans = PLN(1000000))
+
+    decimal(Banking.car(withMortgage.bank, withMortgage.stocks, PLN.Zero)) shouldBe BigDecimal("0.37037") +- BigDecimal("0.0001")
+    Banking.car(withMortgage.bank, withMortgage.stocks, PLN.Zero) should be < Banking.car(noMortgage.bank, noMortgage.stocks, PLN.Zero)
+  }
+
+  it should "apply the default sovereign and interbank RWA weights" in {
+    val base          = mkBankRow(loans = PLN(1000000), capital = PLN(500000))
+    val sovereignOnly = mkBankRow(loans = PLN(1000000), capital = PLN(500000), govBondHoldings = PLN(1000000))
+    val withInterbank = mkBankRow(loans = PLN(1000000), capital = PLN(500000), govBondHoldings = PLN(1000000), interbankNet = PLN(250000))
+
+    Banking.car(sovereignOnly.bank, sovereignOnly.stocks, PLN.Zero) shouldBe Banking.car(base.bank, base.stocks, PLN.Zero)
+    decimal(Banking.car(withInterbank.bank, withInterbank.stocks, PLN.Zero)) shouldBe BigDecimal("0.47619") +- BigDecimal("0.0001")
+    Banking.car(withInterbank.bank, withInterbank.stocks, PLN.Zero) should be < Banking.car(sovereignOnly.bank, sovereignOnly.stocks, PLN.Zero)
   }
 
   "Banking.interbankRate" should "use explicit financial stocks" in {

@@ -270,6 +270,9 @@ class CorporateBondSpec extends AnyFlatSpec with Matchers:
       consumerLoans = PLN.Zero,
       consumerNpl = PLN.Zero,
       corpBondHoldings = PLN(400),
+      mortgageLoans = PLN.Zero,
+      reserves = PLN.Zero,
+      interbankAssets = PLN.Zero,
     )
     // RWA = 1000 + 400 * 0.5 = 1200; CAR = 200 / 1200 = 0.1667
     shouldBeCloseMultiplier(bank.car, Scalar.fraction(200, 1200).toMultiplier, Multiplier.decimal(1, 3))

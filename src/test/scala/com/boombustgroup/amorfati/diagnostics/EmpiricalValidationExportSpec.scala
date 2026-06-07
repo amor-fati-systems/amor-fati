@@ -272,7 +272,7 @@ class EmpiricalValidationExportSpec extends AnyFlatSpec with Matchers:
       write(
         mc.resolve("fixture_real-economy_1m_banks.csv"),
         """Seed;BankId;CAR;NPL;Capital;Deposits;Loans
-          |1;0;0.211;0.030;168000000000;2542300000000;557400000000
+          |1;0;0.211;0.030;199000000000;2542300000000;557400000000
           |""".stripMargin,
       )
 

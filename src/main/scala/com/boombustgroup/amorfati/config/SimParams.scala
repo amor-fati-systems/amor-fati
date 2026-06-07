@@ -251,7 +251,7 @@ object SimParams:
         fxReserves = PLN(1078313000000L) * r,
       ),
       banking = BankingConfig(
-        initCapital = PLN(168000000000L) * r,
+        initCapital = PLN(199000000000L) * r,
         initDeposits = PLN(2542300000000L) * r,
         initLoans = PLN(557400000000L) * r,
         initGovBonds = PLN(400000000000L) * r,

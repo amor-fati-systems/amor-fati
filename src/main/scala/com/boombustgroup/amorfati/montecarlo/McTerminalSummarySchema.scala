@@ -59,8 +59,8 @@ private[montecarlo] object McTerminalSummarySchema:
   private def nplRatio(row: BankRow): Share =
     Banking.nplRatio(row.balances.firmLoan, row.bank.nplAmount)
 
-  private def car(row: BankRow): Multiplier =
-    Banking.capitalAdequacyRatio(row.bank.capital, row.balances.firmLoan, row.balances.consumerLoan, row.balances.corpBond)
+  private def car(row: BankRow)(using SimParams): Multiplier =
+    Banking.car(row.bank, LedgerFinancialState.projectBankFinancialStocks(row.balances), row.balances.corpBond)
 
   private[montecarlo] final case class SummarySpec(
       id: McTerminalSummaryId,
@@ -119,7 +119,20 @@ private[montecarlo] object McTerminalSummarySchema:
     ("HouseholdLiquidity_DepositP99", row => row.liquidity.depositP99.format(2)),
   )
 
-  private val bankSchema: Vector[(String, BankRow => String)] = Vector(
+  private val bankHeaders: Vector[String] =
+    Vector(
+      "BankId",
+      "Deposits",
+      "Loans",
+      "Capital",
+      "NPL",
+      "CAR",
+      "GovBonds",
+      "InterbankNet",
+      "Failed",
+    )
+
+  private def bankSchema(using SimParams): Vector[(String, BankRow => String)] = Vector(
     ("BankId", row => s"${row.bank.id}"),
     ("Deposits", row => row.balances.totalDeposits.format(2)),
     ("Loans", row => row.balances.firmLoan.format(2)),
@@ -158,7 +171,7 @@ private[montecarlo] object McTerminalSummarySchema:
       McTerminalSummaryId.Banks,
       McOutputFiles.bankFile,
       McCsvSchema(
-        header = "Seed;" + bankSchema.map(_._1).mkString(";"),
+        header = "Seed;" + bankHeaders.mkString(";"),
         render = identity,
       ),
     ),
@@ -192,7 +205,7 @@ private[montecarlo] object McTerminalSummarySchema:
   private def renderHouseholdRow(seed: Long, row: HouseholdRow): String =
     s"$seed;" + hhSchema.map(_._2(row)).mkString(";")
 
-  private def renderBankRow(seed: Long, row: BankRow): String =
+  private def renderBankRow(seed: Long, row: BankRow)(using SimParams): String =
     s"$seed;" + bankSchema.map(_._2(row)).mkString(";")
 
   private def renderFirmRow(seed: Long, firms: Vector[Firm.State])(using SimParams): String =

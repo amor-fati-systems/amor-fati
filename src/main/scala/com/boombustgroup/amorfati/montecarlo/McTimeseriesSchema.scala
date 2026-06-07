@@ -463,11 +463,12 @@ object McTimeseriesSchema:
   private def bankingSectorGroup: Vector[ColumnDef] = Vector(
     // Interbank
     ColumnDef("InterbankRate", ctx => ctx.world.bankingSector.interbankRate),
+    ColumnDef("AggregateBankCAR", ctx => ctx.bankAgg.car(using ctx.p)),
     ColumnDef(
       "MinBankCAR",
       ctx =>
         if ctx.aliveBankRows.isEmpty then Multiplier.Zero
-        else ctx.aliveBankRows.map((bank, stocks) => Banking.car(bank, stocks, ctx.bankCorpBondHoldings(bank.id))).min,
+        else ctx.aliveBankRows.map((bank, stocks) => Banking.car(bank, stocks, ctx.bankCorpBondHoldings(bank.id))(using ctx.p)).min,
     ),
     ColumnDef(
       "MaxBankNPL",
@@ -1150,6 +1151,7 @@ object McTimeseriesSchema:
     val FxInterventionAmt: Col                         = lookup("FxInterventionAmt")
     val FxInterventionActive: Col                      = lookup("FxInterventionActive")
     val InterbankRate: Col                             = lookup("InterbankRate")
+    val AggregateBankCAR: Col                          = lookup("AggregateBankCAR")
     val MinBankCAR: Col                                = lookup("MinBankCAR")
     val MaxBankNPL: Col                                = lookup("MaxBankNPL")
     val BankFailures: Col                              = lookup("BankFailures")

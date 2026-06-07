@@ -133,7 +133,7 @@ private[agents] object BankFailureResolution:
       banks: Vector[BankState],
       financialStocks: Vector[BankFinancialStocks],
       bankCorpBondHoldings: Vector[PLN],
-  ): ResolutionResult =
+  )(using p: SimParams): ResolutionResult =
     val rows           = BankRows.from(banks, financialStocks, "Banking.resolveFailures")
     val holderBalances = Vector.tabulate(rows.length)(index => bankCorpBondHoldings.lift(index).getOrElse(PLN.Zero))
     val newlyFailed    = rows.filter((b, stocks) => b.failed && stocks.totalDeposits > PLN.Zero)
@@ -151,6 +151,7 @@ private[agents] object BankFailureResolution:
       val addHtm         = toAbsorb.map(_._2.govBondHtm).sumPln
       val addCorpB       = toAbsorb.flatMap((bank, _) => holderBalances.lift(bank.id.toInt)).sumPln
       val addCC          = toAbsorb.map(_._2.consumerLoan).sumPln
+      val addMortgage    = toAbsorb.map(_._2.mortgageLoan).sumPln
       val addIB          = toAbsorb.map(_._2.interbankLoan).sumPln
       val addBailedInDep = toAbsorb.map(_._2.bailedInDeposits).sumPln
       val htmYieldWt     = toAbsorb.map((bank, stocks) => stocks.govBondHtm * bank.htmBookYield).sumPln
@@ -169,6 +170,7 @@ private[agents] object BankFailureResolution:
               govBondAfs = stocks.govBondAfs + addAfs,
               govBondHtm = combinedHtm,
               consumerLoan = stocks.consumerLoan + addCC,
+              mortgageLoan = stocks.mortgageLoan + addMortgage,
               interbankLoan = stocks.interbankLoan + addIB,
               bailedInDeposits = (stocks.bailedInDeposits + addBailedInDep).min(stocks.totalDeposits + addDep).max(PLN.Zero),
             ),
@@ -184,6 +186,7 @@ private[agents] object BankFailureResolution:
               reserve = PLN.Zero,
               interbankLoan = PLN.Zero,
               consumerLoan = PLN.Zero,
+              mortgageLoan = PLN.Zero,
               bailedInDeposits = PLN.Zero,
             ),
           )
@@ -202,7 +205,7 @@ private[agents] object BankFailureResolution:
       banks: Vector[BankState],
       financialStocks: Vector[BankFinancialStocks],
       bankCorpBondHoldings: BankCorpBondHoldings,
-  ): BankId =
+  )(using p: SimParams): BankId =
     val rows  = BankRows.from(banks, financialStocks, "Banking.healthiestBankId")
     val alive = rows.filter((bank, _) => !bank.failed)
     if alive.isEmpty then
@@ -212,9 +215,7 @@ private[agents] object BankFailureResolution:
     else
       val riskBearingAlive = alive.filter: (bank, stocks) =>
         BankRegulatoryMetrics.riskWeightedAssets(
-          stocks.firmLoan,
-          stocks.consumerLoan,
-          bankCorpBondHoldings(bank.id),
+          BankRiskWeightedAssets.exposure(bank, stocks, bankCorpBondHoldings(bank.id)),
         ) > BankRegulatoryMetrics.MinBalanceThreshold
       if riskBearingAlive.nonEmpty then
         riskBearingAlive.maxBy((bank, stocks) => (BankRegulatoryMetrics.car(bank, stocks, bankCorpBondHoldings(bank.id)).toLong, bank.capital.toLong))._1.id
@@ -226,6 +227,6 @@ private[agents] object BankFailureResolution:
       banks: Vector[BankState],
       financialStocks: Vector[BankFinancialStocks],
       bankCorpBondHoldings: BankCorpBondHoldings,
-  ): BankId =
+  )(using p: SimParams): BankId =
     if currentBankId.toInt < banks.length && !banks(currentBankId.toInt).failed then currentBankId
     else healthiestBankId(banks, financialStocks, bankCorpBondHoldings)

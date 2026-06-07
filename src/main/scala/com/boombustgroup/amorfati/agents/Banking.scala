@@ -25,9 +25,6 @@ object Banking:
   def nplRatio(totalLoans: PLN, nplAmount: PLN): Share =
     BankRegulatoryMetrics.nplRatio(totalLoans, nplAmount)
 
-  def capitalAdequacyRatio(capital: PLN, firmLoans: PLN, consumerLoans: PLN, corpBondHoldings: PLN): Multiplier =
-    BankRegulatoryMetrics.capitalAdequacyRatio(capital, firmLoans, consumerLoans, corpBondHoldings)
-
   // ---------------------------------------------------------------------------
   // ADT: BankStatus
   // ---------------------------------------------------------------------------
@@ -67,15 +64,18 @@ object Banking:
     * written back.
     */
   case class Aggregate(
-      totalLoans: PLN,      // Outstanding corporate loans (sum of per-bank `loans`)
-      nplAmount: PLN,       // Non-performing corporate loan stock (KNF Stage 3)
-      capital: PLN,         // Regulatory capital (Tier 1 + retained earnings)
-      deposits: PLN,        // Total customer deposits (households + firms)
-      afsBonds: PLN,        // AFS gov bond portfolio (marked to market)
-      htmBonds: PLN,        // HTM gov bond portfolio (accrual only)
-      consumerLoans: PLN,   // Outstanding unsecured household credit
-      consumerNpl: PLN,     // Non-performing consumer loan stock
+      totalLoans: PLN,       // Outstanding corporate loans (sum of per-bank `loans`)
+      nplAmount: PLN,        // Non-performing corporate loan stock (KNF Stage 3)
+      capital: PLN,          // Regulatory capital (Tier 1 + retained earnings)
+      deposits: PLN,         // Total customer deposits (households + firms)
+      afsBonds: PLN,         // AFS gov bond portfolio (marked to market)
+      htmBonds: PLN,         // HTM gov bond portfolio (accrual only)
+      consumerLoans: PLN,    // Outstanding unsecured household credit
+      consumerNpl: PLN,      // Non-performing consumer loan stock
       corpBondHoldings: PLN, // Corporate bond portfolio — bank share only (default 30%, CORPBOND_BANK_SHARE)
+      mortgageLoans: PLN,    // Mortgage loan assets mirrored from household liabilities
+      reserves: PLN,         // NBP reserve assets
+      interbankAssets: PLN,  // Positive interbank asset positions only
   ):
     /** Total government bond holdings (AFS + HTM). */
     def govBondHoldings: PLN = afsBonds + htmBonds
@@ -85,13 +85,11 @@ object Banking:
       */
     def nplRatio: Share = Banking.nplRatio(totalLoans, nplAmount)
 
-    /** Capital adequacy ratio: capital / risk-weighted assets. Corporate bonds
-      * carry 50% risk weight (Basel III, BBB bucket). Returns Multiplier(10)
-      * (well-capitalised floor) when risk-weighted assets ≤ 1 to avoid division
-      * by zero.
+    /** Capital adequacy ratio: capital / risk-weighted assets using the
+      * configured regulatory RWA perimeter.
       */
-    def car: Multiplier =
-      Banking.capitalAdequacyRatio(capital, totalLoans, consumerLoans, corpBondHoldings)
+    def car(using SimParams): Multiplier =
+      BankRegulatoryMetrics.capitalAdequacyRatio(capital, BankRiskWeightedAssets.aggregateExposure(this))
 
   def aggregateFromBankStocks(
       banks: Vector[BankState],
@@ -223,6 +221,7 @@ object Banking:
       demandDeposit: PLN,              // demand deposits
       termDeposit: PLN,                // term deposits
       consumerLoan: PLN,               // outstanding unsecured household credit
+      mortgageLoan: PLN = PLN.Zero,    // mortgage loan assets mirrored from household liabilities
       bailedInDeposits: PLN = PLN.Zero, // deposits already processed by resolution bail-in
   )
 
@@ -266,7 +265,7 @@ object Banking:
   def nplRatio(bank: BankState, stocks: BankFinancialStocks): Share =
     BankRegulatoryMetrics.nplRatio(bank, stocks)
 
-  def car(bank: BankState, stocks: BankFinancialStocks, corpBondHoldings: PLN): Multiplier =
+  def car(bank: BankState, stocks: BankFinancialStocks, corpBondHoldings: PLN)(using SimParams): Multiplier =
     BankRegulatoryMetrics.car(bank, stocks, corpBondHoldings)
 
   def hqla(stocks: BankFinancialStocks): PLN =
@@ -451,7 +450,7 @@ object Banking:
       banks: Vector[BankState],
       financialStocks: Vector[BankFinancialStocks],
       bankCorpBondHoldings: Vector[PLN] = Vector.empty,
-  ): ResolutionResult =
+  )(using p: SimParams): ResolutionResult =
     BankFailureResolution.resolveFailures(banks, financialStocks, bankCorpBondHoldings)
 
   /** Find the healthiest surviving bank.
@@ -468,7 +467,7 @@ object Banking:
       banks: Vector[BankState],
       financialStocks: Vector[BankFinancialStocks],
       bankCorpBondHoldings: BankCorpBondHoldings = noBankCorpBondHoldings,
-  ): BankId =
+  )(using p: SimParams): BankId =
     BankFailureResolution.healthiestBankId(banks, financialStocks, bankCorpBondHoldings)
 
   /** Reassign a firm/household from a failed bank to the healthiest surviving
@@ -479,7 +478,7 @@ object Banking:
       banks: Vector[BankState],
       financialStocks: Vector[BankFinancialStocks],
       bankCorpBondHoldings: BankCorpBondHoldings = noBankCorpBondHoldings,
-  ): BankId =
+  )(using p: SimParams): BankId =
     BankFailureResolution.reassignBankId(currentBankId, banks, financialStocks, bankCorpBondHoldings)
 
   // ---------------------------------------------------------------------------

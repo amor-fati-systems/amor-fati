@@ -341,6 +341,7 @@ object LedgerFinancialState:
       termDeposit = balances.termDeposit,
       firmLoan = balances.firmLoan,
       consumerLoan = balances.consumerLoan,
+      mortgageLoan = balances.mortgageLoan,
       govBondAfs = balances.govBondAfs,
       govBondHtm = balances.govBondHtm,
       reserve = balances.reserve,

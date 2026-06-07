@@ -141,7 +141,7 @@ private[banking] object BankFailurePipeline:
       failure: FailureDetectionResult,
       bailIn: BailInStageResult,
       bankCorpBondHoldings: Vector[PLN],
-  ): BankResolutionStageResult =
+  )(using p: SimParams): BankResolutionStageResult =
     val result =
       if failure.anyFailed then Banking.resolveFailures(bailIn.banks, bailIn.financialStocks, bankCorpBondHoldings)
       else Banking.ResolutionResult(bailIn.banks, bailIn.financialStocks, BankId.NoBank, bankCorpBondHoldings)

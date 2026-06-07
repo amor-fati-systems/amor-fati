@@ -63,7 +63,7 @@ class SimParamsSpec extends AnyFlatSpec with Matchers:
   // ── Banking ──
 
   "BankingConfig" should "have gdpRatio-scaled values" in {
-    decimal(p.banking.initCapital) shouldBe (BigDecimal("168e9") * gdpRatio) +- BigDecimal("1.0")
+    decimal(p.banking.initCapital) shouldBe (BigDecimal("199e9") * gdpRatio) +- BigDecimal("1.0")
     decimal(p.banking.initDeposits) shouldBe (BigDecimal("2542.3e9") * gdpRatio) +- BigDecimal("1.0")
     decimal(p.banking.initLoans) shouldBe (BigDecimal("557.4e9") * gdpRatio) +- BigDecimal("1.0")
     decimal(p.banking.initGovBonds) shouldBe (BigDecimal("400e9") * gdpRatio) +- BigDecimal("1.0")
@@ -173,6 +173,16 @@ class SimParamsSpec extends AnyFlatSpec with Matchers:
     val osiiErr = intercept[IllegalArgumentException]:
       BankingConfig(p2rAddons = Vector(Multiplier.Zero), osiiBuffers = Vector(Multiplier(2)))
     osiiErr.getMessage should include("osiiBuffers[0]")
+  }
+
+  it should "reject RWA weights and floors outside [0,1]" in {
+    val negativeWeight = intercept[IllegalArgumentException]:
+      BankingConfig(firmLoanRiskWeight = Share(-1))
+    negativeWeight.getMessage should include("firmLoanRiskWeight")
+
+    val oversizedFloor = intercept[IllegalArgumentException]:
+      BankingConfig(rwaCapitalBackstop = Share(2))
+    oversizedFloor.getMessage should include("rwaCapitalBackstop")
   }
 
   "FirmConfig" should "pin the Poland productivity-growth baseline" in {

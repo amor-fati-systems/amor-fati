@@ -197,19 +197,58 @@ class ConsumerCreditSpec extends AnyFlatSpec with Matchers:
   }
 
   "BankingAggregate" should "have consumerLoans and consumerNpl fields" in {
-    val bank = Banking.Aggregate(PLN(1000), PLN(50), PLN(500), PLN(2000), PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero)
+    val bank = Banking.Aggregate(
+      totalLoans = PLN(1000),
+      nplAmount = PLN(50),
+      capital = PLN(500),
+      deposits = PLN(2000),
+      afsBonds = PLN.Zero,
+      htmBonds = PLN.Zero,
+      consumerLoans = PLN.Zero,
+      consumerNpl = PLN.Zero,
+      corpBondHoldings = PLN.Zero,
+      mortgageLoans = PLN.Zero,
+      reserves = PLN.Zero,
+      interbankAssets = PLN.Zero,
+    )
     bank.consumerLoans shouldBe PLN.Zero
     bank.consumerNpl shouldBe PLN.Zero
   }
 
   "BankingAggregate.car" should "include consumer loans in RWA" in {
     val bank     =
-      Banking.Aggregate(PLN(1000), PLN(50), PLN(500), PLN(2000), PLN.Zero, PLN.Zero, PLN(1000), PLN.Zero, PLN.Zero)
+      Banking.Aggregate(
+        totalLoans = PLN(1000),
+        nplAmount = PLN(50),
+        capital = PLN(500),
+        deposits = PLN(2000),
+        afsBonds = PLN.Zero,
+        htmBonds = PLN.Zero,
+        consumerLoans = PLN(1000),
+        consumerNpl = PLN.Zero,
+        corpBondHoldings = PLN.Zero,
+        mortgageLoans = PLN.Zero,
+        reserves = PLN.Zero,
+        interbankAssets = PLN.Zero,
+      )
     // CAR = capital / (totalLoans + consumerLoans) = 500 / 2000 = 0.25
     decimal(bank.car) shouldBe BigDecimal("0.25") +- BigDecimal("0.01")
     // Without consumer loans: CAR = 500 / 1000 = 0.50
     val bankNoCc =
-      Banking.Aggregate(PLN(1000), PLN(50), PLN(500), PLN(2000), PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero)
+      Banking.Aggregate(
+        totalLoans = PLN(1000),
+        nplAmount = PLN(50),
+        capital = PLN(500),
+        deposits = PLN(2000),
+        afsBonds = PLN.Zero,
+        htmBonds = PLN.Zero,
+        consumerLoans = PLN.Zero,
+        consumerNpl = PLN.Zero,
+        corpBondHoldings = PLN.Zero,
+        mortgageLoans = PLN.Zero,
+        reserves = PLN.Zero,
+        interbankAssets = PLN.Zero,
+      )
     decimal(bankNoCc.car) shouldBe BigDecimal("0.50") +- BigDecimal("0.01")
     bank.car should be < bankNoCc.car
   }

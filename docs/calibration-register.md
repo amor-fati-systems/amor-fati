@@ -38,7 +38,7 @@ These counts are rendered from `CalibrationProvenance.Baseline` at generation ti
 | --- | --- |
 | `EMPIRICAL` | 36 |
 | `EMPIRICAL_TRANSFORMED` | 17 |
-| `CODE_NOTE_EMPIRICAL` | 61 |
+| `CODE_NOTE_EMPIRICAL` | 62 |
 | `ASSUMED` | 33 |
 | `TUNED_NEEDS_VALIDATION` | 89 |
 | `POLICY_SCENARIO` | 7 |
@@ -349,13 +349,14 @@ a concrete diagnostic artifact path.
 | `monetary.qePace` | `5e9` | raw PLN/month | UNKNOWN_SOURCE | QE monthly purchase pace | Scaled by gdpRatio | `MonetaryConfig`, `SimParams` | `POLICY_SCENARIO` |
 | `monetary.qeMaxGdpShare` | `0.30` | GDP share | UNKNOWN_SOURCE | QE stock ceiling | Direct | `MonetaryConfig` | `POLICY_SCENARIO` |
 | `monetary.fxReserves` | `1078.313e9` | raw PLN | NBP March 2026 official reserve assets, EUR 253.5bn converted at model-start PLN/EUR 4.2537 | Initial official reserve assets | Scaled by gdpRatio | `MonetaryConfig`, `SimParams` | `EMPIRICAL_TRANSFORMED` |
-| `banking.initCapital` | `168e9` | raw PLN | KNF February 2026 TCR 21.1%, mapped to model RWA proxy | Aggregate regulatory-capital proxy | Scaled by gdpRatio | `BankingConfig`, `SimParams` | `EMPIRICAL_TRANSFORMED` |
+| `banking.initCapital` | `199e9` | raw PLN | KNF February 2026 TCR 21.1%, mapped to explicit model RWA perimeter | Aggregate regulatory-capital proxy | Scaled by gdpRatio | `BankingConfig`, `SimParams` | `EMPIRICAL_TRANSFORMED` |
 | `banking.initDeposits` | `2542.3e9` | raw PLN | KNF monthly banking data, February 2026 | Aggregate banking-sector deposits | Scaled by gdpRatio; firm cash receives the corporate split and household demand deposits are normalized to the residual | `BankingConfig`, `SimParams`, `WorldInit` | `EMPIRICAL` |
 | `banking.initLoans` | `557.4e9` | raw PLN | KNF monthly banking data, February 2026: SME + large enterprises + individual entrepreneurs + individual farmers | Corporate/nonfinancial business loans | Scaled by gdpRatio | `BankingConfig`, `SimParams` | `EMPIRICAL_TRANSFORMED` |
 | `banking.initGovBonds`, `initNbpGovBonds` | `400e9, 300e9` | raw PLN | NBP MFI and central-bank balance-sheet bridge, 2026-04-30 | Bank/NBP government-bond holdings | Scaled by gdpRatio | `BankingConfig`, `SimParams` | `EMPIRICAL_TRANSFORMED` |
 | `banking.initConsumerLoans` | `225.2e9` | raw PLN | KNF monthly banking data, February 2026 | Consumer loan stock | Scaled by gdpRatio; household opening consumer loans are normalized to this target | `BankingConfig`, `SimParams`, `Household.Init` | `EMPIRICAL` |
 | `banking.baseSpread` | `0.015` | annual rate | Structural bank-pricing spread prior | Base firm-loan spread | Direct | `BankingConfig` | `ASSUMED` |
 | `banking.minCar` | `0.08` | multiplier/share | Code note bridge: Basel III CRR | Minimum capital adequacy | Direct | `BankingConfig` | `EMPIRICAL` |
+| `banking.firmLoanRiskWeight`, `consumerLoanRiskWeight`, `mortgageLoanRiskWeight`, `corpBondRiskWeight`, `interbankAssetRiskWeight`, `sovereignRiskWeight`, `reserveRiskWeight`, `rwaOperationalRiskFloor`, `rwaCapitalBackstop` | `1.00, 1.00, 0.35, 0.50, 0.20, 0.00, 0.00, 0.01, 0.10` | share | Code note bridge: Basel/CRR standardized exposure classes | Regulatory RWA perimeter for bank CAR | Direct | `BankingConfig`, `BankRiskWeightedAssets` | `CODE_NOTE_EMPIRICAL` |
 | `banking.loanRecovery` | `0.30` | share | Structural corporate-loan workout recovery prior | Corporate loan recovery | Direct | `BankingConfig` | `ASSUMED` |
 | `banking.firmLoanAmortRate` | `1/60` | monthly rate | Code note bridge: NBP bridge prior maturity | Five-year average loan maturity | Direct | `BankingConfig` | `CODE_NOTE_EMPIRICAL` |
 | `banking.firmCreditMinApprovalProb`, `firmCreditNplApprovalPenalty`, `firmCreditReserveDeficitPenalty` | `0.10, 3.0, 0.50` | share/coefficient | #523 candidate-gate diagnostic prior | Firm-credit stochastic approval after CAR/LCR/NSFR gates pass | Direct | `BankingConfig`, `Banking.creditApproval` | `TUNED_NEEDS_VALIDATION` |
