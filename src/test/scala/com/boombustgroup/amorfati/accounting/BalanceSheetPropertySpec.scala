@@ -19,6 +19,22 @@ class BalanceSheetPropertySpec extends AnyFlatSpec with Matchers with ScalaCheck
   implicit override val generatorDrivenConfig: PropertyCheckConfiguration =
     PropertyCheckConfiguration(minSuccessful = 200)
 
+  private def bankingAggregate(totalLoans: PLN, nplAmount: PLN, capital: PLN): Banking.Aggregate =
+    Banking.Aggregate(
+      totalLoans = totalLoans,
+      nplAmount = nplAmount,
+      capital = capital,
+      deposits = PLN(1000),
+      afsBonds = PLN.Zero,
+      htmBonds = PLN.Zero,
+      consumerLoans = PLN.Zero,
+      consumerNpl = PLN.Zero,
+      corpBondHoldings = PLN.Zero,
+      mortgageLoans = PLN.Zero,
+      reserves = PLN.Zero,
+      interbankAssets = PLN.Zero,
+    )
+
   // Combined generator for gov update inputs (avoids >6 forAll limit)
   private val genGovUpdateInputs: Gen[(FiscalBudget.GovState, BigDecimal, BigDecimal, BigDecimal, BigDecimal)] =
     for
@@ -42,7 +58,7 @@ class BalanceSheetPropertySpec extends AnyFlatSpec with Matchers with ScalaCheck
   it should "be 0 when totalLoans <= 1" in
     forAll(genDecimal("-100.0", "1.0"), genDecimal("0.0", "1e6")) { (loans: BigDecimal, capital: BigDecimal) =>
       val bs =
-        Banking.Aggregate(plnBD(loans), PLN(500), plnBD(capital), PLN(1000), PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero)
+        bankingAggregate(totalLoans = plnBD(loans), nplAmount = PLN(500), capital = plnBD(capital))
       bs.nplRatio shouldBe Share.Zero
     }
 
@@ -50,14 +66,14 @@ class BalanceSheetPropertySpec extends AnyFlatSpec with Matchers with ScalaCheck
     forAll(genDecimal("0.0", "1e9"), genDecimal("0.0", "1e9")) { (capital: BigDecimal, loans: BigDecimal) =>
       whenever(loans > BigDecimal("1.0")) {
         val bs =
-          Banking.Aggregate(plnBD(loans), PLN(0), plnBD(capital), PLN(1000), PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero)
+          bankingAggregate(totalLoans = plnBD(loans), nplAmount = PLN.Zero, capital = plnBD(capital))
         bs.car.bd should be >= BigDecimal("0.0")
       }
     }
 
   it should "be 10.0 when totalLoans <= 1" in
     forAll(genDecimal("-100.0", "1.0")) { (loans: BigDecimal) =>
-      val bs = Banking.Aggregate(plnBD(loans), PLN(0), PLN(1000), PLN(1000), PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero)
+      val bs = bankingAggregate(totalLoans = plnBD(loans), nplAmount = PLN.Zero, capital = PLN(1000))
       bs.car shouldBe Multiplier(10)
     }
 

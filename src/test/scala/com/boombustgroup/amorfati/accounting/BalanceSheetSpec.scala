@@ -11,60 +11,40 @@ class BalanceSheetSpec extends AnyFlatSpec with Matchers:
 
   given SimParams = SimParams.defaults
 
+  private def bankingAggregate(totalLoans: PLN, nplAmount: PLN, capital: PLN): Banking.Aggregate =
+    Banking.Aggregate(
+      totalLoans = totalLoans,
+      nplAmount = nplAmount,
+      capital = capital,
+      deposits = PLN(500000),
+      afsBonds = PLN.Zero,
+      htmBonds = PLN.Zero,
+      consumerLoans = PLN.Zero,
+      consumerNpl = PLN.Zero,
+      corpBondHoldings = PLN.Zero,
+      mortgageLoans = PLN.Zero,
+      reserves = PLN.Zero,
+      interbankAssets = PLN.Zero,
+    )
+
   "BankingAggregate.nplRatio" should "equal nplAmount / totalLoans when totalLoans > 1" in {
     val b =
-      Banking.Aggregate(PLN(1000000), PLN(50000), PLN(200000), PLN(500000), PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero)
+      bankingAggregate(totalLoans = PLN(1000000), nplAmount = PLN(50000), capital = PLN(200000))
     decimal(b.nplRatio) shouldBe BigDecimal("0.05") +- BigDecimal("0.001")
   }
 
   it should "return 0.0 when totalLoans <= 1" in {
-    Banking
-      .Aggregate(
-        PLN.Zero,
-        PLN(100),
-        PLN(200000),
-        PLN(500000),
-        PLN.Zero,
-        PLN.Zero,
-        PLN.Zero,
-        PLN.Zero,
-        PLN.Zero,
-      )
-      .nplRatio shouldBe Share.Zero
-    Banking
-      .Aggregate(
-        PLN(1),
-        PLN(100),
-        PLN(200000),
-        PLN(500000),
-        PLN.Zero,
-        PLN.Zero,
-        PLN.Zero,
-        PLN.Zero,
-        PLN.Zero,
-      )
-      .nplRatio shouldBe Share.Zero
+    bankingAggregate(totalLoans = PLN.Zero, nplAmount = PLN(100), capital = PLN(200000)).nplRatio shouldBe Share.Zero
+    bankingAggregate(totalLoans = PLN(1), nplAmount = PLN(100), capital = PLN(200000)).nplRatio shouldBe Share.Zero
   }
 
   "BankingAggregate.car" should "equal capital / totalLoans when totalLoans > 1" in {
-    val b = Banking.Aggregate(PLN(1000000), PLN.Zero, PLN(200000), PLN(500000), PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero)
+    val b = bankingAggregate(totalLoans = PLN(1000000), nplAmount = PLN.Zero, capital = PLN(200000))
     decimal(b.car) shouldBe BigDecimal("0.2") +- BigDecimal("0.001")
   }
 
   it should "return 10.0 when totalLoans <= 1" in {
-    Banking
-      .Aggregate(
-        PLN.Zero,
-        PLN.Zero,
-        PLN(200000),
-        PLN(500000),
-        PLN.Zero,
-        PLN.Zero,
-        PLN.Zero,
-        PLN.Zero,
-        PLN.Zero,
-      )
-      .car shouldBe Multiplier(10)
+    bankingAggregate(totalLoans = PLN.Zero, nplAmount = PLN.Zero, capital = PLN(200000)).car shouldBe Multiplier(10)
   }
 
   // lendingRate and canLend removed from BankingAggregate — now only on Banking.BankState

@@ -64,18 +64,18 @@ object Banking:
     * written back.
     */
   case class Aggregate(
-      totalLoans: PLN,                // Outstanding corporate loans (sum of per-bank `loans`)
-      nplAmount: PLN,                 // Non-performing corporate loan stock (KNF Stage 3)
-      capital: PLN,                   // Regulatory capital (Tier 1 + retained earnings)
-      deposits: PLN,                  // Total customer deposits (households + firms)
-      afsBonds: PLN,                  // AFS gov bond portfolio (marked to market)
-      htmBonds: PLN,                  // HTM gov bond portfolio (accrual only)
-      consumerLoans: PLN,             // Outstanding unsecured household credit
-      consumerNpl: PLN,               // Non-performing consumer loan stock
-      corpBondHoldings: PLN,          // Corporate bond portfolio — bank share only (default 30%, CORPBOND_BANK_SHARE)
-      mortgageLoans: PLN = PLN.Zero,  // Mortgage loan assets mirrored from household liabilities
-      reserves: PLN = PLN.Zero,       // NBP reserve assets
-      interbankAssets: PLN = PLN.Zero, // Positive interbank asset positions only
+      totalLoans: PLN,       // Outstanding corporate loans (sum of per-bank `loans`)
+      nplAmount: PLN,        // Non-performing corporate loan stock (KNF Stage 3)
+      capital: PLN,          // Regulatory capital (Tier 1 + retained earnings)
+      deposits: PLN,         // Total customer deposits (households + firms)
+      afsBonds: PLN,         // AFS gov bond portfolio (marked to market)
+      htmBonds: PLN,         // HTM gov bond portfolio (accrual only)
+      consumerLoans: PLN,    // Outstanding unsecured household credit
+      consumerNpl: PLN,      // Non-performing consumer loan stock
+      corpBondHoldings: PLN, // Corporate bond portfolio — bank share only (default 30%, CORPBOND_BANK_SHARE)
+      mortgageLoans: PLN,    // Mortgage loan assets mirrored from household liabilities
+      reserves: PLN,         // NBP reserve assets
+      interbankAssets: PLN,  // Positive interbank asset positions only
   ):
     /** Total government bond holdings (AFS + HTM). */
     def govBondHoldings: PLN = afsBonds + htmBonds

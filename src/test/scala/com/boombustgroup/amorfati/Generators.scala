@@ -287,15 +287,18 @@ object Generators:
     bonds      <- genDecimal("0.0", "1000000000.0")
     htmFrac    <- genFraction
   yield Banking.Aggregate(
-    plnBD(totalLoans),
-    plnBD(totalLoans * nplFrac),
-    plnBD(capital),
-    plnBD(deposits),
-    plnBD(bonds * (BigDecimal(1) - htmFrac)),
-    plnBD(bonds * htmFrac),
-    PLN.Zero,
-    PLN.Zero,
-    PLN.Zero,
+    totalLoans = plnBD(totalLoans),
+    nplAmount = plnBD(totalLoans * nplFrac),
+    capital = plnBD(capital),
+    deposits = plnBD(deposits),
+    afsBonds = plnBD(bonds * (BigDecimal(1) - htmFrac)),
+    htmBonds = plnBD(bonds * htmFrac),
+    consumerLoans = PLN.Zero,
+    consumerNpl = PLN.Zero,
+    corpBondHoldings = PLN.Zero,
+    mortgageLoans = PLN.Zero,
+    reserves = PLN.Zero,
+    interbankAssets = PLN.Zero,
   )
 
   val genGovState: Gen[FiscalBudget.GovState] = for
