@@ -81,7 +81,8 @@ private[agents] object BankRegulatoryMetrics:
   def nplRatio(bank: BankState, stocks: BankFinancialStocks): Share =
     nplRatio(stocks.firmLoan, bank.nplAmount)
 
-  /** Computes CAR for a bank row using the configured explicit RWA perimeter. */
+  /** Computes CAR for a bank row using the configured explicit RWA perimeter.
+    */
   def car(bank: BankState, stocks: BankFinancialStocks, corpBondHoldings: PLN)(using SimParams): Multiplier =
     capitalAdequacyRatio(bank.capital, BankRiskWeightedAssets.exposure(bank, stocks, corpBondHoldings))
 
