@@ -177,51 +177,51 @@ per-bank dispersion and stress diagnostics, but their arithmetic mean is not a
 KNF sector total-capital-ratio comparator and can overstate the sector ratio
 when low-exposure bank rows are present.
 
-The current committed 5-seed, 60-month snapshot remains `FAIL_BASELINE` after
+The pre-#763 committed 5-seed, 60-month snapshot remained `FAIL_BASELINE` after
 the metric fix: KNF comparator `0.211`, terminal `AggregateBankCAR = 0.26194`,
 tolerance `0.020`. The #763 diagnostic rerun with the RWA attribution columns
-classifies this as a credit-exposure calibration gap, not a unit-conversion,
-RWA-floor, or per-bank averaging defect.
+classified that result as a credit-exposure calibration gap, not a
+unit-conversion, RWA-floor, or per-bank averaging defect.
 
-Terminal 5-seed means from the diagnostic rerun:
+The #763 fix keeps bank capital calibration unchanged, removes per-loan reserve
+utilization from the firm-credit stochastic gate, and adds a target
+bank-debt share for physical investment so cash-rich firms do not fully bypass
+the bank-loan book. The accepted 5-seed, 60-month diagnostic run
+(`car-baseline-763-debttarget7`) uses `investmentDebtTargetShare = 0.07` and
+keeps all bank rows alive. Terminal means:
 
 | Metric | Value |
 | --- | ---: |
-| `AggregateBankCAR` | `0.26194` |
-| `AggregateBankCapital` | PLN `170.7bn` |
-| `AggregateBankRWA` | PLN `653.4bn` |
-| `AggregateBankRWA_WeightedExposure` | PLN `653.4bn` |
-| `AggregateBankRWA_OperationalRiskFloor` | PLN `23.8bn` |
-| `AggregateBankRWA_CapitalBackstopFloor` | PLN `17.1bn` |
-| `AggregateBankRWA_ExplicitAssetBase` | PLN `2,384.6bn` |
+| `AggregateBankCAR` | `0.2265` |
+| `AggregateBankCapital` | PLN `171.6bn` |
+| `AggregateBankRWA` | PLN `759.0bn` |
+| `AggregateBankRWA_WeightedExposure` | PLN `759.0bn` |
+| `AggregateBankRWA_OperationalRiskFloor` | PLN `24.8bn` |
+| `AggregateBankRWA_CapitalBackstopFloor` | PLN `17.2bn` |
+| `AggregateBankRWA_ExplicitAssetBase` | PLN `2,481.6bn` |
+| `BankFirmLoans` | PLN `456.7bn` |
+| `BankFailures` | `0` |
 
 The weighted-exposure denominator is binding; neither the operational-risk
 floor nor the capital-backstop floor determines `AggregateBankRWA`. RWA
-composition at month 60 is approximately 54.2% firm loans, 18.8% consumer
-loans, 26.2% mortgages, 0.9% corporate bonds, and 0% interbank, sovereign,
+composition at month 60 is approximately 60.2% firm loans, 16.6% consumer
+loans, 22.4% mortgages, 0.9% corporate bonds, and 0% interbank, sovereign,
 or reserve RWA because those latter exposures are zero or zero-risk-weighted
 under the current perimeter.
 
-The 60-month path explains the elevated terminal ratio. From month 1 to month
-60, aggregate capital rises only about 3.0% (PLN `165.8bn` to PLN `170.7bn`),
-while aggregate RWA falls about 32.1% (PLN `961.6bn` to PLN `653.4bn`). The
-largest denominator moves are firm-loan exposure down PLN `190.9bn`, consumer
-loan exposure down PLN `100.8bn`, mortgage exposure down PLN `18.4bn`, and
-bank corporate-bond exposure down PLN `20.1bn`; government-bond and reserve
-exposures rise but carry zero RWA weight. At the current RWA denominator, a
-KNF-aligned 21.1% CAR would imply capital near PLN `137.9bn`; at current
-capital, it would require RWA near PLN `808.9bn`. Relative to the terminal
-diagnostic means, that is roughly a PLN `32.8bn` capital reduction (-19.2%) or
-a PLN `155.5bn` RWA increase (+23.8%) before stochastic dispersion.
+The corrected 60-month path explains why the ratio moves toward the KNF
+comparator. Firm-loan exposure rises from the pre-fix terminal PLN `354.1bn` to
+PLN `456.7bn`; aggregate RWA rises from PLN `653.4bn` to PLN `759.0bn`; and
+cash-financed physical investment falls from 96.6% to 90.3% of gross
+investment. A more aggressive 10% target-debt share reached `AggregateBankCAR =
+0.2109`, but produced bank failures in one seed and is therefore rejected as a
+baseline calibration.
 
-Candidate mechanism families are therefore credit-exposure composition and
-runoff/origination dynamics first, then `banking.initCapital`, explicit RWA
-weights (`firmLoanRiskWeight`, `consumerLoanRiskWeight`,
-`mortgageLoanRiskWeight`, `corpBondRiskWeight`, `interbankAssetRiskWeight`),
-zero-risk policy weights (`sovereignRiskWeight`, `reserveRiskWeight`), RWA
-floors (`rwaOperationalRiskFloor`, `rwaCapitalBackstop`), and the retained-income
-and loss-waterfall path over the validation horizon. Do not relax the KNF row
-or widen its tolerance to make this pass.
+The remaining gap should be treated as credit-exposure and bank-financing
+calibration, not as permission to relax the KNF row or widen its tolerance.
+Future work should refine a continuous credit-supply rule with soft CAR/LCR/NSFR
+cushions and risk-adjusted-return effects before retuning capital levels or RWA
+weights.
 
 Firm-size distribution and sectoral output now have direct output surfaces.
 Use terminal `_firms.csv` fields for living-firm-only terminal size shares and

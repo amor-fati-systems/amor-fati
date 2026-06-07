@@ -151,23 +151,22 @@ class BankingSectorSpec extends AnyFlatSpec with Matchers:
     healthyAudit.approvalRoll should not be empty
   }
 
-  it should "apply reserve-pressure approval penalty to the requested firm loan" in {
-    val tightLiquidity = mkBankRow(deposits = PLN(1000000), loans = PLN(900000), capital = PLN(300000))
-    val approval       = Banking.creditApproval(tightLiquidity.bank, tightLiquidity.stocks, PLN(100000), RandomStream.seeded(42), Multiplier.Zero, PLN.Zero)
+  it should "not treat existing consumer loans or government bonds as reducing firm-credit approval probability" in {
+    val plain      = mkBankRow(deposits = PLN(1000000), loans = PLN(800000), capital = PLN(500000), reservesAtNbp = PLN(50000))
+    val withAssets = mkBankRow(
+      deposits = PLN(1000000),
+      loans = PLN(800000),
+      capital = PLN(500000),
+      consumerLoans = PLN(100000),
+      govBondHoldings = PLN(300000),
+      reservesAtNbp = PLN(50000),
+    )
 
-    approval.approvalProbability shouldBe Some(Share.decimal(5, 1))
-    approval.approvalRoll should not be empty
-  }
-
-  it should "include consumer loans in reserve-pressure approval penalty" in {
-    val withoutConsumer = mkBankRow(deposits = PLN(1000000), loans = PLN(800000), capital = PLN(500000))
-    val withConsumer    = mkBankRow(deposits = PLN(1000000), loans = PLN(800000), capital = PLN(500000), consumerLoans = PLN(100000))
-
-    val noPressure = Banking.creditApproval(withoutConsumer.bank, withoutConsumer.stocks, PLN(100000), RandomStream.seeded(42), Multiplier.Zero, PLN.Zero)
-    val pressured  = Banking.creditApproval(withConsumer.bank, withConsumer.stocks, PLN(100000), RandomStream.seeded(42), Multiplier.Zero, PLN.Zero)
+    val noPressure    = Banking.creditApproval(plain.bank, plain.stocks, PLN(100000), RandomStream.seeded(42), Multiplier.Zero, PLN.Zero)
+    val assetPressure = Banking.creditApproval(withAssets.bank, withAssets.stocks, PLN(100000), RandomStream.seeded(42), Multiplier.Zero, PLN.Zero)
 
     noPressure.approvalProbability shouldBe Some(Share.One)
-    pressured.approvalProbability shouldBe Some(Share.decimal(5, 1))
+    assetPressure.approvalProbability shouldBe Some(Share.One)
   }
 
   "Banking.car" should "include mortgages in the configured RWA perimeter" in {

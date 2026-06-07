@@ -7,6 +7,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import com.boombustgroup.amorfati.Generators
 import org.scalatest.matchers.should.Matchers
 import com.boombustgroup.amorfati.config.SimParams
+import com.boombustgroup.amorfati.agents.firm.FirmPostProcessing
 import com.boombustgroup.amorfati.engine.*
 import com.boombustgroup.amorfati.engine.SimulationMonth.ExecutionMonth
 import com.boombustgroup.amorfati.engine.markets.OpenEconomy
@@ -335,6 +336,29 @@ class FirmSpec extends AnyFlatSpec with Matchers:
     val expectedCost = commodity * baseEnergy
 
     pnl.energyCost shouldBe expectedCost
+  }
+
+  "FirmPostProcessing.applyInvestment" should "request target bank debt for cash-rich physical investment without blocking rejected capex" in {
+    val firm   = mkFirm(TechState.Traditional(10), sector = 2).copy(capitalStock = PLN(1000000))
+    val stocks = defaultStocks(cash = PLN(1000000000))
+    val base   = Firm.Result.zero(firm, stocks)
+
+    def decision(approved: Boolean): PLN => Firm.CreditDecision =
+      _ => Firm.CreditDecision(approved = approved, approvalProbability = Some(Share.One), approvalRoll = Some(Share.Zero))
+
+    val approved = FirmPostProcessing.applyInvestment(base, Multiplier.One, decision(approved = true))
+    val rejected = FirmPostProcessing.applyInvestment(base, Multiplier.One, decision(approved = false))
+
+    approved.grossInvestment should be > PLN.Zero
+    approved.investmentCreditDemand shouldBe approved.grossInvestment * p.capital.investmentDebtTargetShare
+    approved.investmentCreditApproved shouldBe approved.investmentCreditDemand
+    approved.newLoan shouldBe approved.investmentCreditApproved
+
+    rejected.grossInvestment shouldBe approved.grossInvestment
+    rejected.investmentCreditDemand shouldBe approved.investmentCreditDemand
+    rejected.investmentCreditApproved shouldBe PLN.Zero
+    rejected.investmentCreditRejected shouldBe approved.investmentCreditDemand
+    rejected.newLoan shouldBe PLN.Zero
   }
 
   // --- Firm.process ---
