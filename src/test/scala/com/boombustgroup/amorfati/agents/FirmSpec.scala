@@ -339,15 +339,12 @@ class FirmSpec extends AnyFlatSpec with Matchers:
   }
 
   "FirmPostProcessing.applyInvestment" should "request target bank debt for cash-rich physical investment without blocking rejected capex" in {
-    val firm   = mkFirm(TechState.Traditional(10), sector = 2).copy(capitalStock = PLN(1000000))
+    val firm   = investmentTestFirm(workers = 10)
     val stocks = defaultStocks(cash = PLN(1000000000))
     val base   = Firm.Result.zero(firm, stocks)
 
-    def decision(approved: Boolean): PLN => Firm.CreditDecision =
-      _ => Firm.CreditDecision(approved = approved, approvalProbability = Some(Share.One), approvalRoll = Some(Share.Zero))
-
-    val approved = FirmPostProcessing.applyInvestment(base, Multiplier.One, decision(approved = true))
-    val rejected = FirmPostProcessing.applyInvestment(base, Multiplier.One, decision(approved = false))
+    val approved = FirmPostProcessing.applyInvestment(base, Multiplier.One, investmentCreditDecision(approved = true))
+    val rejected = FirmPostProcessing.applyInvestment(base, Multiplier.One, investmentCreditDecision(approved = false))
 
     approved.grossInvestment should be > PLN.Zero
     approved.investmentCreditDemand shouldBe approved.grossInvestment * p.capital.investmentDebtTargetShare
@@ -359,6 +356,28 @@ class FirmSpec extends AnyFlatSpec with Matchers:
     rejected.investmentCreditApproved shouldBe PLN.Zero
     rejected.investmentCreditRejected shouldBe approved.investmentCreditDemand
     rejected.newLoan shouldBe PLN.Zero
+  }
+
+  it should "request shortfall bank debt for cash-poor physical investment" in {
+    val firm           = investmentTestFirm(workers = 500)
+    val cashRichBase   = Firm.Result.zero(firm, defaultStocks(cash = PLN(1000000000)))
+    val cashPoorStocks = defaultStocks(cash = PLN(5000000))
+    val cashPoorBase   = Firm.Result.zero(firm, cashPoorStocks)
+
+    val cashRichApproved = FirmPostProcessing.applyInvestment(cashRichBase, Multiplier.One, investmentCreditDecision(approved = true))
+    val approved         = FirmPostProcessing.applyInvestment(cashPoorBase, Multiplier.One, investmentCreditDecision(approved = true))
+    val rejected         = FirmPostProcessing.applyInvestment(cashPoorBase, Multiplier.One, investmentCreditDecision(approved = false))
+
+    approved.grossInvestment shouldBe cashRichApproved.grossInvestment
+    approved.investmentCreditDemand should be > (approved.grossInvestment * p.capital.investmentDebtTargetShare)
+    approved.investmentCreditApproved shouldBe approved.investmentCreditDemand
+    approved.newLoan shouldBe approved.investmentCreditApproved
+
+    rejected.investmentCreditDemand shouldBe approved.investmentCreditDemand
+    rejected.investmentCreditApproved shouldBe PLN.Zero
+    rejected.investmentCreditRejected shouldBe approved.investmentCreditDemand
+    rejected.newLoan shouldBe PLN.Zero
+    rejected.grossInvestment shouldBe cashPoorStocks.cash
   }
 
   // --- Firm.process ---
@@ -505,6 +524,12 @@ class FirmSpec extends AnyFlatSpec with Matchers:
       greenCapital = PLN.Zero,
       accumulatedLoss = PLN.Zero,
     )
+
+  private def investmentTestFirm(workers: Int): Firm.State =
+    mkFirm(TechState.Traditional(workers), sector = 2).copy(capitalStock = PLN(1000000))
+
+  private def investmentCreditDecision(approved: Boolean): PLN => Firm.CreditDecision =
+    _ => Firm.CreditDecision(approved = approved, approvalProbability = Some(Share.One), approvalRoll = Some(Share.Zero))
 
   private def mkWorld(): World =
     Generators.testWorld(
