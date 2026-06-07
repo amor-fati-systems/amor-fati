@@ -80,6 +80,7 @@ object McTimeseriesSchema:
       Banking.bankCorpBondHoldingsFromVector(ledgerFinancialState.banks.map(_.corpBond))
     lazy val bankAgg: Banking.Aggregate                                                             =
       Banking.aggregateFromBankStocks(banks, ledgerFinancialState.banks.map(LedgerFinancialState.projectBankFinancialStocks), bankCorpBondHoldings)
+    lazy val aggregateBankRwa: Banking.AggregateRwaBreakdown                                        = bankAgg.rwaBreakdown
     lazy val bankCapital: BankCapitalDiagnostics                                                    = world.flows.bankCapital
     lazy val bankFailure: BankFailureDiagnostics                                                    = world.flows.bankFailure
     lazy val bankResolution: BankResolutionDiagnostics                                              = world.flows.bankResolution
@@ -464,6 +465,26 @@ object McTimeseriesSchema:
     // Interbank
     ColumnDef("InterbankRate", ctx => ctx.world.bankingSector.interbankRate),
     ColumnDef("AggregateBankCAR", ctx => ctx.bankAgg.car(using ctx.p)),
+    ColumnDef.macroPln("AggregateBankCapital", ctx => ctx.bankAgg.capital),
+    ColumnDef.macroPln("AggregateBankRWA", ctx => ctx.aggregateBankRwa.totalRwa),
+    ColumnDef.macroPln("AggregateBankRWA_WeightedExposure", ctx => ctx.aggregateBankRwa.weightedExposureRwa),
+    ColumnDef.macroPln("AggregateBankRWA_OperationalRiskFloor", ctx => ctx.aggregateBankRwa.operationalRiskFloor),
+    ColumnDef.macroPln("AggregateBankRWA_CapitalBackstopFloor", ctx => ctx.aggregateBankRwa.capitalBackstopFloor),
+    ColumnDef.macroPln("AggregateBankRWA_ExplicitAssetBase", ctx => ctx.aggregateBankRwa.explicitAssetBase),
+    ColumnDef.macroPln("AggregateBankExposure_FirmLoans", ctx => ctx.aggregateBankRwa.firmLoanExposure),
+    ColumnDef.macroPln("AggregateBankExposure_ConsumerLoans", ctx => ctx.aggregateBankRwa.consumerLoanExposure),
+    ColumnDef.macroPln("AggregateBankExposure_MortgageLoans", ctx => ctx.aggregateBankRwa.mortgageLoanExposure),
+    ColumnDef.macroPln("AggregateBankExposure_CorpBonds", ctx => ctx.aggregateBankRwa.corpBondExposure),
+    ColumnDef.macroPln("AggregateBankExposure_InterbankAssets", ctx => ctx.aggregateBankRwa.interbankAssetExposure),
+    ColumnDef.macroPln("AggregateBankExposure_GovBonds", ctx => ctx.aggregateBankRwa.govBondExposure),
+    ColumnDef.macroPln("AggregateBankExposure_Reserves", ctx => ctx.aggregateBankRwa.reserveExposure),
+    ColumnDef.macroPln("AggregateBankRWA_FirmLoans", ctx => ctx.aggregateBankRwa.firmLoanRwa),
+    ColumnDef.macroPln("AggregateBankRWA_ConsumerLoans", ctx => ctx.aggregateBankRwa.consumerLoanRwa),
+    ColumnDef.macroPln("AggregateBankRWA_MortgageLoans", ctx => ctx.aggregateBankRwa.mortgageLoanRwa),
+    ColumnDef.macroPln("AggregateBankRWA_CorpBonds", ctx => ctx.aggregateBankRwa.corpBondRwa),
+    ColumnDef.macroPln("AggregateBankRWA_InterbankAssets", ctx => ctx.aggregateBankRwa.interbankAssetRwa),
+    ColumnDef.macroPln("AggregateBankRWA_Sovereign", ctx => ctx.aggregateBankRwa.sovereignRwa),
+    ColumnDef.macroPln("AggregateBankRWA_Reserves", ctx => ctx.aggregateBankRwa.reserveRwa),
     ColumnDef(
       "MinBankCAR",
       ctx =>
@@ -1152,6 +1173,26 @@ object McTimeseriesSchema:
     val FxInterventionActive: Col                      = lookup("FxInterventionActive")
     val InterbankRate: Col                             = lookup("InterbankRate")
     val AggregateBankCAR: Col                          = lookup("AggregateBankCAR")
+    val AggregateBankCapital: Col                      = lookup("AggregateBankCapital")
+    val AggregateBankRwa: Col                          = lookup("AggregateBankRWA")
+    val AggregateBankRwaWeightedExposure: Col          = lookup("AggregateBankRWA_WeightedExposure")
+    val AggregateBankRwaOperationalRiskFloor: Col      = lookup("AggregateBankRWA_OperationalRiskFloor")
+    val AggregateBankRwaCapitalBackstopFloor: Col      = lookup("AggregateBankRWA_CapitalBackstopFloor")
+    val AggregateBankRwaExplicitAssetBase: Col         = lookup("AggregateBankRWA_ExplicitAssetBase")
+    val AggregateBankExposureFirmLoans: Col            = lookup("AggregateBankExposure_FirmLoans")
+    val AggregateBankExposureConsumerLoans: Col        = lookup("AggregateBankExposure_ConsumerLoans")
+    val AggregateBankExposureMortgageLoans: Col        = lookup("AggregateBankExposure_MortgageLoans")
+    val AggregateBankExposureCorpBonds: Col            = lookup("AggregateBankExposure_CorpBonds")
+    val AggregateBankExposureInterbankAssets: Col      = lookup("AggregateBankExposure_InterbankAssets")
+    val AggregateBankExposureGovBonds: Col             = lookup("AggregateBankExposure_GovBonds")
+    val AggregateBankExposureReserves: Col             = lookup("AggregateBankExposure_Reserves")
+    val AggregateBankRwaFirmLoans: Col                 = lookup("AggregateBankRWA_FirmLoans")
+    val AggregateBankRwaConsumerLoans: Col             = lookup("AggregateBankRWA_ConsumerLoans")
+    val AggregateBankRwaMortgageLoans: Col             = lookup("AggregateBankRWA_MortgageLoans")
+    val AggregateBankRwaCorpBonds: Col                 = lookup("AggregateBankRWA_CorpBonds")
+    val AggregateBankRwaInterbankAssets: Col           = lookup("AggregateBankRWA_InterbankAssets")
+    val AggregateBankRwaSovereign: Col                 = lookup("AggregateBankRWA_Sovereign")
+    val AggregateBankRwaReserves: Col                  = lookup("AggregateBankRWA_Reserves")
     val MinBankCAR: Col                                = lookup("MinBankCAR")
     val MaxBankNPL: Col                                = lookup("MaxBankNPL")
     val BankFailures: Col                              = lookup("BankFailures")

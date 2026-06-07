@@ -125,7 +125,7 @@ snapshot CSVs.
 | Current account | NBP balance of payments | `CurrentAccount`, `CurrentAccountToGdp`, `CurrentAccountPrimaryIncome`, `CurrentAccountSecondaryIncome`, `CurrentAccountClosureResidual`, `TradeBalance_OE`, `TradeBalanceToGdp`, `Exports_OE`, `ExportsToGdp`, `TotalImports_OE`, `ImportsToGdp`, `ImportedIntermToImports`, `NetRemittances`, `NetTourismBalance`, `FDI` | Annualized current-account/GDP, component signs, and exported BoP closure |
 | Firm-size distribution | GUS/REGON firm-size distribution | Terminal `_firms.csv` fields `FirmSize_Micro`, `FirmSize_Small`, `FirmSize_Medium`, `FirmSize_Large` and share fields | Terminal firm-size distribution (living firms only) |
 | Bankruptcies and household distress | GUS / Ministry of Justice corporate insolvencies, consumer bankruptcy statistics, arrears/default comparators when available | `FirmDeaths`, `FirmBirths`, `NetEntry`, `HouseholdDistress_Bankruptcy`, `HouseholdDistress_*`, `HouseholdDistress_ActiveShare`, legacy status fields `HouseholdBankruptcies` and `HouseholdBankruptcyRate`, `BankFailures`; terminal `_hh.csv` fields `HH_Distress_*`, `HH_Distress_ActiveShare`, legacy `HH_Bankrupt`, `BankruptcyRate`, `MeanMonthsToRuin` | Firm exit rate, personal-insolvency/write-off state share, household distress-state shares, bank failures |
-| Bank capital and liquidity | KNF banking-sector CAR, LCR, NSFR, NPL | `AggregateBankCAR`, `MinBankCAR`, `MinBankLCR`, `MinBankNSFR`, `NPL`, `MaxBankNPL`; terminal `_banks.csv` fields `CAR`, `NPL`, `Capital`, `Deposits`, `Loans` | Sector total-capital-ratio comparator, plus minimum and distributional stress indicators |
+| Bank capital and liquidity | KNF banking-sector CAR, LCR, NSFR, NPL | `AggregateBankCAR`, `AggregateBankCapital`, `AggregateBankRWA`, `AggregateBankRWA_*`, `AggregateBankExposure_*`, `MinBankCAR`, `MinBankLCR`, `MinBankNSFR`, `NPL`, `MaxBankNPL`; terminal `_banks.csv` fields `CAR`, `NPL`, `Capital`, `Deposits`, `Loans` | Sector total-capital-ratio comparator, numerator/denominator attribution, plus minimum and distributional stress indicators |
 | Inequality | GUS household surveys, EU-SILC, OECD income/wealth indicators | Terminal `_hh.csv` fields `Gini_Individual`, `Gini_Wealth`, `ConsumptionP10`, `ConsumptionP50`, `ConsumptionP90`, `PovertyRate_50pct`, `PovertyRate_30pct` | Terminal Gini, poverty rates, consumption percentile ratios |
 | Sectoral output | GUS national accounts by sector, supply-use tables | `BPO_Output`, `Manuf_Output`, `Retail_Output`, `Health_Output`, `Public_Output`, `Agri_Output` | Sector output shares and growth |
 | External prices and FX | NBP exchange rate, ECB/Eurostat external prices | `ExRate`, `ForeignPriceIndex`, `GvcImportCostIndex`, `CommodityPriceIndex`, `FxReserves`, `FxInterventionAmt` | FX level/volatility, reserve path, import-cost shocks |
@@ -177,13 +177,51 @@ per-bank dispersion and stress diagnostics, but their arithmetic mean is not a
 KNF sector total-capital-ratio comparator and can overstate the sector ratio
 when low-exposure bank rows are present.
 
-When the aggregate row fails after this mapping, treat it as a calibration
-gap rather than a unit-conversion or per-bank averaging defect. Candidate
-mechanism families are `banking.initCapital`, the explicit RWA weights and
-floors (`firmLoanRiskWeight`, `consumerLoanRiskWeight`, `mortgageLoanRiskWeight`,
-`corpBondRiskWeight`, `interbankAssetRiskWeight`, `rwaOperationalRiskFloor`,
-`rwaCapitalBackstop`), credit-exposure composition, and the retained-income and
-loss-waterfall path over the validation horizon.
+The current committed 5-seed, 60-month snapshot remains `FAIL_BASELINE` after
+the metric fix: KNF comparator `0.211`, terminal `AggregateBankCAR = 0.26194`,
+tolerance `0.020`. The #763 diagnostic rerun with the RWA attribution columns
+classifies this as a credit-exposure calibration gap, not a unit-conversion,
+RWA-floor, or per-bank averaging defect.
+
+Terminal 5-seed means from the diagnostic rerun:
+
+| Metric | Value |
+| --- | ---: |
+| `AggregateBankCAR` | `0.26194` |
+| `AggregateBankCapital` | PLN `170.7bn` |
+| `AggregateBankRWA` | PLN `653.4bn` |
+| `AggregateBankRWA_WeightedExposure` | PLN `653.4bn` |
+| `AggregateBankRWA_OperationalRiskFloor` | PLN `23.8bn` |
+| `AggregateBankRWA_CapitalBackstopFloor` | PLN `17.1bn` |
+| `AggregateBankRWA_ExplicitAssetBase` | PLN `2,384.6bn` |
+
+The weighted-exposure denominator is binding; neither the operational-risk
+floor nor the capital-backstop floor determines `AggregateBankRWA`. RWA
+composition at month 60 is approximately 54.2% firm loans, 18.8% consumer
+loans, 26.2% mortgages, 0.9% corporate bonds, and 0% interbank, sovereign,
+or reserve RWA because those latter exposures are zero or zero-risk-weighted
+under the current perimeter.
+
+The 60-month path explains the elevated terminal ratio. From month 1 to month
+60, aggregate capital rises only about 3.0% (PLN `165.8bn` to PLN `170.7bn`),
+while aggregate RWA falls about 32.1% (PLN `961.6bn` to PLN `653.4bn`). The
+largest denominator moves are firm-loan exposure down PLN `190.9bn`, consumer
+loan exposure down PLN `100.8bn`, mortgage exposure down PLN `18.4bn`, and
+bank corporate-bond exposure down PLN `20.1bn`; government-bond and reserve
+exposures rise but carry zero RWA weight. At the current RWA denominator, a
+KNF-aligned 21.1% CAR would imply capital near PLN `137.9bn`; at current
+capital, it would require RWA near PLN `808.9bn`. Relative to the terminal
+diagnostic means, that is roughly a PLN `32.8bn` capital reduction (-19.2%) or
+a PLN `155.5bn` RWA increase (+23.8%) before stochastic dispersion.
+
+Candidate mechanism families are therefore credit-exposure composition and
+runoff/origination dynamics first, then `banking.initCapital`, explicit RWA
+weights (`firmLoanRiskWeight`, `consumerLoanRiskWeight`,
+`mortgageLoanRiskWeight`, `corpBondRiskWeight`, `interbankAssetRiskWeight`),
+zero-risk policy weights (`sovereignRiskWeight`, `reserveRiskWeight`), RWA
+floors (`rwaOperationalRiskFloor`, `rwaCapitalBackstop`), and the retained-income
+and loss-waterfall path over the validation horizon. Do not relax the KNF row
+or widen its tolerance to make this pass.
 
 Firm-size distribution and sectoral output now have direct output surfaces.
 Use terminal `_firms.csv` fields for living-firm-only terminal size shares and

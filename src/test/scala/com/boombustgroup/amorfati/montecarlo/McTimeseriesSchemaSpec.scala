@@ -178,6 +178,26 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     "FofResidual",
     "InterbankRate",
     "AggregateBankCAR",
+    "AggregateBankCapital",
+    "AggregateBankRWA",
+    "AggregateBankRWA_WeightedExposure",
+    "AggregateBankRWA_OperationalRiskFloor",
+    "AggregateBankRWA_CapitalBackstopFloor",
+    "AggregateBankRWA_ExplicitAssetBase",
+    "AggregateBankExposure_FirmLoans",
+    "AggregateBankExposure_ConsumerLoans",
+    "AggregateBankExposure_MortgageLoans",
+    "AggregateBankExposure_CorpBonds",
+    "AggregateBankExposure_InterbankAssets",
+    "AggregateBankExposure_GovBonds",
+    "AggregateBankExposure_Reserves",
+    "AggregateBankRWA_FirmLoans",
+    "AggregateBankRWA_ConsumerLoans",
+    "AggregateBankRWA_MortgageLoans",
+    "AggregateBankRWA_CorpBonds",
+    "AggregateBankRWA_InterbankAssets",
+    "AggregateBankRWA_Sovereign",
+    "AggregateBankRWA_Reserves",
     "MinBankCAR",
     "MaxBankNPL",
     "BankFailures",
@@ -528,7 +548,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     MetricValue.fromRaw(Share.fraction(numerator, denominator).toLong)
 
   "McTimeseriesSchema" should "expose the stable schema contract" in {
-    McTimeseriesSchema.nCols shouldBe 466
+    McTimeseriesSchema.nCols shouldBe 486
     McTimeseriesSchema.colNames.toVector shouldBe expectedColNames
   }
 

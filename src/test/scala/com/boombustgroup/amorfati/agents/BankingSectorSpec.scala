@@ -440,6 +440,38 @@ class BankingSectorSpec extends AnyFlatSpec with Matchers:
     agg.totalLoans shouldBe PLN.Zero
   }
 
+  it should "decompose aggregate RWA into weighted exposures and floors" in {
+    val agg = Banking.Aggregate(
+      totalLoans = PLN(1000),
+      nplAmount = PLN.Zero,
+      capital = PLN(300),
+      deposits = PLN(5000),
+      afsBonds = PLN(2000),
+      htmBonds = PLN(1000),
+      consumerLoans = PLN(500),
+      consumerNpl = PLN.Zero,
+      corpBondHoldings = PLN(200),
+      mortgageLoans = PLN(1000),
+      reserves = PLN(400),
+      interbankAssets = PLN(100),
+    )
+
+    val rwa = agg.rwaBreakdown
+
+    rwa.explicitAssetBase shouldBe PLN(6200)
+    rwa.firmLoanRwa shouldBe PLN(1000)
+    rwa.consumerLoanRwa shouldBe PLN(500)
+    rwa.mortgageLoanRwa shouldBe PLN(350)
+    rwa.corpBondRwa shouldBe PLN(100)
+    rwa.interbankAssetRwa shouldBe PLN(20)
+    rwa.sovereignRwa shouldBe PLN.Zero
+    rwa.reserveRwa shouldBe PLN.Zero
+    rwa.weightedExposureRwa shouldBe PLN(1970)
+    rwa.operationalRiskFloor shouldBe PLN(62)
+    rwa.capitalBackstopFloor shouldBe PLN(30)
+    rwa.totalRwa shouldBe PLN(1970)
+  }
+
   "Banking.processHtmForcedSale" should "reclassify HTM to AFS and realize loss only under LCR stress" in {
     val healthy       = mkBankRow(
       id = 0,

@@ -54,6 +54,35 @@ object Banking:
   // Aggregate balance sheet (sum over all per-bank BankStates)
   // ---------------------------------------------------------------------------
 
+  /** Aggregate banking-sector RWA decomposition.
+    *
+    * Raw exposure fields preserve the regulatory perimeter used by
+    * [[Aggregate.car]]. RWA component fields apply configured risk weights and
+    * floors, making the CAR numerator and denominator auditable from exported
+    * diagnostics.
+    */
+  case class AggregateRwaBreakdown(
+      explicitAssetBase: PLN,
+      firmLoanExposure: PLN,
+      consumerLoanExposure: PLN,
+      mortgageLoanExposure: PLN,
+      corpBondExposure: PLN,
+      interbankAssetExposure: PLN,
+      govBondExposure: PLN,
+      reserveExposure: PLN,
+      firmLoanRwa: PLN,
+      consumerLoanRwa: PLN,
+      mortgageLoanRwa: PLN,
+      corpBondRwa: PLN,
+      interbankAssetRwa: PLN,
+      sovereignRwa: PLN,
+      reserveRwa: PLN,
+      weightedExposureRwa: PLN,
+      operationalRiskFloor: PLN,
+      capitalBackstopFloor: PLN,
+      totalRwa: PLN,
+  )
+
   /** Aggregate banking-sector balance sheet — sum over all banking-sector rows.
     *
     * Pure DTO recomputed from bank operational state plus explicit financial
@@ -90,6 +119,34 @@ object Banking:
       */
     def car(using SimParams): Multiplier =
       BankRegulatoryMetrics.capitalAdequacyRatio(capital, BankRiskWeightedAssets.aggregateExposure(this))
+
+    /** Decomposes the aggregate CAR denominator into raw exposures, weighted
+      * RWA components, and active floors.
+      */
+    def rwaBreakdown(using SimParams): AggregateRwaBreakdown =
+      val exposure   = BankRiskWeightedAssets.aggregateExposure(this)
+      val components = BankRiskWeightedAssets.components(exposure)
+      AggregateRwaBreakdown(
+        explicitAssetBase = exposure.explicitAssetBase,
+        firmLoanExposure = exposure.firmLoans,
+        consumerLoanExposure = exposure.consumerLoans,
+        mortgageLoanExposure = exposure.mortgageLoans,
+        corpBondExposure = exposure.corpBondHoldings,
+        interbankAssetExposure = exposure.interbankAssets,
+        govBondExposure = exposure.govBondHoldings,
+        reserveExposure = exposure.reserves,
+        firmLoanRwa = components.firmLoanRwa,
+        consumerLoanRwa = components.consumerLoanRwa,
+        mortgageLoanRwa = components.mortgageLoanRwa,
+        corpBondRwa = components.corpBondRwa,
+        interbankAssetRwa = components.interbankAssetRwa,
+        sovereignRwa = components.sovereignRwa,
+        reserveRwa = components.reserveRwa,
+        weightedExposureRwa = components.weightedExposureRwa,
+        operationalRiskFloor = components.operationalRiskFloor,
+        capitalBackstopFloor = components.capitalBackstopFloor,
+        totalRwa = components.total,
+      )
 
   def aggregateFromBankStocks(
       banks: Vector[BankState],
