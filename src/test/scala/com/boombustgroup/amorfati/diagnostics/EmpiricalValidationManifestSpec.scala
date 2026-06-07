@@ -177,7 +177,8 @@ class EmpiricalValidationManifestSpec extends AnyFlatSpec with Matchers:
     capital.value("source_provider") shouldBe "KNF"
     capital.value("empirical_value") shouldBe "0.211"
     capital.value("tolerance") shouldBe "0.020"
-    capital.value("model_target") shouldBe "terminal_banks:CAR:mean"
+    capital.value("model_target") shouldBe "timeseries:AggregateBankCAR:terminal"
+    capital.value("notes") should include("Terminal per-bank CAR mean is not a sector total-capital-ratio comparator")
 
     val liquidity = rowByTarget(rows, "Bank capital/liquidity - LCR NSFR NPL bridge")
     liquidity.status shouldBe "PARTIAL"

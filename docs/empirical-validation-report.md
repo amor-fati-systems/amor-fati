@@ -59,18 +59,20 @@ snapshots, choose the stable reference from `main` first and use the `run-id`
 only as a technical file key:
 
 ```bash
-sbt "runMain com.boombustgroup.amorfati.Main 3 validation-baseline --duration 120 --run-id main-79f5a36c"
+sbt "runMain com.boombustgroup.amorfati.Main 5 validation-baseline --duration 60 --run-id main-0f281ce3"
 ```
 
 Expected output files:
 
 ```text
-mc/validation-baseline_main-79f5a36c_120m_seed001.csv
-mc/validation-baseline_main-79f5a36c_120m_seed002.csv
-mc/validation-baseline_main-79f5a36c_120m_seed003.csv
-mc/validation-baseline_main-79f5a36c_120m_hh.csv
-mc/validation-baseline_main-79f5a36c_120m_banks.csv
-mc/validation-baseline_main-79f5a36c_120m_firms.csv
+mc/validation-baseline_main-0f281ce3_60m_seed001.csv
+mc/validation-baseline_main-0f281ce3_60m_seed002.csv
+mc/validation-baseline_main-0f281ce3_60m_seed003.csv
+mc/validation-baseline_main-0f281ce3_60m_seed004.csv
+mc/validation-baseline_main-0f281ce3_60m_seed005.csv
+mc/validation-baseline_main-0f281ce3_60m_hh.csv
+mc/validation-baseline_main-0f281ce3_60m_banks.csv
+mc/validation-baseline_main-0f281ce3_60m_firms.csv
 ```
 
 Use the per-seed CSV files for monthly macro, meso, financial, and mechanism
@@ -83,7 +85,7 @@ Runnable snapshot procedure after a baseline run:
 2. Generate the empirical validation snapshot:
 
    ```bash
-   sbt "empiricalValidation --source-manifest docs/empirical-validation-source-manifest.csv --mc-dir mc --run-id main-79f5a36c --output-prefix validation-baseline --duration 120 --seeds 3 --commit 79f5a36c --parameter-branch main --out docs/empirical-validation"
+   sbt "empiricalValidation --source-manifest docs/empirical-validation-source-manifest.csv --mc-dir mc --run-id main-0f281ce3 --output-prefix validation-baseline --duration 60 --seeds 5 --commit 0f281ce3 --parameter-branch main --out docs/empirical-validation"
    ```
 
 3. Review `docs/empirical-validation/baseline-validation-snapshot.csv`.
@@ -123,7 +125,7 @@ snapshot CSVs.
 | Current account | NBP balance of payments | `CurrentAccount`, `CurrentAccountToGdp`, `CurrentAccountPrimaryIncome`, `CurrentAccountSecondaryIncome`, `CurrentAccountClosureResidual`, `TradeBalance_OE`, `TradeBalanceToGdp`, `Exports_OE`, `ExportsToGdp`, `TotalImports_OE`, `ImportsToGdp`, `ImportedIntermToImports`, `NetRemittances`, `NetTourismBalance`, `FDI` | Annualized current-account/GDP, component signs, and exported BoP closure |
 | Firm-size distribution | GUS/REGON firm-size distribution | Terminal `_firms.csv` fields `FirmSize_Micro`, `FirmSize_Small`, `FirmSize_Medium`, `FirmSize_Large` and share fields | Terminal firm-size distribution (living firms only) |
 | Bankruptcies and household distress | GUS / Ministry of Justice corporate insolvencies, consumer bankruptcy statistics, arrears/default comparators when available | `FirmDeaths`, `FirmBirths`, `NetEntry`, `HouseholdDistress_Bankruptcy`, `HouseholdDistress_*`, `HouseholdDistress_ActiveShare`, legacy status fields `HouseholdBankruptcies` and `HouseholdBankruptcyRate`, `BankFailures`; terminal `_hh.csv` fields `HH_Distress_*`, `HH_Distress_ActiveShare`, legacy `HH_Bankrupt`, `BankruptcyRate`, `MeanMonthsToRuin` | Firm exit rate, personal-insolvency/write-off state share, household distress-state shares, bank failures |
-| Bank capital and liquidity | KNF banking-sector CAR, LCR, NSFR, NPL | `MinBankCAR`, `MinBankLCR`, `MinBankNSFR`, `NPL`, `MaxBankNPL`; terminal `_banks.csv` fields `CAR`, `NPL`, `Capital`, `Deposits`, `Loans` | Minimum and distributional stress indicators |
+| Bank capital and liquidity | KNF banking-sector CAR, LCR, NSFR, NPL | `AggregateBankCAR`, `MinBankCAR`, `MinBankLCR`, `MinBankNSFR`, `NPL`, `MaxBankNPL`; terminal `_banks.csv` fields `CAR`, `NPL`, `Capital`, `Deposits`, `Loans` | Sector total-capital-ratio comparator, plus minimum and distributional stress indicators |
 | Inequality | GUS household surveys, EU-SILC, OECD income/wealth indicators | Terminal `_hh.csv` fields `Gini_Individual`, `Gini_Wealth`, `ConsumptionP10`, `ConsumptionP50`, `ConsumptionP90`, `PovertyRate_50pct`, `PovertyRate_30pct` | Terminal Gini, poverty rates, consumption percentile ratios |
 | Sectoral output | GUS national accounts by sector, supply-use tables | `BPO_Output`, `Manuf_Output`, `Retail_Output`, `Health_Output`, `Public_Output`, `Agri_Output` | Sector output shares and growth |
 | External prices and FX | NBP exchange rate, ECB/Eurostat external prices | `ExRate`, `ForeignPriceIndex`, `GvcImportCostIndex`, `CommodityPriceIndex`, `FxReserves`, `FxInterventionAmt` | FX level/volatility, reserve path, import-cost shocks |
@@ -135,7 +137,7 @@ snapshot CSVs.
 
 The current versioned baseline snapshot is commit-first. The technical
 `run-id` is retained only to route Monte Carlo files; the stable model
-reference is `main@79f5a36c`.
+reference is `main@0f281ce3`.
 
 | Artifact | Path |
 | --- | --- |
@@ -167,6 +169,21 @@ annualized, or year-over-year.
 Credit/GDP should distinguish bank firm loans, consumer loans, mortgage credit,
 and NBFI credit. Current outputs cover several pieces but do not yet provide a
 single total-credit-to-GDP series.
+
+Bank total-capital-ratio validation should use `AggregateBankCAR` from the
+timeseries surface. That column computes sector capital over the explicit
+regulatory RWA perimeter. Terminal `_banks.csv` `CAR` values remain useful for
+per-bank dispersion and stress diagnostics, but their arithmetic mean is not a
+KNF sector total-capital-ratio comparator and can overstate the sector ratio
+when low-exposure bank rows are present.
+
+When the aggregate row fails after this mapping, treat it as a calibration
+gap rather than a unit-conversion or per-bank averaging defect. Candidate
+mechanism families are `banking.initCapital`, the explicit RWA weights and
+floors (`firmLoanRiskWeight`, `consumerLoanRiskWeight`, `mortgageLoanRiskWeight`,
+`corpBondRiskWeight`, `interbankAssetRiskWeight`, `rwaOperationalRiskFloor`,
+`rwaCapitalBackstop`), credit-exposure composition, and the retained-income and
+loss-waterfall path over the validation horizon.
 
 Firm-size distribution and sectoral output now have direct output surfaces.
 Use terminal `_firms.csv` fields for living-firm-only terminal size shares and
