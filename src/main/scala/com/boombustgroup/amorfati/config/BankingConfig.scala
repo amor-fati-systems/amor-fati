@@ -130,10 +130,6 @@ import com.boombustgroup.amorfati.types.*
   *   floor on stochastic credit approval after balance-sheet gates pass
   * @param creditNplApprovalPenalty
   *   stochastic approval penalty per unit bank NPL ratio
-  * @param creditReserveDeficitPenalty
-  *   legacy calibration field retained for historical diagnostics; current
-  *   credit approval treats reserves through LCR/NSFR gates and bank P&L, not
-  *   through a per-loan reserve gate
   * @param eclRate1
   *   Stage 1 (performing) ECL provision rate (12-month ECL, KNF: ~1%)
   * @param eclRate2
@@ -232,7 +228,6 @@ case class BankingConfig(
     // Product-aware stochastic credit approval
     creditMinApprovalProb: Share = Share.decimal(1, 1),
     creditNplApprovalPenalty: Multiplier = Multiplier(3),
-    creditReserveDeficitPenalty: Share = Share.decimal(5, 1),
     // IFRS 9 ECL staging
     eclRate1: Share = Share.decimal(1, 2),
     eclRate2: Share = Share.decimal(8, 2),
@@ -268,10 +263,6 @@ case class BankingConfig(
     s"creditMinApprovalProb must be in [0,1]: $creditMinApprovalProb",
   )
   require(creditNplApprovalPenalty >= Multiplier.Zero, s"creditNplApprovalPenalty must be non-negative: $creditNplApprovalPenalty")
-  require(
-    creditReserveDeficitPenalty >= Share.Zero && creditReserveDeficitPenalty <= Share.One,
-    s"creditReserveDeficitPenalty must be in [0,1]: $creditReserveDeficitPenalty",
-  )
   p2rAddons.zipWithIndex.foreach: (addon, idx) =>
     require(
       addon >= Multiplier.Zero && addon <= Multiplier.One,
