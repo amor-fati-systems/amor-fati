@@ -222,15 +222,10 @@ object Banking:
     case ConsumerLoan extends CreditProduct("consumer-loan")
     case MortgageLoan extends CreditProduct("mortgage-loan")
 
-  /** Bank-side credit-supply request after borrower-side demand and eligibility
-    * have already been determined.
+  /** Low-allocation, product-aware credit-supply boundary used by agents that
+    * need a bank-side approval decision.
     */
-  case class CreditRequest(bankId: BankId, product: CreditProduct, amount: PLN)
-
-  /** Product-aware credit-supply boundary used by agents that need a bank-side
-    * approval decision.
-    */
-  type CreditSupply = (CreditRequest, RandomStream) => CreditApproval
+  type CreditSupply = (BankId, CreditProduct, PLN, RandomStream) => CreditApproval
 
   /** Rejection reason emitted by the bank-side approval engine. */
   enum CreditRejectionReason(val diagnosticCode: String):

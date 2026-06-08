@@ -55,7 +55,7 @@ private[agents] object HouseholdConsumerCredit:
       bankCreditSupply match
         case None         => BankSupplyResult(demand, PLN.Zero, PLN.Zero, None)
         case Some(supply) =>
-          val approval = supply(Banking.CreditRequest(hh.bankId, Banking.CreditProduct.ConsumerLoan, demand), rng)
+          val approval = supply(hh.bankId, Banking.CreditProduct.ConsumerLoan, demand, rng)
           require(
             approval.product == Banking.CreditProduct.ConsumerLoan,
             s"Household consumer-credit supply returned ${approval.product} approval for ConsumerLoan request",

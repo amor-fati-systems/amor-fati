@@ -458,10 +458,10 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
       PLN(4666),
       Share.decimal(4, 1),
       rng,
-      bankCreditSupply = Some((request, _) =>
+      bankCreditSupply = Some((_, product, amount, _) =>
         Banking.CreditApproval(
-          product = request.product,
-          amount = request.amount,
+          product = product,
+          amount = amount,
           approved = false,
           approvalProbability = Some(Share.Zero),
           approvalRoll = Some(Share.One),

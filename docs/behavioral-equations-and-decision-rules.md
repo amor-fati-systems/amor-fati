@@ -912,7 +912,7 @@ passes part of a government-bond-yield premium into firm loan spreads. Failed
 banks receive a fixed penalty spread and cannot lend.
 
 Credit approval projects RWA into the requested product bucket, then requires
-projected CAR above the macroprudential effective minimum, LCR and NSFR above
+the projected CAR above the macroprudential effective minimum, LCR and NSFR above
 regulatory minima, and a stochastic approval draw. The approval probability
 falls with NPL ratio but has a configured floor.
 Reserve requirements are not a per-loan approval gate; reserves and government

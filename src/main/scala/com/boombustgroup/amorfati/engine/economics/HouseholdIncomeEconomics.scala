@@ -161,20 +161,20 @@ object HouseholdIncomeEconomics:
     val approvedConsumerExposureByBank = Array.fill(banks.length)(PLN.Zero)
     val approvedMortgageExposureByBank = Array.fill(banks.length)(PLN.Zero)
 
-    (request, approvalRng) =>
-      val idx             = request.bankId.toInt
-      require(request.amount > PLN.Zero, s"HouseholdIncomeEconomics bank-credit supply requires positive amount, got ${request.amount}")
-      require(idx >= 0 && idx < banks.length, s"HouseholdIncomeEconomics bank-credit supply received out-of-range bankId=${request.bankId.toInt}")
+    (bankId, product, amount, approvalRng) =>
+      val idx             = bankId.toInt
+      require(amount > PLN.Zero, s"HouseholdIncomeEconomics bank-credit supply requires positive amount, got $amount")
+      require(idx >= 0 && idx < banks.length, s"HouseholdIncomeEconomics bank-credit supply received out-of-range bankId=${bankId.toInt}")
       val projectedStocks = bankStocks(idx).copy(
         firmLoan = bankStocks(idx).firmLoan + approvedFirmExposureByBank(idx),
         consumerLoan = bankStocks(idx).consumerLoan + approvedConsumerExposureByBank(idx),
         mortgageLoan = bankStocks(idx).mortgageLoan + approvedMortgageExposureByBank(idx),
       )
       val approval        =
-        Banking.creditApproval(request.product, banks(idx), projectedStocks, request.amount, approvalRng, ccyb, bankCorpBonds(request.bankId))
+        Banking.creditApproval(product, banks(idx), projectedStocks, amount, approvalRng, ccyb, bankCorpBonds(bankId))
       if approval.approved then
-        request.product match
-          case Banking.CreditProduct.FirmLoan     => approvedFirmExposureByBank(idx) = approvedFirmExposureByBank(idx) + request.amount
-          case Banking.CreditProduct.ConsumerLoan => approvedConsumerExposureByBank(idx) = approvedConsumerExposureByBank(idx) + request.amount
-          case Banking.CreditProduct.MortgageLoan => approvedMortgageExposureByBank(idx) = approvedMortgageExposureByBank(idx) + request.amount
+        product match
+          case Banking.CreditProduct.FirmLoan     => approvedFirmExposureByBank(idx) = approvedFirmExposureByBank(idx) + amount
+          case Banking.CreditProduct.ConsumerLoan => approvedConsumerExposureByBank(idx) = approvedConsumerExposureByBank(idx) + amount
+          case Banking.CreditProduct.MortgageLoan => approvedMortgageExposureByBank(idx) = approvedMortgageExposureByBank(idx) + amount
       approval
