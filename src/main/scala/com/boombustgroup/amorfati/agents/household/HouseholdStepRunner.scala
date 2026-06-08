@@ -28,7 +28,7 @@ private[agents] object HouseholdStepRunner:
       equityIndexReturn: Rate = Rate.Zero,
       sectorWages: Option[Vector[PLN]] = None,
       sectorVacancies: Option[Vector[Int]] = None,
-      consumerCreditGate: Option[Household.ConsumerCreditGate] = None,
+      bankCreditSupply: Option[Household.BankCreditSupply] = None,
   )(using p: SimParams): Household.StepResult =
     val stepInput = Input(
       opening = OpeningState(
@@ -47,7 +47,7 @@ private[agents] object HouseholdStepRunner:
       credit = CreditSurface(
         nBanks = nBanks,
         bankRates = bankRates,
-        consumerCreditGate = consumerCreditGate,
+        bankCreditSupply = bankCreditSupply,
       ),
       stochastic = StochasticSurface(rng),
     )

@@ -582,8 +582,10 @@ flow, while `ConsumerApprovedOrigination` is the underwritten credit channel.
 principal before eligibility denial, and `ConsumerRejectedOrigination` records
 the requested principal not approved by borrower-side or bank-side rules.
 `ConsumerBankRejectedOrigination` is the subset rejected after household
-eligibility because the household's routed bank fails the bank-side supply gate
-or is already failed.
+eligibility because the household's routed bank fails the product-aware
+bank-side supply gate or is already failed. Household snapshots also expose the
+bank approval product, rejection reason, approval probability/roll, and
+prudential audit ratios for this gate when available.
 `ConsumerLoanDefault` reports only default of ordinary outstanding consumer-loan
 principal; `LiquidityBridgeChargeOff` reports the same-month bridge write-off.
 For the bridge component, the stock effect is zero because

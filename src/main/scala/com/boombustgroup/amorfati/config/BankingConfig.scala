@@ -126,14 +126,10 @@ import com.boombustgroup.amorfati.types.*
   * @param hoardingSensitivity
   *   speed of hoarding onset: factor = 1 − sensitivity × (NPL − threshold). At
   *   10.0, a 10pp NPL overshoot → full freeze.
-  * @param firmCreditMinApprovalProb
-  *   floor on stochastic firm-credit approval after balance-sheet gates pass
-  * @param firmCreditNplApprovalPenalty
+  * @param creditMinApprovalProb
+  *   floor on stochastic credit approval after balance-sheet gates pass
+  * @param creditNplApprovalPenalty
   *   stochastic approval penalty per unit bank NPL ratio
-  * @param firmCreditReserveDeficitPenalty
-  *   legacy calibration field retained for scenario compatibility; current
-  *   firm-credit approval treats reserves through LCR/NSFR gates and bank P&L,
-  *   not through a per-loan reserve gate
   * @param eclRate1
   *   Stage 1 (performing) ECL provision rate (12-month ECL, KNF: ~1%)
   * @param eclRate2
@@ -229,10 +225,9 @@ case class BankingConfig(
     interbankRecoveryRate: Share = Share.decimal(40, 2),
     hoardingNplThreshold: Share = Share.decimal(5, 2),
     hoardingSensitivity: Multiplier = Multiplier(10),
-    // Firm-credit stochastic approval
-    firmCreditMinApprovalProb: Share = Share.decimal(1, 1),
-    firmCreditNplApprovalPenalty: Multiplier = Multiplier(3),
-    firmCreditReserveDeficitPenalty: Share = Share.decimal(5, 1),
+    // Product-aware stochastic credit approval
+    creditMinApprovalProb: Share = Share.decimal(1, 1),
+    creditNplApprovalPenalty: Multiplier = Multiplier(3),
     // IFRS 9 ECL staging
     eclRate1: Share = Share.decimal(1, 2),
     eclRate2: Share = Share.decimal(8, 2),
@@ -264,14 +259,10 @@ case class BankingConfig(
     s"osiiBuffers must have the same length as p2rAddons: expected ${p2rAddons.length}, actual ${osiiBuffers.length}",
   )
   require(
-    firmCreditMinApprovalProb >= Share.Zero && firmCreditMinApprovalProb <= Share.One,
-    s"firmCreditMinApprovalProb must be in [0,1]: $firmCreditMinApprovalProb",
+    creditMinApprovalProb >= Share.Zero && creditMinApprovalProb <= Share.One,
+    s"creditMinApprovalProb must be in [0,1]: $creditMinApprovalProb",
   )
-  require(firmCreditNplApprovalPenalty >= Multiplier.Zero, s"firmCreditNplApprovalPenalty must be non-negative: $firmCreditNplApprovalPenalty")
-  require(
-    firmCreditReserveDeficitPenalty >= Share.Zero && firmCreditReserveDeficitPenalty <= Share.One,
-    s"firmCreditReserveDeficitPenalty must be in [0,1]: $firmCreditReserveDeficitPenalty",
-  )
+  require(creditNplApprovalPenalty >= Multiplier.Zero, s"creditNplApprovalPenalty must be non-negative: $creditNplApprovalPenalty")
   p2rAddons.zipWithIndex.foreach: (addon, idx) =>
     require(
       addon >= Multiplier.Zero && addon <= Multiplier.One,

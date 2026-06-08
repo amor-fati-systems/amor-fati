@@ -50,11 +50,11 @@ private[household] object HouseholdStepSemantics:
       sectorVacancies: Option[Vector[Int]],
   )
 
-  /** Bank-rate and consumer-credit underwriting boundary. */
+  /** Bank-rate and product-aware bank-credit supply boundary. */
   final case class CreditSurface(
       nBanks: Int,
       bankRates: Option[BankRates],
-      consumerCreditGate: Option[Household.ConsumerCreditGate],
+      bankCreditSupply: Option[Household.BankCreditSupply],
   )
 
   /** Stochastic boundary consumed by household labor and credit transitions. */

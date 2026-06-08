@@ -63,15 +63,15 @@ object HouseholdIncomeEconomics:
         Share.One,
       )
 
-    val afterSep           = LaborMarket.separations(households, firms, firms)
-    val afterWages         = LaborMarket.updateWages(afterSep, firms, newWage)
-    val bsec               = w.bankingSector
-    val nBanksHh           = banks.length
-    val bankStocks         = ledgerFinancialState.banks.map(LedgerFinancialState.projectBankFinancialStocks)
+    val afterSep         = LaborMarket.separations(households, firms, firms)
+    val afterWages       = LaborMarket.updateWages(afterSep, firms, newWage)
+    val bsec             = w.bankingSector
+    val nBanksHh         = banks.length
+    val bankStocks       = ledgerFinancialState.banks.map(LedgerFinancialState.projectBankFinancialStocks)
     requireBankRateInputsAligned(banks, bankStocks, bsec.configs)
-    val ccyb               = w.mechanisms.macropru.ccyb
-    val bankCorpBonds      = (bankId: BankId) => CorporateBondOwnership.bankHolderFor(ledgerFinancialState, bankId)
-    val hhBankRates        = Some(
+    val ccyb             = w.mechanisms.macropru.ccyb
+    val bankCorpBonds    = (bankId: BankId) => CorporateBondOwnership.bankHolderFor(ledgerFinancialState, bankId)
+    val hhBankRates      = Some(
       BankRates(
         lendingRates = banks
           .zip(bankStocks)
@@ -82,12 +82,12 @@ object HouseholdIncomeEconomics:
         depositRates = banks.map(_ => Banking.hhDepositRate(w.nbp.referenceRate)),
       ),
     )
-    val consumerCreditGate = capitalAwareConsumerCreditGate(banks, bankStocks, ccyb, bankCorpBonds)
-    val eqReturn           = w.financialMarkets.equity.monthlyReturn
-    val secWages           = Some(SectoralMobility.sectorWages(afterWages))
-    val secVacancies       = Some(SectoralMobility.sectorVacancies(afterWages, firms))
-    val openingStocks      = ledgerFinancialState.households.map(LedgerFinancialState.projectHouseholdFinancialStocks)
-    val householdStep      = Household.step(
+    val bankCreditSupply = capitalAwareBankCreditSupply(banks, bankStocks, ccyb, bankCorpBonds)
+    val eqReturn         = w.financialMarkets.equity.monthlyReturn
+    val secWages         = Some(SectoralMobility.sectorWages(afterWages))
+    val secVacancies     = Some(SectoralMobility.sectorVacancies(afterWages, firms))
+    val openingStocks    = ledgerFinancialState.households.map(LedgerFinancialState.projectHouseholdFinancialStocks)
+    val householdStep    = Household.step(
       afterWages,
       openingStocks,
       w,
@@ -100,13 +100,13 @@ object HouseholdIncomeEconomics:
       eqReturn,
       secWages,
       secVacancies,
-      Some(consumerCreditGate),
+      Some(bankCreditSupply),
     )
-    val agg                = householdStep.aggregates
-    val pensionCons        = pensionIncome * p.household.mpc
-    val pensionImport      = pensionCons * importAdj
-    val pensionDomestic    = pensionCons - pensionImport
-    val aggWithPensions    =
+    val agg              = householdStep.aggregates
+    val pensionCons      = pensionIncome * p.household.mpc
+    val pensionImport    = pensionCons * importAdj
+    val pensionDomestic  = pensionCons - pensionImport
+    val aggWithPensions  =
       if pensionIncome > PLN.Zero then
         agg.copy(
           totalIncome = agg.totalIncome + pensionIncome,
@@ -147,28 +147,37 @@ object HouseholdIncomeEconomics:
           s"configs=${configs.length} ids=${configIds.mkString("[", ",", "]")} names=${configNames.mkString("[", ",", "]")}",
       )
 
-  private[economics] def capitalAwareConsumerCreditGate(
+  private[economics] def capitalAwareBankCreditSupply(
       banks: Vector[Banking.BankState],
       bankStocks: Vector[Banking.BankFinancialStocks],
       ccyb: Multiplier,
       bankCorpBonds: BankId => PLN,
-  )(using p: SimParams): Household.ConsumerCreditGate =
+  )(using p: SimParams): Household.BankCreditSupply =
     require(
       banks.length == bankStocks.length,
-      s"HouseholdIncomeEconomics consumer-credit gate requires aligned bank rows, got ${banks.length} banks and ${bankStocks.length} stock rows",
+      s"HouseholdIncomeEconomics bank-credit supply requires aligned bank rows, got ${banks.length} banks and ${bankStocks.length} stock rows",
     )
-    val approvedExposureByBank = Array.fill(banks.length)(PLN.Zero)
+    val approvedFirmExposureByBank     = Array.fill(banks.length)(PLN.Zero)
+    val approvedConsumerExposureByBank = Array.fill(banks.length)(PLN.Zero)
+    val approvedMortgageExposureByBank = Array.fill(banks.length)(PLN.Zero)
+    val approvalContexts               =
+      banks.indices.map(idx => Banking.CreditApprovalContext(banks(idx), ccyb, bankCorpBonds(BankId(idx)))).toVector
 
-    (bankId, amount, approvalRng) =>
-      val idx = bankId.toInt
-      if amount <= PLN.Zero || idx < 0 || idx >= banks.length then false
-      else
+    new Household.BankCreditSupply:
+      override def approve(bankId: BankId, product: Banking.CreditProduct, amount: PLN, approvalRng: RandomStream): Banking.CreditApproval =
+        val idx             = bankId.toInt
+        require(amount > PLN.Zero, s"HouseholdIncomeEconomics bank-credit supply requires positive amount, got $amount")
+        require(idx >= 0 && idx < banks.length, s"HouseholdIncomeEconomics bank-credit supply received out-of-range bankId=${bankId.toInt}")
         val projectedStocks = bankStocks(idx).copy(
-          consumerLoan = bankStocks(idx).consumerLoan + approvedExposureByBank(idx),
+          firmLoan = bankStocks(idx).firmLoan + approvedFirmExposureByBank(idx),
+          consumerLoan = bankStocks(idx).consumerLoan + approvedConsumerExposureByBank(idx),
+          mortgageLoan = bankStocks(idx).mortgageLoan + approvedMortgageExposureByBank(idx),
         )
         val approval        =
-          Banking.creditApproval(banks(idx), projectedStocks, amount, approvalRng, ccyb, bankCorpBonds(bankId))
+          Banking.creditApproval(approvalContexts(idx), projectedStocks, product, amount, approvalRng)
         if approval.approved then
-          approvedExposureByBank(idx) = approvedExposureByBank(idx) + amount
-          true
-        else false
+          product match
+            case Banking.CreditProduct.FirmLoan     => approvedFirmExposureByBank(idx) = approvedFirmExposureByBank(idx) + amount
+            case Banking.CreditProduct.ConsumerLoan => approvedConsumerExposureByBank(idx) = approvedConsumerExposureByBank(idx) + amount
+            case Banking.CreditProduct.MortgageLoan => approvedMortgageExposureByBank(idx) = approvedMortgageExposureByBank(idx) + amount
+        approval

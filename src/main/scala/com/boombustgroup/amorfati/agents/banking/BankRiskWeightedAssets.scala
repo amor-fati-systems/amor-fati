@@ -30,8 +30,15 @@ private[agents] object BankRiskWeightedAssets:
     def explicitAssetBase: PLN =
       firmLoans + consumerLoans + mortgageLoans + corpBondHoldings + interbankAssets + govBondHoldings + reserves
 
-    def withAdditionalFirmLoan(amount: PLN): Exposure =
-      copy(firmLoans = firmLoans + amount.max(PLN.Zero))
+    /** Projects a new bank-credit exposure into the product-specific RWA bucket
+      * without mutating accounting stocks.
+      */
+    def withAdditionalCredit(product: CreditProduct, amount: PLN): Exposure =
+      val positiveAmount = amount.max(PLN.Zero)
+      product match
+        case CreditProduct.FirmLoan     => copy(firmLoans = firmLoans + positiveAmount)
+        case CreditProduct.ConsumerLoan => copy(consumerLoans = consumerLoans + positiveAmount)
+        case CreditProduct.MortgageLoan => copy(mortgageLoans = mortgageLoans + positiveAmount)
 
   /** Auditable decomposition of RWA before the final floor is applied. */
   final case class Components(

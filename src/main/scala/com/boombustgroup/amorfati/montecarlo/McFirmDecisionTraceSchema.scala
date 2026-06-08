@@ -135,7 +135,7 @@ private[montecarlo] object McFirmDecisionTraceSchema:
     value.replace(';', ',').replace('\n', ' ').replace('\r', ' ')
 
   private def creditRejectionReason(audit: Banking.CreditApprovalAudit): String =
-    audit.rejectionReason.fold("")(reason => text(reason.csvValue))
+    audit.rejectionReason.fold("")(reason => text(reason.diagnosticCode))
 
   private def auditMultiplier(value: Option[Multiplier]): String =
     value.fold("")(_.format(6))

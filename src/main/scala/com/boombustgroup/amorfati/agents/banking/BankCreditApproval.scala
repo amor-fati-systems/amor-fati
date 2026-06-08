@@ -9,7 +9,7 @@ import com.boombustgroup.amorfati.types.*
 /** Encapsulates bank-side credit routing, pricing, and loan approval gates.
   *
   * The module owns borrower-bank assignment, rate formation, and the audited
-  * stochastic approval decision for new firm credit.
+  * stochastic approval decision for new product-specific credit exposures.
   */
 private[agents] object BankCreditApproval:
 
@@ -55,23 +55,36 @@ private[agents] object BankCreditApproval:
       val crowdingOut = (bondYield - refRate - p.banking.baseSpread).max(Rate.Zero) * CrowdingOutSensitivity
       refRate + p.banking.baseSpread + cfg.lendingSpread + nplSpread + carPenalty + crowdingOut
 
-  /** Returns the boolean approval decision used by legacy call sites. */
-  def canLend(bank: BankState, stocks: BankFinancialStocks, amount: PLN, rng: RandomStream, ccyb: Multiplier, corpBondHoldings: PLN)(using
-      p: SimParams,
-  ): Boolean =
-    creditApproval(bank, stocks, amount, rng, ccyb, corpBondHoldings).approved
+  /** Returns the boolean approval decision for callers that do not need audit
+    * fields.
+    */
+  def canLend(
+      context: CreditApprovalContext,
+      stocks: BankFinancialStocks,
+      product: CreditProduct,
+      amount: PLN,
+      rng: RandomStream,
+  )(using p: SimParams): Boolean =
+    creditApproval(context, stocks, product, amount, rng).approved
 
-  /** Evaluates the full audited firm-credit approval decision.
+  /** Evaluates the full audited bank-credit approval decision.
     *
     * Hard regulatory gates cover failure status, projected CAR, LCR, and NSFR.
     * Banks that pass those gates still face a stochastic approval draw
     * penalized by NPL pressure.
     */
-  def creditApproval(bank: BankState, stocks: BankFinancialStocks, amount: PLN, rng: RandomStream, ccyb: Multiplier, corpBondHoldings: PLN)(using
-      p: SimParams,
-  ): CreditApproval =
+  def creditApproval(
+      context: CreditApprovalContext,
+      stocks: BankFinancialStocks,
+      product: CreditProduct,
+      amount: PLN,
+      rng: RandomStream,
+  )(using p: SimParams): CreditApproval =
+    val bank = context.bank
     if bank.failed then
       CreditApproval(
+        product = product,
+        amount = amount,
         approved = false,
         approvalProbability = None,
         approvalRoll = None,
@@ -79,16 +92,16 @@ private[agents] object BankCreditApproval:
       )
     else
       val projectedExposure                                                 =
-        BankRiskWeightedAssets.exposure(bank, stocks, corpBondHoldings).withAdditionalFirmLoan(amount)
+        BankRiskWeightedAssets.exposure(bank, stocks, context.corpBondHoldings).withAdditionalCredit(product, amount)
       val projectedCar                                                      = BankRegulatoryMetrics.capitalAdequacyRatio(bank.capital, projectedExposure)
-      val minCar                                                            = Macroprudential.effectiveMinCar(bank.id.toInt, ccyb)
+      val minCar                                                            = Macroprudential.effectiveMinCar(bank.id.toInt, context.ccyb)
       val carOk                                                             = projectedCar >= minCar
       val currentLcr                                                        = BankRegulatoryMetrics.lcr(stocks)
       val lcrOk                                                             = currentLcr >= p.banking.lcrMin
-      val currentNsfr                                                       = BankRegulatoryMetrics.nsfr(bank, stocks, corpBondHoldings)
+      val currentNsfr                                                       = BankRegulatoryMetrics.nsfr(bank, stocks, context.corpBondHoldings)
       val nsfrOk                                                            = currentNsfr >= p.banking.nsfrMin
-      val nplPenalty                                                        = BankRegulatoryMetrics.nplRatio(bank, stocks) * p.banking.firmCreditNplApprovalPenalty
-      val approvalP                                                         = (Share.One - nplPenalty.toShare).max(p.banking.firmCreditMinApprovalProb)
+      val nplPenalty                                                        = BankRegulatoryMetrics.nplRatio(bank, stocks) * p.banking.creditNplApprovalPenalty
+      val approvalP                                                         = (Share.One - nplPenalty.toShare).max(p.banking.creditMinApprovalProb)
       def audit(reason: Option[CreditRejectionReason]): CreditApprovalAudit =
         CreditApprovalAudit(
           rejectionReason = reason,
@@ -103,6 +116,8 @@ private[agents] object BankCreditApproval:
         val roll     = Share.random(rng)
         val approved = roll < approvalP
         CreditApproval(
+          product = product,
+          amount = amount,
           approved = approved,
           approvalProbability = Some(approvalP),
           approvalRoll = Some(roll),
@@ -114,6 +129,8 @@ private[agents] object BankCreditApproval:
           else if !lcrOk then CreditRejectionReason.LiquidityCoverage
           else CreditRejectionReason.StableFunding
         CreditApproval(
+          product = product,
+          amount = amount,
           approved = false,
           approvalProbability = Some(approvalP),
           approvalRoll = None,

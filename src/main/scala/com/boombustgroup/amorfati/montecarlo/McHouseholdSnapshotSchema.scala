@@ -53,6 +53,14 @@ private[montecarlo] object McHouseholdSnapshotSchema:
     "ConsumerCreditDemand"                -> (row => row.monthlyFlow.consumerCreditDemand.format(2)),
     "ConsumerRejectedOrigination"         -> (row => row.monthlyFlow.consumerRejectedOrigination.format(2)),
     "ConsumerBankRejectedOrigination"     -> (row => row.monthlyFlow.consumerBankRejectedOrigination.format(2)),
+    "ConsumerBankApprovalProduct"         -> (row => text(row.monthlyFlow.consumerBankApprovalProduct)),
+    "ConsumerBankRejectionReason"         -> (row => text(row.monthlyFlow.consumerBankRejectionReason)),
+    "ConsumerBankApprovalProbability"     -> (row => formatShare(row.monthlyFlow.consumerBankApprovalProbability, 6)),
+    "ConsumerBankApprovalRoll"            -> (row => formatShare(row.monthlyFlow.consumerBankApprovalRoll, 6)),
+    "ConsumerBankProjectedCAR"            -> (row => formatMultiplier(row.monthlyFlow.consumerBankProjectedCar, 6)),
+    "ConsumerBankMinCAR"                  -> (row => formatMultiplier(row.monthlyFlow.consumerBankMinCar, 6)),
+    "ConsumerBankLCR"                     -> (row => formatMultiplier(row.monthlyFlow.consumerBankLcr, 6)),
+    "ConsumerBankNSFR"                    -> (row => formatMultiplier(row.monthlyFlow.consumerBankNsfr, 6)),
     "LiquidityShortfallFinancing"         -> (row => row.monthlyFlow.liquidityShortfallFinancing.format(2)),
     "ConsumptionShortfall"                -> (row => row.monthlyFlow.consumptionShortfall.format(2)),
     "RentArrears"                         -> (row => row.monthlyFlow.rentArrears.format(2)),
@@ -125,6 +133,12 @@ private[montecarlo] object McHouseholdSnapshotSchema:
 
   private def financialDistressState(state: HhFinancialDistressState): String =
     state.toString
+
+  private def formatShare(value: Option[Share], digits: Int): String =
+    value.fold("")(_.format(digits))
+
+  private def formatMultiplier(value: Option[Multiplier], digits: Int): String =
+    value.fold("")(_.format(digits))
 
   private def text(value: String): String =
     value.replace(';', ',').replace('\n', ' ').replace('\r', ' ')

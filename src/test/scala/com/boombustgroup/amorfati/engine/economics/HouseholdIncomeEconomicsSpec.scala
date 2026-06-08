@@ -75,15 +75,20 @@ class HouseholdIncomeEconomicsSpec extends AnyFlatSpec with Matchers:
       termDeposit = PLN.Zero,
       consumerLoan = PLN.Zero,
     )
-    val gate   = HouseholdIncomeEconomics.capitalAwareConsumerCreditGate(
+    val supply = HouseholdIncomeEconomics.capitalAwareBankCreditSupply(
       banks = Vector(bank),
       bankStocks = Vector(stocks),
       ccyb = Multiplier.Zero,
       bankCorpBonds = _ => PLN.Zero,
     )
 
-    gate(BankId(0), PLN(200), RandomStream.seeded(1)) shouldBe true
-    gate(BankId(0), PLN(200), RandomStream.seeded(2)) shouldBe false
+    val first  = supply.approve(BankId(0), Banking.CreditProduct.ConsumerLoan, PLN(200), RandomStream.seeded(1))
+    val second = supply.approve(BankId(0), Banking.CreditProduct.ConsumerLoan, PLN(200), RandomStream.seeded(2))
+
+    first.approved shouldBe true
+    first.product shouldBe Banking.CreditProduct.ConsumerLoan
+    second.approved shouldBe false
+    second.audit.rejectionReason shouldBe Some(Banking.CreditRejectionReason.CapitalAdequacy)
   }
 
   it should "fail fast when bank configs do not align with bank rows" in {

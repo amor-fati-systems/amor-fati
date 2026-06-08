@@ -303,7 +303,8 @@ succeeds, and the resulting debt-service-to-income ratio has room below
 `ccMaxDti`. The DTI headroom is a monthly payment-capacity constraint, so the
 requested principal is computed by dividing monthly payment headroom by the
 monthly consumer-credit payment factor. The household's bank then applies the
-same CAR/LCR/NSFR supply gate used for bank credit approval:
+product-aware bank-credit approval engine with `ConsumerLoan` as the requested
+product:
 
 ```text
 stressed_h = disposablePreCredit_h < wage_h * DisposableWageThreshold
@@ -312,7 +313,7 @@ paymentFactor_h = ccAmortRate + consumerCreditRate_h.monthly
 principalCapacity_h = min(paymentHeadroom_h / paymentFactor_h, ccMaxLoan)
 liquidityNeed_h = max(disposable-stress gap, essential-consumption gap)
 consumerCreditDemand_h = min(liquidityNeed_h, principalCapacity_h)
-bankSupplyOk_b = creditApproval(bank_b, consumerCreditDemand_h).approved
+bankSupplyOk_b = creditApproval(bank_b, ConsumerLoan, consumerCreditDemand_h).approved
 approvedConsumerLoan_h = consumerCreditDemand_h if eligible and bankSupplyOk_b else 0
 rejectedConsumerCreditDemand_h = consumerCreditDemand_h - approvedConsumerLoan_h
 bankRejectedConsumerCreditDemand_h = consumerCreditDemand_h if eligible and not bankSupplyOk_b else 0
@@ -321,10 +322,11 @@ bankRejectedConsumerCreditDemand_h = consumerCreditDemand_h if eligible and not 
 `Current` and first-month `LiquidityStress` households can still pass the normal
 underwriting rule. `Arrears`, `Restructuring`, `Defaulted`, and `Bankruptcy`
 households report credit demand where relevant, but new underwritten
-consumer-credit approval is blocked before the bank supply gate. Failed or
+consumer-credit approval is blocked before bank-side approval. Failed or
 prudentially constrained banks reject otherwise eligible consumer-credit demand;
-that rejected subset is reported separately as
-`ConsumerBankRejectedOrigination`.
+that rejected subset is reported separately as `ConsumerBankRejectedOrigination`,
+with household snapshot rows carrying the bank-side rejection reason and
+prudential audit ratios when available.
 
 Liquidity-shortfall financing is not a discretionary credit decision and does
 not expand the consumption budget. It is a settlement leg booked after monthly
@@ -909,9 +911,10 @@ Capital penalty activates when CAR falls below `minCar * 1.5`. Crowding-out
 passes part of a government-bond-yield premium into firm loan spreads. Failed
 banks receive a fixed penalty spread and cannot lend.
 
-Credit approval requires projected CAR above the macroprudential effective
-minimum, LCR and NSFR above regulatory minima, and a stochastic approval draw.
-The approval probability falls with NPL ratio but has a configured floor.
+Credit approval projects RWA into the requested product bucket, then requires
+the projected CAR above the macroprudential effective minimum, LCR and NSFR above
+regulatory minima, and a stochastic approval draw. The approval probability
+falls with NPL ratio but has a configured floor.
 Reserve requirements are not a per-loan approval gate; reserves and government
 bonds affect credit supply through LCR/NSFR, settlement cost, standing
 facilities, and lending spreads.

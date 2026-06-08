@@ -22,7 +22,7 @@ private[agents] object HouseholdMonthlyFlowConstruction:
       bankRates: Option[BankRates],
       equityIndexReturn: Rate,
       distressedIds: java.util.BitSet,
-      consumerCreditGate: Option[Household.ConsumerCreditGate],
+      bankCreditSupply: Option[Household.BankCreditSupply],
   )(using p: SimParams): MonthlyFlows =
     val (baseIncome, benefit, newStatus) = HouseholdIncomeConstruction.computeIncome(hh)
 
@@ -59,7 +59,7 @@ private[agents] object HouseholdMonthlyFlowConstruction:
         world,
         bankRates,
         rng,
-        consumerCreditGate,
+        bankCreditSupply,
       )
     val fullObligations     = obligations + credit.debtService
     val disposable          = (income - fullObligations).max(PLN.Zero)
@@ -106,7 +106,7 @@ private[agents] object HouseholdMonthlyFlowConstruction:
       newMortgageRemainingMonths = HouseholdMortgageSchedule.remainingMortgageMonthsAfterPayment(financialStocks, newMortgageLoan),
       neighborDistress = neighborDistress,
     )
-    HouseholdConsumerCredit.underwriteResidualShortfall(initialFlows, rng, consumerCreditGate)
+    HouseholdConsumerCredit.underwriteResidualShortfall(initialFlows, rng, bankCreditSupply)
 
   /** Runs one household through the monthly survival/default branch. */
   def processHousehold(
@@ -118,9 +118,9 @@ private[agents] object HouseholdMonthlyFlowConstruction:
       equityIndexReturn: Rate,
       laborContext: Option[HouseholdLaborTransitionContext],
       distressedIds: java.util.BitSet,
-      consumerCreditGate: Option[Household.ConsumerCreditGate],
+      bankCreditSupply: Option[Household.BankCreditSupply],
   )(using p: SimParams): HhMonthlyResult =
-    val f              = computeMonthlyFlows(hh, financialStocks, world, rng, bankRates, equityIndexReturn, distressedIds, consumerCreditGate)
+    val f              = computeMonthlyFlows(hh, financialStocks, world, rng, bankRates, equityIndexReturn, distressedIds, bankCreditSupply)
     val distressMonths =
       if HouseholdDistressMachine.financialDistressTriggered(f) then hh.financialDistressMonths + 1 else 0
     if distressMonths > p.household.personalInsolvencyDistressMonths then resolveBankruptcy(f, distressMonths)
@@ -130,6 +130,7 @@ private[agents] object HouseholdMonthlyFlowConstruction:
     * result.
     */
   def monthlyFlow(hh: Household.State, stocks: Household.FinancialStocks, result: HhMonthlyResult): Household.MonthlyFlow =
+    val bankApproval = result.credit.bankApproval
     Household.MonthlyFlow(
       householdId = hh.id,
       openingDemandDeposit = stocks.demandDeposit,
@@ -158,6 +159,14 @@ private[agents] object HouseholdMonthlyFlowConstruction:
       mortgageArrears = result.credit.liquidityShortfall.mortgageArrears,
       consumerDebtArrears = result.credit.liquidityShortfall.consumerDebtArrears,
       temporaryOverdraft = result.credit.liquidityShortfall.temporaryOverdraft,
+      consumerBankApprovalProduct = bankApproval.map(_.product.diagnosticCode).getOrElse(""),
+      consumerBankRejectionReason = bankApproval.flatMap(_.audit.rejectionReason).map(_.diagnosticCode).getOrElse(""),
+      consumerBankApprovalProbability = bankApproval.flatMap(_.approvalProbability),
+      consumerBankApprovalRoll = bankApproval.flatMap(_.approvalRoll),
+      consumerBankProjectedCar = bankApproval.flatMap(_.audit.projectedCar),
+      consumerBankMinCar = bankApproval.flatMap(_.audit.minCar),
+      consumerBankLcr = bankApproval.flatMap(_.audit.lcr),
+      consumerBankNsfr = bankApproval.flatMap(_.audit.nsfr),
     )
 
   /** Resolves personal insolvency by writing off unsecured debt and equity. */

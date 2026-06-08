@@ -48,6 +48,7 @@ object HhBankLeadLagDiagnosticsExport:
       hhConsumerDebtService: BigDecimal,
       hhConsumerApprovedOrigination: BigDecimal,
       hhConsumerRejectedOrigination: BigDecimal,
+      hhConsumerBankRejectedOrigination: BigDecimal,
       hhConsumerDebtArrears: BigDecimal,
       hhMortgageArrears: BigDecimal,
       bankConsumerLoanStock: BigDecimal,
@@ -101,17 +102,18 @@ object HhBankLeadLagDiagnosticsExport:
   )
 
   private final class HhBankTotals:
-    var householdCount: Int              = 0
-    var monthlyIncome: PLN               = PLN.Zero
-    var consumerLoanDefault: PLN         = PLN.Zero
-    var liquidityBridgeChargeOff: PLN    = PLN.Zero
-    var liquidityShortfallFinancing: PLN = PLN.Zero
-    var consumerDefault: PLN             = PLN.Zero
-    var consumerDebtService: PLN         = PLN.Zero
-    var consumerApprovedOrigination: PLN = PLN.Zero
-    var consumerRejectedOrigination: PLN = PLN.Zero
-    var consumerDebtArrears: PLN         = PLN.Zero
-    var mortgageArrears: PLN             = PLN.Zero
+    var householdCount: Int                  = 0
+    var monthlyIncome: PLN                   = PLN.Zero
+    var consumerLoanDefault: PLN             = PLN.Zero
+    var liquidityBridgeChargeOff: PLN        = PLN.Zero
+    var liquidityShortfallFinancing: PLN     = PLN.Zero
+    var consumerDefault: PLN                 = PLN.Zero
+    var consumerDebtService: PLN             = PLN.Zero
+    var consumerApprovedOrigination: PLN     = PLN.Zero
+    var consumerRejectedOrigination: PLN     = PLN.Zero
+    var consumerBankRejectedOrigination: PLN = PLN.Zero
+    var consumerDebtArrears: PLN             = PLN.Zero
+    var mortgageArrears: PLN                 = PLN.Zero
 
     def add(flow: com.boombustgroup.amorfati.agents.Household.MonthlyFlow): Unit =
       householdCount += 1
@@ -123,6 +125,7 @@ object HhBankLeadLagDiagnosticsExport:
       consumerDebtService = consumerDebtService + flow.consumerDebtService
       consumerApprovedOrigination = consumerApprovedOrigination + flow.consumerApprovedOrigination
       consumerRejectedOrigination = consumerRejectedOrigination + flow.consumerRejectedOrigination
+      consumerBankRejectedOrigination = consumerBankRejectedOrigination + flow.consumerBankRejectedOrigination
       consumerDebtArrears = consumerDebtArrears + flow.consumerDebtArrears
       mortgageArrears = mortgageArrears + flow.mortgageArrears
 
@@ -130,12 +133,13 @@ object HhBankLeadLagDiagnosticsExport:
     HhBankLeadLagScenarios.all
 
   private val HhMetricAccessors: Vector[(String, BankMonthRow => BigDecimal)] = Vector(
-    "HhConsumerLoanDefault"         -> (_.hhConsumerLoanDefault),
-    "HhLiquidityBridgeChargeOff"    -> (_.hhLiquidityBridgeChargeOff),
-    "HhLiquidityShortfallFinancing" -> (_.hhLiquidityShortfallFinancing),
-    "HhConsumerDebtArrears"         -> (_.hhConsumerDebtArrears),
-    "HhMortgageArrears"             -> (_.hhMortgageArrears),
-    "HhConsumerDebtService"         -> (_.hhConsumerDebtService),
+    "HhConsumerLoanDefault"             -> (_.hhConsumerLoanDefault),
+    "HhLiquidityBridgeChargeOff"        -> (_.hhLiquidityBridgeChargeOff),
+    "HhLiquidityShortfallFinancing"     -> (_.hhLiquidityShortfallFinancing),
+    "HhConsumerDebtArrears"             -> (_.hhConsumerDebtArrears),
+    "HhMortgageArrears"                 -> (_.hhMortgageArrears),
+    "HhConsumerDebtService"             -> (_.hhConsumerDebtService),
+    "HhConsumerBankRejectedOrigination" -> (_.hhConsumerBankRejectedOrigination),
   )
 
   private val BankMetricAccessors: Vector[(String, BankMonthRow => BigDecimal)] = Vector(
@@ -302,6 +306,7 @@ object HhBankLeadLagDiagnosticsExport:
         hhConsumerDebtService = pln(totals.consumerDebtService),
         hhConsumerApprovedOrigination = pln(totals.consumerApprovedOrigination),
         hhConsumerRejectedOrigination = pln(totals.consumerRejectedOrigination),
+        hhConsumerBankRejectedOrigination = pln(totals.consumerBankRejectedOrigination),
         hhConsumerDebtArrears = pln(totals.consumerDebtArrears),
         hhMortgageArrears = pln(totals.mortgageArrears),
         bankConsumerLoanStock = pln(stocks.consumerLoan),
@@ -409,7 +414,7 @@ object HhBankLeadLagDiagnosticsExport:
 
   private val BankMonthCsvSchema: McCsvSchema[BankMonthRow] =
     val header =
-      "RunId;ScenarioId;ScenarioLabel;Seed;Month;BankId;BankName;HouseholdCount;HhMonthlyIncome;HhConsumerLoanDefault;HhLiquidityBridgeChargeOff;HhLiquidityShortfallFinancing;HhConsumerDefault;HhConsumerDebtService;HhConsumerApprovedOrigination;HhConsumerRejectedOrigination;HhConsumerDebtArrears;HhMortgageArrears;BankConsumerLoanStock;BankConsumerNplStock;BankConsumerNplLoss;BankCapital;BankCapitalDelta;BankCar;BankLcr;BankFailed;BankNewFailure;BankFailureReasonCode;Unemployment;Inflation;MonthlyGdpProxy"
+      "RunId;ScenarioId;ScenarioLabel;Seed;Month;BankId;BankName;HouseholdCount;HhMonthlyIncome;HhConsumerLoanDefault;HhLiquidityBridgeChargeOff;HhLiquidityShortfallFinancing;HhConsumerDefault;HhConsumerDebtService;HhConsumerApprovedOrigination;HhConsumerRejectedOrigination;HhConsumerBankRejectedOrigination;HhConsumerDebtArrears;HhMortgageArrears;BankConsumerLoanStock;BankConsumerNplStock;BankConsumerNplLoss;BankCapital;BankCapitalDelta;BankCar;BankLcr;BankFailed;BankNewFailure;BankFailureReasonCode;Unemployment;Inflation;MonthlyGdpProxy"
     McCsvSchema(header, renderBankMonthRow)
 
   private val CorrelationCsvSchema: McCsvSchema[CorrelationResult] =
@@ -471,6 +476,7 @@ object HhBankLeadLagDiagnosticsExport:
       renderDecimal(row.hhConsumerDebtService),
       renderDecimal(row.hhConsumerApprovedOrigination),
       renderDecimal(row.hhConsumerRejectedOrigination),
+      renderDecimal(row.hhConsumerBankRejectedOrigination),
       renderDecimal(row.hhConsumerDebtArrears),
       renderDecimal(row.hhMortgageArrears),
       renderDecimal(row.bankConsumerLoanStock),

@@ -20,7 +20,7 @@ rules and does not replace the implementation anchors listed below.
 | [SFC matrix evidence](sfc-matrix-evidence.md) | Accounting matrix evidence and generated runtime mapping artifacts. |
 | [Engine invariants and semantics](engine-invariants-and-semantics.md) | Validation ownership and hard-fail semantics. |
 | [`agents/Household.scala`](../src/main/scala/com/boombustgroup/amorfati/agents/Household.scala) and [`agents/household/*`](../src/main/scala/com/boombustgroup/amorfati/agents/household) | Household state, monthly budget pipeline, credit underwriting, liquidity waterfall, distress machine, labor transitions, and aggregate computation. |
-| [`engine/economics/HouseholdIncomeEconomics.scala`](../src/main/scala/com/boombustgroup/amorfati/engine/economics/HouseholdIncomeEconomics.scala) and [`engine/economics/HouseholdFinancialEconomics.scala`](../src/main/scala/com/boombustgroup/amorfati/engine/economics/HouseholdFinancialEconomics.scala) | Same-month household income, consumption/import split, bank-rate surface, consumer-credit gate, remittances, tourism services, and household financial aggregates. |
+| [`engine/economics/HouseholdIncomeEconomics.scala`](../src/main/scala/com/boombustgroup/amorfati/engine/economics/HouseholdIncomeEconomics.scala) and [`engine/economics/HouseholdFinancialEconomics.scala`](../src/main/scala/com/boombustgroup/amorfati/engine/economics/HouseholdFinancialEconomics.scala) | Same-month household income, consumption/import split, bank-rate surface, product-aware bank-credit supply, remittances, tourism services, and household financial aggregates. |
 | [`engine/flows/HouseholdFlows.scala`](../src/main/scala/com/boombustgroup/amorfati/engine/flows/HouseholdFlows.scala) and [`engine/flows/MortgageFlows.scala`](../src/main/scala/com/boombustgroup/amorfati/engine/flows/MortgageFlows.scala) | Runtime household cash/credit/mortgage flow emission and SFC settlement shells. |
 | [`montecarlo/McTimeseriesSchema.scala`](../src/main/scala/com/boombustgroup/amorfati/montecarlo/McTimeseriesSchema.scala), [`montecarlo/McHouseholdSnapshotSchema.scala`](../src/main/scala/com/boombustgroup/amorfati/montecarlo/McHouseholdSnapshotSchema.scala), and [`diagnostics/LoanOriginationQualityExport.scala`](../src/main/scala/com/boombustgroup/amorfati/diagnostics/LoanOriginationQualityExport.scala) | Public household time-series columns, optional household micro snapshots, and borrower-level credit-outcome diagnostics. |
 | [`diagnostics/HhBankLeadLagDiagnosticsExport.scala`](../src/main/scala/com/boombustgroup/amorfati/diagnostics/HhBankLeadLagDiagnosticsExport.scala) and [`diagnostics/HouseholdCreditStressCalibrationExport.scala`](../src/main/scala/com/boombustgroup/amorfati/diagnostics/HouseholdCreditStressCalibrationExport.scala) | Household-bank lead/lag evidence and household credit-stress calibration surfaces. |
@@ -244,11 +244,13 @@ Demand^{CC}_{h,tau} =
 ```
 
 Small requests below the configured minimum consumer-loan size are set to zero.
-Positive eligible demand is then passed through the bank-side supply gate. That
-gate uses the same audited bank credit-approval surface used for firm credit:
-failed-bank, projected CAR, LCR, NSFR, and stochastic approval after those hard
-gates. Household diagnostics distinguish total demand, rejected demand, and
-the subset rejected by bank supply.
+Positive eligible demand is then passed through the product-aware bank-side
+supply gate with `ConsumerLoan` as the requested product. That gate uses the same
+audited bank credit-approval surface used for firm credit: failed-bank,
+projected CAR with the consumer-loan RWA bucket incremented, LCR, NSFR, and
+stochastic approval after those hard gates. Household diagnostics distinguish
+total demand, rejected demand, the subset rejected by bank supply, and the
+bank-side approval audit fields for household snapshot rows.
 
 Ordinary closing consumer debt before residual liquidity settlement is:
 
@@ -345,7 +347,8 @@ liquidity settlement.
 ## Liquidity Shortfall Settlement
 
 Before booking a bridge, any remaining negative raw liquid balance is offered
-to the same underwritten consumer-credit gate up to unused DTI capacity:
+to the same underwritten consumer-credit path and product-aware bank supply up
+to unused DTI capacity:
 
 ```text
 ResidualShortfall_h = max(-RawD_{h,tau}, 0)
@@ -594,7 +597,7 @@ Representative output columns include:
 | --- | --- |
 | Labor and income | `Unemployment`, `UnemployedShare`, `RetrainingShare`, `MarketWage`, `MeanEmployedWage`, contract-type shares |
 | Consumption and distribution | aggregate consumption, domestic/import consumption, Gini/poverty/savings aggregates in household summaries |
-| Consumer credit | `ConsumerLoans`, `ConsumerOrigination`, `ConsumerApprovedOrigination`, `ConsumerCreditDemand`, `ConsumerRejectedOrigination`, `ConsumerBankRejectedOrigination`, `ConsumerDebtService`, `ConsumerPrincipal`, `ConsumerDefault`, `ConsumerLoanDefault`, `LiquidityBridgeChargeOff`, `ConsumerCredit_NetStockFlow`, `ConsumerCredit_UnderwrittenNetFlow`, `ConsumerCredit_BridgeNetFlow`, `ConsumerCredit_NplStock`, approval/rejection ratios |
+| Consumer credit | `ConsumerLoans`, `ConsumerOrigination`, `ConsumerApprovedOrigination`, `ConsumerCreditDemand`, `ConsumerRejectedOrigination`, `ConsumerBankRejectedOrigination`, household snapshot bank-audit columns (`ConsumerBankApprovalProduct`, `ConsumerBankRejectionReason`, `ConsumerBankApprovalProbability`, `ConsumerBankApprovalRoll`, `ConsumerBankProjectedCAR`, `ConsumerBankMinCAR`, `ConsumerBankLCR`, `ConsumerBankNSFR`), `ConsumerDebtService`, `ConsumerPrincipal`, `ConsumerDefault`, `ConsumerLoanDefault`, `LiquidityBridgeChargeOff`, `ConsumerCredit_NetStockFlow`, `ConsumerCredit_UnderwrittenNetFlow`, `ConsumerCredit_BridgeNetFlow`, `ConsumerCredit_NplStock`, approval/rejection ratios |
 | Mortgages and housing wealth | `MortgageStock`, `AvgMortgageRate`, `MortgageOrigination`, `MortgageRepayment`, `MortgageDefault`, `MortgageNetStockFlow`, `MortgageToGdp`, mortgage flow-to-stock ratios, `MortgageInterestIncome`, `HhHousingWealth`, `HousingWealthEffect` |
 | Distress and bankruptcy | `HouseholdBankruptcies`, `HouseholdBankruptcyRate`, `HouseholdDistress_Current`, `HouseholdDistress_LiquidityStress`, `HouseholdDistress_Arrears`, `HouseholdDistress_Restructuring`, `HouseholdDistress_Defaulted`, `HouseholdDistress_Bankruptcy`, corresponding shares, `HouseholdDistress_ActiveShare` |
 | Liquidity | `HouseholdLiquidity_NetDemandDeposit`, positive deposits, implicit overdraft diagnostics, deposit percentiles, `HouseholdLiquidity_ShortfallFinancing`, unmet basic consumption, discretionary compression, consumption/rent/mortgage/consumer-debt arrears, temporary overdraft |

@@ -1,6 +1,6 @@
 package com.boombustgroup.amorfati.montecarlo
 
-import com.boombustgroup.amorfati.agents.Household
+import com.boombustgroup.amorfati.agents.{Banking, Household}
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.SimulationMonth.ExecutionMonth
 import com.boombustgroup.amorfati.engine.flows.FlowSimulation
@@ -16,7 +16,7 @@ class McHouseholdSnapshotSchemaSpec extends AnyFlatSpec with Matchers:
 
   "McHouseholdSnapshotSchema" should "keep the household snapshot header stable" in {
     McHouseholdSnapshotSchema.header shouldBe
-      "RunId;Seed;Month;HouseholdId;Status;Region;ContractType;BankId;Wage;Rent;MPC;Skill;HealthPenalty;FinancialDistressMonths;FinancialDistressState;DemandDeposit;MortgageLoan;ConsumerLoan;Equity;PositiveDeposit;ImplicitOverdraft;NetLiquidPosition;NetFinancialPosition;OpeningDemandDeposit;OpeningConsumerLoan;MonthlyIncome;Consumption;UnmetBasicConsumption;DiscretionaryConsumptionCompression;RentPaid;MortgageDebtService;ConsumerApprovedOrigination;ConsumerCreditDemand;ConsumerRejectedOrigination;ConsumerBankRejectedOrigination;LiquidityShortfallFinancing;ConsumptionShortfall;RentArrears;MortgageArrears;ConsumerDebtArrears;TemporaryOverdraft;ConsumerDebtService;ConsumerDefault;ConsumerLoanDefault;LiquidityBridgeChargeOff;ConsumerPrincipal;ClosingConsumerLoan"
+      "RunId;Seed;Month;HouseholdId;Status;Region;ContractType;BankId;Wage;Rent;MPC;Skill;HealthPenalty;FinancialDistressMonths;FinancialDistressState;DemandDeposit;MortgageLoan;ConsumerLoan;Equity;PositiveDeposit;ImplicitOverdraft;NetLiquidPosition;NetFinancialPosition;OpeningDemandDeposit;OpeningConsumerLoan;MonthlyIncome;Consumption;UnmetBasicConsumption;DiscretionaryConsumptionCompression;RentPaid;MortgageDebtService;ConsumerApprovedOrigination;ConsumerCreditDemand;ConsumerRejectedOrigination;ConsumerBankRejectedOrigination;ConsumerBankApprovalProduct;ConsumerBankRejectionReason;ConsumerBankApprovalProbability;ConsumerBankApprovalRoll;ConsumerBankProjectedCAR;ConsumerBankMinCAR;ConsumerBankLCR;ConsumerBankNSFR;LiquidityShortfallFinancing;ConsumptionShortfall;RentArrears;MortgageArrears;ConsumerDebtArrears;TemporaryOverdraft;ConsumerDebtService;ConsumerDefault;ConsumerLoanDefault;LiquidityBridgeChargeOff;ConsumerPrincipal;ClosingConsumerLoan"
   }
 
   "McHouseholdShortfallCohortSchema" should "keep the household shortfall cohort header stable" in {
@@ -35,7 +35,20 @@ class McHouseholdSnapshotSchemaSpec extends AnyFlatSpec with Matchers:
         case ((hh, balances), idx) =>
           val stocks = LedgerFinancialState.projectHouseholdFinancialStocks(balances)
           val flow   = Household.MonthlyFlow.inactive(hh.id, stocks)
-          if idx == 0 then flow.copy(liquidityShortfallFinancing = PLN(123), rentArrears = PLN(123)) else flow
+          if idx == 0 then
+            flow.copy(
+              liquidityShortfallFinancing = PLN(123),
+              rentArrears = PLN(123),
+              consumerBankApprovalProduct = Banking.CreditProduct.ConsumerLoan.diagnosticCode,
+              consumerBankRejectionReason = Banking.CreditRejectionReason.CapitalAdequacy.diagnosticCode,
+              consumerBankApprovalProbability = Some(Share.decimal(75, 2)),
+              consumerBankApprovalRoll = Some(Share.decimal(80, 2)),
+              consumerBankProjectedCar = Some(Multiplier.decimal(11, 2)),
+              consumerBankMinCar = Some(Multiplier.decimal(12, 2)),
+              consumerBankLcr = Some(Multiplier.decimal(13, 1)),
+              consumerBankNsfr = Some(Multiplier.decimal(12, 1)),
+            )
+          else flow
 
     val rows = McHouseholdSnapshotSchema.rows(
       runId = "run",
@@ -48,6 +61,7 @@ class McHouseholdSnapshotSchemaSpec extends AnyFlatSpec with Matchers:
 
     rows.map(_.household.id) shouldBe Vector(household.id)
     rows.head.monthlyFlow.liquidityShortfallFinancing shouldBe PLN(123)
+    McHouseholdSnapshotSchema.csvSchema.render(rows.head) should include("consumer-loan;car;0.750000;0.800000;0.110000;0.120000;1.300000;1.200000")
   }
 
   it should "aggregate household shortfall cohorts from the full snapshot boundary" in {

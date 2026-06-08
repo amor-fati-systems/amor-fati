@@ -38,6 +38,8 @@ class LoanOriginationQualityExportSpec extends AnyFlatSpec with Matchers with Ei
   it should "keep diagnostic output headers stable" in {
     LoanOriginationQualityExport.HouseholdHeader should include("IncomeDecile")
     LoanOriginationQualityExport.HouseholdHeader should include("CreditCapacity")
+    LoanOriginationQualityExport.HouseholdHeader should include("BankApprovalProduct")
+    LoanOriginationQualityExport.HouseholdHeader should include("BankProjectedCAR")
     LoanOriginationQualityExport.HouseholdHeader should include("FutureDefaultWithinWindow")
     LoanOriginationQualityExport.FirmHeader should include("DscrProxy")
     LoanOriginationQualityExport.FirmHeader should include("FutureBankruptWithinWindow")
@@ -109,6 +111,14 @@ class LoanOriginationQualityExportSpec extends AnyFlatSpec with Matchers with Ei
       approvedPrincipal = PLN(3000),
       rejectedPrincipal = PLN.Zero,
       bankRejectedPrincipal = PLN.Zero,
+      bankApprovalProduct = "consumer-loan",
+      bankRejectionReason = "",
+      bankApprovalProbability = Some(Share.decimal(75, 2)),
+      bankApprovalRoll = Some(Share.decimal(50, 2)),
+      bankProjectedCar = Some(Multiplier.decimal(11, 2)),
+      bankMinCar = Some(Multiplier.decimal(10, 2)),
+      bankApprovalLcr = Some(Multiplier.decimal(12, 1)),
+      bankApprovalNsfr = Some(Multiplier.decimal(11, 1)),
       bankCar = BigDecimal("0.110000"),
       bankLcr = BigDecimal("1.200000"),
       bankNsfr = BigDecimal("1.100000"),

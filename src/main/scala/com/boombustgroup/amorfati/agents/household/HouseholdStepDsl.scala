@@ -81,7 +81,7 @@ private[household] object HouseholdStepDsl:
           input.market.equityIndexReturn,
           context.laborContext,
           context.distressedIds,
-          input.credit.consumerCreditGate,
+          input.credit.bankCreditSupply,
         )
         flowBuilder += ((hh.bankId, result))
         totals.add(result)

@@ -41,6 +41,9 @@ Key household-side columns:
   separate from ordinary consumer-loan default.
 - `HhLiquidityShortfallFinancing`: residual monthly liquidity gap closed by the
   bridge mechanism.
+- `HhConsumerApprovedOrigination`, `HhConsumerRejectedOrigination`, and
+  `HhConsumerBankRejectedOrigination`: underwritten household consumer-credit
+  origination, total rejected demand, and the bank-side rejected subset.
 - `HhConsumerDebtArrears` and `HhMortgageArrears`: shortfall components.
 
 Key bank-side columns:

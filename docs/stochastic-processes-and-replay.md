@@ -135,7 +135,7 @@ closed-month lifecycle streams:
 
 | Stream key | Runtime field | Phase | Main stochastic role |
 | --- | --- | --- | --- |
-| `HouseholdIncomeEconomics` | `stages.householdIncomeEconomics` | same month | Household income-stage micro flows, consumer-credit gates delegated from the household path, labor transitions executed inside household step logic, and household-row stochastic choices. |
+| `HouseholdIncomeEconomics` | `stages.householdIncomeEconomics` | same month | Household income-stage micro flows, consumer-credit bank-supply approvals delegated from the household path, labor transitions executed inside household step logic, and household-row stochastic choices. |
 | `FirmEconomics` | `stages.firmEconomics` | same month | Firm credit approval, operating adjustment, technology adoption lotteries, Calvo repricing, labor matching, and firm-stage stochastic choices. |
 | `HouseholdFinancialEconomics` | `stages.householdFinancialEconomics` | same month | Household financial-stage randomness; currently retained as an explicit stage surface even where the present computation is mostly deterministic. |
 | `OpenEconEconomics` | `stages.openEconEconomics` | same month | Open-economy and commodity/GVC stochastic surfaces. |
@@ -174,7 +174,7 @@ affected by stochastic household, firm, bank, and external channels.
 
 | Layer | Classification |
 | --- | --- |
-| Household | Initialization heterogeneity, labor and household financial choices, consumer-credit gates, and shortfall underwriting draws are household-facing stochastic mechanisms. |
+| Household | Initialization heterogeneity, labor and household financial choices, consumer-credit bank-supply approvals, and shortfall underwriting draws are household-facing stochastic mechanisms. |
 | Firm | Initialization heterogeneity, credit approval, operating adjustment, pricing, technology adoption, labor matching, entry, and startup staffing are firm-facing stochastic mechanisms. |
 | Banking | Bank-side approval rules can be stochastic, but their RNG owner is the invoking firm or household stage. The `BankingEconomics` stream is currently concentrated in health-driven deposit mobility and stochastic choices executed by the banking stage itself; interbank settlement, resolution accounting, and regulatory metrics are deterministic conditional on state. |
 | External | Open-economy, commodity, and GVC stochastic surfaces belong to the explicit open-economy month stream when enabled by configuration. |
