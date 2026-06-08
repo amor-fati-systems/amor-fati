@@ -59,15 +59,13 @@ private[agents] object BankCreditApproval:
     * fields.
     */
   def canLend(
-      product: CreditProduct,
-      bank: BankState,
+      context: CreditApprovalContext,
       stocks: BankFinancialStocks,
+      product: CreditProduct,
       amount: PLN,
       rng: RandomStream,
-      ccyb: Multiplier,
-      corpBondHoldings: PLN,
   )(using p: SimParams): Boolean =
-    creditApproval(product, bank, stocks, amount, rng, ccyb, corpBondHoldings).approved
+    creditApproval(context, stocks, product, amount, rng).approved
 
   /** Evaluates the full audited bank-credit approval decision.
     *
@@ -76,14 +74,13 @@ private[agents] object BankCreditApproval:
     * penalized by NPL pressure.
     */
   def creditApproval(
-      product: CreditProduct,
-      bank: BankState,
+      context: CreditApprovalContext,
       stocks: BankFinancialStocks,
+      product: CreditProduct,
       amount: PLN,
       rng: RandomStream,
-      ccyb: Multiplier,
-      corpBondHoldings: PLN,
   )(using p: SimParams): CreditApproval =
+    val bank = context.bank
     if bank.failed then
       CreditApproval(
         product = product,
@@ -95,13 +92,13 @@ private[agents] object BankCreditApproval:
       )
     else
       val projectedExposure                                                 =
-        BankRiskWeightedAssets.exposure(bank, stocks, corpBondHoldings).withAdditionalCredit(product, amount)
+        BankRiskWeightedAssets.exposure(bank, stocks, context.corpBondHoldings).withAdditionalCredit(product, amount)
       val projectedCar                                                      = BankRegulatoryMetrics.capitalAdequacyRatio(bank.capital, projectedExposure)
-      val minCar                                                            = Macroprudential.effectiveMinCar(bank.id.toInt, ccyb)
+      val minCar                                                            = Macroprudential.effectiveMinCar(bank.id.toInt, context.ccyb)
       val carOk                                                             = projectedCar >= minCar
       val currentLcr                                                        = BankRegulatoryMetrics.lcr(stocks)
       val lcrOk                                                             = currentLcr >= p.banking.lcrMin
-      val currentNsfr                                                       = BankRegulatoryMetrics.nsfr(bank, stocks, corpBondHoldings)
+      val currentNsfr                                                       = BankRegulatoryMetrics.nsfr(bank, stocks, context.corpBondHoldings)
       val nsfrOk                                                            = currentNsfr >= p.banking.nsfrMin
       val nplPenalty                                                        = BankRegulatoryMetrics.nplRatio(bank, stocks) * p.banking.creditNplApprovalPenalty
       val approvalP                                                         = (Share.One - nplPenalty.toShare).max(p.banking.creditMinApprovalProb)

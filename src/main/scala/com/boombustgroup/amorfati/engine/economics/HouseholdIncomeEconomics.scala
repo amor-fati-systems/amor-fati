@@ -160,21 +160,24 @@ object HouseholdIncomeEconomics:
     val approvedFirmExposureByBank     = Array.fill(banks.length)(PLN.Zero)
     val approvedConsumerExposureByBank = Array.fill(banks.length)(PLN.Zero)
     val approvedMortgageExposureByBank = Array.fill(banks.length)(PLN.Zero)
+    val approvalContexts               =
+      banks.indices.map(idx => Banking.CreditApprovalContext(banks(idx), ccyb, bankCorpBonds(BankId(idx)))).toVector
 
-    (bankId, product, amount, approvalRng) =>
-      val idx             = bankId.toInt
-      require(amount > PLN.Zero, s"HouseholdIncomeEconomics bank-credit supply requires positive amount, got $amount")
-      require(idx >= 0 && idx < banks.length, s"HouseholdIncomeEconomics bank-credit supply received out-of-range bankId=${bankId.toInt}")
-      val projectedStocks = bankStocks(idx).copy(
-        firmLoan = bankStocks(idx).firmLoan + approvedFirmExposureByBank(idx),
-        consumerLoan = bankStocks(idx).consumerLoan + approvedConsumerExposureByBank(idx),
-        mortgageLoan = bankStocks(idx).mortgageLoan + approvedMortgageExposureByBank(idx),
-      )
-      val approval        =
-        Banking.creditApproval(product, banks(idx), projectedStocks, amount, approvalRng, ccyb, bankCorpBonds(bankId))
-      if approval.approved then
-        product match
-          case Banking.CreditProduct.FirmLoan     => approvedFirmExposureByBank(idx) = approvedFirmExposureByBank(idx) + amount
-          case Banking.CreditProduct.ConsumerLoan => approvedConsumerExposureByBank(idx) = approvedConsumerExposureByBank(idx) + amount
-          case Banking.CreditProduct.MortgageLoan => approvedMortgageExposureByBank(idx) = approvedMortgageExposureByBank(idx) + amount
-      approval
+    new Household.BankCreditSupply:
+      override def approve(bankId: BankId, product: Banking.CreditProduct, amount: PLN, approvalRng: RandomStream): Banking.CreditApproval =
+        val idx             = bankId.toInt
+        require(amount > PLN.Zero, s"HouseholdIncomeEconomics bank-credit supply requires positive amount, got $amount")
+        require(idx >= 0 && idx < banks.length, s"HouseholdIncomeEconomics bank-credit supply received out-of-range bankId=${bankId.toInt}")
+        val projectedStocks = bankStocks(idx).copy(
+          firmLoan = bankStocks(idx).firmLoan + approvedFirmExposureByBank(idx),
+          consumerLoan = bankStocks(idx).consumerLoan + approvedConsumerExposureByBank(idx),
+          mortgageLoan = bankStocks(idx).mortgageLoan + approvedMortgageExposureByBank(idx),
+        )
+        val approval        =
+          Banking.creditApproval(approvalContexts(idx), projectedStocks, product, amount, approvalRng)
+        if approval.approved then
+          product match
+            case Banking.CreditProduct.FirmLoan     => approvedFirmExposureByBank(idx) = approvedFirmExposureByBank(idx) + amount
+            case Banking.CreditProduct.ConsumerLoan => approvedConsumerExposureByBank(idx) = approvedConsumerExposureByBank(idx) + amount
+            case Banking.CreditProduct.MortgageLoan => approvedMortgageExposureByBank(idx) = approvedMortgageExposureByBank(idx) + amount
+        approval

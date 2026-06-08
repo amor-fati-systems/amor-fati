@@ -458,15 +458,17 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
       PLN(4666),
       Share.decimal(4, 1),
       rng,
-      bankCreditSupply = Some((_, product, amount, _) =>
-        Banking.CreditApproval(
-          product = product,
-          amount = amount,
-          approved = false,
-          approvalProbability = Some(Share.Zero),
-          approvalRoll = Some(Share.One),
-          audit = Banking.CreditApprovalAudit(rejectionReason = Some(Banking.CreditRejectionReason.Stochastic)),
-        ),
+      bankCreditSupply = Some(
+        new Household.BankCreditSupply:
+          override def approve(bankId: BankId, product: Banking.CreditProduct, amount: PLN, rng: RandomStream): Banking.CreditApproval =
+            Banking.CreditApproval(
+              product = product,
+              amount = amount,
+              approved = false,
+              approvalProbability = Some(Share.Zero),
+              approvalRoll = Some(Share.One),
+              audit = Banking.CreditApprovalAudit(rejectionReason = Some(Banking.CreditRejectionReason.Stochastic)),
+            ),
       ),
     )(using creditP)
     val flow   = result.monthlyFlows.head

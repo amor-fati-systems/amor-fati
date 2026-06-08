@@ -82,8 +82,8 @@ class HouseholdIncomeEconomicsSpec extends AnyFlatSpec with Matchers:
       bankCorpBonds = _ => PLN.Zero,
     )
 
-    val first  = supply(BankId(0), Banking.CreditProduct.ConsumerLoan, PLN(200), RandomStream.seeded(1))
-    val second = supply(BankId(0), Banking.CreditProduct.ConsumerLoan, PLN(200), RandomStream.seeded(2))
+    val first  = supply.approve(BankId(0), Banking.CreditProduct.ConsumerLoan, PLN(200), RandomStream.seeded(1))
+    val second = supply.approve(BankId(0), Banking.CreditProduct.ConsumerLoan, PLN(200), RandomStream.seeded(2))
 
     first.approved shouldBe true
     first.product shouldBe Banking.CreditProduct.ConsumerLoan

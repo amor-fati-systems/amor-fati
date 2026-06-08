@@ -225,7 +225,8 @@ object Banking:
   /** Low-allocation, product-aware credit-supply boundary used by agents that
     * need a bank-side approval decision.
     */
-  type CreditSupply = (BankId, CreditProduct, PLN, RandomStream) => CreditApproval
+  trait CreditSupply:
+    def approve(bankId: BankId, product: CreditProduct, amount: PLN, rng: RandomStream): CreditApproval
 
   /** Rejection reason emitted by the bank-side approval engine. */
   enum CreditRejectionReason(val diagnosticCode: String):
@@ -266,6 +267,17 @@ object Banking:
       approvalProbability: Option[Share],
       approvalRoll: Option[Share],
       audit: CreditApprovalAudit = CreditApprovalAudit.empty,
+  )
+
+  /** Bank and macroprudential context for product-specific credit approval.
+    *
+    * Financial stocks stay outside this context because callers may pass
+    * projected intra-month stocks without allocating a new approval request.
+    */
+  case class CreditApprovalContext(
+      bank: BankState,
+      ccyb: Multiplier,
+      corpBondHoldings: PLN,
   )
 
   // ---------------------------------------------------------------------------
@@ -424,29 +436,25 @@ object Banking:
     * CAR, LCR/NSFR, and stochastic approval probability penalised by NPL ratio.
     */
   def canLend(
-      product: CreditProduct,
-      bank: BankState,
+      context: CreditApprovalContext,
       stocks: BankFinancialStocks,
+      product: CreditProduct,
       amount: PLN,
       rng: RandomStream,
-      ccyb: Multiplier,
-      corpBondHoldings: PLN,
   )(using p: SimParams): Boolean =
-    BankCreditApproval.canLend(product, bank, stocks, amount, rng, ccyb, corpBondHoldings)
+    BankCreditApproval.canLend(context, stocks, product, amount, rng)
 
   /** Evaluates audited bank-side approval for a product-specific credit
     * exposure.
     */
   def creditApproval(
-      product: CreditProduct,
-      bank: BankState,
+      context: CreditApprovalContext,
       stocks: BankFinancialStocks,
+      product: CreditProduct,
       amount: PLN,
       rng: RandomStream,
-      ccyb: Multiplier,
-      corpBondHoldings: PLN,
   )(using p: SimParams): CreditApproval =
-    BankCreditApproval.creditApproval(product, bank, stocks, amount, rng, ccyb, corpBondHoldings)
+    BankCreditApproval.creditApproval(context, stocks, product, amount, rng)
 
   // ---------------------------------------------------------------------------
   // Interbank market

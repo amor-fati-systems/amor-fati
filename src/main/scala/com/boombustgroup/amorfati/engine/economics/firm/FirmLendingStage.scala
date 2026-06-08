@@ -17,11 +17,12 @@ private[firm] object FirmLendingStage:
     val ccyb               = in.w.mechanisms.macropru.ccyb
     val bankStocks         = in.ledgerFinancialState.banks.map(LedgerFinancialState.projectBankFinancialStocks)
     val bankCorpBonds      = (bankId: BankId) => CorporateBondOwnership.bankHolderFor(in.ledgerFinancialState, bankId)
+    val approvalContexts   = in.banks.indices.map(idx => Banking.CreditApprovalContext(in.banks(idx), ccyb, bankCorpBonds(BankId(idx)))).toVector
     val rates              = in.banks.zip(bankStocks).zip(bsec.configs).map { case ((b, stocks), cfg) =>
       Banking.lendingRate(b, stocks, cfg, in.fiscal.lendingBaseRate, in.w.gov.bondYield, bankCorpBonds(b.id))
     }
     val creditDecision     = (bankId: Int, amt: PLN) =>
-      val approval = Banking.creditApproval(Banking.CreditProduct.FirmLoan, in.banks(bankId), bankStocks(bankId), amt, rng, ccyb, bankCorpBonds(BankId(bankId)))
+      val approval = Banking.creditApproval(approvalContexts(bankId), bankStocks(bankId), Banking.CreditProduct.FirmLoan, amt, rng)
       Firm.CreditDecision.fromApproval(approval)
     val operationalSignals = OperationalSignals(
       sectorDemandMult = in.demand.sectorMults,
