@@ -21,7 +21,7 @@ private[firm] object FirmLendingStage:
       Banking.lendingRate(b, stocks, cfg, in.fiscal.lendingBaseRate, in.w.gov.bondYield, bankCorpBonds(b.id))
     }
     val creditDecision     = (bankId: Int, amt: PLN) =>
-      val approval = Banking.creditApproval(in.banks(bankId), bankStocks(bankId), amt, rng, ccyb, bankCorpBonds(BankId(bankId)))
+      val approval = Banking.creditApproval(Banking.CreditProduct.FirmLoan, in.banks(bankId), bankStocks(bankId), amt, rng, ccyb, bankCorpBonds(BankId(bankId)))
       Firm.CreditDecision.fromApproval(approval)
     val operationalSignals = OperationalSignals(
       sectorDemandMult = in.demand.sectorMults,

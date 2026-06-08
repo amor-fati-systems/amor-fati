@@ -1,6 +1,6 @@
 package com.boombustgroup.amorfati.agents.household
 
-import com.boombustgroup.amorfati.agents.{HhStatus, Household}
+import com.boombustgroup.amorfati.agents.{Banking, HhStatus, Household}
 import com.boombustgroup.amorfati.types.*
 
 /** Internal result types shared by household monthly execution modules. */
@@ -17,6 +17,7 @@ private[household] object HouseholdStepTypes:
       bankRejectedCreditDemand: PLN,
       creditCapacity: PLN,
       creditAccessEligible: Boolean,
+      bankApproval: Option[Banking.CreditApproval],
       liquidityShortfall: Household.LiquidityShortfallComponents,
       defaultAmt: PLN,
       updatedDebt: PLN,

@@ -40,7 +40,7 @@ carry behavioral state, operational diagnostics, and legacy unsupported metrics.
 
 | File | Boundary |
 |------|----------|
-| `banking/BankCreditApproval.scala` | Firm-bank assignment, lending/deposit pricing, and auditable credit approval gates |
+| `banking/BankCreditApproval.scala` | Firm-bank assignment, lending/deposit pricing, and auditable product-aware credit approval gates |
 | `banking/BankInterbankMarket.scala` | Interbank rate/clearing plus reserve, standing-facility, and interbank-interest plumbing |
 | `banking/BankFailureResolution.scala` | Failure triggers, BFG levy, bail-in, P&A resolution, healthiest-survivor routing |
 | `banking/BankBondPortfolio.scala` | Government-bond issuance/redemption allocation, buyer sales, and HTM forced-sale reclassification |
@@ -77,7 +77,7 @@ carry behavioral state, operational diagnostics, and legacy unsupported metrics.
 | File | Boundary |
 |------|----------|
 | `household/HouseholdIncomeConstruction.scala` | Income, PIT, social transfers, and labor-status income effects |
-| `household/HouseholdConsumerCredit.scala` | Consumer-credit underwriting, approval gates, and residual shortfall demand |
+| `household/HouseholdConsumerCredit.scala` | Consumer-credit borrower underwriting, product-aware bank-supply approval, and residual shortfall demand |
 | `household/HouseholdLiquidityWaterfall.scala` | Consumption priority, liquidity shortfall attribution, and non-negative deposit settlement |
 | `household/HouseholdDistressMachine.scala` | Financial-distress lifecycle, unemployment scarring, MPC, and social-neighbor distress |
 | `household/HouseholdLaborTransitionContext.scala` | Aligned labor-market context for voluntary search and retraining |

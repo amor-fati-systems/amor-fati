@@ -33,6 +33,14 @@ object SimParamsTestOverrides:
       ),
     )
 
+  def bankRiskWeights(firmLoan: Share, consumerLoan: Share): SimParams =
+    SimParams.defaults.copy(
+      banking = SimParams.defaults.banking.copy(
+        firmLoanRiskWeight = firmLoan,
+        consumerLoanRiskWeight = consumerLoan,
+      ),
+    )
+
   val pfronDeficit: SimParams =
     SimParams.defaults.copy(
       earmarked = SimParams.defaults.earmarked.copy(

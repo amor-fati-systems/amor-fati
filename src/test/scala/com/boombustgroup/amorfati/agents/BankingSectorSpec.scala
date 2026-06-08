@@ -5,7 +5,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import com.boombustgroup.amorfati.Generators
 import com.boombustgroup.amorfati.agents.Banking.{BankFailureReason, BankStatus}
-import com.boombustgroup.amorfati.config.SimParams
+import com.boombustgroup.amorfati.config.{SimParams, SimParamsTestOverrides}
 import com.boombustgroup.amorfati.engine.SimulationMonth.ExecutionMonth
 import com.boombustgroup.amorfati.types.*
 
@@ -122,21 +122,27 @@ class BankingSectorSpec extends AnyFlatSpec with Matchers:
 
   "Banking.canLend" should "reject failed banks and low projected CAR" in {
     val failed = mkBankRow(capital = PLN(100000), status = BankStatus.Failed(ExecutionMonth(30)))
-    Banking.canLend(failed.bank, failed.stocks, PLN(1000), RandomStream.seeded(42), Multiplier.Zero, PLN.Zero) shouldBe false
+    Banking.canLend(Banking.CreditProduct.FirmLoan, failed.bank, failed.stocks, PLN(1000), RandomStream.seeded(42), Multiplier.Zero, PLN.Zero) shouldBe false
 
     val weak = mkBankRow(loans = PLN(100000), capital = PLN(8000))
     val rng  = RandomStream.seeded(42L)
-    (0 until 100).forall(_ => !Banking.canLend(weak.bank, weak.stocks, PLN(10000), rng, Multiplier.Zero, PLN.Zero)) shouldBe true
+    (0 until 100).forall(_ =>
+      !Banking.canLend(Banking.CreditProduct.FirmLoan, weak.bank, weak.stocks, PLN(10000), rng, Multiplier.Zero, PLN.Zero),
+    ) shouldBe true
   }
 
   it should "expose audited approval probability and roll only when the stochastic gate is sampled" in {
     val failed      = mkBankRow(capital = PLN(100000), status = BankStatus.Failed(ExecutionMonth(30)))
-    val failedAudit = Banking.creditApproval(failed.bank, failed.stocks, PLN(1000), RandomStream.seeded(42), Multiplier.Zero, PLN.Zero)
+    val failedAudit =
+      Banking.creditApproval(Banking.CreditProduct.FirmLoan, failed.bank, failed.stocks, PLN(1000), RandomStream.seeded(42), Multiplier.Zero, PLN.Zero)
     failedAudit.approved shouldBe false
+    failedAudit.product shouldBe Banking.CreditProduct.FirmLoan
+    failedAudit.amount shouldBe PLN(1000)
     failedAudit.audit.rejectionReason shouldBe Some(Banking.CreditRejectionReason.FailedBank)
 
     val weak      = mkBankRow(loans = PLN(100000), capital = PLN(8000))
-    val weakAudit = Banking.creditApproval(weak.bank, weak.stocks, PLN(10000), RandomStream.seeded(42), Multiplier.Zero, PLN.Zero)
+    val weakAudit =
+      Banking.creditApproval(Banking.CreditProduct.FirmLoan, weak.bank, weak.stocks, PLN(10000), RandomStream.seeded(42), Multiplier.Zero, PLN.Zero)
     weakAudit.approved shouldBe false
     weakAudit.approvalProbability should not be empty
     weakAudit.approvalRoll shouldBe None
@@ -146,7 +152,8 @@ class BankingSectorSpec extends AnyFlatSpec with Matchers:
     weakAudit.audit.nsfr should not be empty
 
     val healthy      = mkBankRow()
-    val healthyAudit = Banking.creditApproval(healthy.bank, healthy.stocks, PLN(1000), RandomStream.seeded(42), Multiplier.Zero, PLN.Zero)
+    val healthyAudit =
+      Banking.creditApproval(Banking.CreditProduct.FirmLoan, healthy.bank, healthy.stocks, PLN(1000), RandomStream.seeded(42), Multiplier.Zero, PLN.Zero)
     healthyAudit.approvalProbability should not be empty
     healthyAudit.approvalRoll should not be empty
   }
@@ -162,11 +169,34 @@ class BankingSectorSpec extends AnyFlatSpec with Matchers:
       reservesAtNbp = PLN(50000),
     )
 
-    val noPressure    = Banking.creditApproval(plain.bank, plain.stocks, PLN(100000), RandomStream.seeded(42), Multiplier.Zero, PLN.Zero)
-    val assetPressure = Banking.creditApproval(withAssets.bank, withAssets.stocks, PLN(100000), RandomStream.seeded(42), Multiplier.Zero, PLN.Zero)
+    val noPressure    =
+      Banking.creditApproval(Banking.CreditProduct.FirmLoan, plain.bank, plain.stocks, PLN(100000), RandomStream.seeded(42), Multiplier.Zero, PLN.Zero)
+    val assetPressure =
+      Banking.creditApproval(
+        Banking.CreditProduct.FirmLoan,
+        withAssets.bank,
+        withAssets.stocks,
+        PLN(100000),
+        RandomStream.seeded(42),
+        Multiplier.Zero,
+        PLN.Zero,
+      )
 
     noPressure.approvalProbability shouldBe Some(Share.One)
     assetPressure.approvalProbability shouldBe Some(Share.One)
+  }
+
+  it should "project approval CAR through the requested credit product bucket" in {
+    val base        = mkBankRow(loans = PLN.Zero, consumerLoans = PLN.Zero, capital = PLN(100000), deposits = PLN(1000000), reservesAtNbp = PLN(1000000))
+    given SimParams = SimParamsTestOverrides.bankRiskWeights(firmLoan = Share.decimal(5, 1), consumerLoan = Share.One)
+
+    val firmApproval     =
+      Banking.creditApproval(Banking.CreditProduct.FirmLoan, base.bank, base.stocks, PLN(100000), RandomStream.seeded(42), Multiplier.Zero, PLN.Zero)
+    val consumerApproval =
+      Banking.creditApproval(Banking.CreditProduct.ConsumerLoan, base.bank, base.stocks, PLN(100000), RandomStream.seeded(42), Multiplier.Zero, PLN.Zero)
+
+    firmApproval.audit.projectedCar.get.should(be > consumerApproval.audit.projectedCar.get)
+    consumerApproval.product shouldBe Banking.CreditProduct.ConsumerLoan
   }
 
   "Banking.car" should "include mortgages in the configured RWA perimeter" in {

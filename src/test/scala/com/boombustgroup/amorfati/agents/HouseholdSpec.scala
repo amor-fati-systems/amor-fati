@@ -46,7 +46,7 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
       equityIndexReturn: Rate = Rate.Zero,
       sectorWages: Option[Vector[PLN]] = None,
       sectorVacancies: Option[Vector[Int]] = None,
-      consumerCreditGate: Option[Household.ConsumerCreditGate] = None,
+      bankCreditSupply: Option[Household.BankCreditSupply] = None,
   ): Household.StepResult =
     val result = Household.step(
       households,
@@ -61,7 +61,7 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
       equityIndexReturn,
       sectorWages,
       sectorVacancies,
-      consumerCreditGate,
+      bankCreditSupply,
     )
     result.households.zip(result.financialStocks).foreach((hh, stocks) => financialById.update(hh.id.toInt, stocks))
     result
@@ -458,7 +458,16 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
       PLN(4666),
       Share.decimal(4, 1),
       rng,
-      consumerCreditGate = Some((_, _, _) => false),
+      bankCreditSupply = Some((request, _) =>
+        Banking.CreditApproval(
+          product = request.product,
+          amount = request.amount,
+          approved = false,
+          approvalProbability = Some(Share.Zero),
+          approvalRoll = Some(Share.One),
+          audit = Banking.CreditApprovalAudit(rejectionReason = Some(Banking.CreditRejectionReason.Stochastic)),
+        ),
+      ),
     )(using creditP)
     val flow   = result.monthlyFlows.head
 
@@ -466,6 +475,9 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
     flow.consumerApprovedOrigination shouldBe PLN.Zero
     flow.consumerRejectedOrigination shouldBe flow.consumerCreditDemand
     flow.consumerBankRejectedOrigination shouldBe flow.consumerCreditDemand
+    flow.consumerBankApprovalProduct shouldBe Banking.CreditProduct.ConsumerLoan.diagnosticCode
+    flow.consumerBankRejectionReason shouldBe Banking.CreditRejectionReason.Stochastic.diagnosticCode
+    flow.consumerBankApprovalProbability shouldBe Some(Share.Zero)
     result.aggregates.totalConsumerBankRejectedOrigination shouldBe flow.consumerBankRejectedOrigination
   }
 

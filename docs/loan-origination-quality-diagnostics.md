@@ -19,7 +19,8 @@ The task writes:
 
 - `loan-origination-quality-households.csv`: household consumer-credit demand,
   underwriting capacity, approved/rejected principal, debt-service ratios,
-  opening distress state, bank health at origination, and later
+  opening distress state, bank-side approval product/reason/probability/roll,
+  bank gate CAR/LCR/NSFR audit ratios, bank health at origination, and later
   arrears/default/write-off outcomes.
 - `loan-origination-quality-firms.csv`: firm credit-decision rows, approved
   principal, sector, size, technology state, cash/debt/profit diagnostics, bank

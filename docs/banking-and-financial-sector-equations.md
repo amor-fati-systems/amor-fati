@@ -48,9 +48,10 @@ open-economy/NBP conditions are known. It then:
 6. emits closing bank state, financial stocks, monetary aggregates, diagnostics,
    and ledger/SFC flow evidence.
 
-Firm and household credit approvals call bank-side approval rules, but the RNG
-owner is the stage that invokes them: firm approvals are owned by the firm stage
-and household consumer-credit approvals by the household path. The
+Firm and household credit approvals call the product-aware bank-side approval
+rules, but the RNG owner is the stage that invokes them: firm approvals are
+owned by the firm stage and household consumer-credit approvals by the household
+path. The
 `BankingEconomics` randomness stream is for stochastic choices executed inside
 the banking stage itself, especially health-driven deposit mobility.
 
@@ -134,15 +135,29 @@ crowdingOutSpread_b =
 
 Failed banks receive a fixed penalty spread and cannot approve new credit.
 
-For a proposed new credit amount `A`, approval uses hard regulatory gates and a
-stochastic draw:
+For a proposed new credit amount `A` in product bucket
+`q in {firm, consumer, mortgage}`, approval uses hard regulatory gates and a
+stochastic draw. The requested product determines which exposure bucket is
+incremented before projected RWA is computed:
 
 ```text
-ProjectedRWA_b(A) =
+FirmLoans'_b(q, A) =
+  L^{B,F}_{b,t} + A       if q = firm
+  L^{B,F}_{b,t}           otherwise
+
+ConsumerLoans'_b(q, A) =
+  L^{B,H}_{b,t} + A       if q = consumer
+  L^{B,H}_{b,t}           otherwise
+
+MortgageLoans'_b(q, A) =
+  M^B_{b,t} + A           if q = mortgage
+  M^B_{b,t}               otherwise
+
+ProjectedRWA_b(q, A) =
   RWA_b(
-    firmLoans = L^{B,F}_{b,t} + A,
-    consumerLoans = L^{B,CC}_{b,t},
-    mortgageLoans = L^{B,M}_{b,t},
+    firmLoans = FirmLoans'_b(q, A),
+    consumerLoans = ConsumerLoans'_b(q, A),
+    mortgageLoans = MortgageLoans'_b(q, A),
     corpBondHoldings = CB^B_{b,t},
     interbankAssets = max(IB^B_{b,t}, 0),
     govBondHoldings = GB^B_{b,t},
@@ -150,19 +165,24 @@ ProjectedRWA_b(A) =
     capitalBackstop = max(K^B_{b,t}, 0)
   )
 
-ProjectedCAR_b(A) = K^B_{b,t} / ProjectedRWA_b(A)
+ProjectedCAR_b(q, A) = K^B_{b,t} / ProjectedRWA_b(q, A)
 
-carOk  = ProjectedCAR_b(A) >= effectiveMinCar_b(ccyb_tau)
+carOk  = ProjectedCAR_b(q, A) >= effectiveMinCar_b(ccyb_tau)
 lcrOk  = LCR_b >= lcrMin
 nsfrOk = NSFR_b >= nsfrMin
 ```
+
+Firm credit requests use `q = firm`; household consumer-credit requests use
+`q = consumer` after household-side affordability and distress filters have
+passed. Mortgage approval is represented in the same product vocabulary even
+where current origination is handled by housing-stage aggregate flows.
 
 If all hard gates pass:
 
 ```text
 approvalP_b =
   max(1 - nplPenalty_b,
-      firmCreditMinApprovalProb)
+      creditMinApprovalProb)
 ```
 
 The proposal is approved when the stochastic roll is below `approvalP_b`.

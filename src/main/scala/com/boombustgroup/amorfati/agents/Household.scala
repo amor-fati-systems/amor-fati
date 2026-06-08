@@ -62,7 +62,10 @@ object PerBankFlow:
   * tests, ledger projection, and diagnostics.
   */
 object Household:
-  type ConsumerCreditGate = (BankId, PLN, RandomStream) => Boolean
+  /** Product-aware bank-side credit-supply boundary used after household-side
+    * eligibility and capacity checks.
+    */
+  type BankCreditSupply = Banking.CreditSupply
 
   def isEmployed(hh: State): Boolean =
     hh.status match
@@ -277,33 +280,41 @@ object Household:
     * exports.
     */
   case class MonthlyFlow(
-      householdId: HhId,                                   // household identifier for joining with closed-month state
-      openingDemandDeposit: PLN,                           // opening liquid deposit before the household month step
-      openingConsumerLoan: PLN,                            // opening unsecured consumer-loan principal
-      monthlyIncome: PLN,                                  // net monthly household income after PIT and transfers
-      consumption: PLN,                                    // monthly household goods consumption
-      rent: PLN,                                           // monthly rent paid by the household
-      mortgageDebtService: PLN,                            // monthly secured mortgage debt service
-      consumerApprovedOrigination: PLN,                    // underwritten consumer credit originated by the DTI rule
-      consumerCreditDemand: PLN,                           // underwritten consumer-credit demand before eligibility denial
-      consumerRejectedOrigination: PLN,                    // consumer-credit demand rejected by borrower or bank rules
-      consumerBankRejectedOrigination: PLN,                // consumer-credit demand rejected by bank supply
-      consumerCreditCapacity: PLN = PLN.Zero,              // principal capacity implied by payment-factor underwriting
-      consumerCreditAccessEligible: Boolean = false,       // whether stochastic access allowed underwritten credit
-      liquidityShortfallFinancing: PLN,                    // same-month bridge/write-off preventing negative closing deposits
-      consumerDebtService: PLN,                            // monthly unsecured consumer-credit debt service
-      consumerDefault: PLN,                                // gross consumer default plus bridge charge-off this month
-      consumerPrincipal: PLN,                              // principal component of consumer debt service
-      closingConsumerLoan: PLN,                            // closing unsecured consumer-loan principal
-      consumerLoanDefault: PLN = PLN.Zero,                 // default of ordinary outstanding consumer-loan principal
-      liquidityBridgeChargeOff: PLN = PLN.Zero,            // same-month bridge charge-off, not ordinary consumer-loan default
-      unmetBasicConsumption: PLN = PLN.Zero,               // non-discretionary consumption need not covered by cash
-      discretionaryConsumptionCompression: PLN = PLN.Zero, // discretionary consumption cut before bridge/default
-      consumptionShortfall: PLN = PLN.Zero,                // shortfall attributed to modeled consumption outflow
-      rentArrears: PLN = PLN.Zero,                         // shortfall attributed to rent payment
-      mortgageArrears: PLN = PLN.Zero,                     // shortfall attributed to mortgage debt service
-      consumerDebtArrears: PLN = PLN.Zero,                 // shortfall attributed to consumer debt service
-      temporaryOverdraft: PLN = PLN.Zero,                  // shortfall attributed to other current liquidity gaps
+      householdId: HhId,                                     // household identifier for joining with closed-month state
+      openingDemandDeposit: PLN,                             // opening liquid deposit before the household month step
+      openingConsumerLoan: PLN,                              // opening unsecured consumer-loan principal
+      monthlyIncome: PLN,                                    // net monthly household income after PIT and transfers
+      consumption: PLN,                                      // monthly household goods consumption
+      rent: PLN,                                             // monthly rent paid by the household
+      mortgageDebtService: PLN,                              // monthly secured mortgage debt service
+      consumerApprovedOrigination: PLN,                      // underwritten consumer credit originated by the DTI rule
+      consumerCreditDemand: PLN,                             // underwritten consumer-credit demand before eligibility denial
+      consumerRejectedOrigination: PLN,                      // consumer-credit demand rejected by borrower or bank rules
+      consumerBankRejectedOrigination: PLN,                  // consumer-credit demand rejected by bank supply
+      consumerCreditCapacity: PLN = PLN.Zero,                // principal capacity implied by payment-factor underwriting
+      consumerCreditAccessEligible: Boolean = false,         // whether stochastic access allowed underwritten credit
+      liquidityShortfallFinancing: PLN,                      // same-month bridge/write-off preventing negative closing deposits
+      consumerDebtService: PLN,                              // monthly unsecured consumer-credit debt service
+      consumerDefault: PLN,                                  // gross consumer default plus bridge charge-off this month
+      consumerPrincipal: PLN,                                // principal component of consumer debt service
+      closingConsumerLoan: PLN,                              // closing unsecured consumer-loan principal
+      consumerLoanDefault: PLN = PLN.Zero,                   // default of ordinary outstanding consumer-loan principal
+      liquidityBridgeChargeOff: PLN = PLN.Zero,              // same-month bridge charge-off, not ordinary consumer-loan default
+      unmetBasicConsumption: PLN = PLN.Zero,                 // non-discretionary consumption need not covered by cash
+      discretionaryConsumptionCompression: PLN = PLN.Zero,   // discretionary consumption cut before bridge/default
+      consumptionShortfall: PLN = PLN.Zero,                  // shortfall attributed to modeled consumption outflow
+      rentArrears: PLN = PLN.Zero,                           // shortfall attributed to rent payment
+      mortgageArrears: PLN = PLN.Zero,                       // shortfall attributed to mortgage debt service
+      consumerDebtArrears: PLN = PLN.Zero,                   // shortfall attributed to consumer debt service
+      temporaryOverdraft: PLN = PLN.Zero,                    // shortfall attributed to other current liquidity gaps
+      consumerBankApprovalProduct: String = "",              // bank-credit product submitted for consumer-credit supply
+      consumerBankRejectionReason: String = "",              // bank-side rejection reason, empty when no bank rejection
+      consumerBankApprovalProbability: Option[Share] = None, // bank-side stochastic approval probability if evaluated
+      consumerBankApprovalRoll: Option[Share] = None,        // stochastic approval draw if sampled by the bank
+      consumerBankProjectedCar: Option[Multiplier] = None,   // projected bank CAR after requested exposure
+      consumerBankMinCar: Option[Multiplier] = None,         // effective minimum CAR used by the bank gate
+      consumerBankLcr: Option[Multiplier] = None,            // LCR observed by the bank gate
+      consumerBankNsfr: Option[Multiplier] = None,           // NSFR observed by the bank gate
   )
 
   object MonthlyFlow:
@@ -577,7 +588,7 @@ object Household:
       equityIndexReturn: Rate = Rate.Zero,
       sectorWages: Option[Vector[PLN]] = None,
       sectorVacancies: Option[Vector[Int]] = None,
-      consumerCreditGate: Option[ConsumerCreditGate] = None,
+      bankCreditSupply: Option[BankCreditSupply] = None,
   )(using p: SimParams): StepResult =
     HouseholdStepRunner.step(
       households,
@@ -592,7 +603,7 @@ object Household:
       equityIndexReturn,
       sectorWages,
       sectorVacancies,
-      consumerCreditGate,
+      bankCreditSupply,
     )
 
   /** Public entry point for household aggregate statistics. */

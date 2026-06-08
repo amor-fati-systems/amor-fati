@@ -212,17 +212,35 @@ object Banking:
       resolvedBankCount: Int = 0,
   )
 
-  /** Auditable result of a firm-credit approval check. `approvalRoll` is
-    * defined only when balance-sheet constraints pass and the stochastic
-    * approval gate is actually sampled.
+  /** Product class of a new bank-credit exposure under approval.
+    *
+    * The product selects the projected regulatory exposure bucket.
+    * Borrower-side underwriting remains outside the bank approval engine.
     */
-  enum CreditRejectionReason(val csvValue: String):
+  enum CreditProduct(val diagnosticCode: String):
+    case FirmLoan     extends CreditProduct("firm-loan")
+    case ConsumerLoan extends CreditProduct("consumer-loan")
+    case MortgageLoan extends CreditProduct("mortgage-loan")
+
+  /** Bank-side credit-supply request after borrower-side demand and eligibility
+    * have already been determined.
+    */
+  case class CreditRequest(bankId: BankId, product: CreditProduct, amount: PLN)
+
+  /** Product-aware credit-supply boundary used by agents that need a bank-side
+    * approval decision.
+    */
+  type CreditSupply = (CreditRequest, RandomStream) => CreditApproval
+
+  /** Rejection reason emitted by the bank-side approval engine. */
+  enum CreditRejectionReason(val diagnosticCode: String):
     case FailedBank        extends CreditRejectionReason("failed-bank")
     case CapitalAdequacy   extends CreditRejectionReason("car")
     case LiquidityCoverage extends CreditRejectionReason("lcr")
     case StableFunding     extends CreditRejectionReason("nsfr")
     case Stochastic        extends CreditRejectionReason("stochastic")
 
+  /** Audit fields for the bank-side approval gates. */
   case class CreditApprovalAudit(
       rejectionReason: Option[CreditRejectionReason] = None,
       projectedCar: Option[Multiplier] = None,
@@ -242,7 +260,13 @@ object Banking:
   object CreditApprovalAudit:
     val empty: CreditApprovalAudit = CreditApprovalAudit()
 
+  /** Auditable result of a bank-credit approval check. `approvalRoll` is
+    * defined only when balance-sheet constraints pass and the stochastic
+    * approval gate is actually sampled.
+    */
   case class CreditApproval(
+      product: CreditProduct,
+      amount: PLN,
       approved: Boolean,
       approvalProbability: Option[Share],
       approvalRoll: Option[Share],
@@ -401,21 +425,33 @@ object Banking:
   // Credit approval
   // ---------------------------------------------------------------------------
 
-  /** Can this bank lend `amount`? Checks projected CAR, LCR/NSFR, and
-    * stochastic approval probability penalised by NPL ratio and reserve
-    * utilisation. Reserve constraint is soft: approval probability decreases as
-    * the bank approaches full reserve utilisation, rather than a hard block
-    * (banks can temporarily fund via interbank market).
+  /** Can this bank approve the product-specific credit amount? Checks projected
+    * CAR, LCR/NSFR, and stochastic approval probability penalised by NPL ratio.
     */
-  def canLend(bank: BankState, stocks: BankFinancialStocks, amount: PLN, rng: RandomStream, ccyb: Multiplier, corpBondHoldings: PLN)(using
-      p: SimParams,
-  ): Boolean =
-    BankCreditApproval.canLend(bank, stocks, amount, rng, ccyb, corpBondHoldings)
+  def canLend(
+      product: CreditProduct,
+      bank: BankState,
+      stocks: BankFinancialStocks,
+      amount: PLN,
+      rng: RandomStream,
+      ccyb: Multiplier,
+      corpBondHoldings: PLN,
+  )(using p: SimParams): Boolean =
+    BankCreditApproval.canLend(product, bank, stocks, amount, rng, ccyb, corpBondHoldings)
 
-  def creditApproval(bank: BankState, stocks: BankFinancialStocks, amount: PLN, rng: RandomStream, ccyb: Multiplier, corpBondHoldings: PLN)(using
-      p: SimParams,
-  ): CreditApproval =
-    BankCreditApproval.creditApproval(bank, stocks, amount, rng, ccyb, corpBondHoldings)
+  /** Evaluates audited bank-side approval for a product-specific credit
+    * exposure.
+    */
+  def creditApproval(
+      product: CreditProduct,
+      bank: BankState,
+      stocks: BankFinancialStocks,
+      amount: PLN,
+      rng: RandomStream,
+      ccyb: Multiplier,
+      corpBondHoldings: PLN,
+  )(using p: SimParams): CreditApproval =
+    BankCreditApproval.creditApproval(product, bank, stocks, amount, rng, ccyb, corpBondHoldings)
 
   // ---------------------------------------------------------------------------
   // Interbank market
