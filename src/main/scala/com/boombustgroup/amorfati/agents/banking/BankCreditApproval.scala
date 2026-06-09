@@ -9,7 +9,7 @@ import com.boombustgroup.amorfati.types.*
 /** Encapsulates bank-side credit routing, pricing, and loan approval gates.
   *
   * The module owns borrower-bank assignment, rate formation, and the audited
-  * stochastic approval decision for new product-specific credit exposures.
+  * regulatory approval decision for new product-specific credit exposures.
   */
 private[agents] object BankCreditApproval:
 
@@ -70,8 +70,9 @@ private[agents] object BankCreditApproval:
   /** Evaluates the full audited bank-credit approval decision.
     *
     * Hard regulatory gates cover failure status, projected CAR, LCR, and NSFR.
-    * Banks that pass those gates still face a stochastic approval draw
-    * penalized by NPL pressure.
+    * NPL pressure is routed through lending spreads, ECL provisioning, and the
+    * resulting capital path rather than through a second direct approval
+    * penalty.
     */
   def creditApproval(
       context: CreditApprovalContext,
@@ -100,8 +101,7 @@ private[agents] object BankCreditApproval:
       val lcrOk                                                             = currentLcr >= p.banking.lcrMin
       val currentNsfr                                                       = BankRegulatoryMetrics.nsfr(bank, stocks, context.corpBondHoldings)
       val nsfrOk                                                            = currentNsfr >= p.banking.nsfrMin
-      val nplPenalty                                                        = BankRegulatoryMetrics.nplRatio(bank, stocks) * p.banking.creditNplApprovalPenalty
-      val approvalP                                                         = (Share.One - nplPenalty.toShare).max(p.banking.creditMinApprovalProb)
+      val approvalP                                                         = Share.One
       def audit(reason: Option[CreditRejectionReason]): CreditApprovalAudit =
         CreditApprovalAudit(
           rejectionReason = reason,
@@ -113,15 +113,14 @@ private[agents] object BankCreditApproval:
           nsfrMin = Some(p.banking.nsfrMin),
         )
       if carOk && lcrOk && nsfrOk then
-        val roll     = Share.random(rng)
-        val approved = roll < approvalP
+        val roll = Share.random(rng)
         CreditApproval(
           product = product,
           amount = amount,
-          approved = approved,
+          approved = true,
           approvalProbability = Some(approvalP),
           approvalRoll = Some(roll),
-          audit = audit(if approved then None else Some(CreditRejectionReason.Stochastic)),
+          audit = audit(None),
         )
       else
         val reason =

@@ -453,7 +453,7 @@ surface. The decision carries approval probability, roll, and rejection reason
 when available. Rejection reasons are exposed as:
 
 ```text
-failed-bank, CAR gate, LCR gate, NSFR gate, stochastic, unclassified
+failed-bank, CAR gate, LCR gate, NSFR gate, unclassified
 ```
 
 Approved technology and investment loan demand enters the firm financing split.
@@ -582,7 +582,7 @@ Representative output columns include:
 | Production and investment | `GrossInvestment`, `PrivateGrossInvestmentToGdp`, `AggCapitalStock`, `AggInventoryStock`, `InventoryChange`, `InventoryToGdp`, `AggEnergyCost`, `GreenInvestment` |
 | Technology adoption | `TotalAdoption`, `AutoRatio`, `HybridRatio`, `Automation_TechCapex`, `Automation_TechImports`, `Automation_TechLoans`, `Automation_UpgradeFailures`, `Automation_AiDebtTrap`, `Automation_NewFullAi`, `Automation_NewHybrid` |
 | Firm credit | `FirmCredit_NewLoans`, `FirmCredit_PrincipalRepaid`, `FirmCredit_GrossDefault`, `FirmCredit_NplRecovery`, `FirmCredit_NplLoss`, `FirmCredit_NetStockFlow`, `FirmCredit_CreditDemand`, `FirmCredit_CreditApproved`, `FirmCredit_BankRejected`, `FirmCredit_ApprovalRate` |
-| Credit rejection reasons | `FirmCredit_RejectedFailedBank`, `FirmCredit_RejectedCarGate`, `FirmCredit_RejectedLcrGate`, `FirmCredit_RejectedNsfrGate`, `FirmCredit_RejectedStochastic`, `FirmCredit_RejectedUnclassified` |
+| Credit rejection reasons | `FirmCredit_RejectedFailedBank`, `FirmCredit_RejectedCarGate`, `FirmCredit_RejectedLcrGate`, `FirmCredit_RejectedNsfrGate`, `FirmCredit_RejectedUnclassified` |
 | Investment and technology credit | `FirmCredit_InvestmentDemand`, `FirmCredit_InvestmentApproved`, `FirmCredit_InvestmentBankRejected`, `FirmCredit_CashFinancedInvestment`, `FirmCredit_TechDemand`, `FirmCredit_TechApproved`, `FirmCredit_TechBankRejected`, selected/candidate tech-credit columns |
 | Bonds and equity | `EquityIssuanceTotal`, `CorpBondOutstanding`, `CorpBondYield`, `CorpBondIssuance`, `CorpBondSpread`, `CorpBondAbsorptionRate`, holder corporate-bond columns |
 | Entry and exit | `FirmBirths`, `FirmDeaths`, `NetEntry`, `LivingFirmCount`, `NetFirmBirths` |

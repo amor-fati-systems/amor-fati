@@ -309,8 +309,8 @@ object Household:
       temporaryOverdraft: PLN,                        // shortfall attributed to other current liquidity gaps
       consumerBankApprovalProduct: String,            // bank-credit product submitted for consumer-credit supply
       consumerBankRejectionReason: String,            // bank-side rejection reason, empty when no bank rejection
-      consumerBankApprovalProbability: Option[Share], // bank-side stochastic approval probability if evaluated
-      consumerBankApprovalRoll: Option[Share],        // stochastic approval draw if sampled by the bank
+      consumerBankApprovalProbability: Option[Share], // bank-side approval probability if evaluated
+      consumerBankApprovalRoll: Option[Share],        // replay/audit draw if sampled by the bank
       consumerBankProjectedCar: Option[Multiplier],   // projected bank CAR after requested exposure
       consumerBankMinCar: Option[Multiplier],         // effective minimum CAR used by the bank gate
       consumerBankLcr: Option[Multiplier],            // LCR observed by the bank gate

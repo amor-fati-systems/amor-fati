@@ -234,7 +234,6 @@ object Banking:
     case CapitalAdequacy   extends CreditRejectionReason("car")
     case LiquidityCoverage extends CreditRejectionReason("lcr")
     case StableFunding     extends CreditRejectionReason("nsfr")
-    case Stochastic        extends CreditRejectionReason("stochastic")
 
   /** Audit fields for the bank-side approval gates. */
   case class CreditApprovalAudit(
@@ -257,8 +256,8 @@ object Banking:
     val empty: CreditApprovalAudit = CreditApprovalAudit()
 
   /** Auditable result of a bank-credit approval check. `approvalRoll` is
-    * defined only when balance-sheet constraints pass and the stochastic
-    * approval gate is actually sampled.
+    * defined only when balance-sheet constraints pass and the replay/audit draw
+    * is sampled.
     */
   case class CreditApproval(
       product: CreditProduct,
@@ -433,7 +432,8 @@ object Banking:
   // ---------------------------------------------------------------------------
 
   /** Can this bank approve the product-specific credit amount? Checks projected
-    * CAR, LCR/NSFR, and stochastic approval probability penalised by NPL ratio.
+    * CAR and LCR/NSFR. Credit-risk pressure reaches approval through pricing,
+    * ECL/provisioning, and the resulting capital path.
     */
   def canLend(
       context: CreditApprovalContext,
