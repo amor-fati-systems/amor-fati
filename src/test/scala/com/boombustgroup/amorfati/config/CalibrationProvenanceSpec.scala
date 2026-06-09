@@ -39,9 +39,9 @@ class CalibrationProvenanceSpec extends AnyFlatSpec with Matchers:
 
   "Baseline calibration provenance" should "preserve the active default inventory status counts in code" in {
     CalibrationProvenance.Baseline.parseErrors shouldBe empty
-    CalibrationProvenance.Baseline.parameters should have size 246
+    CalibrationProvenance.Baseline.parameters should have size 247
     CalibrationProvenance.Baseline.statusCounts should contain(Empirical -> 37)
-    CalibrationProvenance.Baseline.statusCounts should contain(EmpiricalTransformed -> 17)
+    CalibrationProvenance.Baseline.statusCounts should contain(EmpiricalTransformed -> 18)
     CalibrationProvenance.Baseline.statusCounts should contain(CodeNoteEmpirical -> 62)
     CalibrationProvenance.Baseline.statusCounts should contain(TunedNeedsValidation -> 89)
     CalibrationProvenance.Baseline.statusCounts.getOrElse(UnknownSource, 0) shouldBe 0

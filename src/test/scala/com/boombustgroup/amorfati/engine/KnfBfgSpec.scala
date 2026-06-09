@@ -99,6 +99,39 @@ class KnfBfgSpec extends AnyFlatSpec with Matchers:
     result.perBank(0) should be > PLN.Zero
   }
 
+  "Banking.computePolishBankLevy" should "tax explicit assets above statutory deductions and threshold" in {
+    val capital  = PLN(50000)
+    val govBonds = PLN(80000)
+    val excess   = PLN(300000)
+    val active   = mkBankRow(
+      id = 0,
+      deposits = PLN(800000),
+      loans = p.banking.polishBankLevyAssetThreshold + capital + excess,
+      capital = capital,
+      govBondHoldings = govBonds,
+    )
+    val taxable  = Banking.polishBankLevyTaxableAssets(active.bank, active.stocks, PLN.Zero)
+    val result   = Banking.computePolishBankLevy(Vector(active.bank), Vector(active.stocks), _ => PLN.Zero)
+
+    taxable shouldBe excess
+    result.total shouldBe taxable * p.banking.polishBankLevyMonthlyRate
+  }
+
+  it should "exempt failed-bank shells from the Polish bank levy" in {
+    val failed =
+      mkBankRow(
+        id = 0,
+        deposits = PLN(1000000),
+        loans = p.banking.polishBankLevyAssetThreshold + PLN(500000),
+        capital = PLN(100000),
+        status = BankStatus.Failed(ExecutionMonth(4)),
+      )
+    val result = Banking.computePolishBankLevy(Vector(failed.bank), Vector(failed.stocks), _ => PLN.Zero)
+
+    result.perBank.head shouldBe PLN.Zero
+    result.total shouldBe PLN.Zero
+  }
+
   "Banking.applyBailIn" should "haircut only failed-bank uninsured deposit stocks" in {
     val safe       = Vector(mkBankRow(deposits = PLN(500000), loans = PLN(100000), capital = PLN(50000)))
     val safeResult = Banking.applyBailIn(banks(safe), stocks(safe), Set(BankId(0)))

@@ -159,6 +159,7 @@ private[flows] object MonthFlowPlanBuilder:
         bankCorpBondLoss = openEconomy.corpBonds.corpBondBankDefaultLoss,
         bankFxReserveSettlement = openEconomy.monetary.fxPlnInjection,
         bankBfgLevy = banking.bfgLevy,
+        bankPolishLevyTax = banking.polishBankLevyTax,
         bankUnrealizedLoss = banking.unrealizedBondLoss,
         bankBailIn = banking.bailInLoss,
         bankNbpRemittance = openEconomy.banking.nbpRemittance,

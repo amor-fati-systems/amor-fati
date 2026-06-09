@@ -257,6 +257,7 @@ object SimParams:
         initGovBonds = PLN(400000000000L) * r,
         initNbpGovBonds = PLN(300000000000L) * r,
         initConsumerLoans = PLN(225200000000L) * r,
+        polishBankLevyAssetThreshold = PLN(4000000000L) * r,
       ),
       forex = ForexConfig(),
       openEcon = OpenEconConfig(

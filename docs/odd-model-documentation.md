@@ -70,7 +70,7 @@ The current model is expected to generate and expose:
   financial-distress state, retraining, bankruptcy, education, region, and
   social-neighbor effects;
 - financial-stability patterns: CAR, NPLs, LCR/NSFR inputs, interbank stress,
-  bank failure and resolution, BFG levy and bail-in, government-bond portfolio
+  bank failure and resolution, BFG levy, Polish bank levy and bail-in, government-bond portfolio
   effects, and credit rationing;
 - accounting artifacts: symbolic Balance Sheet Matrix (BSM), Transactions
   Flow Matrix (TFM), stock-flow reconciliation evidence, and runtime mapping
@@ -205,7 +205,7 @@ The monthly calculus boundary is:
 | `HouseholdFinancialEconomics` | mortgages, deposit interest, remittances, tourism, consumer credit |
 | `PriceEquityEconomics` | inflation, equity market, GDP proxy, macroprudential, EU funds |
 | `OpenEconEconomics` | BoP, forex, GVC, Taylor rule, bond yields, insurance, NBFI |
-| `BankingEconomics` | bank P&L, provisioning, CAR, resolution, interbank, BFG levy, M1/M2/M3 |
+| `BankingEconomics` | bank P&L, provisioning, CAR, resolution, interbank, BFG and Polish bank levies, M1/M2/M3 |
 | `closedmonth/MonthClosing` | aggregation, informal economy, lifecycle transitions, SFC status, next state |
 
 ### Flow Emission And Accounting Boundary

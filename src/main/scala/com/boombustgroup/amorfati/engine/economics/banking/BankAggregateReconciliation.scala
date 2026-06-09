@@ -33,6 +33,7 @@ private[banking] object BankAggregateReconciliation:
       bailInLoss: PLN,
       multiCapDestruction: PLN,
       interbankContagionLoss: PLN,
+      polishBankLevyTax: PLN,
       htmRealizedLoss: PLN,
       bankCapitalTerms: BankCapitalTerms,
   )(using p: SimParams): AggregateReconciliationResult =
@@ -61,6 +62,7 @@ private[banking] object BankAggregateReconciliation:
         bailInLoss = bailInLoss,
         multiCapDestruction = multiCapDestruction,
         interbankContagionLoss = interbankContagionLoss,
+        polishBankLevyTax = polishBankLevyTax,
         htmRealizedLoss = htmRealizedLoss,
         bankCapitalTerms = bankCapitalTerms,
       )
@@ -270,13 +272,14 @@ private[banking] object BankAggregateReconciliation:
       bailInLoss: PLN,
       multiCapDestruction: PLN,
       interbankContagionLoss: PLN,
+      polishBankLevyTax: PLN,
       htmRealizedLoss: PLN,
       bankCapitalTerms: BankCapitalTerms,
   )(using p: SimParams): AggregateReconciliation =
     val capitalLosses  = in.firm.nplLoss + mortgageFlows.defaultLoss + in.householdFinancial.consumerNplLoss +
       in.openEconomy.corpBonds.corpBondBankDefaultLoss +
       Banking.computeBfgLevy(in.banks, in.ledgerFinancialState.banks.map(LedgerFinancialState.projectBankFinancialStocks)).total +
-      interbankContagionLoss + bankCapitalTerms.unrealizedBondLoss + htmRealizedLoss +
+      polishBankLevyTax + interbankContagionLoss + bankCapitalTerms.unrealizedBondLoss + htmRealizedLoss +
       bankCapitalTerms.eclProvisionChange + multiCapDestruction
     val targetCapital  = prevBankAgg.capital - capitalLosses + bankCapitalTerms.retainedIncome
     val targetDeposits = prevBankAgg.deposits + in.householdIncome.totalIncome - in.householdIncome.consumption +

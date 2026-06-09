@@ -142,6 +142,7 @@ private[banking] final case class MultiBankResult(
     reassignedFirms: Vector[Firm.State],
     reassignedHouseholds: Vector[Household.State],
     bailInLoss: PLN,
+    polishBankLevyTax: PLN,
     multiCapDestruction: PLN,
     interbankContagionLoss: PLN,
     newFailures: Int,

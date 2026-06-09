@@ -492,6 +492,7 @@ losses_b =
   + consumerNplLoss_b
   + corpBondDefaultLoss_b
   + bfgLevy_b
+  + polishBankLevyTax_b
   + unrealizedBondLoss_b
 
 retainedIncome_b =
@@ -510,6 +511,7 @@ DeltaBankCapital =
   RetainedIncome
   - RealizedCreditLoss
   - BfgLevy
+  - PolishBankLevyTax
   - UnrealizedBondLoss
   - HtmRealizedLoss
   - EclProvisionChange
@@ -689,7 +691,7 @@ Main Monte Carlo output families:
 | Monetary aggregates | `M0`, `M1`, `M2`, `M3`, `CreditMultiplier` |
 | Rates | `InterbankRate`, `WIBOR_1M`, `WIBOR_3M`, `WIBOR_6M` |
 | Regulatory ratios | `MinBankCAR`, `MaxBankNPL`, `MinBankLCR`, `MinBankNSFR` |
-| Failure and resolution | `BankFailures`, `BankFailure_*`, `BankResolution_*`, `BailInLoss`, `BfgLevyTotal` |
+| Failure and resolution | `BankFailures`, `BankFailure_*`, `BankResolution_*`, `BailInLoss`, `BfgLevyTotal`, `PolishBankLevyTaxTotal` |
 | Capital waterfall | `BankCapital_*`, `BankCreditLoss_*`, `BankReconciliation_*` |
 | ECL | `BankEcl_*`, `EclStage1`, `EclStage2`, `EclStage3` |
 | Corporate bonds | `CorpBondOutstanding`, `CorpBondYield`, `CorpBondIssuance`, `CorpBondSpread`, `BankCorpBondHoldings`, `CorpBondAbsorptionRate` |

@@ -733,6 +733,7 @@ object McTimeseriesSchema:
     ColumnDef("BankEcl_GdpGrowthMonthly", ctx => ctx.bankEcl.gdpGrowthMonthly),
     // KNF/BFG
     ColumnDef.macroPln("BfgLevyTotal", ctx => ctx.world.flows.bfgLevyTotal),
+    ColumnDef.macroPln("PolishBankLevyTaxTotal", ctx => ctx.world.flows.polishBankLevyTaxTotal),
     ColumnDef.macroPln("BfgFundBalance", ctx => ctx.world.mechanisms.bfgFundBalance),
     ColumnDef.macroPln("BailInLoss", ctx => ctx.world.flows.bailInLoss),
     // Bank-capital attribution: sector aggregate opening-to-closing waterfall.
@@ -747,6 +748,7 @@ object McTimeseriesSchema:
     ColumnDef.macroPln("BankCapital_CorpBondDefaultLoss", ctx => ctx.bankCapital.corpBondDefaultLoss),
     ColumnDef.macroPln("BankCapital_InterbankContagionLoss", ctx => ctx.bankCapital.interbankContagionLoss),
     ColumnDef.macroPln("BankCapital_BfgLevy", ctx => ctx.bankCapital.bfgLevy),
+    ColumnDef.macroPln("BankCapital_PolishBankLevyTax", ctx => ctx.bankCapital.polishBankLevyTax),
     ColumnDef.macroPln("BankCapital_UnrealizedBondLoss", ctx => ctx.bankCapital.unrealizedBondLoss),
     ColumnDef.macroPln("BankCapital_HtmRealizedLoss", ctx => ctx.bankCapital.htmRealizedLoss),
     ColumnDef.macroPln("BankCapital_EclProvisionChange", ctx => ctx.bankCapital.eclProvisionChange),
@@ -1291,6 +1293,7 @@ object McTimeseriesSchema:
     val BankCapitalCorpBondDefaultLoss: Col            = lookup("BankCapital_CorpBondDefaultLoss")
     val BankCapitalInterbankContagionLoss: Col         = lookup("BankCapital_InterbankContagionLoss")
     val BankCapitalBfgLevy: Col                        = lookup("BankCapital_BfgLevy")
+    val BankCapitalPolishBankLevyTax: Col              = lookup("BankCapital_PolishBankLevyTax")
     val BankCapitalUnrealizedBondLoss: Col             = lookup("BankCapital_UnrealizedBondLoss")
     val BankCapitalHtmRealizedLoss: Col                = lookup("BankCapital_HtmRealizedLoss")
     val BankCapitalEclProvisionChange: Col             = lookup("BankCapital_EclProvisionChange")

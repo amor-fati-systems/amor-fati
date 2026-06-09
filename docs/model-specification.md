@@ -147,7 +147,7 @@ signals. The formal transition contract lives in
 | --- | --- | --- |
 | Households | Labor supply, income, consumption, savings, rent, mortgages, consumer credit, remittances, retraining, distress, bankruptcy, social-neighbor effects | [ODD](odd-model-documentation.md), [behavioral equations](behavioral-equations-and-decision-rules.md#household-rules) |
 | Firms | Production, capacity, hiring/firing, inventory, investment, technology adoption, credit demand, bond/equity financing, default, entry/exit | [ODD](odd-model-documentation.md), [behavioral equations](behavioral-equations-and-decision-rules.md#firm-rules) |
-| Banks | Lending, deposits, interest margins, CAR/NPL/LCR/NSFR, ECL staging, interbank, bond portfolio, failures, resolution, bail-in, BFG levy | [banking and financial-sector equations](banking-and-financial-sector-equations.md), [behavioral equations](behavioral-equations-and-decision-rules.md#banking-rules), [ADR 0001](adr/0001-bank-capital-sfc-semantics.md) |
+| Banks | Lending, deposits, interest margins, CAR/NPL/LCR/NSFR, ECL staging, interbank, bond portfolio, failures, resolution, bail-in, BFG and Polish bank levies | [banking and financial-sector equations](banking-and-financial-sector-equations.md), [behavioral equations](behavioral-equations-and-decision-rules.md#banking-rules), [ADR 0001](adr/0001-bank-capital-sfc-semantics.md) |
 | Central government | Taxes, spending, transfers, fiscal-rule constraints, bond issuance, public debt and deficit metrics | [institutional sector equations](institutional-sector-equations.md), [behavioral equations](behavioral-equations-and-decision-rules.md#government-budget-and-debt) |
 | NBP | Reference rate, monetary policy, reserves, standing facilities, QE, FX operations, monetary aggregates | [institutional sector equations](institutional-sector-equations.md), [behavioral equations](behavioral-equations-and-decision-rules.md#nbp-policy-bond-yield-qe-fx) |
 | External sector | Exports, imports, current account, capital account, FDI, remittances, tourism, foreign holdings, NFA | [institutional sector equations](institutional-sector-equations.md), [external-sector calibration](external-sector-baseline-calibration.md), [behavioral equations](behavioral-equations-and-decision-rules.md#external-sector) |
@@ -288,7 +288,8 @@ by CSV outputs and diagnostics artifacts. Representative surfaces include:
   firm production, investment, technology adoption, credit demand, defaults,
   entry/exit;
 - financial-stability variables: bank capital, NPLs, CAR, LCR, NSFR, interbank,
-  BFG levy, bail-in, failures, resolution, bank reconciliation residuals;
+  BFG levy, Polish bank levy, bail-in, failures, resolution, bank
+  reconciliation residuals;
 - SFC/accounting artifacts: BSM, TFM, stock-flow reconciliation, flow-mechanism
   semantics, SFC identity diagnostics;
 - validation artifacts: health summaries, empirical validation snapshots,

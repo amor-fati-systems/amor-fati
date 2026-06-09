@@ -133,6 +133,7 @@ object MonthFlowEmitter:
           corpBondCoupon = c.bankCorpBondCoupon,
           corpBondDefaultLoss = c.bankCorpBondLoss,
           bfgLevy = c.bankBfgLevy,
+          polishBankLevyTax = c.bankPolishLevyTax,
           unrealizedBondLoss = c.bankUnrealizedLoss,
           bailInLoss = c.bankBailIn,
           nbpRemittance = c.bankNbpRemittance,

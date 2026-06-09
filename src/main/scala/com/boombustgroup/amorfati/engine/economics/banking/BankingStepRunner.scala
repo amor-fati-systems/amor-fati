@@ -32,7 +32,13 @@ object BankingStepRunner:
         openingBankStocks,
         bankCorpBondHoldings(in.ledgerFinancialState),
       )
-    val govJst                   = BankingPublicFinanceStage.compute(in)
+    val polishBankLevy           =
+      Banking.computePolishBankLevy(
+        in.banks,
+        openingBankStocks,
+        bankCorpBondHoldings(in.ledgerFinancialState),
+      )
+    val govJst                   = BankingPublicFinanceStage.compute(in, polishBankLevy.total)
     val housing                  = BankingHousingStage.compute(in)
     val bfgLevy                  = Banking.computeBfgLevy(in.banks, openingBankStocks).total
     val investNetDepositFlow     = BankingHouseholdBooks.investmentTimingDepositFlow(in)
@@ -54,6 +60,7 @@ object BankingStepRunner:
       quasiFiscalDepositChange,
       housing.mortgageFlows,
       wf,
+      polishBankLevy,
     )
     val ledgerClosing            = BankingLedgerClosing.close(
       in = in,
@@ -63,6 +70,7 @@ object BankingStepRunner:
       multi = multi,
       prevBankAgg = prevBankAgg,
       bfgLevy = bfgLevy,
+      polishBankLevyTax = multi.polishBankLevyTax,
     )
     val bankCapitalTerms         = multi.bankCapitalTerms
 
@@ -82,6 +90,7 @@ object BankingStepRunner:
       newJst = govJst.newJst,
       housingAfterFlows = housing.housingAfterFlows,
       bfgLevy = bfgLevy,
+      polishBankLevyTax = multi.polishBankLevyTax,
       bailInLoss = multi.bailInLoss,
       multiCapDestruction = multi.multiCapDestruction,
       interbankContagionLoss = multi.interbankContagionLoss,

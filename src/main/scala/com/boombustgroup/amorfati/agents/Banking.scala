@@ -530,6 +530,19 @@ object Banking:
   def computeBfgLevy(banks: Vector[BankState], financialStocks: Vector[BankFinancialStocks])(using p: SimParams): PerBankAmounts =
     BankFailureResolution.computeBfgLevy(banks, financialStocks)
 
+  /** Taxable asset base for the Polish tax on selected financial institutions.
+    */
+  def polishBankLevyTaxableAssets(bank: BankState, stocks: BankFinancialStocks, corpBondHoldings: PLN)(using p: SimParams): PLN =
+    BankTaxation.polishBankLevyTaxableAssets(bank, stocks, corpBondHoldings)
+
+  /** Compute monthly Polish bank levy for all live bank rows. */
+  def computePolishBankLevy(
+      banks: Vector[BankState],
+      financialStocks: Vector[BankFinancialStocks],
+      bankCorpBondHoldings: BankCorpBondHoldings,
+  )(using p: SimParams): PerBankAmounts =
+    BankTaxation.computePolishBankLevy(banks, financialStocks, bankCorpBondHoldings)
+
   /** Bail-in: haircut uninsured deposits only for banks that entered resolution
     * in the current event set. Deposits below bfgDepositGuarantee are
     * protected.
@@ -654,6 +667,7 @@ object Banking:
       consumerNplLoss: PLN,        // ordinary consumer-loan NPL loss (after recovery)
       corpBondDefaultLoss: PLN,    // corporate bond default loss (bank share)
       bfgLevy: PLN,                // BFG resolution fund levy
+      polishBankLevyTax: PLN,      // Polish tax on selected financial institutions
       unrealizedBondLoss: PLN,     // mark-to-market loss on gov bond portfolio (interest rate risk channel)
       intIncome: PLN,              // interest income on corporate loans
       bondIncome: PLN,             // government bond coupon income

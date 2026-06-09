@@ -344,6 +344,7 @@ class ConsumerCreditSpec extends AnyFlatSpec with Matchers:
     tourismExport = PLN.Zero,
     tourismImport = PLN.Zero,
     bfgLevy = PLN.Zero,
+    polishBankLevyTax = PLN.Zero,
     bailInLoss = PLN.Zero,
     bankCapitalDestruction = PLN.Zero,
     interbankContagionLoss = PLN.Zero,

@@ -26,6 +26,7 @@ private[banking] object BankMultiBankStage:
       quasiFiscalDepositChange: PLN,
       mortgageFlows: HousingMarket.MortgageFlows,
       wf: BondWaterfallInputs,
+      perBankPolishLevy: Banking.PerBankAmounts,
   )(using p: SimParams): MultiBankResult =
     val banks               = in.banks
     val openingBankStocks   = in.ledgerFinancialState.banks.map(LedgerFinancialState.projectBankFinancialStocks)
@@ -80,6 +81,7 @@ private[banking] object BankMultiBankStage:
         perBankReserveInt,
         perBankStandingFac,
         perBankInterbankInt,
+        perBankPolishLevy,
         jstDepositChange,
         investNetDepositFlow,
         quasiFiscalDepositChange,
@@ -108,6 +110,7 @@ private[banking] object BankMultiBankStage:
       investNetDepositFlow,
       quasiFiscalDepositChange,
       mortgageFlows,
+      perBankPolishLevy.total,
       settledBankCorpBonds,
     )
 
@@ -127,6 +130,7 @@ private[banking] object BankMultiBankStage:
       investNetDepositFlow: PLN,
       quasiFiscalDepositChange: PLN,
       mortgageFlows: HousingMarket.MortgageFlows,
+      polishBankLevyTax: PLN,
       settledBankCorpBonds: Vector[PLN],
   )(using p: SimParams): MultiBankResult =
     val prevBankAgg =
@@ -157,6 +161,7 @@ private[banking] object BankMultiBankStage:
       investNetDepositFlow = investNetDepositFlow,
       quasiFiscalDepositChange = quasiFiscalDepositChange,
       mortgageFlows = mortgageFlows,
+      polishBankLevyTax = polishBankLevyTax,
       htmRealizedLoss = settlement.htmRealizedLoss,
     )
     val finalResolution       = resolved.finalResolution
@@ -228,6 +233,7 @@ private[banking] object BankMultiBankStage:
       reassignedFirms = reassignedFirms,
       reassignedHouseholds = reassignedHouseholds,
       bailInLoss = finalResolution.bailInLoss,
+      polishBankLevyTax = polishBankLevyTax,
       multiCapDestruction = finalResolution.capitalDestruction,
       interbankContagionLoss = failureDetection.contagion.totalLoss,
       newFailures = finalResolution.newFailures,
@@ -302,6 +308,7 @@ private[banking] object BankMultiBankStage:
       perBankReserveInt: Banking.PerBankAmounts,
       perBankStandingFac: Banking.PerBankAmounts,
       perBankInterbankInt: Banking.PerBankAmounts,
+      perBankPolishLevy: Banking.PerBankAmounts,
       jstDepositChange: PLN,
       investNetDepositFlow: PLN,
       quasiFiscalDepositChange: PLN,
@@ -351,6 +358,7 @@ private[banking] object BankMultiBankStage:
     val bankBfgLevy               =
       if !b.failed then stocks.totalDeposits * p.banking.bfgLevyRate.monthly
       else PLN.Zero
+    val bankPolishLevyTax         = perBankPolishLevy.perBank(bId)
 
     // Per-bank mark-to-market loss on AFS bonds only (HTM losses hidden until forced reclassification)
     val bankYieldChange    = in.openEconomy.monetary.newBondYield - in.world.gov.bondYield
@@ -364,6 +372,7 @@ private[banking] object BankMultiBankStage:
         consumerNplLoss = bankCcNplLoss,
         corpBondDefaultLoss = bankCorpBondDefaultLoss,
         bfgLevy = bankBfgLevy,
+        polishBankLevyTax = bankPolishLevyTax,
         unrealizedBondLoss = bankUnrealizedLoss,
         intIncome = bankIntIncome,
         bondIncome = bankBondInc,

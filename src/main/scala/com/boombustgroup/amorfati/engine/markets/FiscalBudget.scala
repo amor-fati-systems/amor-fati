@@ -26,17 +26,19 @@ object FiscalBudget:
   /** Government sector balance sheet and flow snapshot.
     *
     * Updated monthly by [[update]]. Revenue fields (`taxRevenue`,
-    * `exciseRevenue`, `customsDutyRevenue`) and spending fields
-    * (`unempBenefitSpend`, `debtServiceSpend`, `socialTransferSpend`,
-    * `govCurrentSpend`, `govCapitalSpend`, `euProjectCapital`, `euCofinancing`)
-    * are single-month flows. `govCapitalSpend` is only the domestic
-    * budget-financed capital outlay. `euProjectCapital` is the capital portion
-    * of the total EU project envelope (EU transfer + domestic co-financing).
-    * Stock fields (`cumulativeDebt`, `publicCapitalStock`) accumulate across
-    * months. Government-bond ownership and issuer-side outstanding stock live
-    * in `LedgerFinancialState`; this state keeps the domestic fiscal-rule debt
-    * metric initialized from `FiscalConfig.initGovDebt` and advanced by monthly
-    * deficits, not a separate tradable instrument.
+    * `exciseRevenue`, `customsDutyRevenue`) include the central-budget tax
+    * surface such as VAT, CIT/PIT, NBP remittance, and Polish bank levy;
+    * spending fields (`unempBenefitSpend`, `debtServiceSpend`,
+    * `socialTransferSpend`, `govCurrentSpend`, `govCapitalSpend`,
+    * `euProjectCapital`, `euCofinancing`) are single-month flows.
+    * `govCapitalSpend` is only the domestic budget-financed capital outlay.
+    * `euProjectCapital` is the capital portion of the total EU project envelope
+    * (EU transfer + domestic co-financing). Stock fields (`cumulativeDebt`,
+    * `publicCapitalStock`) accumulate across months. Government-bond ownership
+    * and issuer-side outstanding stock live in `LedgerFinancialState`; this
+    * state keeps the domestic fiscal-rule debt metric initialized from
+    * `FiscalConfig.initGovDebt` and advanced by monthly deficits, not a
+    * separate tradable instrument.
     *
     * `deficit` = totalSpend − totalRevenue (positive = deficit, negative =
     * surplus). `cumulativeDebt` += deficit each month.
@@ -166,6 +168,7 @@ object FiscalBudget:
       govDividendRevenue: PLN,
       vat: PLN = PLN.Zero,
       nbpRemittance: PLN = PLN.Zero,
+      polishBankLevyTax: PLN = PLN.Zero,
       exciseRevenue: PLN = PLN.Zero,
       customsDutyRevenue: PLN = PLN.Zero,
       // Spending
@@ -192,7 +195,7 @@ object FiscalBudget:
 
     val totalSpend = in.unempBenefitSpend + in.socialTransferSpend +
       govCurrent + govCapital + in.debtService + in.zusGovSubvention + in.nfzGovSubvention + in.earmarkedGovSubvention + in.euCofinancing
-    val taxRev     = in.citPaid + in.vat + in.nbpRemittance + in.exciseRevenue + in.customsDutyRevenue
+    val taxRev     = in.citPaid + in.vat + in.nbpRemittance + in.polishBankLevyTax + in.exciseRevenue + in.customsDutyRevenue
     val totalRev   = taxRev + in.govDividendRevenue
     val deficit    = totalSpend - totalRev
 

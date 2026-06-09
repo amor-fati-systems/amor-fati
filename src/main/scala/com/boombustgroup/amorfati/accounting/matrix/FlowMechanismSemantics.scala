@@ -263,9 +263,9 @@ object FlowMechanismSemantics:
     ),
     family(
       "Bank capital P&L and loss waterfall",
-      "Bank aggregate capital diagnostic state against loan, bond, BFG, NBP, and loss-recognition channels.",
+      "Bank aggregate capital diagnostic state against loan, bond, BFG, Polish bank-tax, NBP, and loss-recognition channels.",
       "Capital is persisted bank regulatory state but unsupported as transferable ledger-owned stock.",
-      "Feeds BankCapital SFC identity, bank-capital waterfall residuals, BFG levy, NPL, bond-income/loss, provision, valuation, and NBP remittance channels.",
+      "Feeds BankCapital SFC identity, bank-capital waterfall residuals, BFG levy, Polish bank levy, NPL, bond-income/loss, provision, valuation, and NBP remittance channels.",
       "BankCapitalSemanticsSpec, BankingFlowsSpec, BankingEconomicsSpec, bank balance-sheet benchmark, nightly health summary residuals.",
     )(
       FlowMechanism.BankFirmInterest,
@@ -274,6 +274,7 @@ object FlowMechanismSemantics:
       FlowMechanism.BankMortgageNplLoss,
       FlowMechanism.BankCcNplLoss,
       FlowMechanism.BankBfgLevy,
+      FlowMechanism.BankPolishLevyTax,
       FlowMechanism.BankUnrealizedLoss,
       FlowMechanism.BankNbpRemittance,
     ),

@@ -376,6 +376,7 @@ object SfcMatrixRegistry:
       mech(FlowMechanism.BankCcNplLoss, "Bank consumer-credit NPL loss", "Bank CC NPL", "B_{cnpl}"),
       mech(FlowMechanism.BankCorpBondLoss, "Bank corporate-bond loss", "Bank CB loss", "B_{cbl}"),
       mech(FlowMechanism.BankBfgLevy, "Bank BFG levy", "BFG levy", "B_{bfg}"),
+      mech(FlowMechanism.BankPolishLevyTax, "Bank Polish levy tax", "Bank tax", "B_{tax}"),
       mech(FlowMechanism.BankUnrealizedLoss, "Bank unrealized bond loss", "Unrealized", "B_{ul}"),
       mech(FlowMechanism.BankReserveInterest, "Bank reserve interest", "Reserve int.", "B_r"),
       mech(FlowMechanism.BankStandingFacility, "Bank standing facility", "Standing fac.", "B_{sf}"),
