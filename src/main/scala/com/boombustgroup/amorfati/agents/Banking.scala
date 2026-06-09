@@ -232,6 +232,7 @@ object Banking:
   enum CreditRejectionReason(val diagnosticCode: String):
     case FailedBank        extends CreditRejectionReason("failed-bank")
     case CapitalAdequacy   extends CreditRejectionReason("car")
+    case CapitalBuffer     extends CreditRejectionReason("capital-buffer")
     case LiquidityCoverage extends CreditRejectionReason("lcr")
     case StableFunding     extends CreditRejectionReason("nsfr")
 
@@ -240,6 +241,8 @@ object Banking:
       rejectionReason: Option[CreditRejectionReason] = None,
       projectedCar: Option[Multiplier] = None,
       minCar: Option[Multiplier] = None,
+      managementCarTarget: Option[Multiplier] = None,
+      capitalThrottle: Option[Share] = None,
       lcr: Option[Multiplier] = None,
       lcrMin: Option[Multiplier] = None,
       nsfr: Option[Multiplier] = None,
@@ -247,7 +250,8 @@ object Banking:
   ):
     def isEmpty: Boolean =
       rejectionReason.isEmpty && projectedCar.isEmpty && minCar.isEmpty &&
-        lcr.isEmpty && lcrMin.isEmpty && nsfr.isEmpty && nsfrMin.isEmpty
+        managementCarTarget.isEmpty && capitalThrottle.isEmpty && lcr.isEmpty &&
+        lcrMin.isEmpty && nsfr.isEmpty && nsfrMin.isEmpty
 
     def orElse(fallback: CreditApprovalAudit): CreditApprovalAudit =
       if isEmpty then fallback else this
@@ -412,10 +416,10 @@ object Banking:
     * when risk-free yields are attractive, banks demand higher spreads on risky
     * firm loans. Failed banks get a flat penalty rate.
     */
-  def lendingRate(bank: BankState, stocks: BankFinancialStocks, cfg: Config, refRate: Rate, bondYield: Rate, corpBondHoldings: PLN)(using
+  def lendingRate(bank: BankState, stocks: BankFinancialStocks, cfg: Config, refRate: Rate, bondYield: Rate, corpBondHoldings: PLN, ccyb: Multiplier)(using
       p: SimParams,
   ): Rate =
-    BankCreditApproval.lendingRate(bank, stocks, cfg, refRate, bondYield, corpBondHoldings)
+    BankCreditApproval.lendingRate(bank, stocks, cfg, refRate, bondYield, corpBondHoldings, ccyb)
 
   /** Interbank rate (WIBOR O/N proxy): blends credit stress (NPL) and liquidity
     * position (excess reserves). Under excess liquidity (post-QE, post-FX
@@ -433,7 +437,8 @@ object Banking:
 
   /** Can this bank approve the product-specific credit amount? Checks projected
     * CAR and LCR/NSFR. Credit-risk pressure reaches approval through pricing,
-    * ECL/provisioning, and the resulting capital path.
+    * ECL/provisioning, the resulting capital path, and the management-buffer
+    * quantity throttle.
     */
   def canLend(
       context: CreditApprovalContext,

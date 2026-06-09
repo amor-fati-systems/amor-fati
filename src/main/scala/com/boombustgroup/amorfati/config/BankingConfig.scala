@@ -39,6 +39,13 @@ import com.boombustgroup.amorfati.types.*
   *   spread increase per unit NPL ratio
   * @param minCar
   *   minimum capital adequacy ratio (Basel III CRR: 8%)
+  * @param creditManagementCarBuffer
+  *   management buffer above the macroprudential effective minimum CAR; banks
+  *   between the hard floor and this target ration new risk-weighted credit
+  *   smoothly
+  * @param creditCarShortfallPenaltyScale
+  *   lending-spread penalty scale applied to the CAR gap below the management
+  *   target
   * @param firmLoanRiskWeight
   *   standardized RWA weight for corporate/nonfinancial firm loans
   * @param consumerLoanRiskWeight
@@ -154,6 +161,8 @@ case class BankingConfig(
     baseSpread: Rate = Rate.decimal(15, 3),
     nplSpreadFactor: Multiplier = Multiplier(5),
     minCar: Multiplier = Multiplier.decimal(8, 2),
+    creditManagementCarBuffer: Multiplier = Multiplier.decimal(3, 2),
+    creditCarShortfallPenaltyScale: Multiplier = Multiplier(2),
     firmLoanRiskWeight: Share = Share.One,
     consumerLoanRiskWeight: Share = Share.One,
     mortgageLoanRiskWeight: Share = Share.decimal(35, 2),
@@ -231,6 +240,14 @@ case class BankingConfig(
     eclCureRate: Share = Share.decimal(2, 2),
 ):
   require(minCar > Multiplier.Zero && minCar < Multiplier.One, s"minCar must be in (0,1): $minCar")
+  require(
+    creditManagementCarBuffer > Multiplier.Zero && creditManagementCarBuffer <= Multiplier.One,
+    s"creditManagementCarBuffer must be in (0,1]: $creditManagementCarBuffer",
+  )
+  require(
+    creditCarShortfallPenaltyScale >= Multiplier.Zero,
+    s"creditCarShortfallPenaltyScale must be non-negative: $creditCarShortfallPenaltyScale",
+  )
   private val rwaWeights = Vector(
     "firmLoanRiskWeight"       -> firmLoanRiskWeight,
     "consumerLoanRiskWeight"   -> consumerLoanRiskWeight,

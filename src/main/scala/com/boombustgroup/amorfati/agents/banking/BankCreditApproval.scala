@@ -15,9 +15,23 @@ private[agents] object BankCreditApproval:
 
   private val FailedBankSpread: Rate             = Rate.decimal(50, 2)
   private val NplSpreadCap: Rate                 = Rate.decimal(15, 2)
-  private val CarPenaltyThreshMult: Multiplier   = Multiplier.decimal(15, 1)
-  private val CarPenaltyScale: Multiplier        = Multiplier(2)
   private val CrowdingOutSensitivity: Multiplier = Multiplier.decimal(30, 2)
+
+  /** Returns the internal management CAR target used for pricing and
+    * risk-weighted credit-supply throttling.
+    */
+  def managementCarTarget(bankId: Int, ccyb: Multiplier)(using p: SimParams): Multiplier =
+    Macroprudential.effectiveMinCar(bankId, ccyb) + p.banking.creditManagementCarBuffer
+
+  /** Converts the distance above the hard CAR floor into a smooth approval
+    * throttle. At the hard floor the bank stops discretionary risk-weighted
+    * origination; at the management target the throttle reaches one.
+    */
+  def capitalThrottle(projectedCar: Multiplier, effectiveMinCar: Multiplier)(using p: SimParams): Share =
+    val gap = projectedCar - effectiveMinCar
+    if gap <= Multiplier.Zero then Share.Zero
+    else if gap >= p.banking.creditManagementCarBuffer then Share.One
+    else gap.ratioTo(p.banking.creditManagementCarBuffer).clampToShare
 
   /** Chooses the bank relationship for a firm using sector affinity and opening
     * market-share weights.
@@ -41,16 +55,16 @@ private[agents] object BankCreditApproval:
   /** Prices firm lending from monetary stance, bank-specific spread, risk
     * stress, capital pressure, and government-bond crowding-out.
     */
-  def lendingRate(bank: BankState, stocks: BankFinancialStocks, cfg: Config, refRate: Rate, bondYield: Rate, corpBondHoldings: PLN)(using
+  def lendingRate(bank: BankState, stocks: BankFinancialStocks, cfg: Config, refRate: Rate, bondYield: Rate, corpBondHoldings: PLN, ccyb: Multiplier)(using
       p: SimParams,
   ): Rate =
     if bank.failed then refRate + FailedBankSpread
     else
       val nplSpread   = (BankRegulatoryMetrics.nplRatio(bank, stocks) * p.banking.nplSpreadFactor).toRate.min(NplSpreadCap)
-      val carThresh   = p.banking.minCar * CarPenaltyThreshMult
+      val carTarget   = managementCarTarget(bank.id.toInt, ccyb)
       val bankCar     = BankRegulatoryMetrics.car(bank, stocks, corpBondHoldings)
       val carPenalty  =
-        if bankCar < carThresh then ((carThresh - bankCar) * CarPenaltyScale).toRate
+        if bankCar < carTarget then ((carTarget - bankCar) * p.banking.creditCarShortfallPenaltyScale).toRate
         else Rate.Zero
       val crowdingOut = (bondYield - refRate - p.banking.baseSpread).max(Rate.Zero) * CrowdingOutSensitivity
       refRate + p.banking.baseSpread + cfg.lendingSpread + nplSpread + carPenalty + crowdingOut
@@ -70,9 +84,10 @@ private[agents] object BankCreditApproval:
   /** Evaluates the full audited bank-credit approval decision.
     *
     * Hard regulatory gates cover failure status, projected CAR, LCR, and NSFR.
-    * NPL pressure is routed through lending spreads, ECL provisioning, and the
-    * resulting capital path rather than through a second direct approval
-    * penalty.
+    * Banks above the hard CAR floor but below their management target ration
+    * new risk-weighted credit smoothly. NPL pressure is routed through lending
+    * spreads, ECL provisioning, and the resulting capital path rather than
+    * through a second direct approval penalty.
     */
   def creditApproval(
       context: CreditApprovalContext,
@@ -96,31 +111,36 @@ private[agents] object BankCreditApproval:
         BankRiskWeightedAssets.exposure(bank, stocks, context.corpBondHoldings).withAdditionalCredit(product, amount)
       val projectedCar                                                      = BankRegulatoryMetrics.capitalAdequacyRatio(bank.capital, projectedExposure)
       val minCar                                                            = Macroprudential.effectiveMinCar(bank.id.toInt, context.ccyb)
+      val managementTarget                                                  = managementCarTarget(bank.id.toInt, context.ccyb)
+      val throttle                                                          = capitalThrottle(projectedCar, minCar)
       val carOk                                                             = projectedCar >= minCar
       val currentLcr                                                        = BankRegulatoryMetrics.lcr(stocks)
       val lcrOk                                                             = currentLcr >= p.banking.lcrMin
       val currentNsfr                                                       = BankRegulatoryMetrics.nsfr(bank, stocks, context.corpBondHoldings)
       val nsfrOk                                                            = currentNsfr >= p.banking.nsfrMin
-      val approvalP                                                         = Share.One
+      val approvalP                                                         = throttle
       def audit(reason: Option[CreditRejectionReason]): CreditApprovalAudit =
         CreditApprovalAudit(
           rejectionReason = reason,
           projectedCar = Some(projectedCar),
           minCar = Some(minCar),
+          managementCarTarget = Some(managementTarget),
+          capitalThrottle = Some(throttle),
           lcr = Some(currentLcr),
           lcrMin = Some(p.banking.lcrMin),
           nsfr = Some(currentNsfr),
           nsfrMin = Some(p.banking.nsfrMin),
         )
       if carOk && lcrOk && nsfrOk then
-        val roll = Share.random(rng)
+        val roll     = Share.random(rng)
+        val approved = approvalP == Share.One || roll < approvalP
         CreditApproval(
           product = product,
           amount = amount,
-          approved = true,
+          approved = approved,
           approvalProbability = Some(approvalP),
           approvalRoll = Some(roll),
-          audit = audit(None),
+          audit = audit(if approved then None else Some(CreditRejectionReason.CapitalBuffer)),
         )
       else
         val reason =

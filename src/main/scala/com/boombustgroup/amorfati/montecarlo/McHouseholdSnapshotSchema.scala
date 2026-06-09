@@ -59,6 +59,8 @@ private[montecarlo] object McHouseholdSnapshotSchema:
     "ConsumerBankApprovalRoll"            -> (row => formatShare(row.monthlyFlow.consumerBankApprovalRoll, 6)),
     "ConsumerBankProjectedCAR"            -> (row => formatMultiplier(row.monthlyFlow.consumerBankProjectedCar, 6)),
     "ConsumerBankMinCAR"                  -> (row => formatMultiplier(row.monthlyFlow.consumerBankMinCar, 6)),
+    "ConsumerBankManagementCAR"           -> (row => formatMultiplier(row.monthlyFlow.consumerBankManagementCarTarget, 6)),
+    "ConsumerBankCapitalThrottle"         -> (row => formatShare(row.monthlyFlow.consumerBankCapitalThrottle, 6)),
     "ConsumerBankLCR"                     -> (row => formatMultiplier(row.monthlyFlow.consumerBankLcr, 6)),
     "ConsumerBankNSFR"                    -> (row => formatMultiplier(row.monthlyFlow.consumerBankNsfr, 6)),
     "LiquidityShortfallFinancing"         -> (row => row.monthlyFlow.liquidityShortfallFinancing.format(2)),

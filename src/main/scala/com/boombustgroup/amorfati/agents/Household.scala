@@ -280,41 +280,43 @@ object Household:
     * exports.
     */
   case class MonthlyFlow(
-      householdId: HhId,                              // household identifier for joining with closed-month state
-      openingDemandDeposit: PLN,                      // opening liquid deposit before the household month step
-      openingConsumerLoan: PLN,                       // opening unsecured consumer-loan principal
-      monthlyIncome: PLN,                             // net monthly household income after PIT and transfers
-      consumption: PLN,                               // monthly household goods consumption
-      rent: PLN,                                      // monthly rent paid by the household
-      mortgageDebtService: PLN,                       // monthly secured mortgage debt service
-      consumerApprovedOrigination: PLN,               // underwritten consumer credit originated by the DTI rule
-      consumerCreditDemand: PLN,                      // underwritten consumer-credit demand before eligibility denial
-      consumerRejectedOrigination: PLN,               // consumer-credit demand rejected by borrower or bank rules
-      consumerBankRejectedOrigination: PLN,           // consumer-credit demand rejected by bank supply
-      consumerCreditCapacity: PLN,                    // principal capacity implied by payment-factor underwriting
-      consumerCreditAccessEligible: Boolean,          // whether stochastic access allowed underwritten credit
-      liquidityShortfallFinancing: PLN,               // same-month bridge/write-off preventing negative closing deposits
-      consumerDebtService: PLN,                       // monthly unsecured consumer-credit debt service
-      consumerDefault: PLN,                           // gross consumer default plus bridge charge-off this month
-      consumerPrincipal: PLN,                         // principal component of consumer debt service
-      closingConsumerLoan: PLN,                       // closing unsecured consumer-loan principal
-      consumerLoanDefault: PLN,                       // default of ordinary outstanding consumer-loan principal
-      liquidityBridgeChargeOff: PLN,                  // same-month bridge charge-off, not ordinary consumer-loan default
-      unmetBasicConsumption: PLN,                     // non-discretionary consumption need not covered by cash
-      discretionaryConsumptionCompression: PLN,       // discretionary consumption cut before bridge/default
-      consumptionShortfall: PLN,                      // shortfall attributed to modeled consumption outflow
-      rentArrears: PLN,                               // shortfall attributed to rent payment
-      mortgageArrears: PLN,                           // shortfall attributed to mortgage debt service
-      consumerDebtArrears: PLN,                       // shortfall attributed to consumer debt service
-      temporaryOverdraft: PLN,                        // shortfall attributed to other current liquidity gaps
-      consumerBankApprovalProduct: String,            // bank-credit product submitted for consumer-credit supply
-      consumerBankRejectionReason: String,            // bank-side rejection reason, empty when no bank rejection
-      consumerBankApprovalProbability: Option[Share], // bank-side approval probability if evaluated
-      consumerBankApprovalRoll: Option[Share],        // replay/audit draw if sampled by the bank
-      consumerBankProjectedCar: Option[Multiplier],   // projected bank CAR after requested exposure
-      consumerBankMinCar: Option[Multiplier],         // effective minimum CAR used by the bank gate
-      consumerBankLcr: Option[Multiplier],            // LCR observed by the bank gate
-      consumerBankNsfr: Option[Multiplier],           // NSFR observed by the bank gate
+      householdId: HhId,                                   // household identifier for joining with closed-month state
+      openingDemandDeposit: PLN,                           // opening liquid deposit before the household month step
+      openingConsumerLoan: PLN,                            // opening unsecured consumer-loan principal
+      monthlyIncome: PLN,                                  // net monthly household income after PIT and transfers
+      consumption: PLN,                                    // monthly household goods consumption
+      rent: PLN,                                           // monthly rent paid by the household
+      mortgageDebtService: PLN,                            // monthly secured mortgage debt service
+      consumerApprovedOrigination: PLN,                    // underwritten consumer credit originated by the DTI rule
+      consumerCreditDemand: PLN,                           // underwritten consumer-credit demand before eligibility denial
+      consumerRejectedOrigination: PLN,                    // consumer-credit demand rejected by borrower or bank rules
+      consumerBankRejectedOrigination: PLN,                // consumer-credit demand rejected by bank supply
+      consumerCreditCapacity: PLN,                         // principal capacity implied by payment-factor underwriting
+      consumerCreditAccessEligible: Boolean,               // whether stochastic access allowed underwritten credit
+      liquidityShortfallFinancing: PLN,                    // same-month bridge/write-off preventing negative closing deposits
+      consumerDebtService: PLN,                            // monthly unsecured consumer-credit debt service
+      consumerDefault: PLN,                                // gross consumer default plus bridge charge-off this month
+      consumerPrincipal: PLN,                              // principal component of consumer debt service
+      closingConsumerLoan: PLN,                            // closing unsecured consumer-loan principal
+      consumerLoanDefault: PLN,                            // default of ordinary outstanding consumer-loan principal
+      liquidityBridgeChargeOff: PLN,                       // same-month bridge charge-off, not ordinary consumer-loan default
+      unmetBasicConsumption: PLN,                          // non-discretionary consumption need not covered by cash
+      discretionaryConsumptionCompression: PLN,            // discretionary consumption cut before bridge/default
+      consumptionShortfall: PLN,                           // shortfall attributed to modeled consumption outflow
+      rentArrears: PLN,                                    // shortfall attributed to rent payment
+      mortgageArrears: PLN,                                // shortfall attributed to mortgage debt service
+      consumerDebtArrears: PLN,                            // shortfall attributed to consumer debt service
+      temporaryOverdraft: PLN,                             // shortfall attributed to other current liquidity gaps
+      consumerBankApprovalProduct: String,                 // bank-credit product submitted for consumer-credit supply
+      consumerBankRejectionReason: String,                 // bank-side rejection reason, empty when no bank rejection
+      consumerBankApprovalProbability: Option[Share],      // bank-side approval probability if evaluated
+      consumerBankApprovalRoll: Option[Share],             // replay/audit draw if sampled by the bank
+      consumerBankProjectedCar: Option[Multiplier],        // projected bank CAR after requested exposure
+      consumerBankMinCar: Option[Multiplier],              // effective minimum CAR used by the bank gate
+      consumerBankManagementCarTarget: Option[Multiplier], // bank management CAR target used by the soft throttle
+      consumerBankCapitalThrottle: Option[Share],          // capital-buffer approval throttle
+      consumerBankLcr: Option[Multiplier],                 // LCR observed by the bank gate
+      consumerBankNsfr: Option[Multiplier],                // NSFR observed by the bank gate
   )
 
   object MonthlyFlow:
@@ -353,6 +355,8 @@ object Household:
         consumerBankApprovalRoll = None,
         consumerBankProjectedCar = None,
         consumerBankMinCar = None,
+        consumerBankManagementCarTarget = None,
+        consumerBankCapitalThrottle = None,
         consumerBankLcr = None,
         consumerBankNsfr = None,
       )

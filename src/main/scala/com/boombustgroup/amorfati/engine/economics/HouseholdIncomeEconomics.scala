@@ -77,7 +77,7 @@ object HouseholdIncomeEconomics:
           .zip(bankStocks)
           .zip(bsec.configs)
           .map { case ((b, stocks), cfg) =>
-            Banking.lendingRate(b, stocks, cfg, lendingBaseRate, w.gov.bondYield, bankCorpBonds(b.id))
+            Banking.lendingRate(b, stocks, cfg, lendingBaseRate, w.gov.bondYield, bankCorpBonds(b.id), w.mechanisms.macropru.ccyb)
           },
         depositRates = banks.map(_ => Banking.hhDepositRate(w.nbp.referenceRate)),
       ),

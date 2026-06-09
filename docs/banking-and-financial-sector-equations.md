@@ -177,17 +177,26 @@ Firm credit requests use `q = firm`; household consumer-credit requests use
 passed. Mortgage approval is represented in the same product vocabulary even
 where current origination is handled by housing-stage aggregate flows.
 
-If all hard gates pass:
+If all hard gates pass, risk-weighted origination is still throttled by the
+distance between projected CAR and the bank's internal management target:
 
 ```text
-approvalP_b = 1
+managementCAR_b = effectiveMinCar_b(ccyb_tau) + creditManagementCarBuffer
+capitalThrottle_b(q, A) =
+  clamp((ProjectedCAR_b(q, A) - effectiveMinCar_b(ccyb_tau)) /
+        creditManagementCarBuffer, 0, 1)
+
+approvalP_b(q, A) = capitalThrottle_b(q, A)
 ```
 
-The proposal is approved once the hard regulatory gates pass. NPL pressure is
-not independently multiplied into the approval probability; it enters through
-loan pricing, IFRS 9 / ECL provisioning, and the resulting capital path.
-Reserve requirements are not a per-loan approval gate. They are handled through
-LCR/NSFR, reserve settlement, standing facilities, and bank P&L.
+The proposal is approved when the hard regulatory gates pass and the replay
+draw is below `approvalP_b`. A bank at or above `managementCAR_b` has
+`approvalP_b = 1`; a bank between the hard floor and the management target
+reduces new risk-weighted credit supply smoothly. NPL pressure is not
+independently multiplied into the approval probability; it enters through loan
+pricing, IFRS 9 / ECL provisioning, and the resulting capital path. Reserve
+requirements are not a per-loan approval gate. They are handled through LCR/NSFR,
+reserve settlement, standing facilities, and bank P&L.
 
 This approval rule is a regulatory heuristic and behavioral credit-supply
 surface, not an SFC identity. The resulting origination, repayment, default,

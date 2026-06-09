@@ -19,7 +19,7 @@ private[firm] object FirmLendingStage:
     val bankCorpBonds      = (bankId: BankId) => CorporateBondOwnership.bankHolderFor(in.ledgerFinancialState, bankId)
     val approvalContexts   = in.banks.indices.map(idx => Banking.CreditApprovalContext(in.banks(idx), ccyb, bankCorpBonds(BankId(idx)))).toVector
     val rates              = in.banks.zip(bankStocks).zip(bsec.configs).map { case ((b, stocks), cfg) =>
-      Banking.lendingRate(b, stocks, cfg, in.fiscal.lendingBaseRate, in.w.gov.bondYield, bankCorpBonds(b.id))
+      Banking.lendingRate(b, stocks, cfg, in.fiscal.lendingBaseRate, in.w.gov.bondYield, bankCorpBonds(b.id), ccyb)
     }
     val creditDecision     = (bankId: Int, amt: PLN) =>
       val approval = Banking.creditApproval(approvalContexts(bankId), bankStocks(bankId), Banking.CreditProduct.FirmLoan, amt, rng)
