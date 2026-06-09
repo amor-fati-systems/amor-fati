@@ -571,7 +571,6 @@ object McTimeseriesSchema:
     ColumnDef.macroPln("FirmCredit_RejectedCarGate", ctx => ctx.world.flows.firmCreditRejectedByReason.carGate),
     ColumnDef.macroPln("FirmCredit_RejectedLcrGate", ctx => ctx.world.flows.firmCreditRejectedByReason.lcrGate),
     ColumnDef.macroPln("FirmCredit_RejectedNsfrGate", ctx => ctx.world.flows.firmCreditRejectedByReason.nsfrGate),
-    ColumnDef.macroPln("FirmCredit_RejectedStochastic", ctx => ctx.world.flows.firmCreditRejectedByReason.stochastic),
     ColumnDef.macroPln("FirmCredit_RejectedUnclassified", ctx => ctx.world.flows.firmCreditRejectedByReason.unclassified),
     ColumnDef("FirmCredit_ApprovalRate", ctx => ctx.flowToFlowRatio(ctx.firmCreditApproved, ctx.firmCreditDemand)),
     ColumnDef.macroPln("FirmCredit_InvestmentDemand", ctx => ctx.world.flows.firmInvestmentCreditDemand),
@@ -1235,7 +1234,6 @@ object McTimeseriesSchema:
     val FirmCreditRejectedCarGate: Col                 = lookup("FirmCredit_RejectedCarGate")
     val FirmCreditRejectedLcrGate: Col                 = lookup("FirmCredit_RejectedLcrGate")
     val FirmCreditRejectedNsfrGate: Col                = lookup("FirmCredit_RejectedNsfrGate")
-    val FirmCreditRejectedStochastic: Col              = lookup("FirmCredit_RejectedStochastic")
     val FirmCreditRejectedUnclassified: Col            = lookup("FirmCredit_RejectedUnclassified")
     val FirmCreditApprovalRate: Col                    = lookup("FirmCredit_ApprovalRate")
     val FirmCreditInvestmentDemand: Col                = lookup("FirmCredit_InvestmentDemand")

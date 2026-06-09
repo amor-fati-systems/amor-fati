@@ -180,12 +180,12 @@ where current origination is handled by housing-stage aggregate flows.
 If all hard gates pass:
 
 ```text
-approvalP_b =
-  max(1 - nplPenalty_b,
-      creditMinApprovalProb)
+approvalP_b = 1
 ```
 
-The proposal is approved when the stochastic roll is below `approvalP_b`.
+The proposal is approved once the hard regulatory gates pass. NPL pressure is
+not independently multiplied into the approval probability; it enters through
+loan pricing, IFRS 9 / ECL provisioning, and the resulting capital path.
 Reserve requirements are not a per-loan approval gate. They are handled through
 LCR/NSFR, reserve settlement, standing facilities, and bank P&L.
 

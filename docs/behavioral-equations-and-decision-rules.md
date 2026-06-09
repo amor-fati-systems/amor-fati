@@ -912,9 +912,10 @@ passes part of a government-bond-yield premium into firm loan spreads. Failed
 banks receive a fixed penalty spread and cannot lend.
 
 Credit approval projects RWA into the requested product bucket, then requires
-the projected CAR above the macroprudential effective minimum, LCR and NSFR above
-regulatory minima, and a stochastic approval draw. The approval probability
-falls with NPL ratio but has a configured floor.
+the projected CAR above the macroprudential effective minimum and LCR/NSFR above
+regulatory minima. NPL pressure affects credit supply through risk pricing,
+IFRS 9 / ECL provisioning, and the resulting capital path rather than through an
+independent approval-probability penalty.
 Reserve requirements are not a per-loan approval gate; reserves and government
 bonds affect credit supply through LCR/NSFR, settlement cost, standing
 facilities, and lending spreads.

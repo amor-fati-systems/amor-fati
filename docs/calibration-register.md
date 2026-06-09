@@ -40,7 +40,7 @@ These counts are rendered from `CalibrationProvenance.Baseline` at generation ti
 | `EMPIRICAL_TRANSFORMED` | 17 |
 | `CODE_NOTE_EMPIRICAL` | 62 |
 | `ASSUMED` | 33 |
-| `TUNED_NEEDS_VALIDATION` | 89 |
+| `TUNED_NEEDS_VALIDATION` | 88 |
 | `POLICY_SCENARIO` | 7 |
 | `PLACEHOLDER` | 1 |
 | `UNKNOWN_SOURCE` | 0 |
@@ -78,7 +78,7 @@ a concrete diagnostic artifact path.
 | --- | ---: | ---: | ---: |
 | `HISTORICAL_FIT` | 33 | 5 | 28 |
 | `STYLIZED_FACT_TARGET` | 11 | 7 | 4 |
-| `SENSITIVITY_RANGE` | 31 | 5 | 26 |
+| `SENSITIVITY_RANGE` | 30 | 5 | 25 |
 | `MODEL_BEHAVIOR_CALIBRATION` | 14 | 0 | 14 |
 
 ### Evidence Paths
@@ -148,7 +148,6 @@ a concrete diagnostic artifact path.
 | `monetary.taylorInertia` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` |  |  | Policy-rate smoothing | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
 | `monetary.maxRateChange` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` |  |  | Monthly policy-rate adjustment cap | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
 | `monetary.nairu` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` |  |  | NAIRU | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
-| `banking.creditMinApprovalProb`, `creditNplApprovalPenalty` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` |  |  | Product-aware stochastic credit approval after CAR/LCR/NSFR gates pass | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
 | `banking.depositPanicRate` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` |  |  | Panic switching after failure | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
 | `banking.eclMigrationSensitivity`, `eclGdpSensitivity`, `eclMaxMigration` | `HISTORICAL_FIT` | `MISSING_VALIDATION_EVIDENCE` |  |  | Stage 1 to Stage 2 migration under unemployment deterioration or GDP contraction | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
 | `forex.irpSensitivity`, `exRateAdjSpeed` | `SENSITIVITY_RANGE` | docs/sensitivity-robustness-workflow.md | sensitivity-summary.csv | external-risk-off | FX and external-balance sensitivity | SensitivityRobustnessExport varies IRP sensitivity in the external-risk-off scenario and reports FX/current-account metrics. |
@@ -359,7 +358,6 @@ a concrete diagnostic artifact path.
 | `banking.firmLoanRiskWeight`, `consumerLoanRiskWeight`, `mortgageLoanRiskWeight`, `corpBondRiskWeight`, `interbankAssetRiskWeight`, `sovereignRiskWeight`, `reserveRiskWeight`, `rwaOperationalRiskFloor`, `rwaCapitalBackstop` | `1.00, 1.00, 0.35, 0.50, 0.20, 0.00, 0.00, 0.01, 0.10` | share | Code note bridge: Basel/CRR standardized exposure classes | Regulatory RWA perimeter for bank CAR | Direct | `BankingConfig`, `BankRiskWeightedAssets` | `CODE_NOTE_EMPIRICAL` |
 | `banking.loanRecovery` | `0.30` | share | Structural corporate-loan workout recovery prior | Corporate loan recovery | Direct | `BankingConfig` | `ASSUMED` |
 | `banking.firmLoanAmortRate` | `1/60` | monthly rate | Code note bridge: NBP bridge prior maturity | Five-year average loan maturity | Direct | `BankingConfig` | `CODE_NOTE_EMPIRICAL` |
-| `banking.creditMinApprovalProb`, `creditNplApprovalPenalty` | `0.10, 3.0` | share/coefficient | #523 candidate-gate diagnostic prior; #766 product-aware approval | Product-aware stochastic credit approval after CAR/LCR/NSFR gates pass | Direct | `BankingConfig`, `Banking.creditApproval` | `TUNED_NEEDS_VALIDATION` |
 | `banking.reserveReq` | `0.035` | share | Code note bridge: NBP bridge prior | Required reserve ratio | Direct | `BankingConfig` | `EMPIRICAL` |
 | `banking.lcrMin`, `nsfrMin` | `1.0, 1.0` | multiplier | Basel III | Minimum LCR/NSFR | Direct | `BankingConfig` | `EMPIRICAL` |
 | `banking.p2rAddons` | `[0.015, 0.010, 0.030, 0.015, 0.020, 0.025, 0.020, 0.020, 0.025, 0.020]` | multiplier by bank | Code note bridge: KNF bridge prior | SREP/P2R add-ons | Direct | `BankingConfig` | `CODE_NOTE_EMPIRICAL` |

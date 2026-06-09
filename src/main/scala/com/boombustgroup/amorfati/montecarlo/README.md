@@ -360,7 +360,6 @@ FirmCredit_RejectedFailedBank
 FirmCredit_RejectedCarGate
 FirmCredit_RejectedLcrGate
 FirmCredit_RejectedNsfrGate
-FirmCredit_RejectedStochastic
 FirmCredit_RejectedUnclassified
 FirmCredit_ApprovalRate
 FirmCredit_InvestmentDemand
@@ -393,7 +392,7 @@ resolution.
 credit decision surfaces before equity and corporate-bond channel substitution;
 final bank-loan origination is `FirmCredit_NewLoans`. `FirmCredit_Rejected*`
 splits bank-supply rejections by the primary approval gate: failed bank, CAR,
-LCR, NSFR, stochastic approval roll, or unclassified legacy/boolean paths. The
+LCR, NSFR, or unclassified rejection paths. The
 `Investment*` columns explain physical-capital financing;
 `FirmCredit_CashFinancedInvestment` is gross investment not financed by approved
 investment credit. `FirmCredit_TechDemand`, `FirmCredit_TechApproved`, and
@@ -401,7 +400,7 @@ investment credit. `FirmCredit_TechDemand`, `FirmCredit_TechApproved`, and
 The `TechSelected*` columns isolate the actually selected automation or hybrid
 upgrade path. The `TechCandidate*` columns expose the full otherwise-feasible
 upgrade candidate surface before adoption choice, including the candidate
-approval rate used to calibrate bank-side stochastic credit gating.
+approval rate used to inspect bank-side credit gating.
 
 ## NBFI Credit Diagnostics
 

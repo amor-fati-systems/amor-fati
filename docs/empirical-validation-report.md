@@ -184,7 +184,7 @@ classified that result as a credit-exposure calibration gap, not a
 unit-conversion, RWA-floor, or per-bank averaging defect.
 
 The #763 fix keeps bank capital calibration unchanged, removes per-loan reserve
-utilization from the firm-credit stochastic gate, and adds a target
+utilization from the firm-credit approval gate, and adds a target
 bank-debt share for physical investment so cash-rich firms do not fully bypass
 the bank-loan book. The accepted 5-seed, 60-month diagnostic run
 (`car-baseline-763-debttarget7`) uses `investmentDebtTargetShare = 0.07` and

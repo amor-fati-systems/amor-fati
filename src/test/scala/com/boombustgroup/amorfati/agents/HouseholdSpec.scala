@@ -467,7 +467,7 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
               approved = false,
               approvalProbability = Some(Share.Zero),
               approvalRoll = Some(Share.One),
-              audit = Banking.CreditApprovalAudit(rejectionReason = Some(Banking.CreditRejectionReason.Stochastic)),
+              audit = Banking.CreditApprovalAudit(rejectionReason = Some(Banking.CreditRejectionReason.CapitalAdequacy)),
             ),
       ),
     )(using creditP)
@@ -478,7 +478,7 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
     flow.consumerRejectedOrigination shouldBe flow.consumerCreditDemand
     flow.consumerBankRejectedOrigination shouldBe flow.consumerCreditDemand
     flow.consumerBankApprovalProduct shouldBe Banking.CreditProduct.ConsumerLoan.diagnosticCode
-    flow.consumerBankRejectionReason shouldBe Banking.CreditRejectionReason.Stochastic.diagnosticCode
+    flow.consumerBankRejectionReason shouldBe Banking.CreditRejectionReason.CapitalAdequacy.diagnosticCode
     flow.consumerBankApprovalProbability shouldBe Some(Share.Zero)
     result.aggregates.totalConsumerBankRejectedOrigination shouldBe flow.consumerBankRejectedOrigination
   }

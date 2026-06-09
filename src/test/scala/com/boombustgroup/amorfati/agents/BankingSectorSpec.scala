@@ -149,7 +149,7 @@ class BankingSectorSpec extends AnyFlatSpec with Matchers:
     (0 until 100).forall(_ => !canLend(weak, Banking.CreditProduct.FirmLoan, PLN(10000), rng)) shouldBe true
   }
 
-  it should "expose audited approval probability and roll only when the stochastic gate is sampled" in {
+  it should "expose audited approval probability and replay roll only when hard gates pass" in {
     val failed      = mkBankRow(capital = PLN(100000), status = BankStatus.Failed(ExecutionMonth(30)))
     val failedAudit = approval(failed, Banking.CreditProduct.FirmLoan, PLN(1000))
     failedAudit.approved shouldBe false
@@ -189,6 +189,17 @@ class BankingSectorSpec extends AnyFlatSpec with Matchers:
 
     noPressure.approvalProbability shouldBe Some(Share.One)
     assetPressure.approvalProbability shouldBe Some(Share.One)
+  }
+
+  it should "route NPL pressure through pricing instead of approval probability" in {
+    val lowNpl  = mkBankRow(loans = PLN(1000000), capital = PLN(500000), nplAmount = PLN.Zero)
+    val highNpl = mkBankRow(loans = PLN(1000000), capital = PLN(500000), nplAmount = PLN(400000))
+
+    Banking.lendingRate(highNpl.bank, highNpl.stocks, configs(0), Rate.decimal(5, 2), Rate.Zero, PLN.Zero) should be >
+      Banking.lendingRate(lowNpl.bank, lowNpl.stocks, configs(0), Rate.decimal(5, 2), Rate.Zero, PLN.Zero)
+
+    approval(lowNpl, Banking.CreditProduct.FirmLoan, PLN(100000)).approvalProbability shouldBe Some(Share.One)
+    approval(highNpl, Banking.CreditProduct.FirmLoan, PLN(100000)).approvalProbability shouldBe Some(Share.One)
   }
 
   it should "project approval CAR through the requested credit product bucket" in {

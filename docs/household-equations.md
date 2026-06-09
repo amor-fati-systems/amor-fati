@@ -248,7 +248,7 @@ Positive eligible demand is then passed through the product-aware bank-side
 supply gate with `ConsumerLoan` as the requested product. That gate uses the same
 audited bank credit-approval surface used for firm credit: failed-bank,
 projected CAR with the consumer-loan RWA bucket incremented, LCR, NSFR, and
-stochastic approval after those hard gates. Household diagnostics distinguish
+bank-side approval audit after those hard gates. Household diagnostics distinguish
 total demand, rejected demand, the subset rejected by bank supply, and the
 bank-side approval audit fields for household snapshot rows.
 

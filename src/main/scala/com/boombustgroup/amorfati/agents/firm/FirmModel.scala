@@ -245,7 +245,6 @@ case class FirmCreditRejectionBreakdown(
     carGate: PLN = PLN.Zero,
     lcrGate: PLN = PLN.Zero,
     nsfrGate: PLN = PLN.Zero,
-    stochastic: PLN = PLN.Zero,
     unclassified: PLN = PLN.Zero,
 ):
   def +(other: FirmCreditRejectionBreakdown): FirmCreditRejectionBreakdown =
@@ -254,7 +253,6 @@ case class FirmCreditRejectionBreakdown(
       carGate = carGate + other.carGate,
       lcrGate = lcrGate + other.lcrGate,
       nsfrGate = nsfrGate + other.nsfrGate,
-      stochastic = stochastic + other.stochastic,
       unclassified = unclassified + other.unclassified,
     )
 
@@ -269,5 +267,4 @@ object FirmCreditRejectionBreakdown:
         case Some(Banking.CreditRejectionReason.CapitalAdequacy)   => FirmCreditRejectionBreakdown(carGate = amount)
         case Some(Banking.CreditRejectionReason.LiquidityCoverage) => FirmCreditRejectionBreakdown(lcrGate = amount)
         case Some(Banking.CreditRejectionReason.StableFunding)     => FirmCreditRejectionBreakdown(nsfrGate = amount)
-        case Some(Banking.CreditRejectionReason.Stochastic)        => FirmCreditRejectionBreakdown(stochastic = amount)
         case None                                                  => FirmCreditRejectionBreakdown(unclassified = amount)
