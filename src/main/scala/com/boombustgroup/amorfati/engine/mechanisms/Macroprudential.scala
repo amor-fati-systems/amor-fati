@@ -9,14 +9,17 @@ import com.boombustgroup.amorfati.types.*
   * Implements the Basel III / CRD V macroprudential stack as applied by KNF
   * (Polish Financial Supervision Authority):
   *
-  *   - **CCyB** (countercyclical capital buffer): activated when credit-to-GDP
-  *     gap exceeds threshold, released immediately when gap falls below release
-  *     level. Credit-to-GDP trend approximated via exponential smoothing
-  *     (λ=0.05 monthly ≈ quarterly HP filter with λ=1600, per Drehmann & Yetman
-  *     2018).
+  *   - **CCyB** (countercyclical capital buffer): initialized from the
+  *     2026-04-30 Poland baseline and then activated when the credit-to-GDP gap
+  *     exceeds threshold, released immediately when the gap falls below release
+  *     level. Credit-to-GDP trend is approximated via exponential smoothing
+  *     (lambda=0.05 monthly, roughly quarterly HP filter with lambda=1600, per
+  *     Drehmann & Yetman 2018).
   *   - **O-SII** (Other Systemically Important Institutions): per-bank
-  *     surcharges calibrated to KNF decisions active in the 2026 baseline.
-  *   - **P2R** (Pillar 2 Requirement): per-bank BION/SREP add-ons from KNF.
+  *     surcharges calibrated to KNF decisions active in the 2026-04-30
+  *     baseline.
+  *   - **P2R** (Pillar 2 Requirement): per-bank BION/SREP bridge add-ons for
+  *     the 2026-04-30 bank archetypes.
   *   - **Concentration limit**: single-name exposure cap as share of system
   *     loans.
   *
@@ -37,6 +40,10 @@ object Macroprudential:
 
   object State:
     val zero: State = State(Multiplier.Zero, Coefficient.Zero, Multiplier.Zero)
+
+  /** Production opening state for the configured calibration baseline. */
+  def openingState(using p: SimParams): State =
+    State(p.banking.initialCcyb, Coefficient.Zero, Multiplier.Zero)
 
   // ---- O-SII buffer ----
 

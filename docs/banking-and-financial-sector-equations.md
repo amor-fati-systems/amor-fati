@@ -124,14 +124,33 @@ r^{loan}_{b,tau} =
 where:
 
 ```text
+effectiveMinCar_b(ccyb_tau) =
+  minCar
+  + ccyb_tau
+  + OSIIBuffer_b
+  + P2RAddon_b
+
+managementCAR_b(ccyb_tau) =
+  effectiveMinCar_b(ccyb_tau) + creditManagementCarBuffer
+
 capitalPenalty_b =
-  2 * (1.5 * minCar - CAR_b)        if CAR_b < 1.5 * minCar
-  0                                 otherwise
+  max(managementCAR_b(ccyb_tau) - CAR_b, 0)
+  * creditCarShortfallPenaltyScale
 
 crowdingOutSpread_b =
   max(govBondYield_tau - r^{base}_{tau} - baseSpread, 0)
   * crowdingOutSensitivity
 ```
+
+The capital stack used by `Macroprudential.effectiveMinCar` is auditable from
+configuration and calibration provenance:
+
+| Component | Runtime symbol | 2026-04-30 baseline status |
+| --- | --- | --- |
+| Basel/CRR base minimum | `minCar` | 8% minimum capital adequacy ratio. |
+| Countercyclical buffer | `ccyb_tau` | Opens at `initialCcyb = 1%`; later months follow the endogenous CCyB build/release rule capped by `ccybMax`. |
+| O-SII buffer | `OSIIBuffer_b` | KNF O-SII buffer mapped to the named bank archetype; `Alior` is zero because it is not on the KNF O-SII list, `BPS/Coop` maps cooperative-bank O-SII rows, and `Other banks` carries Handlowy/SGB/residual exposure. |
+| Pillar 2 requirement | `P2RAddon_b` | Bank-archetype bridge prior; the public row-level source is still marked as incomplete in the calibration register. |
 
 Failed banks receive a fixed penalty spread and cannot approve new credit.
 

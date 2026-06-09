@@ -24,6 +24,13 @@ class MacroprudentialSpec extends AnyFlatSpec with Matchers:
     s.creditToGdpTrend shouldBe Multiplier.Zero
   }
 
+  "Macroprudential.openingState" should "seed the configured 2026-04-30 opening CCyB" in {
+    val s = Macroprudential.openingState
+    s.ccyb shouldBe p.banking.initialCcyb
+    s.creditToGdpGap shouldBe Coefficient.Zero
+    s.creditToGdpTrend shouldBe Multiplier.Zero
+  }
+
   // ==========================================================================
   // OSII buffer (internal — bypasses Config guard)
   // ==========================================================================
@@ -34,6 +41,15 @@ class MacroprudentialSpec extends AnyFlatSpec with Matchers:
 
   it should "return 1.0% for Pekao (id=1)" in {
     decimal(Macroprudential.osiiBufferImpl(1)) shouldBe BigDecimal("0.01") +- BigDecimal("1e-10")
+  }
+
+  it should "return 0.25% for BNP Paribas (id=6)" in {
+    decimal(Macroprudential.osiiBufferImpl(6)) shouldBe BigDecimal("0.0025") +- BigDecimal("1e-10")
+  }
+
+  it should "encode Alior as zero and residual Other banks as 0.25%" in {
+    Macroprudential.osiiBufferImpl(8) shouldBe Multiplier.Zero
+    decimal(Macroprudential.osiiBufferImpl(9)) shouldBe BigDecimal("0.0025") +- BigDecimal("1e-10")
   }
 
   it should "return current O-SII buffers for the remaining default banks" in

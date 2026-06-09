@@ -158,7 +158,7 @@ object BankBalanceSheetBenchmarkExport:
           val credit     = balances.firmLoan + balances.consumerLoan + balances.mortgageLoan
           val bankAssets = singleBankAssets(balances)
           val car        = rawDecimal(Banking.car(bank, stocks, corpBond).toLong)
-          val minCar     = rawDecimal(Macroprudential.effectiveMinCar(bank.id.toInt, Multiplier.Zero).toLong)
+          val minCar     = rawDecimal(Macroprudential.effectiveMinCar(bank.id.toInt, init.world.mechanisms.macropru.ccyb).toLong)
           BankRow(
             runId = "",
             seed = seed,
@@ -244,7 +244,7 @@ object BankBalanceSheetBenchmarkExport:
       vintage = BaselineVintage,
       lower = Some(BigDecimal("0.00")),
       upper = None,
-      sourceNote = "Effective minimum CAR compares BankState.capital with base requirement, O-SII buffer and P2R add-ons with CCyB at zero at model start.",
+      sourceNote = "Effective minimum CAR compares BankState.capital with the base requirement, opening CCyB, O-SII buffer and P2R add-ons.",
       interpretation = "Negative opening buffer means at least one bank starts already in supervisory breach.",
     ),
     TargetBand(

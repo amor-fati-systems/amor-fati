@@ -244,6 +244,22 @@ object CalibrationProvenance:
           sourceReference = "https://nbp.pl/en/statistic-and-financial-reporting/monetary-and-financial-statistics/consolidated-balance-sheet-of-mfis/",
           transformationNotes = "Bank and NBP government-bond opening stocks are mapped to model holder buckets and scaled by gdpRatio.",
         ),
+        "banking.initialCcyb"         -> SourceMetadata(
+          sourceFamily = "Banking macroprudential buffers",
+          sourceTableOrCode = "Dz.U. 2024 poz. 1400 countercyclical buffer regulation",
+          vintage = "Active at 2026-04-30 model start",
+          sourceReference = "https://eli.gov.pl/eli/DU/2024/1400/ogl",
+          transformationNotes =
+            "The 1% Polish CCyB rate is used as the opening macroprudential state; the later 2% regulation is outside the 2026-04-30 baseline.",
+        ),
+        "banking.osiiBuffers"         -> SourceMetadata(
+          sourceFamily = "Banking macroprudential buffers",
+          sourceTableOrCode = "KNF O-SII buffer adequacy review",
+          vintage = "Decisions active at 2026-04-30 model start; decision communication dated 2025-11-25",
+          sourceReference = "https://www.knf.gov.pl/?articleId=96131&p_id=18",
+          transformationNotes =
+            "Named bank rows use the KNF O-SII table directly; Alior receives 0 because it is not on the list, BPS/Coop maps the cooperative-bank O-SII rows, and Other banks carries Handlowy/SGB/residual exposure.",
+        ),
         "forex.importPropensity"      -> SourceMetadata(
           sourceFamily = "External sector",
           sourceTableOrCode = "GUS/NBP import-to-GDP bridge",
@@ -637,11 +653,12 @@ object CalibrationProvenance:
 | `banking.firmLoanAmortRate` | `1/60` | monthly rate | Code note bridge: NBP bridge prior maturity | Five-year average loan maturity | Direct | `BankingConfig` | `CODE_NOTE_EMPIRICAL` |
 | `banking.reserveReq` | `0.035` | share | Code note bridge: NBP bridge prior | Required reserve ratio | Direct | `BankingConfig` | `EMPIRICAL` |
 | `banking.lcrMin`, `nsfrMin` | `1.0`, `1.0` | multiplier | Basel III | Minimum LCR/NSFR | Direct | `BankingConfig` | `EMPIRICAL` |
-| `banking.p2rAddons` | `[0.015, 0.010, 0.030, 0.015, 0.020, 0.025, 0.020, 0.020, 0.025, 0.020]` | multiplier by bank | Code note bridge: KNF bridge prior | SREP/P2R add-ons | Direct | `BankingConfig` | `CODE_NOTE_EMPIRICAL` |
+| `banking.p2rAddons` | `[0.015, 0.010, 0.030, 0.015, 0.020, 0.025, 0.020, 0.020, 0.025, 0.020]` | multiplier by bank | 2026-04-30 bank-archetype P2R bridge prior; public row-level source incomplete | SREP/P2R add-ons | Direct bridge prior by default bank archetype | `BankingConfig` | `CODE_NOTE_EMPIRICAL` |
 | `banking.bfgLevyRate` | `0.0024` | annual rate | Code note bridge: BFG bridge prior | Resolution levy | `.monthly` in use | `BankingConfig` | `CODE_NOTE_EMPIRICAL` |
 | `banking.bfgDepositGuarantee` | `425370` | PLN/depositor | BFG EUR 100,000 guarantee converted at model-start PLN/EUR 4.2537 | Deposit guarantee threshold | Direct | `BankingConfig` | `EMPIRICAL_TRANSFORMED` |
-| `banking.ccybMax` | `0.025` | multiplier | Code note bridge: KNF bridge prior | Max CCyB | Direct | `BankingConfig` | `CODE_NOTE_EMPIRICAL` |
-| `banking.osiiBuffers` | `[0.020, 0.010, 0.005, 0.010, 0.015, 0.0025, 0.005, 0.0025, 0.000, 0.0025]` | multiplier by bank | KNF O-SII decisions announced November 2025 | O-SII buffers for default bank archetypes | Direct | `BankingConfig`, `Macroprudential` | `EMPIRICAL_TRANSFORMED` |
+| `banking.initialCcyb` | `0.010` | multiplier | Polish CCyB regulation active at the 2026-04-30 model start | Opening countercyclical capital buffer | Direct opening macroprudential state | `BankingConfig`, `Macroprudential`, `WorldInit` | `EMPIRICAL` |
+| `banking.ccybMax` | `0.025` | multiplier | Code note bridge: endogenous CCyB rule guardrail | Max CCyB build-rule cap | Direct cap; not the opening CCyB rate | `BankingConfig`, `Macroprudential` | `CODE_NOTE_EMPIRICAL` |
+| `banking.osiiBuffers` | `[0.020, 0.010, 0.005, 0.010, 0.015, 0.0025, 0.0025, 0.0025, 0.000, 0.0025]` | multiplier by bank | KNF O-SII decisions active at the 2026-04-30 model start | O-SII buffers for default bank archetypes | Direct for named rows; Alior is 0 because it is not on the KNF O-SII list, BPS/Coop maps cooperative-bank O-SII rows, and Other banks carries Handlowy/SGB/residual exposure | `BankingConfig`, `Macroprudential` | `EMPIRICAL_TRANSFORMED` |
 | `banking.htmShare` | `0.60` | share | Code note bridge: NBP bridge prior | HTM share of gov bond portfolio | Direct | `BankingConfig` | `CODE_NOTE_EMPIRICAL` |
 | `banking.depositPanicRate` | `0.03` | monthly share | Code note bridge: Diamond-Dybvig mechanism | Panic switching after failure | Direct | `BankingConfig` | `TUNED_NEEDS_VALIDATION` |
 | `banking.eclRate1`, `eclRate2`, `eclRate3` | `0.01`, `0.08`, `0.50` | share | Code note bridge: KNF IFRS 9 | ECL provision rates | Direct | `BankingConfig` | `CODE_NOTE_EMPIRICAL` |

@@ -184,7 +184,7 @@ object WorldInit:
         aggGreenInvestment = initGreenInvestment,
       ),
       mechanisms = MechanismsState(
-        macropru = Macroprudential.State.zero,
+        macropru = Macroprudential.openingState,
         expectations = initExpectations,
       ),
       plumbing = MonetaryPlumbingState.zero,

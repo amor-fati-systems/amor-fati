@@ -9,9 +9,9 @@ import com.boombustgroup.amorfati.types.*
   * bank archetypes plus a residual `Other banks` bucket, calibrated to the
   * Poland 2026-04-30 production baseline. Rows have heterogeneous balance
   * sheets, credit spreads, NPL dynamics, capital adequacy (Basel III CRR),
-  * liquidity coverage (LCR/NSFR), macroprudential buffers (CCyB, O-SII), KNF
-  * BION/SREP P2R add-ons, BFG resolution levy and bail-in, and interbank
-  * market.
+  * liquidity coverage (LCR/NSFR), macroprudential buffers (CCyB, O-SII),
+  * bank-archetype BION/SREP P2R add-ons, BFG resolution levy and bail-in, and
+  * interbank market.
   *
   * Stock values (`initCapital`, `initDeposits`, etc.) are in raw PLN — scaled
   * by `gdpRatio` in `SimParams.defaults`.
@@ -83,8 +83,8 @@ import com.boombustgroup.amorfati.types.*
   * @param termDepositFrac
   *   fraction of deposits that are term (stable for NSFR purposes)
   * @param p2rAddons
-  *   per-row BION/SREP P2R capital add-ons (KNF bridge prior, named bank
-  *   archetypes plus residual Other banks)
+  *   per-row BION/SREP P2R capital add-ons (2026-04-30 bank-archetype bridge
+  *   prior; public row-level source remains incomplete)
   * @param bfgLevyRate
   *   annual BFG resolution fund levy as fraction of deposits (BFG bridge prior)
   * @param bailInDepositHaircut
@@ -92,15 +92,18 @@ import com.boombustgroup.amorfati.types.*
   * @param bfgDepositGuarantee
   *   BFG deposit guarantee limit per depositor, converted from EUR 100,000 at
   *   the model-start PLN/EUR rate
+  * @param initialCcyb
+  *   opening countercyclical capital buffer rate active for the 2026-04-30
+  *   Poland baseline
   * @param ccybMax
-  *   maximum countercyclical capital buffer (KNF bridge prior: 2.5%)
+  *   maximum countercyclical capital buffer used by the endogenous build rule
   * @param ccybActivationGap
   *   credit/GDP gap threshold to activate CCyB
   * @param ccybReleaseGap
   *   credit/GDP gap threshold to release CCyB
   * @param osiiBuffers
-  *   O-SII buffers by default bank id (KNF decisions announced in November 2025
-  *   and active in the 2026 baseline)
+  *   O-SII buffers by default bank id, active for the 2026-04-30 Poland
+  *   baseline; source decision vintages are recorded in calibration provenance
   * @param concentrationLimit
   *   single-name concentration limit as fraction of capital (Art. 395 CRR: 25%)
   * @param htmShare
@@ -199,7 +202,8 @@ case class BankingConfig(
     bfgLevyRate: Rate = Rate.decimal(24, 4),
     bailInDepositHaircut: Share = Share.decimal(8, 2),
     bfgDepositGuarantee: PLN = PLN(425370),
-    // Macroprudential (KNF O-SII decisions active in the 2026 baseline)
+    // Macroprudential stack active at the 2026-04-30 Poland baseline.
+    initialCcyb: Multiplier = Multiplier.decimal(1, 2),
     ccybMax: Multiplier = Multiplier.decimal(25, 3),
     ccybActivationGap: Coefficient = Coefficient.decimal(2, 2),
     ccybReleaseGap: Coefficient = Coefficient.decimal(-2, 2),
@@ -209,11 +213,11 @@ case class BankingConfig(
       Multiplier.decimal(5, 3),  // mBank: 0.50%
       Multiplier.decimal(1, 2),  // ING BSK: 1.00%
       Multiplier.decimal(15, 3), // Santander: 1.50%
-      Multiplier.decimal(25, 4), // BPS/Coop: 0.25%
-      Multiplier.decimal(5, 3),  // BNP Paribas: 0.50%
+      Multiplier.decimal(25, 4), // BPS/Coop: 0.25% cooperative-bank O-SII bridge
+      Multiplier.decimal(25, 4), // BNP Paribas: 0.25%
       Multiplier.decimal(25, 4), // Millennium: 0.25%
-      Multiplier.Zero,           // Alior: no O-SII buffer in this bridge
-      Multiplier.decimal(25, 4), // residual Other banks: 0.25%
+      Multiplier.Zero,           // Alior: not on the KNF O-SII list for this baseline
+      Multiplier.decimal(25, 4), // Other banks: Handlowy/SGB/residual O-SII bridge
     ),
     concentrationLimit: Share = Share.decimal(25, 2),
     // AFS/HTM bond portfolio split (interest rate risk channel)
@@ -247,6 +251,10 @@ case class BankingConfig(
   require(
     creditCarShortfallPenaltyScale >= Multiplier.Zero,
     s"creditCarShortfallPenaltyScale must be non-negative: $creditCarShortfallPenaltyScale",
+  )
+  require(
+    initialCcyb >= Multiplier.Zero && initialCcyb <= ccybMax,
+    s"initialCcyb must be in [0,ccybMax]: initialCcyb=$initialCcyb, ccybMax=$ccybMax",
   )
   private val rwaWeights = Vector(
     "firmLoanRiskWeight"       -> firmLoanRiskWeight,

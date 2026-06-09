@@ -39,8 +39,8 @@ class CalibrationProvenanceSpec extends AnyFlatSpec with Matchers:
 
   "Baseline calibration provenance" should "preserve the active default inventory status counts in code" in {
     CalibrationProvenance.Baseline.parseErrors shouldBe empty
-    CalibrationProvenance.Baseline.parameters should have size 245
-    CalibrationProvenance.Baseline.statusCounts should contain(Empirical -> 36)
+    CalibrationProvenance.Baseline.parameters should have size 246
+    CalibrationProvenance.Baseline.statusCounts should contain(Empirical -> 37)
     CalibrationProvenance.Baseline.statusCounts should contain(EmpiricalTransformed -> 17)
     CalibrationProvenance.Baseline.statusCounts should contain(CodeNoteEmpirical -> 62)
     CalibrationProvenance.Baseline.statusCounts should contain(TunedNeedsValidation -> 89)
@@ -82,6 +82,22 @@ class CalibrationProvenanceSpec extends AnyFlatSpec with Matchers:
         "2026-04-30",
         "nbp.pl",
         "model holder buckets",
+      ),
+      (
+        "banking.initialCcyb",
+        "Banking macroprudential buffers",
+        "Dz.U. 2024 poz. 1400 countercyclical buffer regulation",
+        "2026-04-30",
+        "eli.gov.pl",
+        "opening macroprudential state",
+      ),
+      (
+        "banking.osiiBuffers",
+        "Banking macroprudential buffers",
+        "KNF O-SII buffer adequacy review",
+        "2026-04-30",
+        "knf.gov.pl",
+        "Named bank rows",
       ),
       ("forex.importPropensity", "External sector", "GUS/NBP import-to-GDP bridge", "2026-04-30", "Current account", "normalized to GDP"),
       (
