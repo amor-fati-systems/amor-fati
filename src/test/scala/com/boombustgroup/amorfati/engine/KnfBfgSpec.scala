@@ -66,6 +66,8 @@ class KnfBfgSpec extends AnyFlatSpec with Matchers:
     p.banking.p2rAddons.length shouldBe Banking.DefaultConfigs.length
     p.banking.p2rAddons(0) shouldBe Multiplier.decimal(15, 3)
     p.banking.p2rAddons(2) shouldBe Multiplier.decimal(30, 3)
+    p.banking.initialCcyb shouldBe Multiplier.decimal(1, 2)
+    p.banking.osiiBuffers(6) shouldBe Multiplier.decimal(25, 4)
     p.banking.bfgLevyRate shouldBe Rate.decimal(24, 4)
     p.banking.bailInDepositHaircut shouldBe Share.decimal(8, 2)
     p.banking.bfgDepositGuarantee shouldBe PLN(425370)

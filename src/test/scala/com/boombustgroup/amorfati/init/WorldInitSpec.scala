@@ -28,6 +28,7 @@ class WorldInitSpec extends AnyFlatSpec with Matchers:
 
     world.inflation shouldBe p.monetary.initialInflation
     world.nbp.referenceRate shouldBe p.monetary.initialRate
+    world.mechanisms.macropru.ccyb shouldBe p.banking.initialCcyb
     world.mechanisms.expectations.expectedInflation shouldBe p.monetary.initialExpectedInflation
     world.mechanisms.expectations.expectedRate shouldBe p.monetary.initialExpectedRate
   }

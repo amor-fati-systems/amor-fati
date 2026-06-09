@@ -62,7 +62,7 @@ These ratios guide follow-up calibration and source-bridge work.
 | `CapitalToAssets` | `SOFT_CALIBRATION_WARNING` | `2026-04-30 model-start baseline` | `0.06` to `0.12` | ratio | Checks whether the opening balance sheet is thinly capitalised before any macro shock. |
 | `AggregateCar` | `SOFT_CALIBRATION_WARNING` | `2026-04-30 model-start baseline` | `0.191` to `0.231` | ratio | Aggregate CAR should sit near the KNF February 2026 total-capital-ratio bridge, mapped to the model's explicit regulatory RWA perimeter. |
 | `MinimumCar` | `HARD_INVARIANT` | `2026-04-30 model-start baseline` | `0.08` to n/a | ratio | No bank should start below the base Basel III CRR 8% capital requirement. |
-| `MinimumEffectiveCarBuffer` | `HARD_INVARIANT` | `2026-04-30 model-start baseline` | `0.00` to n/a | ratio | No bank should start below its effective minimum CAR after O-SII and P2R add-ons. |
+| `MinimumEffectiveCarBuffer` | `HARD_INVARIANT` | `2026-04-30 model-start baseline` | `0.00` to n/a | ratio | No bank should start below its effective minimum CAR after opening CCyB, O-SII and P2R add-ons. |
 | `BanksBelowEffectiveCar` | `HARD_INVARIANT` | `2026-04-30 model-start baseline` | `0` to `0` | count | No bank should require resolution before the first simulated month. |
 | `FirmLoansToGdp` | `SOFT_CALIBRATION_WARNING` | `2026-04-30 model-start baseline` | `0.10` to `0.18` | ratio | Business loans should be visible but not dominate the Polish credit stock. |
 | `ConsumerLoansToGdp` | `SOFT_CALIBRATION_WARNING` | `2026-04-30 model-start baseline` | `0.03` to `0.08` | ratio | Consumer credit should be material but much smaller than GDP. |
