@@ -848,7 +848,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
         firmTechCandidateCreditDemand = PLN(20),
         firmTechCandidateCreditApproved = PLN(16),
         firmTechCandidateCreditRejected = PLN(4),
-        firmCreditRejectedByReason = Firm.CreditRejectionBreakdown(carGate = PLN(7), capitalBuffer = PLN(3), unclassified = PLN(5)),
+        firmCreditRejectedByReason = Firm.CreditRejectionBreakdown(carGate = PLN(7), capitalBuffer = PLN(3), unclassified = PLN(2)),
         bankCapital = bankCapital,
       ),
     )
@@ -881,7 +881,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     valueAt(row, "FirmCredit_RejectedCapitalBuffer") shouldBe polandScale(PLN(3))
     valueAt(row, "FirmCredit_RejectedLcrGate") shouldBe polandScale(PLN.Zero)
     valueAt(row, "FirmCredit_RejectedNsfrGate") shouldBe polandScale(PLN.Zero)
-    valueAt(row, "FirmCredit_RejectedUnclassified") shouldBe polandScale(PLN(5))
+    valueAt(row, "FirmCredit_RejectedUnclassified") shouldBe polandScale(PLN(2))
     valueAt(row, "FirmCredit_ApprovalRate") shouldBe MetricValue.fromRaw((PLN(8) / PLN(20)).toLong)
     valueAt(row, "FirmCredit_InvestmentDemand") shouldBe polandScale(PLN(12))
     valueAt(row, "FirmCredit_InvestmentApproved") shouldBe polandScale(PLN(5))
