@@ -40,7 +40,8 @@ The diagnostic answers whether bank credit losses are mostly explained by:
 
 - weak borrower underwriting at origination,
 - default/write-off mechanics after origination,
-- or insufficient bank capital for otherwise plausible credit losses.
+- or insufficient bank capital / management-buffer headroom for otherwise
+  plausible credit losses.
 
 For households, a future-bad row means later consumer-loan default, liquidity
 bridge write-off, or personal insolvency inside the observation window.
@@ -48,6 +49,11 @@ bridge write-off, or personal insolvency inside the observation window.
 For firms, a future-bad row means later bankruptcy inside the observation
 window. The firm `DscrProxy` is a narrow monthly diagnostic: realized post-tax
 profit divided by the proxy debt-service flow visible in the firm trace.
+
+Household origination rows carry bank approval audit fields including projected
+CAR, effective minimum CAR, management CAR target, capital-buffer throttle, LCR,
+and NSFR. These columns distinguish hard regulatory rejection from soft
+management-buffer quantity rationing.
 
 The export is intentionally micro-level and optional. It should be used for
 root-cause investigation, not as a routine production Monte Carlo output.

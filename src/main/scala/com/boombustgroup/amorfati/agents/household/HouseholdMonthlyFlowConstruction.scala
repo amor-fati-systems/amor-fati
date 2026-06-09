@@ -165,6 +165,8 @@ private[agents] object HouseholdMonthlyFlowConstruction:
       consumerBankApprovalRoll = bankApproval.flatMap(_.approvalRoll),
       consumerBankProjectedCar = bankApproval.flatMap(_.audit.projectedCar),
       consumerBankMinCar = bankApproval.flatMap(_.audit.minCar),
+      consumerBankManagementCarTarget = bankApproval.flatMap(_.audit.managementCarTarget),
+      consumerBankCapitalThrottle = bankApproval.flatMap(_.audit.capitalThrottle),
       consumerBankLcr = bankApproval.flatMap(_.audit.lcr),
       consumerBankNsfr = bankApproval.flatMap(_.audit.nsfr),
     )

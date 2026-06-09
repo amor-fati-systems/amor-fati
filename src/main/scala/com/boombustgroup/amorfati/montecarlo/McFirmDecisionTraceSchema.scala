@@ -44,6 +44,8 @@ private[montecarlo] object McFirmDecisionTraceSchema:
     "SelectedBankRejectionReason"        -> (row => creditRejectionReason(row.trace.selectedBankApprovalAudit)),
     "SelectedBankProjectedCar"           -> (row => auditMultiplier(row.trace.selectedBankApprovalAudit.projectedCar)),
     "SelectedBankMinCar"                 -> (row => auditMultiplier(row.trace.selectedBankApprovalAudit.minCar)),
+    "SelectedBankManagementCar"          -> (row => auditMultiplier(row.trace.selectedBankApprovalAudit.managementCarTarget)),
+    "SelectedBankCapitalThrottle"        -> (row => auditShare(row.trace.selectedBankApprovalAudit.capitalThrottle)),
     "SelectedBankLcr"                    -> (row => auditMultiplier(row.trace.selectedBankApprovalAudit.lcr)),
     "SelectedBankLcrMin"                 -> (row => auditMultiplier(row.trace.selectedBankApprovalAudit.lcrMin)),
     "SelectedBankNsfr"                   -> (row => auditMultiplier(row.trace.selectedBankApprovalAudit.nsfr)),
@@ -59,6 +61,8 @@ private[montecarlo] object McFirmDecisionTraceSchema:
     "FullAiBankRejectionReason"          -> (row => creditRejectionReason(row.trace.fullAiBankApprovalAudit)),
     "FullAiBankProjectedCar"             -> (row => auditMultiplier(row.trace.fullAiBankApprovalAudit.projectedCar)),
     "FullAiBankMinCar"                   -> (row => auditMultiplier(row.trace.fullAiBankApprovalAudit.minCar)),
+    "FullAiBankManagementCar"            -> (row => auditMultiplier(row.trace.fullAiBankApprovalAudit.managementCarTarget)),
+    "FullAiBankCapitalThrottle"          -> (row => auditShare(row.trace.fullAiBankApprovalAudit.capitalThrottle)),
     "FullAiBankLcr"                      -> (row => auditMultiplier(row.trace.fullAiBankApprovalAudit.lcr)),
     "FullAiBankLcrMin"                   -> (row => auditMultiplier(row.trace.fullAiBankApprovalAudit.lcrMin)),
     "FullAiBankNsfr"                     -> (row => auditMultiplier(row.trace.fullAiBankApprovalAudit.nsfr)),
@@ -69,6 +73,8 @@ private[montecarlo] object McFirmDecisionTraceSchema:
     "HybridBankRejectionReason"          -> (row => creditRejectionReason(row.trace.hybridBankApprovalAudit)),
     "HybridBankProjectedCar"             -> (row => auditMultiplier(row.trace.hybridBankApprovalAudit.projectedCar)),
     "HybridBankMinCar"                   -> (row => auditMultiplier(row.trace.hybridBankApprovalAudit.minCar)),
+    "HybridBankManagementCar"            -> (row => auditMultiplier(row.trace.hybridBankApprovalAudit.managementCarTarget)),
+    "HybridBankCapitalThrottle"          -> (row => auditShare(row.trace.hybridBankApprovalAudit.capitalThrottle)),
     "HybridBankLcr"                      -> (row => auditMultiplier(row.trace.hybridBankApprovalAudit.lcr)),
     "HybridBankLcrMin"                   -> (row => auditMultiplier(row.trace.hybridBankApprovalAudit.lcrMin)),
     "HybridBankNsfr"                     -> (row => auditMultiplier(row.trace.hybridBankApprovalAudit.nsfr)),
@@ -85,6 +91,8 @@ private[montecarlo] object McFirmDecisionTraceSchema:
     "InvestmentBankRejectionReason"      -> (row => creditRejectionReason(row.trace.investmentBankApprovalAudit)),
     "InvestmentBankProjectedCar"         -> (row => auditMultiplier(row.trace.investmentBankApprovalAudit.projectedCar)),
     "InvestmentBankMinCar"               -> (row => auditMultiplier(row.trace.investmentBankApprovalAudit.minCar)),
+    "InvestmentBankManagementCar"        -> (row => auditMultiplier(row.trace.investmentBankApprovalAudit.managementCarTarget)),
+    "InvestmentBankCapitalThrottle"      -> (row => auditShare(row.trace.investmentBankApprovalAudit.capitalThrottle)),
     "InvestmentBankLcr"                  -> (row => auditMultiplier(row.trace.investmentBankApprovalAudit.lcr)),
     "InvestmentBankLcrMin"               -> (row => auditMultiplier(row.trace.investmentBankApprovalAudit.lcrMin)),
     "InvestmentBankNsfr"                 -> (row => auditMultiplier(row.trace.investmentBankApprovalAudit.nsfr)),
@@ -138,4 +146,7 @@ private[montecarlo] object McFirmDecisionTraceSchema:
     audit.rejectionReason.fold("")(reason => text(reason.diagnosticCode))
 
   private def auditMultiplier(value: Option[Multiplier]): String =
+    value.fold("")(_.format(6))
+
+  private def auditShare(value: Option[Share]): String =
     value.fold("")(_.format(6))

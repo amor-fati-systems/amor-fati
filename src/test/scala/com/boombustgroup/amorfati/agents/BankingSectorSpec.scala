@@ -128,16 +128,16 @@ class BankingSectorSpec extends AnyFlatSpec with Matchers:
 
   "Banking.lendingRate" should "price failed banks, NPL stress, and bank-specific spread from explicit stocks" in {
     val failed = mkBankRow(status = BankStatus.Failed(ExecutionMonth(30)))
-    Banking.lendingRate(failed.bank, failed.stocks, configs(0), Rate.decimal(5, 2), Rate.Zero, PLN.Zero) shouldBe Rate.decimal(55, 2)
+    Banking.lendingRate(failed.bank, failed.stocks, configs(0), Rate.decimal(5, 2), Rate.Zero, PLN.Zero, Multiplier.Zero) shouldBe Rate.decimal(55, 2)
 
     val lowNpl  = mkBankRow(nplAmount = PLN(10000))
     val highNpl = mkBankRow(nplAmount = PLN(200000))
-    Banking.lendingRate(highNpl.bank, highNpl.stocks, configs(0), Rate.decimal(5, 2), Rate.Zero, PLN.Zero) should be >
-      Banking.lendingRate(lowNpl.bank, lowNpl.stocks, configs(0), Rate.decimal(5, 2), Rate.Zero, PLN.Zero)
+    Banking.lendingRate(highNpl.bank, highNpl.stocks, configs(0), Rate.decimal(5, 2), Rate.Zero, PLN.Zero, Multiplier.Zero) should be >
+      Banking.lendingRate(lowNpl.bank, lowNpl.stocks, configs(0), Rate.decimal(5, 2), Rate.Zero, PLN.Zero, Multiplier.Zero)
 
     val base = mkBankRow(nplAmount = PLN.Zero)
-    Banking.lendingRate(base.bank, base.stocks, configs(5), Rate.decimal(5, 2), Rate.Zero, PLN.Zero) should be >
-      Banking.lendingRate(base.bank, base.stocks, configs(0), Rate.decimal(5, 2), Rate.Zero, PLN.Zero)
+    Banking.lendingRate(base.bank, base.stocks, configs(5), Rate.decimal(5, 2), Rate.Zero, PLN.Zero, Multiplier.Zero) should be >
+      Banking.lendingRate(base.bank, base.stocks, configs(0), Rate.decimal(5, 2), Rate.Zero, PLN.Zero, Multiplier.Zero)
   }
 
   "Banking.canLend" should "reject failed banks and low projected CAR" in {
@@ -164,13 +164,36 @@ class BankingSectorSpec extends AnyFlatSpec with Matchers:
     weakAudit.approvalRoll shouldBe None
     weakAudit.audit.rejectionReason shouldBe Some(Banking.CreditRejectionReason.CapitalAdequacy)
     weakAudit.audit.projectedCar should not be empty
+    weakAudit.audit.managementCarTarget should not be empty
+    weakAudit.audit.capitalThrottle shouldBe Some(Share.Zero)
     weakAudit.audit.lcr should not be empty
     weakAudit.audit.nsfr should not be empty
 
     val healthy      = mkBankRow()
     val healthyAudit = approval(healthy, Banking.CreditProduct.FirmLoan, PLN(1000))
     healthyAudit.approvalProbability should not be empty
+    healthyAudit.audit.managementCarTarget should not be empty
+    healthyAudit.audit.capitalThrottle shouldBe healthyAudit.approvalProbability
     healthyAudit.approvalRoll should not be empty
+  }
+
+  it should "throttle approval smoothly between hard CAR floor and management target" in {
+    val nearBuffer = mkBankRow(loans = PLN(1000000), capital = PLN(143000))
+    val decision   = approval(nearBuffer, Banking.CreditProduct.FirmLoan, PLN(100000), RandomStream.seeded(1L))
+
+    if decision.approved then decision.audit.rejectionReason shouldBe None
+    else decision.audit.rejectionReason shouldBe Some(Banking.CreditRejectionReason.CapitalBuffer)
+    decision.audit.managementCarTarget shouldBe decision.audit.minCar.map(_ + summon[SimParams].banking.creditManagementCarBuffer)
+    decision.audit.capitalThrottle shouldBe decision.approvalProbability
+    decision.approvalProbability.get should be > Share.Zero
+    decision.approvalProbability.get should be < Share.One
+    decision.approvalRoll should not be empty
+
+    val comfortable = mkBankRow(loans = PLN(1000000), capital = PLN(200000))
+    val approved    = approval(comfortable, Banking.CreditProduct.FirmLoan, PLN(100000), RandomStream.seeded(1L))
+    approved.approved shouldBe true
+    approved.approvalProbability shouldBe Some(Share.One)
+    approved.audit.rejectionReason shouldBe None
   }
 
   it should "not treat existing consumer loans or government bonds as reducing firm-credit approval probability" in {
@@ -195,8 +218,8 @@ class BankingSectorSpec extends AnyFlatSpec with Matchers:
     val lowNpl  = mkBankRow(loans = PLN(1000000), capital = PLN(500000), nplAmount = PLN.Zero)
     val highNpl = mkBankRow(loans = PLN(1000000), capital = PLN(500000), nplAmount = PLN(400000))
 
-    Banking.lendingRate(highNpl.bank, highNpl.stocks, configs(0), Rate.decimal(5, 2), Rate.Zero, PLN.Zero) should be >
-      Banking.lendingRate(lowNpl.bank, lowNpl.stocks, configs(0), Rate.decimal(5, 2), Rate.Zero, PLN.Zero)
+    Banking.lendingRate(highNpl.bank, highNpl.stocks, configs(0), Rate.decimal(5, 2), Rate.Zero, PLN.Zero, Multiplier.Zero) should be >
+      Banking.lendingRate(lowNpl.bank, lowNpl.stocks, configs(0), Rate.decimal(5, 2), Rate.Zero, PLN.Zero, Multiplier.Zero)
 
     approval(lowNpl, Banking.CreditProduct.FirmLoan, PLN(100000)).approvalProbability shouldBe Some(Share.One)
     approval(highNpl, Banking.CreditProduct.FirmLoan, PLN(100000)).approvalProbability shouldBe Some(Share.One)

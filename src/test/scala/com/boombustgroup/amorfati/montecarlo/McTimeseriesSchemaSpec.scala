@@ -244,6 +244,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     "FirmCredit_BankRejected",
     "FirmCredit_RejectedFailedBank",
     "FirmCredit_RejectedCarGate",
+    "FirmCredit_RejectedCapitalBuffer",
     "FirmCredit_RejectedLcrGate",
     "FirmCredit_RejectedNsfrGate",
     "FirmCredit_RejectedUnclassified",
@@ -547,7 +548,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     MetricValue.fromRaw(Share.fraction(numerator, denominator).toLong)
 
   "McTimeseriesSchema" should "expose the stable schema contract" in {
-    McTimeseriesSchema.nCols shouldBe 485
+    McTimeseriesSchema.nCols shouldBe 486
     McTimeseriesSchema.colNames.toVector shouldBe expectedColNames
   }
 
@@ -847,7 +848,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
         firmTechCandidateCreditDemand = PLN(20),
         firmTechCandidateCreditApproved = PLN(16),
         firmTechCandidateCreditRejected = PLN(4),
-        firmCreditRejectedByReason = Firm.CreditRejectionBreakdown(carGate = PLN(7), unclassified = PLN(5)),
+        firmCreditRejectedByReason = Firm.CreditRejectionBreakdown(carGate = PLN(7), capitalBuffer = PLN(3), unclassified = PLN(2)),
         bankCapital = bankCapital,
       ),
     )
@@ -877,9 +878,10 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     valueAt(row, "FirmCredit_BankRejected") shouldBe polandScale(PLN(12))
     valueAt(row, "FirmCredit_RejectedFailedBank") shouldBe polandScale(PLN.Zero)
     valueAt(row, "FirmCredit_RejectedCarGate") shouldBe polandScale(PLN(7))
+    valueAt(row, "FirmCredit_RejectedCapitalBuffer") shouldBe polandScale(PLN(3))
     valueAt(row, "FirmCredit_RejectedLcrGate") shouldBe polandScale(PLN.Zero)
     valueAt(row, "FirmCredit_RejectedNsfrGate") shouldBe polandScale(PLN.Zero)
-    valueAt(row, "FirmCredit_RejectedUnclassified") shouldBe polandScale(PLN(5))
+    valueAt(row, "FirmCredit_RejectedUnclassified") shouldBe polandScale(PLN(2))
     valueAt(row, "FirmCredit_ApprovalRate") shouldBe MetricValue.fromRaw((PLN(8) / PLN(20)).toLong)
     valueAt(row, "FirmCredit_InvestmentDemand") shouldBe polandScale(PLN(12))
     valueAt(row, "FirmCredit_InvestmentApproved") shouldBe polandScale(PLN(5))

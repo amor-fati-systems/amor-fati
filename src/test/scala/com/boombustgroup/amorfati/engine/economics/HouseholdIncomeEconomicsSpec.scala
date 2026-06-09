@@ -54,7 +54,7 @@ class HouseholdIncomeEconomicsSpec extends AnyFlatSpec with Matchers:
   it should "count same-month approved consumer loans against projected bank CAR" in {
     val bank   = Banking.BankState(
       id = BankId(0),
-      capital = PLN(150),
+      capital = PLN(290),
       nplAmount = PLN.Zero,
       htmBookYield = Rate.Zero,
       status = Banking.BankStatus.Active(0),
@@ -82,8 +82,8 @@ class HouseholdIncomeEconomicsSpec extends AnyFlatSpec with Matchers:
       bankCorpBonds = _ => PLN.Zero,
     )
 
-    val first  = supply.approve(BankId(0), Banking.CreditProduct.ConsumerLoan, PLN(200), RandomStream.seeded(1))
-    val second = supply.approve(BankId(0), Banking.CreditProduct.ConsumerLoan, PLN(200), RandomStream.seeded(2))
+    val first  = supply.approve(BankId(0), Banking.CreditProduct.ConsumerLoan, PLN(1000), RandomStream.seeded(1))
+    val second = supply.approve(BankId(0), Banking.CreditProduct.ConsumerLoan, PLN(1000), RandomStream.seeded(2))
 
     first.approved shouldBe true
     first.product shouldBe Banking.CreditProduct.ConsumerLoan

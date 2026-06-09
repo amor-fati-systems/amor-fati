@@ -907,15 +907,29 @@ lendingRate_b =
   + crowdingOutSpread_b
 ```
 
-Capital penalty activates when CAR falls below `minCar * 1.5`. Crowding-out
-passes part of a government-bond-yield premium into firm loan spreads. Failed
-banks receive a fixed penalty spread and cannot lend.
+Capital pressure is measured against the same management target used by
+quantity rationing:
+
+```text
+managementCAR_b = effectiveMinCar_b(ccyb) + creditManagementCarBuffer
+capitalShortfallPenalty_b =
+  max(managementCAR_b - CAR_b, 0) * creditCarShortfallPenaltyScale
+
+approvalThrottle_b(q, A) =
+  clamp((ProjectedCAR_b(q, A) - effectiveMinCar_b(ccyb)) /
+        creditManagementCarBuffer, 0, 1)
+```
+
+Crowding-out passes part of a government-bond-yield premium into firm loan
+spreads. Failed banks receive a fixed penalty spread and cannot lend.
 
 Credit approval projects RWA into the requested product bucket, then requires
 the projected CAR above the macroprudential effective minimum and LCR/NSFR above
-regulatory minima. NPL pressure affects credit supply through risk pricing,
-IFRS 9 / ECL provisioning, and the resulting capital path rather than through an
-independent approval-probability penalty.
+regulatory minima. Banks that pass the hard gates still use
+`approvalThrottle_b` as a management-buffer quantity throttle. NPL pressure
+affects credit supply through risk pricing, IFRS 9 / ECL provisioning, and the
+resulting capital path rather than through an independent approval-probability
+penalty.
 Reserve requirements are not a per-loan approval gate; reserves and government
 bonds affect credit supply through LCR/NSFR, settlement cost, standing
 facilities, and lending spreads.

@@ -243,6 +243,7 @@ object FirmCreditDecision:
 case class FirmCreditRejectionBreakdown(
     failedBank: PLN = PLN.Zero,
     carGate: PLN = PLN.Zero,
+    capitalBuffer: PLN = PLN.Zero,
     lcrGate: PLN = PLN.Zero,
     nsfrGate: PLN = PLN.Zero,
     unclassified: PLN = PLN.Zero,
@@ -251,6 +252,7 @@ case class FirmCreditRejectionBreakdown(
     FirmCreditRejectionBreakdown(
       failedBank = failedBank + other.failedBank,
       carGate = carGate + other.carGate,
+      capitalBuffer = capitalBuffer + other.capitalBuffer,
       lcrGate = lcrGate + other.lcrGate,
       nsfrGate = nsfrGate + other.nsfrGate,
       unclassified = unclassified + other.unclassified,
@@ -265,6 +267,7 @@ object FirmCreditRejectionBreakdown:
       reason match
         case Some(Banking.CreditRejectionReason.FailedBank)        => FirmCreditRejectionBreakdown(failedBank = amount)
         case Some(Banking.CreditRejectionReason.CapitalAdequacy)   => FirmCreditRejectionBreakdown(carGate = amount)
+        case Some(Banking.CreditRejectionReason.CapitalBuffer)     => FirmCreditRejectionBreakdown(capitalBuffer = amount)
         case Some(Banking.CreditRejectionReason.LiquidityCoverage) => FirmCreditRejectionBreakdown(lcrGate = amount)
         case Some(Banking.CreditRejectionReason.StableFunding)     => FirmCreditRejectionBreakdown(nsfrGate = amount)
         case None                                                  => FirmCreditRejectionBreakdown(unclassified = amount)

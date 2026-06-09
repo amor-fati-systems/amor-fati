@@ -358,6 +358,7 @@ FirmCredit_CreditApproved
 FirmCredit_BankRejected
 FirmCredit_RejectedFailedBank
 FirmCredit_RejectedCarGate
+FirmCredit_RejectedCapitalBuffer
 FirmCredit_RejectedLcrGate
 FirmCredit_RejectedNsfrGate
 FirmCredit_RejectedUnclassified
@@ -391,8 +392,9 @@ resolution.
 `FirmCredit_BankRejected` aggregate the always-on investment and technology
 credit decision surfaces before equity and corporate-bond channel substitution;
 final bank-loan origination is `FirmCredit_NewLoans`. `FirmCredit_Rejected*`
-splits bank-supply rejections by the primary approval gate: failed bank, CAR,
-LCR, NSFR, or unclassified rejection paths. The
+splits bank-supply rejections by the primary approval gate: failed bank, hard
+CAR, management capital-buffer throttle, LCR, NSFR, or unclassified rejection
+paths. The
 `Investment*` columns explain physical-capital financing;
 `FirmCredit_CashFinancedInvestment` is gross investment not financed by approved
 investment credit. `FirmCredit_TechDemand`, `FirmCredit_TechApproved`, and
