@@ -171,6 +171,12 @@ class SimParamsSpec extends AnyFlatSpec with Matchers:
     err.getMessage should include("initialCcyb")
   }
 
+  it should "reject CCyB cap outside [0,1]" in {
+    val err = intercept[IllegalArgumentException]:
+      BankingConfig(ccybMax = Multiplier(2))
+    err.getMessage should include("ccybMax")
+  }
+
   it should "reject p2rAddons and osiiBuffers outside [0,1]" in {
     val p2rErr = intercept[IllegalArgumentException]:
       BankingConfig(p2rAddons = Vector(Multiplier(-1)), osiiBuffers = Vector(Multiplier.Zero))

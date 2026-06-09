@@ -253,6 +253,10 @@ case class BankingConfig(
     s"creditCarShortfallPenaltyScale must be non-negative: $creditCarShortfallPenaltyScale",
   )
   require(
+    ccybMax >= Multiplier.Zero && ccybMax <= Multiplier.One,
+    s"ccybMax must be in [0,1]: ccybMax=$ccybMax",
+  )
+  require(
     initialCcyb >= Multiplier.Zero && initialCcyb <= ccybMax,
     s"initialCcyb must be in [0,ccybMax]: initialCcyb=$initialCcyb, ccybMax=$ccybMax",
   )
