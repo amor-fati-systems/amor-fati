@@ -75,13 +75,29 @@ object EmpiricalValidationExport:
     case MissingOutput     extends SnapshotStatus("MISSING_OUTPUT")
     case MissingDataBridge extends SnapshotStatus("MISSING_DATA_BRIDGE")
 
+  /** Statistic applied to a model output surface before it is compared with an
+    * empirical source-manifest row.
+    */
   enum ModelStatistic(val token: String):
-    case Terminal  extends ModelStatistic("terminal")
-    case First     extends ModelStatistic("first")
-    case Mean      extends ModelStatistic("mean")
-    case Min       extends ModelStatistic("min")
-    case Max       extends ModelStatistic("max")
-    case Sum       extends ModelStatistic("sum")
+    /** Last observed value in the selected output surface. */
+    case Terminal extends ModelStatistic("terminal")
+
+    /** First observed value in the selected output surface. */
+    case First extends ModelStatistic("first")
+
+    /** Arithmetic mean over all selected observations. */
+    case Mean extends ModelStatistic("mean")
+
+    /** Minimum selected observation. */
+    case Min extends ModelStatistic("min")
+
+    /** Maximum selected observation. */
+    case Max extends ModelStatistic("max")
+
+    /** Sum of all selected observations. */
+    case Sum extends ModelStatistic("sum")
+
+    /** Per-seed first-to-last stock growth, computed as last / first - 1. */
     case PctChange extends ModelStatistic("pct_change")
 
   object ModelStatistic:
