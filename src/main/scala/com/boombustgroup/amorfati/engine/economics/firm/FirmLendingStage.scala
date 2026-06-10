@@ -16,13 +16,14 @@ private[firm] object FirmLendingStage:
     val nBanks             = in.banks.length
     val ccyb               = in.w.mechanisms.macropru.ccyb
     val bankStocks         = in.ledgerFinancialState.banks.map(LedgerFinancialState.projectBankFinancialStocks)
+    requireAlignedBankInputs(in.banks, bankStocks, bsec.configs, in.ledgerFinancialState.banks.length)
     val bankCorpBonds      = (bankId: BankId) => CorporateBondOwnership.bankHolderFor(in.ledgerFinancialState, bankId)
     val approvalContexts   = in.banks.indices.map { idx =>
-      val bankId = BankId(idx)
+      val bank = in.banks(idx)
       Banking.CreditApprovalContext(
-        bank = in.banks(idx),
+        bank = bank,
         ccyb = ccyb,
-        corpBondHoldings = bankCorpBonds(bankId),
+        corpBondHoldings = bankCorpBonds(bank.id),
         portfolio = Banking.CreditPortfolioContext(
           config = bsec.configs(idx),
           refRate = in.fiscal.lendingBaseRate,
@@ -30,9 +31,12 @@ private[firm] object FirmLendingStage:
         ),
       )
     }.toVector
-    val rates              = in.banks.zip(bankStocks).zip(bsec.configs).map { case ((b, stocks), cfg) =>
+    val rates              = in.banks.indices.map { idx =>
+      val b      = in.banks(idx)
+      val stocks = bankStocks(idx)
+      val cfg    = bsec.configs(idx)
       Banking.lendingRate(b, stocks, cfg, in.fiscal.lendingBaseRate, in.w.gov.bondYield, bankCorpBonds(b.id), ccyb, Banking.CreditProduct.FirmLoan)
-    }
+    }.toVector
     val creditDecision     = (bankId: Int, amt: PLN) =>
       val approval = Banking.creditApproval(approvalContexts(bankId), bankStocks(bankId), Banking.CreditProduct.FirmLoan, amt, rng)
       Firm.CreditDecision.fromApproval(approval)
@@ -49,3 +53,21 @@ private[firm] object FirmLendingStage:
       ),
     )
     LendingConditions(world, in.fiscal.m, operationalSignals, rates, creditDecision, nBanks)
+
+  private def requireAlignedBankInputs(
+      banks: Vector[Banking.BankState],
+      bankStocks: Vector[Banking.BankFinancialStocks],
+      configs: Vector[Banking.Config],
+      ledgerBankCount: Int,
+  ): Unit =
+    val bankIds        = banks.map(_.id.toInt)
+    val configIds      = configs.map(_.id.toInt)
+    val idsReachLedger = bankIds.forall(id => id >= 0 && id < ledgerBankCount)
+    if banks.length != bankStocks.length || banks.length != configs.length || bankIds != configIds || !idsReachLedger then
+      val configNames = configs.map(config => s"${config.id.toInt}:${config.name}")
+      throw new IllegalArgumentException(
+        "FirmLendingStage.prepare requires aligned bank rows, ledger bank stocks, and bank configs; " +
+          s"banks=${banks.length} ids=${bankIds.mkString("[", ",", "]")}, " +
+          s"ledgerBanks=$ledgerBankCount projectedStocks=${bankStocks.length}, " +
+          s"configs=${configs.length} ids=${configIds.mkString("[", ",", "]")} names=${configNames.mkString("[", ",", "]")}",
+      )

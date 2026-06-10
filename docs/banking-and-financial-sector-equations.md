@@ -172,6 +172,14 @@ r^{loan}_{b,tau}(q) =
   r^{preLoan}_{b,tau}(q) + portfolioPricePremium_b(q, 0)
 ```
 
+The portfolio premium is amount-dependent because `wedge_b(q, A)` includes the
+marginal Polish bank-levy perimeter. Runtime pricing evaluates the premium at
+`A = 0`: `BankCreditApproval.lendingRate` calls
+`BankPortfolioChoice.compute(... amount = PLN.Zero ...)`. Runtime approval uses
+the requested exposure: `BankCreditApproval.creditApproval` calls
+`BankPortfolioChoice.compute(... amount = amount ...)`, so levy and quantity
+throttling are evaluated on the actual credit request.
+
 The capital stack used by `Macroprudential.effectiveMinCar` is auditable from
 configuration and calibration provenance:
 

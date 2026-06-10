@@ -453,7 +453,8 @@ surface. The decision carries approval probability, roll, and rejection reason
 when available. Rejection reasons are exposed as:
 
 ```text
-failed-bank, CAR gate, LCR gate, NSFR gate, unclassified
+failed-bank, CAR gate, management capital-buffer throttle, LCR gate, NSFR gate,
+portfolio-preference, unclassified
 ```
 
 Approved technology and investment loan demand enters the firm financing split.
