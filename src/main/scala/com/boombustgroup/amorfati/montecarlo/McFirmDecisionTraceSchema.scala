@@ -1,6 +1,7 @@
 package com.boombustgroup.amorfati.montecarlo
 
 import com.boombustgroup.amorfati.agents.{Banking, BankruptReason, Firm, TechState}
+import com.boombustgroup.amorfati.agents.banking.BankPortfolioChoiceAudit
 import com.boombustgroup.amorfati.types.*
 
 private[montecarlo] object McFirmDecisionTraceSchema:
@@ -12,7 +13,7 @@ private[montecarlo] object McFirmDecisionTraceSchema:
       trace: Firm.DecisionTrace,
   )
 
-  private val columns: Vector[(String, Row => String)] = Vector(
+  private val columns: Vector[(String, Row => String)] = Vector[(String, Row => String)](
     "RunId"                              -> (row => text(row.runId)),
     "Seed"                               -> (row => row.seed.toString),
     "Month"                              -> (row => row.month.toString),
@@ -101,7 +102,10 @@ private[montecarlo] object McFirmDecisionTraceSchema:
     "DigitalInvestRoll"                  -> (row => row.trace.digitalInvestRoll.fold("")(_.format(6))),
     "LaborAdjustmentResidualProbability" -> (row => row.trace.laborAdjustmentResidualProbability.fold("")(_.format(6))),
     "LaborAdjustmentResidualRoll"        -> (row => row.trace.laborAdjustmentResidualRoll.fold("")(_.format(6))),
-  )
+  ) ++ portfolioChoiceColumns("SelectedBank", row => row.trace.selectedBankApprovalAudit)
+    ++ portfolioChoiceColumns("FullAiBank", row => row.trace.fullAiBankApprovalAudit)
+    ++ portfolioChoiceColumns("HybridBank", row => row.trace.hybridBankApprovalAudit)
+    ++ portfolioChoiceColumns("InvestmentBank", row => row.trace.investmentBankApprovalAudit)
 
   val header: String =
     columns.map(_._1).mkString(";")
@@ -150,3 +154,23 @@ private[montecarlo] object McFirmDecisionTraceSchema:
 
   private def auditShare(value: Option[Share]): String =
     value.fold("")(_.format(6))
+
+  private def portfolioChoiceColumns(prefix: String, audit: Row => Banking.CreditApprovalAudit): Vector[(String, Row => String)] =
+    Vector(
+      s"${prefix}PortfolioRiskAdjustedLoanReturn" -> (row => portfolioRate(audit(row), _.riskAdjustedLoanReturn)),
+      s"${prefix}PortfolioRiskAdjustedBondReturn" -> (row => portfolioRate(audit(row), _.riskAdjustedBondReturn)),
+      s"${prefix}PortfolioWedge"                  -> (row => portfolioRate(audit(row), _.wedge)),
+      s"${prefix}PortfolioExpectedLossComponent"  -> (row => portfolioRate(audit(row), _.wedgeExpectedLossComponent)),
+      s"${prefix}PortfolioCapitalComponent"       -> (row => portfolioRate(audit(row), _.wedgeCapitalComponent)),
+      s"${prefix}PortfolioLevyComponent"          -> (row => portfolioRate(audit(row), _.wedgeLevyComponent)),
+      s"${prefix}PortfolioFundingComponent"       -> (row => portfolioRate(audit(row), _.wedgeFundingComponent)),
+      s"${prefix}PortfolioPriceShare"             -> (row => portfolioShare(audit(row), _.priceShareOfWedge)),
+      s"${prefix}PortfolioPriceContribution"      -> (row => portfolioRate(audit(row), _.wedgePriceContribution)),
+      s"${prefix}PortfolioQuantityThrottle"       -> (row => portfolioShare(audit(row), _.wedgeQuantityThrottle)),
+    )
+
+  private def portfolioRate(audit: Banking.CreditApprovalAudit, select: BankPortfolioChoiceAudit => Rate): String =
+    audit.portfolioChoice.fold("")(choice => select(choice).format(6))
+
+  private def portfolioShare(audit: Banking.CreditApprovalAudit, select: BankPortfolioChoiceAudit => Share): String =
+    audit.portfolioChoice.fold("")(choice => select(choice).format(6))

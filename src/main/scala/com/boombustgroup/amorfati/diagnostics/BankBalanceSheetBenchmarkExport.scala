@@ -1,6 +1,7 @@
 package com.boombustgroup.amorfati.diagnostics
 
 import com.boombustgroup.amorfati.agents.{Banking, EclStaging}
+import com.boombustgroup.amorfati.agents.banking.PolishBankLevyAssetPerimeter
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.ledger.LedgerFinancialState
 import com.boombustgroup.amorfati.engine.mechanisms.Macroprudential
@@ -88,6 +89,10 @@ object BankBalanceSheetBenchmarkExport:
       assets: PLN,
       deposits: PLN,
       totalCredit: PLN,
+      govBondHoldings: PLN,
+      govBondShareOfAssets: BigDecimal,
+      polishBankLevyTaxableAssets: PLN,
+      polishBankLevyTaxableAssetsShare: BigDecimal,
       capitalAdequacyRatio: BigDecimal,
       effectiveMinCar: BigDecimal,
       carBuffer: BigDecimal,
@@ -156,7 +161,10 @@ object BankBalanceSheetBenchmarkExport:
           val stocks     = LedgerFinancialState.projectBankFinancialStocks(balances)
           val corpBond   = corpBondHoldings(bank.id)
           val credit     = balances.firmLoan + balances.consumerLoan + balances.mortgageLoan
+          val govBonds   = balances.govBondAfs + balances.govBondHtm
           val bankAssets = singleBankAssets(balances)
+          val levyBase   =
+            Banking.computePolishBankLevyTaxableAssets(bank, PolishBankLevyAssetPerimeter.fromBankStocks(stocks, corpBond))
           val car        = rawDecimal(Banking.car(bank, stocks, corpBond).toLong)
           val minCar     = rawDecimal(Macroprudential.effectiveMinCar(bank.id.toInt, init.world.mechanisms.macropru.ccyb).toLong)
           BankRow(
@@ -168,6 +176,10 @@ object BankBalanceSheetBenchmarkExport:
             assets = bankAssets,
             deposits = balances.totalDeposits,
             totalCredit = credit,
+            govBondHoldings = govBonds,
+            govBondShareOfAssets = finiteRatio(govBonds, bankAssets),
+            polishBankLevyTaxableAssets = levyBase,
+            polishBankLevyTaxableAssetsShare = finiteRatio(levyBase, bankAssets),
             capitalAdequacyRatio = car,
             effectiveMinCar = minCar,
             carBuffer = car - minCar,
@@ -637,7 +649,7 @@ object BankBalanceSheetBenchmarkExport:
   private[diagnostics] val BankRowsCsvSchema: McCsvSchema[BankRow] =
     McCsvSchema(
       header =
-        "RunId;Seed;BankId;BankName;Capital;Assets;Deposits;TotalCredit;CapitalAdequacyRatio;EffectiveMinCar;CarBuffer;Lcr;Nsfr;CreditShare;DepositShare;AssetShare",
+        "RunId;Seed;BankId;BankName;Capital;Assets;Deposits;TotalCredit;GovBondHoldings;GovBondShareOfAssets;PolishBankLevyTaxableAssets;PolishBankLevyTaxableAssetsShare;CapitalAdequacyRatio;EffectiveMinCar;CarBuffer;Lcr;Nsfr;CreditShare;DepositShare;AssetShare",
       render = row =>
         Vector(
           row.runId,
@@ -648,6 +660,10 @@ object BankBalanceSheetBenchmarkExport:
           renderPln(row.assets),
           renderPln(row.deposits),
           renderPln(row.totalCredit),
+          renderPln(row.govBondHoldings),
+          renderDecimal(row.govBondShareOfAssets),
+          renderPln(row.polishBankLevyTaxableAssets),
+          renderDecimal(row.polishBankLevyTaxableAssetsShare),
           renderDecimal(row.capitalAdequacyRatio),
           renderDecimal(row.effectiveMinCar),
           renderDecimal(row.carBuffer),

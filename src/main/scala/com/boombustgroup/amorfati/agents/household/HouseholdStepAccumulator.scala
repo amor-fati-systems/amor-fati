@@ -1,5 +1,6 @@
 package com.boombustgroup.amorfati.agents.household
 
+import com.boombustgroup.amorfati.agents.Banking
 import com.boombustgroup.amorfati.agents.household.HouseholdStepTypes.*
 import com.boombustgroup.amorfati.types.*
 
@@ -27,6 +28,7 @@ private[agents] object HouseholdStepAccumulator:
     private var ccDemandAcc: PLN             = PLN.Zero
     private var ccRejectedAcc: PLN           = PLN.Zero
     private var ccBankRejectedAcc: PLN       = PLN.Zero
+    private var ccPortfolioRejectedAcc: PLN  = PLN.Zero
     private var liquidityShortfallAcc: PLN   = PLN.Zero
     private var consumptionShortfallAcc: PLN = PLN.Zero
     private var rentArrearsAcc: PLN          = PLN.Zero
@@ -62,6 +64,8 @@ private[agents] object HouseholdStepAccumulator:
       ccDemandAcc = ccDemandAcc + r.credit.creditDemand
       ccRejectedAcc = ccRejectedAcc + r.credit.rejectedCreditDemand
       ccBankRejectedAcc = ccBankRejectedAcc + r.credit.bankRejectedCreditDemand
+      if r.credit.bankApproval.flatMap(_.audit.rejectionReason).contains(Banking.CreditRejectionReason.PortfolioPreference) then
+        ccPortfolioRejectedAcc = ccPortfolioRejectedAcc + r.credit.bankRejectedCreditDemand
       liquidityShortfallAcc = liquidityShortfallAcc + r.credit.liquidityShortfallFinancing
       consumptionShortfallAcc = consumptionShortfallAcc + r.credit.liquidityShortfall.consumptionShortfall
       rentArrearsAcc = rentArrearsAcc + r.credit.liquidityShortfall.rentArrears
@@ -95,6 +99,7 @@ private[agents] object HouseholdStepAccumulator:
     def totalConsumerCreditDemand: PLN            = ccDemandAcc
     def totalConsumerRejectedOrigination: PLN     = ccRejectedAcc
     def totalConsumerBankRejectedOrigination: PLN = ccBankRejectedAcc
+    def totalConsumerBankRejectedPortfolio: PLN   = ccPortfolioRejectedAcc
     def liquidityShortfallFinancing: PLN          = liquidityShortfallAcc
     def consumptionShortfall: PLN                 = consumptionShortfallAcc
     def rentArrears: PLN                          = rentArrearsAcc

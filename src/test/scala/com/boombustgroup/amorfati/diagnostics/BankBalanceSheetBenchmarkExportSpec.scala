@@ -91,6 +91,10 @@ class BankBalanceSheetBenchmarkExportSpec extends AnyFlatSpec with Matchers:
       assets = PLN(100),
       deposits = PLN(80),
       totalCredit = PLN(50),
+      govBondHoldings = PLN(20),
+      govBondShareOfAssets = BigDecimal("0.20"),
+      polishBankLevyTaxableAssets = PLN(30),
+      polishBankLevyTaxableAssetsShare = BigDecimal("0.30"),
       capitalAdequacyRatio = BigDecimal("0.20"),
       effectiveMinCar = BigDecimal("0.125"),
       carBuffer = BigDecimal("0.075"),
@@ -112,7 +116,7 @@ class BankBalanceSheetBenchmarkExportSpec extends AnyFlatSpec with Matchers:
     sumCsv.linesIterator.next() shouldBe "RunId;Seeds;Metric;Label;Mean;Min;Max;Unit;GuardrailClass;Vintage;Lower;Upper;Status;SourceNote;Interpretation"
     targetCsv should include("2026-04-30 model-start baseline")
     bankCsv.linesIterator.next() shouldBe
-      "RunId;Seed;BankId;BankName;Capital;Assets;Deposits;TotalCredit;CapitalAdequacyRatio;EffectiveMinCar;CarBuffer;Lcr;Nsfr;CreditShare;DepositShare;AssetShare"
+      "RunId;Seed;BankId;BankName;Capital;Assets;Deposits;TotalCredit;GovBondHoldings;GovBondShareOfAssets;PolishBankLevyTaxableAssets;PolishBankLevyTaxableAssetsShare;CapitalAdequacyRatio;EffectiveMinCar;CarBuffer;Lcr;Nsfr;CreditShare;DepositShare;AssetShare"
     bankCsv should include("PKO BP")
     report should include("--seed-start 2")
     report should include("ReserveToDeposits")

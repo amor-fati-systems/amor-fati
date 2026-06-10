@@ -24,7 +24,8 @@ The task writes:
 - `bank-balance-sheet-targets.csv`: documented target bands, vintage, and
   semantics.
 - `bank-balance-sheet-bank-rows.csv`: per-bank capital, funding, credit,
-  liquidity, and concentration rows.
+  liquidity, sovereign-portfolio, Polish-bank-levy taxable-asset, and
+  concentration rows.
 - `bank-balance-sheet-report.md`: human-readable summary.
 
 ## Bank Capital Semantics

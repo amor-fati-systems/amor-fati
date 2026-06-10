@@ -1,6 +1,7 @@
 package com.boombustgroup.amorfati.montecarlo
 
 import com.boombustgroup.amorfati.agents.{Banking, Household}
+import com.boombustgroup.amorfati.agents.banking.BankPortfolioChoiceAudit
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.SimulationMonth.ExecutionMonth
 import com.boombustgroup.amorfati.engine.flows.FlowSimulation
@@ -16,7 +17,7 @@ class McHouseholdSnapshotSchemaSpec extends AnyFlatSpec with Matchers:
 
   "McHouseholdSnapshotSchema" should "keep the household snapshot header stable" in {
     McHouseholdSnapshotSchema.header shouldBe
-      "RunId;Seed;Month;HouseholdId;Status;Region;ContractType;BankId;Wage;Rent;MPC;Skill;HealthPenalty;FinancialDistressMonths;FinancialDistressState;DemandDeposit;MortgageLoan;ConsumerLoan;Equity;PositiveDeposit;ImplicitOverdraft;NetLiquidPosition;NetFinancialPosition;OpeningDemandDeposit;OpeningConsumerLoan;MonthlyIncome;Consumption;UnmetBasicConsumption;DiscretionaryConsumptionCompression;RentPaid;MortgageDebtService;ConsumerApprovedOrigination;ConsumerCreditDemand;ConsumerRejectedOrigination;ConsumerBankRejectedOrigination;ConsumerBankApprovalProduct;ConsumerBankRejectionReason;ConsumerBankApprovalProbability;ConsumerBankApprovalRoll;ConsumerBankProjectedCAR;ConsumerBankMinCAR;ConsumerBankManagementCAR;ConsumerBankCapitalThrottle;ConsumerBankLCR;ConsumerBankNSFR;LiquidityShortfallFinancing;ConsumptionShortfall;RentArrears;MortgageArrears;ConsumerDebtArrears;TemporaryOverdraft;ConsumerDebtService;ConsumerDefault;ConsumerLoanDefault;LiquidityBridgeChargeOff;ConsumerPrincipal;ClosingConsumerLoan"
+      "RunId;Seed;Month;HouseholdId;Status;Region;ContractType;BankId;Wage;Rent;MPC;Skill;HealthPenalty;FinancialDistressMonths;FinancialDistressState;DemandDeposit;MortgageLoan;ConsumerLoan;Equity;PositiveDeposit;ImplicitOverdraft;NetLiquidPosition;NetFinancialPosition;OpeningDemandDeposit;OpeningConsumerLoan;MonthlyIncome;Consumption;UnmetBasicConsumption;DiscretionaryConsumptionCompression;RentPaid;MortgageDebtService;ConsumerApprovedOrigination;ConsumerCreditDemand;ConsumerRejectedOrigination;ConsumerBankRejectedOrigination;ConsumerBankApprovalProduct;ConsumerBankRejectionReason;ConsumerBankApprovalProbability;ConsumerBankApprovalRoll;ConsumerBankProjectedCAR;ConsumerBankMinCAR;ConsumerBankManagementCAR;ConsumerBankCapitalThrottle;ConsumerBankLCR;ConsumerBankNSFR;ConsumerBankPortfolioRiskAdjustedLoanReturn;ConsumerBankPortfolioRiskAdjustedBondReturn;ConsumerBankPortfolioWedge;ConsumerBankPortfolioExpectedLossComponent;ConsumerBankPortfolioCapitalComponent;ConsumerBankPortfolioLevyComponent;ConsumerBankPortfolioFundingComponent;ConsumerBankPortfolioPriceShare;ConsumerBankPortfolioPriceContribution;ConsumerBankPortfolioQuantityThrottle;LiquidityShortfallFinancing;ConsumptionShortfall;RentArrears;MortgageArrears;ConsumerDebtArrears;TemporaryOverdraft;ConsumerDebtService;ConsumerDefault;ConsumerLoanDefault;LiquidityBridgeChargeOff;ConsumerPrincipal;ClosingConsumerLoan"
   }
 
   "McHouseholdShortfallCohortSchema" should "keep the household shortfall cohort header stable" in {
@@ -49,6 +50,20 @@ class McHouseholdSnapshotSchemaSpec extends AnyFlatSpec with Matchers:
               consumerBankCapitalThrottle = Some(Share.decimal(50, 2)),
               consumerBankLcr = Some(Multiplier.decimal(13, 1)),
               consumerBankNsfr = Some(Multiplier.decimal(12, 1)),
+              consumerBankPortfolioChoice = Some(
+                BankPortfolioChoiceAudit(
+                  riskAdjustedLoanReturn = Rate.decimal(6, 2),
+                  riskAdjustedBondReturn = Rate.decimal(7, 2),
+                  wedge = Rate.decimal(-1, 2),
+                  wedgeExpectedLossComponent = Rate.decimal(2, 2),
+                  wedgeCapitalComponent = Rate.decimal(3, 2),
+                  wedgeLevyComponent = Rate.decimal(4, 3),
+                  wedgeFundingComponent = Rate.Zero,
+                  priceShareOfWedge = Share.decimal(50, 2),
+                  wedgePriceContribution = Rate.decimal(5, 3),
+                  wedgeQuantityThrottle = Share.decimal(75, 2),
+                ),
+              ),
             )
           else flow
 
@@ -65,6 +80,9 @@ class McHouseholdSnapshotSchemaSpec extends AnyFlatSpec with Matchers:
     rows.head.monthlyFlow.liquidityShortfallFinancing shouldBe PLN(123)
     McHouseholdSnapshotSchema.csvSchema.render(rows.head) should include(
       "consumer-loan;car;0.750000;0.800000;0.110000;0.120000;0.150000;0.500000;1.300000;1.200000",
+    )
+    McHouseholdSnapshotSchema.csvSchema.render(rows.head) should include(
+      "0.060000;0.070000;-0.010000;0.020000;0.030000;0.004000;0.000000;0.500000;0.005000;0.750000",
     )
   }
 
