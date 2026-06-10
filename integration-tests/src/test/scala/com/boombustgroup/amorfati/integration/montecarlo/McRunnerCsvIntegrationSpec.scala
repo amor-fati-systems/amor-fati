@@ -101,7 +101,9 @@ class McRunnerCsvIntegrationSpec extends AnyFlatSpec with Matchers:
     val mortgageLossIdx  = columnIndex(header, "BankCapital_MortgageNplLoss")
     val consumerLossIdx  = columnIndex(header, "BankCapital_ConsumerNplLoss")
     val corpBondLossIdx  = columnIndex(header, "BankCapital_CorpBondDefaultLoss")
+    val interbankLossIdx = columnIndex(header, "BankCapital_InterbankContagionLoss")
     val bfgLevyIdx       = columnIndex(header, "BankCapital_BfgLevy")
+    val polishLevyIdx    = columnIndex(header, "BankCapital_PolishBankLevyTax")
     val unrealizedIdx    = columnIndex(header, "BankCapital_UnrealizedBondLoss")
     val htmIdx           = columnIndex(header, "BankCapital_HtmRealizedLoss")
     val eclIdx           = columnIndex(header, "BankCapital_EclProvisionChange")
@@ -147,8 +149,8 @@ class McRunnerCsvIntegrationSpec extends AnyFlatSpec with Matchers:
     val realizedCredit   =
       row(firmLossIdx) + row(mortgageLossIdx) + row(consumerLossIdx) + row(corpBondLossIdx)
     val expectedDelta    =
-      row(retainedIdx) - realizedCredit - row(bfgLevyIdx) - row(unrealizedIdx) -
-        row(htmIdx) - row(eclIdx) - row(destructionIdx)
+      row(retainedIdx) - realizedCredit - row(interbankLossIdx) - row(bfgLevyIdx) - row(polishLevyIdx) -
+        row(unrealizedIdx) - row(htmIdx) - row(eclIdx) - row(destructionIdx)
     val observedDelta    = row(closingIdx) - row(openingIdx)
     val expectedResidual = row(deltaIdx) - expectedDelta - row(reconcileIdx)
 
