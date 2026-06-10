@@ -249,6 +249,8 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     "FirmCredit_RejectedNsfrGate",
     "FirmCredit_RejectedPortfolioPreference",
     "FirmCredit_RejectedUnclassified",
+    "FirmCredit_RejectedPortfolioPreferenceToDemand",
+    "FirmCredit_RejectedPortfolioPreferenceToBankRejected",
     "FirmCredit_ApprovalRate",
     "FirmCredit_InvestmentDemand",
     "FirmCredit_InvestmentApproved",
@@ -272,6 +274,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     "ConsumerCreditDemand",
     "ConsumerRejectedOrigination",
     "ConsumerBankRejectedOrigination",
+    "ConsumerCredit_RejectedPortfolioPreference",
     "ConsumerDebtService",
     "ConsumerPrincipal",
     "ConsumerDefault",
@@ -285,6 +288,8 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     "ConsumerCredit_ApprovedToDemand",
     "ConsumerCredit_RejectedToDemand",
     "ConsumerCredit_BankRejectedToDemand",
+    "ConsumerCredit_RejectedPortfolioPreferenceToDemand",
+    "ConsumerCredit_RejectedPortfolioPreferenceToBankRejected",
     "ConsumerCredit_ShortfallToApprovedOrigination",
     "TotalCreditStock",
     "BankFirmLoansToGdp",
@@ -336,6 +341,8 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     "NbfiDepositDrainToAum",
     "BankAfsBonds",
     "BankHtmBonds",
+    "BankGovBondShareOfAssets",
+    "BankPrivateCreditToGovBondHoldings",
     "EclStage1",
     "EclStage2",
     "EclStage3",
@@ -551,7 +558,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     MetricValue.fromRaw(Share.fraction(numerator, denominator).toLong)
 
   "McTimeseriesSchema" should "expose the stable schema contract" in {
-    McTimeseriesSchema.nCols shouldBe 489
+    McTimeseriesSchema.nCols shouldBe 496
     McTimeseriesSchema.colNames.toVector shouldBe expectedColNames
   }
 
@@ -851,7 +858,12 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
         firmTechCandidateCreditDemand = PLN(20),
         firmTechCandidateCreditApproved = PLN(16),
         firmTechCandidateCreditRejected = PLN(4),
-        firmCreditRejectedByReason = Firm.CreditRejectionBreakdown(carGate = PLN(7), capitalBuffer = PLN(3), unclassified = PLN(2)),
+        firmCreditRejectedByReason = Firm.CreditRejectionBreakdown(
+          carGate = PLN(7),
+          capitalBuffer = PLN(3),
+          portfolioPreference = PLN(1),
+          unclassified = PLN(1),
+        ),
         bankCapital = bankCapital,
       ),
     )
@@ -861,6 +873,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
       totalConsumerCreditDemand = PLN(20),
       totalConsumerRejectedOrigination = PLN(12),
       totalConsumerBankRejectedOrigination = PLN(6),
+      totalConsumerBankPortfolioRejected = PLN(2),
       totalConsumerPrincipal = PLN(5),
       totalConsumerDefault = PLN(7),
       totalConsumerLoanDefault = PLN(3),
@@ -884,8 +897,10 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     valueAt(row, "FirmCredit_RejectedCapitalBuffer") shouldBe polandScale(PLN(3))
     valueAt(row, "FirmCredit_RejectedLcrGate") shouldBe polandScale(PLN.Zero)
     valueAt(row, "FirmCredit_RejectedNsfrGate") shouldBe polandScale(PLN.Zero)
-    valueAt(row, "FirmCredit_RejectedPortfolioPreference") shouldBe polandScale(PLN.Zero)
-    valueAt(row, "FirmCredit_RejectedUnclassified") shouldBe polandScale(PLN(2))
+    valueAt(row, "FirmCredit_RejectedPortfolioPreference") shouldBe polandScale(PLN(1))
+    valueAt(row, "FirmCredit_RejectedUnclassified") shouldBe polandScale(PLN(1))
+    valueAt(row, "FirmCredit_RejectedPortfolioPreferenceToDemand") shouldBe MetricValue.fromRaw((PLN(1) / PLN(20)).toLong)
+    valueAt(row, "FirmCredit_RejectedPortfolioPreferenceToBankRejected") shouldBe MetricValue.fromRaw((PLN(1) / PLN(12)).toLong)
     valueAt(row, "FirmCredit_ApprovalRate") shouldBe MetricValue.fromRaw((PLN(8) / PLN(20)).toLong)
     valueAt(row, "FirmCredit_InvestmentDemand") shouldBe polandScale(PLN(12))
     valueAt(row, "FirmCredit_InvestmentApproved") shouldBe polandScale(PLN(5))
@@ -909,6 +924,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     valueAt(row, "ConsumerCreditDemand") shouldBe polandScale(PLN(20))
     valueAt(row, "ConsumerRejectedOrigination") shouldBe polandScale(PLN(12))
     valueAt(row, "ConsumerBankRejectedOrigination") shouldBe polandScale(PLN(6))
+    valueAt(row, "ConsumerCredit_RejectedPortfolioPreference") shouldBe polandScale(PLN(2))
     valueAt(row, "ConsumerPrincipal") shouldBe polandScale(PLN(5))
     valueAt(row, "ConsumerDefault") shouldBe polandScale(PLN(7))
     valueAt(row, "ConsumerLoanDefault") shouldBe polandScale(PLN(3))
@@ -921,6 +937,8 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     valueAt(row, "ConsumerCredit_ApprovedToDemand") shouldBe MetricValue.fromRaw((PLN(8) / PLN(20)).toLong)
     valueAt(row, "ConsumerCredit_RejectedToDemand") shouldBe MetricValue.fromRaw((PLN(12) / PLN(20)).toLong)
     valueAt(row, "ConsumerCredit_BankRejectedToDemand") shouldBe MetricValue.fromRaw((PLN(6) / PLN(20)).toLong)
+    valueAt(row, "ConsumerCredit_RejectedPortfolioPreferenceToDemand") shouldBe MetricValue.fromRaw((PLN(2) / PLN(20)).toLong)
+    valueAt(row, "ConsumerCredit_RejectedPortfolioPreferenceToBankRejected") shouldBe MetricValue.fromRaw((PLN(2) / PLN(6)).toLong)
     valueAt(row, "ConsumerCredit_ShortfallToApprovedOrigination") shouldBe MetricValue.fromRaw((PLN(4) / PLN(8)).toLong)
     valueAt(row, "NbfiLoanStock") shouldBe polandScale(nbfiLoans)
     valueAt(row, "NbfiOrigination") shouldBe polandScale(PLN(5))

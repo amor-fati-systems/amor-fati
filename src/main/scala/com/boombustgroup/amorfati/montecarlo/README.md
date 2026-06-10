@@ -345,6 +345,12 @@ reason code uses the same reason-code mapping as `BankFailure_FirstNewReasonCode
 If the patch creates post-residual failure reasons, the banking stage runs a
 final failure, bail-in, and P&A resolution pass before month close.
 
+`BankAfsBonds` and `BankHtmBonds` expose the aggregate sovereign-bond portfolio.
+`BankGovBondShareOfAssets` scales those holdings by the explicit bank asset
+perimeter, while `BankPrivateCreditToGovBondHoldings` compares private bank
+credit with sovereign holdings. These columns diagnose portfolio composition;
+they do not imply a loanable-funds capacity constraint.
+
 ## Firm Credit Diagnostics
 
 The monthly timeseries firm-credit block relevant to loan-book runoff is:
@@ -366,6 +372,8 @@ FirmCredit_RejectedLcrGate
 FirmCredit_RejectedNsfrGate
 FirmCredit_RejectedPortfolioPreference
 FirmCredit_RejectedUnclassified
+FirmCredit_RejectedPortfolioPreferenceToDemand
+FirmCredit_RejectedPortfolioPreferenceToBankRejected
 FirmCredit_ApprovalRate
 FirmCredit_InvestmentDemand
 FirmCredit_InvestmentApproved
@@ -398,7 +406,10 @@ credit decision surfaces before equity and corporate-bond channel substitution;
 final bank-loan origination is `FirmCredit_NewLoans`. `FirmCredit_Rejected*`
 splits bank-supply rejections by the primary approval gate: failed bank, hard
 CAR, management capital-buffer throttle, LCR, NSFR, portfolio-preference, or
-unclassified rejection paths. The
+unclassified rejection paths. `FirmCredit_RejectedPortfolioPreferenceToDemand`
+and `FirmCredit_RejectedPortfolioPreferenceToBankRejected` show whether the
+loan-vs-sovereign return wedge is material relative to borrower demand or only
+relative to the rejected subset. The
 `Investment*` columns explain physical-capital financing;
 `FirmCredit_CashFinancedInvestment` is gross investment not financed by approved
 investment credit. `FirmCredit_TechDemand`, `FirmCredit_TechApproved`, and
@@ -507,6 +518,7 @@ ConsumerApprovedOrigination
 ConsumerCreditDemand
 ConsumerRejectedOrigination
 ConsumerBankRejectedOrigination
+ConsumerCredit_RejectedPortfolioPreference
 ConsumerDebtService
 ConsumerPrincipal
 ConsumerDefault
@@ -520,6 +532,8 @@ ConsumerCredit_NplRatioGross
 ConsumerCredit_ApprovedToDemand
 ConsumerCredit_RejectedToDemand
 ConsumerCredit_BankRejectedToDemand
+ConsumerCredit_RejectedPortfolioPreferenceToDemand
+ConsumerCredit_RejectedPortfolioPreferenceToBankRejected
 ConsumerCredit_ShortfallToApprovedOrigination
 ```
 
@@ -589,8 +603,9 @@ the requested principal not approved by borrower-side or bank-side rules.
 `ConsumerBankRejectedOrigination` is the subset rejected after household
 eligibility because the household's routed bank fails the product-aware
 bank-side supply gate or is already failed. Household snapshots also expose the
-bank approval product, rejection reason, approval probability/roll, and
-prudential audit ratios for this gate when available.
+bank approval product, rejection reason, approval probability/roll, prudential
+audit ratios, and loan-vs-sovereign portfolio-choice audit for this gate when
+available.
 `ConsumerLoanDefault` reports only default of ordinary outstanding consumer-loan
 principal; `LiquidityBridgeChargeOff` reports the same-month bridge write-off.
 For the bridge component, the stock effect is zero because
@@ -603,7 +618,7 @@ channel. `ConsumerCredit_NplStock` reports the ordinary consumer-loan NPL stock.
 The legacy `ConsumerNplRatio` uses performing `ConsumerLoans` as denominator;
 `ConsumerCredit_NplRatioGross` uses `ConsumerLoans + ConsumerCredit_NplStock`
 for a gross-book denominator. The `ConsumerCredit_*ToDemand` columns separate
-borrower-side and bank-side rejection, while
+borrower-side, bank-side, and portfolio-preference rejection, while
 `ConsumerCredit_ShortfallToApprovedOrigination` compares residual liquidity
 bridge pressure to underwritten consumer-credit origination.
 
@@ -723,5 +738,6 @@ bankruptcy reason, cash, loan, digital readiness, workers, capex, new loan,
 down payment, bank id, lending rate, technology credit type/source/need/amount,
 available approval/feasibility/probability flags, plus separate adoption,
 implementation, upgrade-candidate bank approval, investment-credit bank
-approval, digital-invest, upgrade-efficiency, and labor-adjustment residual
-rolls where those gates were evaluated.
+approval, bank portfolio-choice/wedge audit components, digital-invest,
+upgrade-efficiency, and labor-adjustment residual rolls where those gates were
+evaluated.

@@ -131,6 +131,7 @@ private[agents] object HouseholdMonthlyFlowConstruction:
     */
   def monthlyFlow(hh: Household.State, stocks: Household.FinancialStocks, result: HhMonthlyResult): Household.MonthlyFlow =
     val bankApproval = result.credit.bankApproval
+    val portfolio    = bankApproval.flatMap(_.audit.portfolioChoice)
     Household.MonthlyFlow(
       householdId = hh.id,
       openingDemandDeposit = stocks.demandDeposit,
@@ -169,6 +170,7 @@ private[agents] object HouseholdMonthlyFlowConstruction:
       consumerBankCapitalThrottle = bankApproval.flatMap(_.audit.capitalThrottle),
       consumerBankLcr = bankApproval.flatMap(_.audit.lcr),
       consumerBankNsfr = bankApproval.flatMap(_.audit.nsfr),
+      consumerBankPortfolioChoice = portfolio,
     )
 
   /** Resolves personal insolvency by writing off unsecured debt and equity. */

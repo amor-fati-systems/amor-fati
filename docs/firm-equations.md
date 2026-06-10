@@ -583,16 +583,25 @@ Representative output columns include:
 | Production and investment | `GrossInvestment`, `PrivateGrossInvestmentToGdp`, `AggCapitalStock`, `AggInventoryStock`, `InventoryChange`, `InventoryToGdp`, `AggEnergyCost`, `GreenInvestment` |
 | Technology adoption | `TotalAdoption`, `AutoRatio`, `HybridRatio`, `Automation_TechCapex`, `Automation_TechImports`, `Automation_TechLoans`, `Automation_UpgradeFailures`, `Automation_AiDebtTrap`, `Automation_NewFullAi`, `Automation_NewHybrid` |
 | Firm credit | `FirmCredit_NewLoans`, `FirmCredit_PrincipalRepaid`, `FirmCredit_GrossDefault`, `FirmCredit_NplRecovery`, `FirmCredit_NplLoss`, `FirmCredit_NetStockFlow`, `FirmCredit_CreditDemand`, `FirmCredit_CreditApproved`, `FirmCredit_BankRejected`, `FirmCredit_ApprovalRate` |
-| Credit rejection reasons | `FirmCredit_RejectedFailedBank`, `FirmCredit_RejectedCarGate`, `FirmCredit_RejectedCapitalBuffer`, `FirmCredit_RejectedLcrGate`, `FirmCredit_RejectedNsfrGate`, `FirmCredit_RejectedPortfolioPreference`, `FirmCredit_RejectedUnclassified` |
+| Credit rejection reasons | `FirmCredit_RejectedFailedBank`, `FirmCredit_RejectedCarGate`, `FirmCredit_RejectedCapitalBuffer`, `FirmCredit_RejectedLcrGate`, `FirmCredit_RejectedNsfrGate`, `FirmCredit_RejectedPortfolioPreference`, `FirmCredit_RejectedUnclassified`, `FirmCredit_RejectedPortfolioPreferenceToDemand`, `FirmCredit_RejectedPortfolioPreferenceToBankRejected` |
 | Investment and technology credit | `FirmCredit_InvestmentDemand`, `FirmCredit_InvestmentApproved`, `FirmCredit_InvestmentBankRejected`, `FirmCredit_CashFinancedInvestment`, `FirmCredit_TechDemand`, `FirmCredit_TechApproved`, `FirmCredit_TechBankRejected`, selected/candidate tech-credit columns |
 | Bonds and equity | `EquityIssuanceTotal`, `CorpBondOutstanding`, `CorpBondYield`, `CorpBondIssuance`, `CorpBondSpread`, `CorpBondAbsorptionRate`, holder corporate-bond columns |
 | Entry and exit | `FirmBirths`, `FirmDeaths`, `NetEntry`, `LivingFirmCount`, `NetFirmBirths` |
 
+In the credit rejection surface, `FirmCredit_RejectedPortfolioPreference` is the
+absolute `portfolioPreferenceRejections` flow. The derived columns are
+proportions: `FirmCredit_RejectedPortfolioPreferenceToDemand` is
+`flowToFlowRatio(portfolioPreferenceRejections, firmCreditDemand)`, and
+`FirmCredit_RejectedPortfolioPreferenceToBankRejected` is
+`flowToFlowRatio(portfolioPreferenceRejections, firmCreditRejected)`. Both are
+ratio/percentage-of-flow diagnostics, not PLN amounts.
+
 Per-firm decision traces expose opening/closing technology, decision type,
 cash/debt before and after, P&L, capex, credit decisions, bank approval
-probabilities and rolls, technology feasibility, adoption roll, implementation
-roll, efficiency draw, investment-credit audit, digital-readiness investment,
-and labor-adjustment residual rolls.
+probabilities and rolls, portfolio-choice wedge components, technology
+feasibility, adoption roll, implementation roll, efficiency draw,
+investment-credit audit, digital-readiness investment, and labor-adjustment
+residual rolls.
 
 Loan-origination quality diagnostics link firm credit observations to later
 bankruptcy outcomes over an outcome window. Scenario and sensitivity diagnostics

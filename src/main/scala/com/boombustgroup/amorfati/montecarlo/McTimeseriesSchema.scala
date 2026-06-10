@@ -574,6 +574,14 @@ object McTimeseriesSchema:
     ColumnDef.macroPln("FirmCredit_RejectedNsfrGate", ctx => ctx.world.flows.firmCreditRejectedByReason.nsfrGate),
     ColumnDef.macroPln("FirmCredit_RejectedPortfolioPreference", ctx => ctx.world.flows.firmCreditRejectedByReason.portfolioPreference),
     ColumnDef.macroPln("FirmCredit_RejectedUnclassified", ctx => ctx.world.flows.firmCreditRejectedByReason.unclassified),
+    ColumnDef(
+      "FirmCredit_RejectedPortfolioPreferenceToDemand",
+      ctx => ctx.flowToFlowRatio(ctx.world.flows.firmCreditRejectedByReason.portfolioPreference, ctx.firmCreditDemand),
+    ),
+    ColumnDef(
+      "FirmCredit_RejectedPortfolioPreferenceToBankRejected",
+      ctx => ctx.flowToFlowRatio(ctx.world.flows.firmCreditRejectedByReason.portfolioPreference, ctx.firmCreditRejected),
+    ),
     ColumnDef("FirmCredit_ApprovalRate", ctx => ctx.flowToFlowRatio(ctx.firmCreditApproved, ctx.firmCreditDemand)),
     ColumnDef.macroPln("FirmCredit_InvestmentDemand", ctx => ctx.world.flows.firmInvestmentCreditDemand),
     ColumnDef.macroPln("FirmCredit_InvestmentApproved", ctx => ctx.world.flows.firmInvestmentCreditApproved),
@@ -609,6 +617,7 @@ object McTimeseriesSchema:
     ColumnDef.macroPln("ConsumerCreditDemand", ctx => ctx.hhAgg.totalConsumerCreditDemand),
     ColumnDef.macroPln("ConsumerRejectedOrigination", ctx => ctx.hhAgg.totalConsumerRejectedOrigination),
     ColumnDef.macroPln("ConsumerBankRejectedOrigination", ctx => ctx.hhAgg.totalConsumerBankRejectedOrigination),
+    ColumnDef.macroPln("ConsumerCredit_RejectedPortfolioPreference", ctx => ctx.hhAgg.totalConsumerBankPortfolioRejected),
     ColumnDef.macroPln("ConsumerDebtService", ctx => ctx.hhAgg.totalConsumerDebtService),
     ColumnDef.macroPln("ConsumerPrincipal", ctx => ctx.hhAgg.totalConsumerPrincipal),
     ColumnDef.macroPln("ConsumerDefault", ctx => ctx.hhAgg.totalConsumerDefault),
@@ -628,6 +637,14 @@ object McTimeseriesSchema:
     ColumnDef(
       "ConsumerCredit_BankRejectedToDemand",
       ctx => ctx.flowToFlowRatio(ctx.hhAgg.totalConsumerBankRejectedOrigination, ctx.hhAgg.totalConsumerCreditDemand),
+    ),
+    ColumnDef(
+      "ConsumerCredit_RejectedPortfolioPreferenceToDemand",
+      ctx => ctx.flowToFlowRatio(ctx.hhAgg.totalConsumerBankPortfolioRejected, ctx.hhAgg.totalConsumerCreditDemand),
+    ),
+    ColumnDef(
+      "ConsumerCredit_RejectedPortfolioPreferenceToBankRejected",
+      ctx => ctx.flowToFlowRatio(ctx.hhAgg.totalConsumerBankPortfolioRejected, ctx.hhAgg.totalConsumerBankRejectedOrigination),
     ),
     ColumnDef(
       "ConsumerCredit_ShortfallToApprovedOrigination",
@@ -714,6 +731,11 @@ object McTimeseriesSchema:
     // AFS/HTM bond portfolio split
     ColumnDef.macroPln("BankAfsBonds", ctx => ctx.bankAgg.afsBonds),
     ColumnDef.macroPln("BankHtmBonds", ctx => ctx.bankAgg.htmBonds),
+    ColumnDef("BankGovBondShareOfAssets", ctx => ctx.flowToStockRate(ctx.ledgerBankGovBondHoldings, ctx.aggregateBankRwa.explicitAssetBase)),
+    ColumnDef(
+      "BankPrivateCreditToGovBondHoldings",
+      ctx => ctx.flowToStockRate(ctx.bankFirmLoans + ctx.consumerLoanStock + ctx.ledgerHouseholdMortgageStock, ctx.ledgerBankGovBondHoldings),
+    ),
   )
 
   private def diagnosticsGroup: Vector[ColumnDef] = Vector(

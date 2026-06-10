@@ -740,7 +740,7 @@ Main Monte Carlo output families:
 | --- | --- |
 | Monetary aggregates | `M0`, `M1`, `M2`, `M3`, `CreditMultiplier` |
 | Rates | `InterbankRate`, `WIBOR_1M`, `WIBOR_3M`, `WIBOR_6M` |
-| Regulatory ratios | `MinBankCAR`, `MaxBankNPL`, `MinBankLCR`, `MinBankNSFR` |
+| Regulatory ratios and portfolio composition | `MinBankCAR`, `MaxBankNPL`, `MinBankLCR`, `MinBankNSFR`, `BankGovBondShareOfAssets`, `BankPrivateCreditToGovBondHoldings` |
 | Failure and resolution | `BankFailures`, `BankFailure_*`, `BankResolution_*`, `BailInLoss`, `BfgLevyTotal`, `PolishBankLevyTaxTotal` |
 | Capital waterfall | `BankCapital_*`, `BankCreditLoss_*`, `BankReconciliation_*` |
 | ECL | `BankEcl_*`, `EclStage1`, `EclStage2`, `EclStage3` |
