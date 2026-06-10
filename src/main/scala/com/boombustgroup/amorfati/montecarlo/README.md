@@ -738,5 +738,6 @@ bankruptcy reason, cash, loan, digital readiness, workers, capex, new loan,
 down payment, bank id, lending rate, technology credit type/source/need/amount,
 available approval/feasibility/probability flags, plus separate adoption,
 implementation, upgrade-candidate bank approval, investment-credit bank
-approval, digital-invest, upgrade-efficiency, and labor-adjustment residual
-rolls where those gates were evaluated.
+approval, bank portfolio-choice/wedge audit components, digital-invest,
+upgrade-efficiency, and labor-adjustment residual rolls where those gates were
+evaluated.

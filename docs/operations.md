@@ -288,8 +288,9 @@ state, decision type, bankruptcy reason, cash/debt/readiness/workers before and
 after, capex, new bank loan, down payment where applicable, relationship bank,
 lending rate, available approval/feasibility/probability flags, and separate
 adoption, implementation, upgrade-candidate bank approval, investment-credit
-bank approval, digital-invest, upgrade-efficiency, and labor-adjustment residual
-rolls where those gates were evaluated.
+bank approval, bank portfolio-choice/wedge audit components, digital-invest,
+upgrade-efficiency, and labor-adjustment residual rolls where those gates were
+evaluated.
 
 `mc/` is ignored by git. Keep committed research-facing artifacts under `docs/`
 only when the command explicitly targets a committed documentation path.
