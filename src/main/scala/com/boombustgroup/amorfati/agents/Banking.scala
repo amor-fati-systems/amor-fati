@@ -562,8 +562,8 @@ object Banking:
 
   /** Taxable asset base for the Polish tax on selected financial institutions.
     */
-  def polishBankLevyTaxableAssets(bank: BankState, balanceSheet: TaxableBankBalanceSheet)(using p: SimParams): PLN =
-    BankTaxation.polishBankLevyTaxableAssets(bank, balanceSheet)
+  def computePolishBankLevyTaxableAssets(bank: BankState, balanceSheet: TaxableBankBalanceSheet)(using p: SimParams): PLN =
+    BankTaxation.computePolishBankLevyTaxableAssets(bank, balanceSheet)
 
   /** Compute monthly Polish bank levy for all live bank rows. */
   def computePolishBankLevy(

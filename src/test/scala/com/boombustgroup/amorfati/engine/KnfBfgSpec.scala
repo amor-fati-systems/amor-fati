@@ -110,11 +110,23 @@ class KnfBfgSpec extends AnyFlatSpec with Matchers:
       capital = capital,
       govBondHoldings = govBonds,
     )
-    val taxable  = Banking.polishBankLevyTaxableAssets(active.bank, Banking.TaxableBankBalanceSheet.from(active.stocks, PLN.Zero))
+    val taxable  = Banking.computePolishBankLevyTaxableAssets(active.bank, Banking.TaxableBankBalanceSheet.from(active.stocks, PLN.Zero))
     val result   = Banking.computePolishBankLevy(Vector(active.bank), Vector(active.stocks), _ => PLN.Zero)
 
     taxable shouldBe excess
     result.total shouldBe taxable * p.banking.polishBankLevyMonthlyRate
+  }
+
+  it should "not treat negative capital as an addition to the Polish bank levy base" in {
+    val active  = mkBankRow(
+      id = 0,
+      deposits = PLN(800000),
+      loans = p.banking.polishBankLevyAssetThreshold + PLN(300000),
+      capital = PLN(-50000),
+    )
+    val taxable = Banking.computePolishBankLevyTaxableAssets(active.bank, Banking.TaxableBankBalanceSheet.from(active.stocks, PLN.Zero))
+
+    taxable shouldBe PLN(300000)
   }
 
   it should "exempt failed-bank shells from the Polish bank levy" in {
