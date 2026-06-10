@@ -172,6 +172,27 @@ class FirmEconomicsSpec extends AnyFlatSpec with Matchers:
     }
   }
 
+  it should "fail fast when bank configs are not in canonical bank-id order" in {
+    val badWorld = w.copy(bankingSector = w.bankingSector.copy(configs = w.bankingSector.configs.reverse))
+
+    val err = intercept[IllegalArgumentException]:
+      FirmEconomics.runStep(
+        badWorld,
+        init.firms,
+        init.households,
+        init.banks,
+        init.ledgerFinancialState,
+        s1,
+        s2,
+        s3,
+        s4,
+        RandomStream.seeded(42),
+      )
+
+    err.getMessage should include("FirmLendingStage.prepare")
+    err.getMessage should include("expectedIds=")
+  }
+
   it should "match current-month immigrant inflows before closing labor matching" in {
     val immigrantInflow    = 12
     val existingUnemployed = init.households.count(_.status.isInstanceOf[HhStatus.Unemployed])

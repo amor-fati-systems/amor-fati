@@ -114,3 +114,23 @@ class HouseholdIncomeEconomicsSpec extends AnyFlatSpec with Matchers:
     err.getMessage should include(s"banks=${init.banks.length}")
     err.getMessage should include(s"configs=${w.bankingSector.configs.length - 1}")
   }
+
+  it should "fail fast when bank configs are not in canonical bank-id order" in {
+    val badWorld = w.copy(bankingSector = w.bankingSector.copy(configs = w.bankingSector.configs.reverse))
+
+    val err = intercept[IllegalArgumentException]:
+      HouseholdIncomeEconomics.compute(
+        badWorld,
+        init.firms,
+        init.households,
+        init.banks,
+        init.ledgerFinancialState,
+        s1.lendingBaseRate,
+        s1.resWage,
+        s2.newWage,
+        RandomStream.seeded(99),
+      )
+
+    err.getMessage should include("HouseholdIncomeEconomics.hhBankRates")
+    err.getMessage should include("expectedIds=")
+  }

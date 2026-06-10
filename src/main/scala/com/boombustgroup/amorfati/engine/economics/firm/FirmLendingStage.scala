@@ -60,14 +60,16 @@ private[firm] object FirmLendingStage:
       configs: Vector[Banking.Config],
       ledgerBankCount: Int,
   ): Unit =
-    val bankIds        = banks.map(_.id.toInt)
-    val configIds      = configs.map(_.id.toInt)
-    val idsReachLedger = bankIds.forall(id => id >= 0 && id < ledgerBankCount)
-    if banks.length != bankStocks.length || banks.length != configs.length || bankIds != configIds || !idsReachLedger then
+    val bankIds     = banks.map(_.id.toInt)
+    val configIds   = configs.map(_.id.toInt)
+    val expectedIds = (0 until banks.length).toVector
+    if banks.length != bankStocks.length || banks.length != configs.length || ledgerBankCount != banks.length || bankIds != expectedIds || configIds != expectedIds
+    then
       val configNames = configs.map(config => s"${config.id.toInt}:${config.name}")
       throw new IllegalArgumentException(
         "FirmLendingStage.prepare requires aligned bank rows, ledger bank stocks, and bank configs; " +
           s"banks=${banks.length} ids=${bankIds.mkString("[", ",", "]")}, " +
           s"ledgerBanks=$ledgerBankCount projectedStocks=${bankStocks.length}, " +
-          s"configs=${configs.length} ids=${configIds.mkString("[", ",", "]")} names=${configNames.mkString("[", ",", "]")}",
+          s"configs=${configs.length} ids=${configIds.mkString("[", ",", "]")} names=${configNames.mkString("[", ",", "]")}, " +
+          s"expectedIds=${expectedIds.mkString("[", ",", "]")}",
       )
