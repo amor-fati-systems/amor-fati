@@ -6,6 +6,7 @@ import org.scalatest.matchers.should.Matchers
 import com.boombustgroup.amorfati.Generators
 import com.boombustgroup.amorfati.agents.Banking
 import com.boombustgroup.amorfati.agents.Banking.BankStatus
+import com.boombustgroup.amorfati.agents.banking.PolishBankLevyAssetPerimeter
 import com.boombustgroup.amorfati.engine.SimulationMonth.ExecutionMonth
 import com.boombustgroup.amorfati.engine.mechanisms.Macroprudential
 import com.boombustgroup.amorfati.types.*
@@ -110,7 +111,7 @@ class KnfBfgSpec extends AnyFlatSpec with Matchers:
       capital = capital,
       govBondHoldings = govBonds,
     )
-    val taxable  = Banking.computePolishBankLevyTaxableAssets(active.bank, Banking.TaxableBankBalanceSheet.from(active.stocks, PLN.Zero))
+    val taxable  = Banking.computePolishBankLevyTaxableAssets(active.bank, PolishBankLevyAssetPerimeter.fromBankStocks(active.stocks, PLN.Zero))
     val result   = Banking.computePolishBankLevy(Vector(active.bank), Vector(active.stocks), _ => PLN.Zero)
 
     taxable shouldBe excess
@@ -124,7 +125,7 @@ class KnfBfgSpec extends AnyFlatSpec with Matchers:
       loans = p.banking.polishBankLevyAssetThreshold + PLN(300000),
       capital = PLN(-50000),
     )
-    val taxable = Banking.computePolishBankLevyTaxableAssets(active.bank, Banking.TaxableBankBalanceSheet.from(active.stocks, PLN.Zero))
+    val taxable = Banking.computePolishBankLevyTaxableAssets(active.bank, PolishBankLevyAssetPerimeter.fromBankStocks(active.stocks, PLN.Zero))
 
     taxable shouldBe PLN(300000)
   }

@@ -316,36 +316,6 @@ object Banking:
       bailedInDeposits: PLN = PLN.Zero, // deposits already processed by resolution bail-in
   )
 
-  /** Bank asset perimeter used by the Polish financial-institutions tax.
-    *
-    * This is deliberately narrower than a generic balance-sheet snapshot: it
-    * names exactly the modeled assets that enter the tax base before statutory
-    * deductions.
-    */
-  case class TaxableBankBalanceSheet(
-      firmLoan: PLN,
-      consumerLoan: PLN,
-      mortgageLoan: PLN,
-      govBondHoldings: PLN,
-      reserve: PLN,
-      interbankAssets: PLN,
-      corpBondHoldings: PLN,
-  ):
-    def explicitAssets: PLN =
-      firmLoan + consumerLoan + mortgageLoan + govBondHoldings + reserve + interbankAssets + corpBondHoldings
-
-  object TaxableBankBalanceSheet:
-    def from(stocks: BankFinancialStocks, corpBondHoldings: PLN): TaxableBankBalanceSheet =
-      TaxableBankBalanceSheet(
-        firmLoan = stocks.firmLoan,
-        consumerLoan = stocks.consumerLoan,
-        mortgageLoan = stocks.mortgageLoan,
-        govBondHoldings = BankRegulatoryMetrics.govBondHoldings(stocks),
-        reserve = stocks.reserve,
-        interbankAssets = stocks.interbankLoan.max(PLN.Zero),
-        corpBondHoldings = corpBondHoldings,
-      )
-
   /** Operational state of an individual bank.
     *
     * Financial ownership stocks are intentionally absent; callers must carry
@@ -562,8 +532,8 @@ object Banking:
 
   /** Taxable asset base for the Polish tax on selected financial institutions.
     */
-  def computePolishBankLevyTaxableAssets(bank: BankState, balanceSheet: TaxableBankBalanceSheet)(using p: SimParams): PLN =
-    BankTaxation.computePolishBankLevyTaxableAssets(bank, balanceSheet)
+  def computePolishBankLevyTaxableAssets(bank: BankState, assetPerimeter: PolishBankLevyAssetPerimeter)(using p: SimParams): PLN =
+    BankTaxation.computePolishBankLevyTaxableAssets(bank, assetPerimeter)
 
   /** Compute monthly Polish bank levy for all live bank rows. */
   def computePolishBankLevy(

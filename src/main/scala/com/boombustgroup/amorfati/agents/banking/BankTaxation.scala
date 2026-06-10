@@ -15,10 +15,10 @@ import com.boombustgroup.amorfati.types.*
 private[agents] object BankTaxation:
 
   /** Taxable bank-asset base after modeled statutory deductions. */
-  def computePolishBankLevyTaxableAssets(bank: BankState, balanceSheet: TaxableBankBalanceSheet)(using p: SimParams): PLN =
+  def computePolishBankLevyTaxableAssets(bank: BankState, assetPerimeter: PolishBankLevyAssetPerimeter)(using p: SimParams): PLN =
     val deductibleOwnFunds = bank.capital.max(PLN.Zero)
-    val deductions         = deductibleOwnFunds + balanceSheet.govBondHoldings
-    (balanceSheet.explicitAssets - deductions - p.banking.polishBankLevyAssetThreshold).max(PLN.Zero)
+    val deductions         = deductibleOwnFunds + assetPerimeter.govBondHoldings
+    (assetPerimeter.explicitAssets - deductions - p.banking.polishBankLevyAssetThreshold).max(PLN.Zero)
 
   /** Computes the monthly Polish bank levy for each live bank row. */
   def computePolishBankLevy(
@@ -31,6 +31,6 @@ private[agents] object BankTaxation:
       rows.map: (bank, stocks) =>
         if bank.failed then PLN.Zero
         else
-          val taxableBalanceSheet = TaxableBankBalanceSheet.from(stocks, bankCorpBondHoldings(bank.id))
-          computePolishBankLevyTaxableAssets(bank, taxableBalanceSheet) * p.banking.polishBankLevyMonthlyRate
+          val assetPerimeter = PolishBankLevyAssetPerimeter.fromBankStocks(stocks, bankCorpBondHoldings(bank.id))
+          computePolishBankLevyTaxableAssets(bank, assetPerimeter) * p.banking.polishBankLevyMonthlyRate
     Banking.PerBankAmounts(perBank, perBank.sumPln)
