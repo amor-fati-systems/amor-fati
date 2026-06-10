@@ -108,7 +108,6 @@ Use this routing rule before adding a new check:
 | Markdown links, anchors, and documentation ownership inventory | `scripts/check-docs.py` in the generated-output CI job | Prose style linting |
 | Generated docs/resources consistency | Existing generated-output script | Unit tests |
 | Long Monte Carlo, scenario, robustness, diagnostic export validation | Nightly diagnostics profile | PR unit tests |
-| Dynamic credit-supply empirical bridge | `docs/empirical-validation-source-manifest.csv` plus `EmpiricalValidationExport`, reusing existing Monte Carlo outputs | A second credit-supply exporter before SLOOS/NBP/KNF source-series ingestion exists |
 | Stress/failure-channel experiments | Stress/exploratory nightly class | Normal-validation gate |
 | Hot-path timing or allocation visibility | [Hot-path profiling](hot-path-profiling.md) and telemetry artifacts | Correctness unit tests |
 | Thresholded nightly health summary | `NightlyHealthSummary` and docs/nightly comparison contract | Diagnostic exporters themselves |
@@ -121,8 +120,6 @@ A check can become a hard gate only when the contract is clear:
   artifacts, and impossible stock states are hard failures by default;
 - calibration and research metrics require a written threshold rationale before
   they can fail CI;
-- credit-supply empirical rows remain report-only until a concrete NBP/KNF
-  source vintage, transformation, comparator value, and tolerance are recorded;
 - stress-profile findings must not mask normal-profile health;
 - health-summary hard thresholds must reuse existing nightly artifacts instead
   of launching another simulation path;
