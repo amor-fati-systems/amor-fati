@@ -90,9 +90,9 @@ object BankBalanceSheetBenchmarkExport:
       deposits: PLN,
       totalCredit: PLN,
       govBondHoldings: PLN,
-      govBondShareOfAssets: BigDecimal,
+      govBondShareOfAssets: Share,
       polishBankLevyTaxableAssets: PLN,
-      polishBankLevyTaxableAssetsShare: BigDecimal,
+      polishBankLevyTaxableAssetsShare: Share,
       capitalAdequacyRatio: BigDecimal,
       effectiveMinCar: BigDecimal,
       carBuffer: BigDecimal,
@@ -149,6 +149,10 @@ object BankBalanceSheetBenchmarkExport:
         case ObservedValue.PositiveInfinity => BigDecimal(0)
         case ObservedValue.NotAvailable     => BigDecimal(0)
 
+    def finiteShare(numerator: PLN, denominator: PLN): Share =
+      if denominator <= PLN.Zero then Share.Zero
+      else (numerator / denominator).clampToShare
+
     private def bankRows(): Vector[BankRow] =
       if init.banks.size != bankBalances.size then
         val bankIds = init.banks.map(_.id.toInt).mkString("[", ",", "]")
@@ -177,9 +181,9 @@ object BankBalanceSheetBenchmarkExport:
             deposits = balances.totalDeposits,
             totalCredit = credit,
             govBondHoldings = govBonds,
-            govBondShareOfAssets = finiteRatio(govBonds, bankAssets),
+            govBondShareOfAssets = finiteShare(govBonds, bankAssets),
             polishBankLevyTaxableAssets = levyBase,
-            polishBankLevyTaxableAssetsShare = finiteRatio(levyBase, bankAssets),
+            polishBankLevyTaxableAssetsShare = finiteShare(levyBase, bankAssets),
             capitalAdequacyRatio = car,
             effectiveMinCar = minCar,
             carBuffer = car - minCar,
@@ -661,9 +665,9 @@ object BankBalanceSheetBenchmarkExport:
           renderPln(row.deposits),
           renderPln(row.totalCredit),
           renderPln(row.govBondHoldings),
-          renderDecimal(row.govBondShareOfAssets),
+          row.govBondShareOfAssets.format(6),
           renderPln(row.polishBankLevyTaxableAssets),
-          renderDecimal(row.polishBankLevyTaxableAssetsShare),
+          row.polishBankLevyTaxableAssetsShare.format(6),
           renderDecimal(row.capitalAdequacyRatio),
           renderDecimal(row.effectiveMinCar),
           renderDecimal(row.carBuffer),

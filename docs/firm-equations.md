@@ -588,6 +588,14 @@ Representative output columns include:
 | Bonds and equity | `EquityIssuanceTotal`, `CorpBondOutstanding`, `CorpBondYield`, `CorpBondIssuance`, `CorpBondSpread`, `CorpBondAbsorptionRate`, holder corporate-bond columns |
 | Entry and exit | `FirmBirths`, `FirmDeaths`, `NetEntry`, `LivingFirmCount`, `NetFirmBirths` |
 
+In the credit rejection surface, `FirmCredit_RejectedPortfolioPreference` is the
+absolute `portfolioPreferenceRejections` flow. The derived columns are
+proportions: `FirmCredit_RejectedPortfolioPreferenceToDemand` is
+`flowToFlowRatio(portfolioPreferenceRejections, firmCreditDemand)`, and
+`FirmCredit_RejectedPortfolioPreferenceToBankRejected` is
+`flowToFlowRatio(portfolioPreferenceRejections, firmCreditRejected)`. Both are
+ratio/percentage-of-flow diagnostics, not PLN amounts.
+
 Per-firm decision traces expose opening/closing technology, decision type,
 cash/debt before and after, P&L, capex, credit decisions, bank approval
 probabilities and rolls, portfolio-choice wedge components, technology
