@@ -75,24 +75,43 @@ object EmpiricalValidationExport:
     case MissingOutput     extends SnapshotStatus("MISSING_OUTPUT")
     case MissingDataBridge extends SnapshotStatus("MISSING_DATA_BRIDGE")
 
+  /** Statistic applied to a model output surface before it is compared with an
+    * empirical source-manifest row.
+    */
   enum ModelStatistic(val token: String):
+    /** Last observed value in the selected output surface. */
     case Terminal extends ModelStatistic("terminal")
-    case First    extends ModelStatistic("first")
-    case Mean     extends ModelStatistic("mean")
-    case Min      extends ModelStatistic("min")
-    case Max      extends ModelStatistic("max")
-    case Sum      extends ModelStatistic("sum")
+
+    /** First observed value in the selected output surface. */
+    case First extends ModelStatistic("first")
+
+    /** Arithmetic mean over all selected observations. */
+    case Mean extends ModelStatistic("mean")
+
+    /** Minimum selected observation. */
+    case Min extends ModelStatistic("min")
+
+    /** Maximum selected observation. */
+    case Max extends ModelStatistic("max")
+
+    /** Sum of all selected observations. */
+    case Sum extends ModelStatistic("sum")
+
+    /** Per-seed first-to-last stock growth, computed as last / first - 1. */
+    case PctChange extends ModelStatistic("pct_change")
 
   object ModelStatistic:
     def parse(value: String): Either[String, ModelStatistic] =
       normalize(value) match
-        case "TERMINAL" | "LAST" => Right(Terminal)
-        case "FIRST"             => Right(First)
-        case "MEAN" | "AVG"      => Right(Mean)
-        case "MIN"               => Right(Min)
-        case "MAX"               => Right(Max)
-        case "SUM"               => Right(Sum)
-        case other               => Left(s"Unknown model statistic: $other")
+        case "TERMINAL" | "LAST"                                          => Right(Terminal)
+        case "FIRST"                                                      => Right(First)
+        case "MEAN" | "AVG"                                               => Right(Mean)
+        case "MIN"                                                        => Right(Min)
+        case "MAX"                                                        => Right(Max)
+        case "SUM"                                                        => Right(Sum)
+        case "PCT_CHANGE" | "PCTCHANGE" | "PCT-CHANGE" | "PERCENT_CHANGE" =>
+          Right(PctChange)
+        case other                                                        => Left(s"Unknown model statistic: $other")
 
   enum ModelSurface(val token: String):
     case TimeSeries        extends ModelSurface("timeseries")
@@ -121,7 +140,7 @@ object EmpiricalValidationExport:
             parsedStatistic <- ModelStatistic.parse(statistic)
           yield ModelTarget(parsedSurface, column.trim, parsedStatistic)
         case _                                                          =>
-          Left("model_target must use <timeseries|terminal_hh|terminal_banks|terminal_firms>:<column>:<terminal|first|mean|min|max|sum>")
+          Left("model_target must use <timeseries|terminal_hh|terminal_banks|terminal_firms>:<column>:<terminal|first|mean|min|max|sum|pct_change>")
 
   final case class SourceManifestRow(
       target: String,
@@ -430,18 +449,20 @@ object EmpiricalValidationExport:
       if timeSeries.isEmpty then Left("no per-seed timeseries CSV files found")
       else
         statistic match
-          case ModelStatistic.Terminal =>
+          case ModelStatistic.Terminal  =>
             sequence(timeSeries.map(rows => terminalValue(rows, column, "last"))).map(mean)
-          case ModelStatistic.First    =>
+          case ModelStatistic.First     =>
             sequence(timeSeries.map(rows => firstValue(rows, column))).map(mean)
-          case ModelStatistic.Mean     =>
+          case ModelStatistic.Mean      =>
             aggregate(allTimeSeriesValues(column), statistic)
-          case ModelStatistic.Min      =>
+          case ModelStatistic.Min       =>
             aggregate(allTimeSeriesValues(column), statistic)
-          case ModelStatistic.Max      =>
+          case ModelStatistic.Max       =>
             aggregate(allTimeSeriesValues(column), statistic)
-          case ModelStatistic.Sum      =>
+          case ModelStatistic.Sum       =>
             aggregate(allTimeSeriesValues(column), statistic)
+          case ModelStatistic.PctChange =>
+            sequence(timeSeries.map(rows => pctChange(rows, column))).map(mean)
 
     private def evaluateTerminal(
         label: String,
@@ -459,6 +480,7 @@ object EmpiricalValidationExport:
             case ModelStatistic.Min                            => aggregate(values, ModelStatistic.Min)
             case ModelStatistic.Max                            => aggregate(values, ModelStatistic.Max)
             case ModelStatistic.Sum                            => aggregate(values, ModelStatistic.Sum)
+            case ModelStatistic.PctChange                      => Left("pct_change is only supported for timeseries model targets")
 
     private def allTimeSeriesValues(column: String): Either[String, Vector[BigDecimal]] =
       sequence(timeSeries.flatMap(rows => rows.map(_.decimal(column))))
@@ -468,6 +490,13 @@ object EmpiricalValidationExport:
 
     private def firstValue(rows: Vector[CsvRow], column: String): Either[String, BigDecimal] =
       rows.headOption.toRight("CSV has no first row").flatMap(_.decimal(column))
+
+    private def pctChange(rows: Vector[CsvRow], column: String): Either[String, BigDecimal] =
+      for
+        first <- firstValue(rows, column)
+        last  <- terminalValue(rows, column, "last")
+        value <- Either.cond(first != BigDecimal(0), last / first - BigDecimal(1), s"cannot compute pct_change for $column because first value is zero")
+      yield value
 
     private def aggregate(valuesAttempt: Either[String, Vector[BigDecimal]], statistic: ModelStatistic): Either[String, BigDecimal] =
       valuesAttempt.flatMap: values =>
@@ -479,6 +508,7 @@ object EmpiricalValidationExport:
             case ModelStatistic.Max                            => Right(values.max)
             case ModelStatistic.Sum                            => Right(values.sum)
             case ModelStatistic.First                          => Right(values.head)
+            case ModelStatistic.PctChange                      => Left("pct_change requires per-seed first and last timeseries values")
 
   private object MonteCarloOutput:
     def load(manifest: ModelRunManifest): Either[String, MonteCarloOutput] =

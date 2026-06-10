@@ -223,6 +223,65 @@ Future work should refine a continuous credit-supply rule with soft CAR/LCR/NSFR
 cushions and risk-adjusted-return effects before retuning capital levels or RWA
 weights.
 
+### Dynamic Credit-Supply Validation
+
+Terminal prudential ratios and dynamic credit-supply validation answer different
+questions. `AggregateBankCAR` checks whether the model lands near the KNF
+banking-sector capital-ratio comparator at the end of the run. Dynamic
+credit-supply validation asks whether the path of private credit, approval
+rates, and NPL pressure is empirically plausible over the run horizon.
+
+The source manifest therefore carries separate partial bridge rows for:
+
+| Bridge family | Model target | Current status |
+| --- | --- | --- |
+| Aggregate credit-stock growth | `timeseries:TotalCreditStock:pct_change` | NBP MFI stock-series extraction and horizon alignment remain open. |
+| Firm-loan growth | `timeseries:BankFirmLoans:pct_change` | NBP enterprise/NFC credit stock extraction and sector-definition mapping remain open. |
+| Consumer-loan growth | `timeseries:ConsumerLoans:pct_change` | NBP consumer-credit stock extraction and product-definition mapping remain open. |
+| Firm approval proxy | `timeseries:FirmCredit_ApprovalRate:mean` | SLOOS balance-of-opinion mapping is unresolved. |
+| Consumer approval proxy | `timeseries:ConsumerCredit_ApprovedToDemand:mean` | SLOOS balance-of-opinion mapping is unresolved. |
+| Aggregate NPL trajectory | `timeseries:MaxBankNPL:max` | KNF NPL trajectory extraction and regulatory-definition mapping remain open. |
+| Consumer NPL trajectory | `timeseries:ConsumerCredit_NplRatioGross:max` | Product-level KNF/NBP NPL extraction and definition mapping remain open. |
+
+The `pct_change` statistic is computed per seed as `last / first - 1`, then
+averaged across seeds. This makes loan-growth rows comparable to external stock
+growth series once the NBP monetary-statistics bridge is extracted. It must not
+be read as a path-distance statistic; slope, RMSE, dynamic time warping, and
+posterior-calibration metrics belong to later calibration-governance work after
+source series are ingested.
+
+SLOOS rows are not numeric validation rows yet. The NBP senior loan officer
+survey is a categorical balance-of-opinion survey, so it requires a documented
+bridge from tightening/easing responses to a model construct such as a change
+in approval or rejection rates. Issue #790 tracks that bridge. Until it exists,
+the manifest keeps approval-proxy rows as `MISSING_DATA_BRIDGE` and does not
+assign empirical values or tolerances.
+
+Firm credit-rejection decomposition columns such as
+`FirmCredit_RejectedCapitalBuffer` and
+`FirmCredit_RejectedPortfolioPreference` are model-only diagnostics. They are
+useful for explaining why the model tightened credit supply, but they do not
+have direct public NBP or KNF comparators and should not be promoted to
+empirical-validation rows without a source bridge.
+
+### Seed-Count Policy
+
+Empirical validation snapshots report Monte Carlo model values using the
+`seed_count`, horizon, commit, branch, and statistic recorded in
+`model-run-manifest.csv`. Paper-facing credit-supply claims must cite that
+metadata explicitly.
+
+| Use | Minimum seed count | Interpretation |
+| --- | ---: | --- |
+| Operational snapshot or smoke evidence | 5 | Suitable for keeping validation rows visible and reproducible. Not enough for paper-facing credit-supply claims. |
+| Mechanism diagnostics | 10 | Suitable for inspecting direction and decomposition of credit-supply channels. |
+| Paper-facing credit-stock growth, approval-proxy, or NPL-path claims | 30 | Minimum for cited baseline figures over the current 60-month horizon. |
+| Tail-risk, bank-failure probability, or stress-frequency claims | 100+ | Required before interpreting low-frequency events probabilistically. |
+
+No empirical validation row should invent a tolerance solely from this seed
+policy. Tolerances require a concrete source vintage, transformation, and
+reviewable comparator value.
+
 Firm-size distribution and sectoral output now have direct output surfaces.
 Use terminal `_firms.csv` fields for living-firm-only terminal size shares and
 per-seed `*_Output` columns for sector output shares or growth.

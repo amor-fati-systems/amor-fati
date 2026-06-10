@@ -243,6 +243,106 @@ class EmpiricalValidationExportSpec extends AnyFlatSpec with Matchers:
     } finally deleteRecursively(root)
   }
 
+  it should "compute pct_change as the mean per-seed first-to-last timeseries change" in {
+    Files.createDirectories(Path.of("target"))
+    val root = Files.createTempDirectory(Path.of("target"), "empirical-validation-pct-change-")
+    val mc   = root.resolve("mc")
+    val out  = root.resolve("out")
+    Files.createDirectories(mc)
+
+    try {
+      write(
+        mc.resolve("validation-baseline_credit-growth_2m_seed001.csv"),
+        """Month;TotalCreditStock
+          |1;100.0
+          |2;120.0
+          |""".stripMargin,
+      )
+      write(
+        mc.resolve("validation-baseline_credit-growth_2m_seed002.csv"),
+        """Month;TotalCreditStock
+          |1;200.0
+          |2;250.0
+          |""".stripMargin,
+      )
+
+      val sourceManifest = root.resolve("source-manifest.csv")
+      write(
+        sourceManifest,
+        """target;source_provider;source_url;dataset_code;vintage;accessed_at;license_or_reuse_note;frequency;unit;transformation;model_target;status;empirical_value;tolerance;criterion;notes
+          |Credit growth;NBP;https://nbp.pl;MFI credit stocks;fixture;2026-04-30;public citation;monthly;pct_change;first-to-last stock change;timeseries:TotalCreditStock:pct_change;READY;0.225;0.001;absolute distance;fixture source
+          |""".stripMargin,
+      )
+
+      val result = EmpiricalValidationExport
+        .run(
+          Config(
+            sourceManifest = sourceManifest,
+            mcDir = mc,
+            out = out,
+            runId = "credit-growth",
+            outputPrefix = "validation-baseline",
+            durationMonths = 2,
+            seeds = 2,
+            commit = "test-commit",
+            parameterBranch = "test",
+          ),
+        )
+        .fold(err => fail(err), identity)
+
+      val row = result.rows.find(_.target == "Credit growth").getOrElse(fail("Expected credit growth row"))
+      row.status shouldBe SnapshotStatus.PassBaseline
+      row.modelValue shouldBe Some(BigDecimal("0.225"))
+    } finally deleteRecursively(root)
+  }
+
+  it should "mark pct_change unavailable when the first timeseries value is zero" in {
+    Files.createDirectories(Path.of("target"))
+    val root = Files.createTempDirectory(Path.of("target"), "empirical-validation-pct-change-zero-")
+    val mc   = root.resolve("mc")
+    val out  = root.resolve("out")
+    Files.createDirectories(mc)
+
+    try {
+      write(
+        mc.resolve("validation-baseline_credit-growth-zero_2m_seed001.csv"),
+        """Month;TotalCreditStock
+          |1;0.0
+          |2;120.0
+          |""".stripMargin,
+      )
+
+      val sourceManifest = root.resolve("source-manifest.csv")
+      write(
+        sourceManifest,
+        """target;source_provider;source_url;dataset_code;vintage;accessed_at;license_or_reuse_note;frequency;unit;transformation;model_target;status;empirical_value;tolerance;criterion;notes
+          |Credit growth;NBP;https://nbp.pl;MFI credit stocks;fixture;2026-04-30;public citation;monthly;pct_change;first-to-last stock change;timeseries:TotalCreditStock:pct_change;PARTIAL;;;;fixture source
+          |""".stripMargin,
+      )
+
+      val result = EmpiricalValidationExport
+        .run(
+          Config(
+            sourceManifest = sourceManifest,
+            mcDir = mc,
+            out = out,
+            runId = "credit-growth-zero",
+            outputPrefix = "validation-baseline",
+            durationMonths = 2,
+            seeds = 1,
+            commit = "test-commit",
+            parameterBranch = "test",
+          ),
+        )
+        .fold(err => fail(err), identity)
+
+      val row = result.rows.find(_.target == "Credit growth").getOrElse(fail("Expected credit growth row"))
+      row.status shouldBe SnapshotStatus.MissingOutput
+      row.modelValue shouldBe None
+      row.notes should include("cannot compute pct_change for TotalCreditStock because first value is zero")
+    } finally deleteRecursively(root)
+  }
+
   it should "consume the checked-in manifest with real-economy comparator rows" in {
     Files.createDirectories(Path.of("target"))
     val root = Files.createTempDirectory(Path.of("target"), "empirical-validation-real-economy-")
