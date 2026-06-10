@@ -81,6 +81,13 @@ private[agents] object BankRegulatoryMetrics:
   def nplRatio(bank: BankState, stocks: BankFinancialStocks): Share =
     nplRatio(stocks.firmLoan, bank.nplAmount)
 
+  /** Computes the NPL ratio for the requested bank-credit product. */
+  def nplRatio(bank: BankState, stocks: BankFinancialStocks, product: CreditProduct): Share =
+    product match
+      case CreditProduct.FirmLoan     => nplRatio(bank, stocks)
+      case CreditProduct.ConsumerLoan => nplRatio(stocks.consumerLoan, bank.consumerNpl)
+      case CreditProduct.MortgageLoan => Share.Zero
+
   /** Computes CAR for a bank row using the configured explicit RWA perimeter.
     */
   def car(bank: BankState, stocks: BankFinancialStocks, corpBondHoldings: PLN)(using SimParams): Multiplier =

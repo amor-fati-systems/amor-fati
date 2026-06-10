@@ -68,21 +68,30 @@ object HouseholdIncomeEconomics:
     val bsec             = w.bankingSector
     val nBanksHh         = banks.length
     val bankStocks       = ledgerFinancialState.banks.map(LedgerFinancialState.projectBankFinancialStocks)
-    requireBankRateInputsAligned(banks, bankStocks, bsec.configs)
+    requireBankInputsAligned("HouseholdIncomeEconomics.hhBankRates", banks, bankStocks, bsec.configs)
     val ccyb             = w.mechanisms.macropru.ccyb
     val bankCorpBonds    = (bankId: BankId) => CorporateBondOwnership.bankHolderFor(ledgerFinancialState, bankId)
     val hhBankRates      = Some(
       BankRates(
-        lendingRates = banks
-          .zip(bankStocks)
-          .zip(bsec.configs)
-          .map { case ((b, stocks), cfg) =>
-            Banking.lendingRate(b, stocks, cfg, lendingBaseRate, w.gov.bondYield, bankCorpBonds(b.id), w.mechanisms.macropru.ccyb)
-          },
+        lendingRates = banks.indices.map { idx =>
+          val b      = banks(idx)
+          val stocks = bankStocks(idx)
+          val cfg    = bsec.configs(idx)
+          Banking.lendingRate(
+            b,
+            stocks,
+            cfg,
+            lendingBaseRate,
+            w.gov.bondYield,
+            bankCorpBonds(b.id),
+            w.mechanisms.macropru.ccyb,
+            Banking.CreditProduct.ConsumerLoan,
+          )
+        }.toVector,
         depositRates = banks.map(_ => Banking.hhDepositRate(w.nbp.referenceRate)),
       ),
     )
-    val bankCreditSupply = capitalAwareBankCreditSupply(banks, bankStocks, ccyb, bankCorpBonds)
+    val bankCreditSupply = capitalAwareBankCreditSupply(banks, bankStocks, bsec.configs, ccyb, bankCorpBonds, lendingBaseRate, w.gov.bondYield)
     val eqReturn         = w.financialMarkets.equity.monthlyReturn
     val secWages         = Some(SectoralMobility.sectorWages(afterWages))
     val secVacancies     = Some(SectoralMobility.sectorVacancies(afterWages, firms))
@@ -131,43 +140,62 @@ object HouseholdIncomeEconomics:
       ledgerFinancialState = ledgerFinancialState.copy(households = householdStep.financialStocks.map(LedgerFinancialState.householdBalances)),
     )
 
-  private def requireBankRateInputsAligned(
+  private def requireBankInputsAligned(
+      context: String,
       banks: Vector[Banking.BankState],
       bankStocks: Vector[Banking.BankFinancialStocks],
       configs: Vector[Banking.Config],
   ): Unit =
-    val bankIds   = banks.map(_.id.toInt)
-    val configIds = configs.map(_.id.toInt)
-    if banks.length != bankStocks.length || banks.length != configs.length || bankIds != configIds then
+    val bankIds     = banks.map(_.id.toInt)
+    val configIds   = configs.map(_.id.toInt)
+    val expectedIds = (0 until banks.length).toVector
+    if banks.length != bankStocks.length || banks.length != configs.length || bankIds != expectedIds || configIds != expectedIds then
       val configNames = configs.map(config => s"${config.id.toInt}:${config.name}")
       throw new IllegalArgumentException(
-        "HouseholdIncomeEconomics.hhBankRates requires aligned bank rows, ledger bank stocks, and bank configs; " +
+        s"$context requires aligned bank rows, ledger bank stocks, and bank configs; " +
           s"banks=${banks.length} ids=${bankIds.mkString("[", ",", "]")}, " +
           s"ledgerBanks=${bankStocks.length}, " +
-          s"configs=${configs.length} ids=${configIds.mkString("[", ",", "]")} names=${configNames.mkString("[", ",", "]")}",
+          s"configs=${configs.length} ids=${configIds.mkString("[", ",", "]")} names=${configNames.mkString("[", ",", "]")}, " +
+          s"expectedIds=${expectedIds.mkString("[", ",", "]")}",
       )
 
   private[economics] def capitalAwareBankCreditSupply(
       banks: Vector[Banking.BankState],
       bankStocks: Vector[Banking.BankFinancialStocks],
+      configs: Vector[Banking.Config],
       ccyb: Multiplier,
       bankCorpBonds: BankId => PLN,
+      lendingBaseRate: Rate,
+      bondYield: Rate,
   )(using p: SimParams): Household.BankCreditSupply =
-    require(
-      banks.length == bankStocks.length,
-      s"HouseholdIncomeEconomics bank-credit supply requires aligned bank rows, got ${banks.length} banks and ${bankStocks.length} stock rows",
-    )
+    requireBankInputsAligned("HouseholdIncomeEconomics.bankCreditSupply", banks, bankStocks, configs)
     val approvedFirmExposureByBank     = Array.fill(banks.length)(PLN.Zero)
     val approvedConsumerExposureByBank = Array.fill(banks.length)(PLN.Zero)
     val approvedMortgageExposureByBank = Array.fill(banks.length)(PLN.Zero)
     val approvalContexts               =
-      banks.indices.map(idx => Banking.CreditApprovalContext(banks(idx), ccyb, bankCorpBonds(BankId(idx)))).toVector
+      banks.indices.map { idx =>
+        val bank = banks(idx)
+        Banking.CreditApprovalContext(
+          bank = bank,
+          ccyb = ccyb,
+          corpBondHoldings = bankCorpBonds(bank.id),
+          portfolio = Banking.CreditPortfolioContext(
+            config = configs(idx),
+            refRate = lendingBaseRate,
+            bondYield = bondYield,
+          ),
+        )
+      }.toVector
 
     new Household.BankCreditSupply:
       override def approve(bankId: BankId, product: Banking.CreditProduct, amount: PLN, approvalRng: RandomStream): Banking.CreditApproval =
         val idx             = bankId.toInt
         require(amount > PLN.Zero, s"HouseholdIncomeEconomics bank-credit supply requires positive amount, got $amount")
         require(idx >= 0 && idx < banks.length, s"HouseholdIncomeEconomics bank-credit supply received out-of-range bankId=${bankId.toInt}")
+        require(
+          banks(idx).id == bankId,
+          s"HouseholdIncomeEconomics bank-credit supply requires bankId=${bankId.toInt} to match bank row id=${banks(idx).id.toInt} at index=$idx",
+        )
         val projectedStocks = bankStocks(idx).copy(
           firmLoan = bankStocks(idx).firmLoan + approvedFirmExposureByBank(idx),
           consumerLoan = bankStocks(idx).consumerLoan + approvedConsumerExposureByBank(idx),

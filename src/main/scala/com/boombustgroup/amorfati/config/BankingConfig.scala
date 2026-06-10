@@ -46,6 +46,15 @@ import com.boombustgroup.amorfati.types.*
   * @param creditCarShortfallPenaltyScale
   *   lending-spread penalty scale applied to the CAR gap below the management
   *   target
+  * @param portfolioCapitalHurdleRate
+  *   annual return-on-capital hurdle used when comparing private credit with
+  *   zero-RWA sovereign holdings
+  * @param portfolioWedgePriceShare
+  *   share of a negative private-credit-vs-sovereign return wedge absorbed by
+  *   the loan price before quantity rationing
+  * @param portfolioWedgeQuantitySensitivity
+  *   sensitivity translating the remaining negative wedge into an approval
+  *   throttle
   * @param firmLoanRiskWeight
   *   standardized RWA weight for corporate/nonfinancial firm loans
   * @param consumerLoanRiskWeight
@@ -170,6 +179,9 @@ case class BankingConfig(
     minCar: Multiplier = Multiplier.decimal(8, 2),
     creditManagementCarBuffer: Multiplier = Multiplier.decimal(3, 2),
     creditCarShortfallPenaltyScale: Multiplier = Multiplier(2),
+    portfolioCapitalHurdleRate: Rate = Rate.decimal(10, 2),
+    portfolioWedgePriceShare: Share = Share.decimal(50, 2),
+    portfolioWedgeQuantitySensitivity: Multiplier = Multiplier.One,
     firmLoanRiskWeight: Share = Share.One,
     consumerLoanRiskWeight: Share = Share.One,
     mortgageLoanRiskWeight: Share = Share.decimal(35, 2),
@@ -257,6 +269,18 @@ case class BankingConfig(
   require(
     creditCarShortfallPenaltyScale >= Multiplier.Zero,
     s"creditCarShortfallPenaltyScale must be non-negative: $creditCarShortfallPenaltyScale",
+  )
+  require(
+    portfolioCapitalHurdleRate >= Rate.Zero && portfolioCapitalHurdleRate <= Rate(1),
+    s"portfolioCapitalHurdleRate must be in [0,1]: $portfolioCapitalHurdleRate",
+  )
+  require(
+    portfolioWedgePriceShare >= Share.Zero && portfolioWedgePriceShare <= Share.One,
+    s"portfolioWedgePriceShare must be in [0,1]: $portfolioWedgePriceShare",
+  )
+  require(
+    portfolioWedgeQuantitySensitivity >= Multiplier.Zero,
+    s"portfolioWedgeQuantitySensitivity must be non-negative: $portfolioWedgeQuantitySensitivity",
   )
   require(
     ccybMax >= Multiplier.Zero && ccybMax <= Multiplier.One,

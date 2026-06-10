@@ -896,16 +896,15 @@ NSFR_b = ASF_b / RSF_b
 Household deposit rates are the reference rate minus the household deposit
 spread, floored at zero.
 
-Firm lending rates combine:
+Firm lending rates first form a pre-portfolio private-credit rate:
 
 ```text
-lendingRate_b =
+preLoanRate_b =
   referenceOrWiborRate
   + baseSpread
   + bankSpecificSpread_b
-  + min(NPL_b * nplSpreadFactor, NplSpreadCap)
+  + min(NPL_b(q) * nplSpreadFactor, NplSpreadCap)
   + capitalShortfallPenalty_b
-  + crowdingOutSpread_b
 ```
 
 Capital pressure is measured against the same management target used by
@@ -921,13 +920,41 @@ approvalThrottle_b(q, A) =
         creditManagementCarBuffer, 0, 1)
 ```
 
-Crowding-out passes part of a government-bond-yield premium into firm loan
-spreads. Failed banks receive a fixed penalty spread and cannot lend.
+The government-bond channel is a portfolio-choice wedge. Banks compare the
+risk-adjusted return on private credit with the sovereign return; sovereign
+holdings are never subtracted from a loanable-funds capacity:
+
+```text
+loanReturnRA_b(q, A) =
+  preLoanRate_b
+  - expectedLossCost_b(q)
+  - capitalCost_b(q)
+  - marginalPolishBankLevyCost_b(q, A)
+
+bondReturnRA_b = govBondYield
+wedge_b(q, A) = loanReturnRA_b(q, A) - bondReturnRA_b
+
+portfolioPricePremium_b(q, A) =
+  max(-wedge_b(q, A), 0) * portfolioWedgePriceShare
+
+portfolioThrottle_b(q, A) =
+  1 - clamp(
+        max(-wedge_b(q, A), 0)
+        * (1 - portfolioWedgePriceShare)
+        * portfolioWedgeQuantitySensitivity,
+        0,
+        1
+      )
+```
+
+The final firm loan rate adds `portfolioPricePremium_b(firm, 0)` to the
+pre-portfolio rate. Failed banks receive a fixed penalty spread and cannot
+lend.
 
 Credit approval projects RWA into the requested product bucket, then requires
 the projected CAR above the macroprudential effective minimum and LCR/NSFR above
 regulatory minima. Banks that pass the hard gates still use
-`approvalThrottle_b` as a management-buffer quantity throttle. NPL pressure
+`approvalThrottle_b * portfolioThrottle_b` as the quantity throttle. NPL pressure
 affects credit supply through risk pricing, IFRS 9 / ECL provisioning, and the
 resulting capital path rather than through an independent approval-probability
 penalty.

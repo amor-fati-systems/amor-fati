@@ -230,11 +230,12 @@ object Banking:
 
   /** Rejection reason emitted by the bank-side approval engine. */
   enum CreditRejectionReason(val diagnosticCode: String):
-    case FailedBank        extends CreditRejectionReason("failed-bank")
-    case CapitalAdequacy   extends CreditRejectionReason("car")
-    case CapitalBuffer     extends CreditRejectionReason("capital-buffer")
-    case LiquidityCoverage extends CreditRejectionReason("lcr")
-    case StableFunding     extends CreditRejectionReason("nsfr")
+    case FailedBank          extends CreditRejectionReason("failed-bank")
+    case CapitalAdequacy     extends CreditRejectionReason("car")
+    case CapitalBuffer       extends CreditRejectionReason("capital-buffer")
+    case LiquidityCoverage   extends CreditRejectionReason("lcr")
+    case StableFunding       extends CreditRejectionReason("nsfr")
+    case PortfolioPreference extends CreditRejectionReason("portfolio-preference")
 
   /** Audit fields for the bank-side approval gates. */
   case class CreditApprovalAudit(
@@ -247,11 +248,12 @@ object Banking:
       lcrMin: Option[Multiplier] = None,
       nsfr: Option[Multiplier] = None,
       nsfrMin: Option[Multiplier] = None,
+      portfolioChoice: Option[BankPortfolioChoiceAudit] = None,
   ):
     def isEmpty: Boolean =
       rejectionReason.isEmpty && projectedCar.isEmpty && minCar.isEmpty &&
         managementCarTarget.isEmpty && capitalThrottle.isEmpty && lcr.isEmpty &&
-        lcrMin.isEmpty && nsfr.isEmpty && nsfrMin.isEmpty
+        lcrMin.isEmpty && nsfr.isEmpty && nsfrMin.isEmpty && portfolioChoice.isEmpty
 
     def orElse(fallback: CreditApprovalAudit): CreditApprovalAudit =
       if isEmpty then fallback else this
@@ -272,6 +274,15 @@ object Banking:
       audit: CreditApprovalAudit = CreditApprovalAudit.empty,
   )
 
+  /** Rate and sovereign-yield context needed to evaluate the private-credit
+    * portfolio wedge during approval.
+    */
+  case class CreditPortfolioContext(
+      config: Config,
+      refRate: Rate,
+      bondYield: Rate,
+  )
+
   /** Bank and macroprudential context for product-specific credit approval.
     *
     * Financial stocks stay outside this context because callers may pass
@@ -281,6 +292,7 @@ object Banking:
       bank: BankState,
       ccyb: Multiplier,
       corpBondHoldings: PLN,
+      portfolio: CreditPortfolioContext,
   )
 
   // ---------------------------------------------------------------------------
@@ -411,15 +423,21 @@ object Banking:
   def hhDepositRate(refRate: Rate)(using p: SimParams): Rate =
     BankCreditApproval.hhDepositRate(refRate)
 
-  /** Lending rate charged to firms. Reflects credit risk (NPL spread), capital
-    * adequacy pressure (CAR penalty), and crowding-out from government bonds —
-    * when risk-free yields are attractive, banks demand higher spreads on risky
-    * firm loans. Failed banks get a flat penalty rate.
+  /** Lending rate charged for a bank-credit product. Reflects credit risk,
+    * capital pressure, and the portfolio-choice wedge against government bonds.
+    * Failed banks get a flat penalty rate.
     */
-  def lendingRate(bank: BankState, stocks: BankFinancialStocks, cfg: Config, refRate: Rate, bondYield: Rate, corpBondHoldings: PLN, ccyb: Multiplier)(using
-      p: SimParams,
-  ): Rate =
-    BankCreditApproval.lendingRate(bank, stocks, cfg, refRate, bondYield, corpBondHoldings, ccyb)
+  def lendingRate(
+      bank: BankState,
+      stocks: BankFinancialStocks,
+      cfg: Config,
+      refRate: Rate,
+      bondYield: Rate,
+      corpBondHoldings: PLN,
+      ccyb: Multiplier,
+      product: CreditProduct,
+  )(using p: SimParams): Rate =
+    BankCreditApproval.lendingRate(bank, stocks, cfg, refRate, bondYield, corpBondHoldings, ccyb, product)
 
   /** Interbank rate (WIBOR O/N proxy): blends credit stress (NPL) and liquidity
     * position (excess reserves). Under excess liquidity (post-QE, post-FX
