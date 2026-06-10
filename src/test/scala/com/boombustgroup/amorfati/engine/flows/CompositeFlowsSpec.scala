@@ -130,6 +130,7 @@ class CompositeFlowsSpec extends AnyFlatSpec with Matchers:
           corpBondCoupon = PLN(70000),
           corpBondDefaultLoss = PLN(50000),
           bfgLevy = PLN(400000),
+          polishBankLevyTax = PLN(350000),
           unrealizedBondLoss = PLN(150000),
           bailInLoss = PLN.Zero,
           nbpRemittance = PLN(800000),

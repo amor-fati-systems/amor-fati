@@ -25,6 +25,7 @@ class BankingFlowsSpec extends AnyFlatSpec with Matchers:
     corpBondCoupon = PLN(70000),
     corpBondDefaultLoss = PLN(50000),
     bfgLevy = PLN(400000),
+    polishBankLevyTax = PLN(350000),
     unrealizedBondLoss = PLN(150000),
     bailInLoss = PLN.Zero,
     nbpRemittance = PLN(800000),
@@ -47,7 +48,7 @@ class BankingFlowsSpec extends AnyFlatSpec with Matchers:
         baseInput.corpBondCoupon
     val outflows =
       baseInput.firmNplLoss + baseInput.mortgageNplLoss + baseInput.consumerNplLoss + baseInput.corpBondDefaultLoss + baseInput.bfgLevy +
-        baseInput.unrealizedBondLoss + baseInput.nbpRemittance
+        baseInput.polishBankLevyTax + baseInput.unrealizedBondLoss + baseInput.nbpRemittance
     val bailIn   = baseInput.bailInLoss
 
     balances(BankingFlows.BANK_ACCOUNT) shouldBe (income - outflows + bailIn).toLong
@@ -170,6 +171,7 @@ class BankingFlowsSpec extends AnyFlatSpec with Matchers:
             FlowMechanism.BankCorpBondCoupon,
             FlowMechanism.BankCorpBondLoss,
             FlowMechanism.BankBfgLevy,
+            FlowMechanism.BankPolishLevyTax,
             FlowMechanism.BankUnrealizedLoss,
             FlowMechanism.BankNbpRemittance,
           )
@@ -192,5 +194,6 @@ class BankingFlowsSpec extends AnyFlatSpec with Matchers:
             FlowMechanism.BankMortgageNplLoss,
             FlowMechanism.BankCcNplLoss,
             FlowMechanism.BankCorpBondLoss,
+            FlowMechanism.BankPolishLevyTax,
           )
         }

@@ -87,6 +87,10 @@ import com.boombustgroup.amorfati.types.*
   *   prior; public row-level source remains incomplete)
   * @param bfgLevyRate
   *   annual BFG resolution fund levy as fraction of deposits (BFG bridge prior)
+  * @param polishBankLevyMonthlyRate
+  *   monthly tax rate under the Polish tax on selected financial institutions
+  * @param polishBankLevyAssetThreshold
+  *   per-bank-archetype asset threshold before the Polish bank levy applies
   * @param bailInDepositHaircut
   *   fraction of uninsured deposits bailed-in during resolution
   * @param bfgDepositGuarantee
@@ -200,6 +204,8 @@ case class BankingConfig(
       Multiplier.decimal(20, 3),
     ),
     bfgLevyRate: Rate = Rate.decimal(24, 4),
+    polishBankLevyMonthlyRate: Rate = Rate.decimal(366, 6),
+    polishBankLevyAssetThreshold: PLN = PLN(4000000000L),
     bailInDepositHaircut: Share = Share.decimal(8, 2),
     bfgDepositGuarantee: PLN = PLN(425370),
     // Macroprudential stack active at the 2026-04-30 Poland baseline.
@@ -292,3 +298,11 @@ case class BankingConfig(
     )
   require(lcrMin > Multiplier.Zero, s"lcrMin must be positive: $lcrMin")
   require(nsfrMin > Multiplier.Zero, s"nsfrMin must be positive: $nsfrMin")
+  require(
+    polishBankLevyMonthlyRate >= Rate.Zero && polishBankLevyMonthlyRate <= Rate(1),
+    s"polishBankLevyMonthlyRate must be in [0,1]: $polishBankLevyMonthlyRate",
+  )
+  require(
+    polishBankLevyAssetThreshold >= PLN.Zero,
+    s"polishBankLevyAssetThreshold must be non-negative: $polishBankLevyAssetThreshold",
+  )

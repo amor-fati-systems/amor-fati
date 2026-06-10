@@ -20,6 +20,7 @@ case class BankCapitalDiagnostics(
     consumerNplLoss: PLN = PLN.Zero,        // realized ordinary consumer-loan loss net of recovery
     corpBondDefaultLoss: PLN = PLN.Zero,    // bank-held corporate-bond default loss
     bfgLevy: PLN = PLN.Zero,                // monthly BFG levy paid by active banks
+    polishBankLevyTax: PLN = PLN.Zero,      // monthly Polish bank tax paid by active banks
     unrealizedBondLoss: PLN = PLN.Zero,     // AFS government-bond mark-to-market capital hit
     htmRealizedLoss: PLN = PLN.Zero,        // HTM forced-reclassification realized loss
     eclProvisionChange: PLN = PLN.Zero,     // IFRS 9 provision increase, positive when capital is hit
@@ -35,7 +36,7 @@ case class BankCapitalDiagnostics(
     firmNplLoss + mortgageNplLoss + consumerNplLoss + corpBondDefaultLoss
 
   def expectedDelta: PLN =
-    retainedIncome - realizedCreditLoss - bfgLevy - unrealizedBondLoss -
+    retainedIncome - realizedCreditLoss - bfgLevy - polishBankLevyTax - unrealizedBondLoss -
       htmRealizedLoss - eclProvisionChange - interbankContagionLoss - capitalDestruction
 
   /** Unexplained capital delta after ordinary waterfall terms and the aggregate

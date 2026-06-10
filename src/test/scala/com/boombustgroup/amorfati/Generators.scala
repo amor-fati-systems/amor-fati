@@ -586,6 +586,7 @@ object Generators:
     tourismExport = PLN.Zero,
     tourismImport = PLN.Zero,
     bfgLevy = PLN.Zero,
+    polishBankLevyTax = PLN.Zero,
     bailInLoss = PLN.Zero,
     bankCapitalDestruction = PLN.Zero,
     interbankContagionLoss = plnBD(ibLoss),
@@ -610,7 +611,7 @@ object Generators:
       flows <- genMonthlyFlows
     yield
       val expectedBankCapChange  = -flows.nplLoss - flows.mortgageNplLoss - flows.consumerNplLoss
-        - flows.corpBondDefaultLoss - flows.bfgLevy - flows.unrealizedBondLoss - flows.htmRealizedLoss -
+        - flows.corpBondDefaultLoss - flows.bfgLevy - flows.polishBankLevyTax - flows.unrealizedBondLoss - flows.htmRealizedLoss -
         flows.interbankContagionLoss - flows.bankCapitalDestruction +
         (flows.interestIncome + flows.bankBondIncome + flows.mortgageInterestIncome
           + (flows.consumerDebtService - flows.consumerPrincipalRepaid) + flows.corpBondCouponIncome

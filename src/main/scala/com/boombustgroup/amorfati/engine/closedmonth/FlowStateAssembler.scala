@@ -56,6 +56,7 @@ object FlowStateAssembler:
       realizedTaxShadowShare = informal.realizedTaxShadowShare,
       bailInLoss = in.banking.bailInLoss,
       bfgLevyTotal = in.banking.bfgLevy,
+      polishBankLevyTaxTotal = in.banking.polishBankLevyTax,
       bankCapital = in.banking.bankCapitalDiagnostics,
       bankFailure = in.banking.bankFailureDiagnostics,
       bankResolution = in.banking.bankResolutionDiagnostics,

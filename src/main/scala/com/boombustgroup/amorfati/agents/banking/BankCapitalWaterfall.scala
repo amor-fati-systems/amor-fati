@@ -17,7 +17,7 @@ private[agents] object BankCapitalWaterfall:
     */
   def computeCapitalDelta(in: CapitalPnlInput)(using p: SimParams): CapitalPnlOutput =
     val losses         = in.nplLoss + in.mortgageNplLoss + in.consumerNplLoss +
-      in.corpBondDefaultLoss + in.bfgLevy + in.unrealizedBondLoss
+      in.corpBondDefaultLoss + in.bfgLevy + in.polishBankLevyTax + in.unrealizedBondLoss
     val grossIncome    = in.intIncome + in.bondIncome - in.depositInterest +
       in.reserveInterest + in.standingFacilityIncome + in.interbankInterest +
       in.mortgageInterestIncome + in.consumerInterestIncome + in.corpBondCoupon

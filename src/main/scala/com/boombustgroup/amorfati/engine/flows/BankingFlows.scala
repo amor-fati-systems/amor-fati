@@ -40,6 +40,7 @@ object BankingFlows:
       corpBondCoupon: PLN,
       corpBondDefaultLoss: PLN,
       bfgLevy: PLN,
+      polishBankLevyTax: PLN,
       unrealizedBondLoss: PLN,
       bailInLoss: PLN,
       nbpRemittance: PLN,
@@ -183,6 +184,15 @@ object BankingFlows:
         topology.banks.aggregate,
         EntitySector.Government,
         TreasuryRuntimeContract.TreasuryBudgetSettlement.index,
+        input.polishBankLevyTax,
+        AssetType.Capital,
+        FlowMechanism.BankPolishLevyTax,
+      ),
+      AggregateBatchedEmission.transfer(
+        EntitySector.Banks,
+        topology.banks.aggregate,
+        EntitySector.Government,
+        TreasuryRuntimeContract.TreasuryBudgetSettlement.index,
         input.unrealizedBondLoss,
         AssetType.Capital,
         FlowMechanism.BankUnrealizedLoss,
@@ -238,6 +248,7 @@ object BankingFlows:
     if input.mortgageNplLoss > PLN.Zero then flows += Flow(BANK_ACCOUNT, HH_ACCOUNT, input.mortgageNplLoss.toLong, FlowMechanism.BankMortgageNplLoss.toInt)
     if input.consumerNplLoss > PLN.Zero then flows += Flow(BANK_ACCOUNT, HH_ACCOUNT, input.consumerNplLoss.toLong, FlowMechanism.BankCcNplLoss.toInt)
     if input.bfgLevy > PLN.Zero then flows += Flow(BANK_ACCOUNT, GOV_ACCOUNT, input.bfgLevy.toLong, FlowMechanism.BankBfgLevy.toInt)
+    if input.polishBankLevyTax > PLN.Zero then flows += Flow(BANK_ACCOUNT, GOV_ACCOUNT, input.polishBankLevyTax.toLong, FlowMechanism.BankPolishLevyTax.toInt)
     if input.unrealizedBondLoss > PLN.Zero then
       flows += Flow(BANK_ACCOUNT, GOV_ACCOUNT, input.unrealizedBondLoss.toLong, FlowMechanism.BankUnrealizedLoss.toInt)
     if input.bailInLoss > PLN.Zero then flows += Flow(DEPOSITOR_ACCOUNT, BANK_ACCOUNT, input.bailInLoss.toLong, FlowMechanism.BankBailIn.toInt)

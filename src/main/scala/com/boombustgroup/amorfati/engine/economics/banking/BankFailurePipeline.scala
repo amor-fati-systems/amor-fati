@@ -22,6 +22,7 @@ private[banking] object BankFailurePipeline:
       investNetDepositFlow: PLN,
       quasiFiscalDepositChange: PLN,
       mortgageFlows: HousingMarket.MortgageFlows,
+      polishBankLevyTax: PLN,
       htmRealizedLoss: PLN,
   )(using p: SimParams): FailureResolutionPipelineResult =
     val bankCorpBondHoldingsAfterSettlement = Banking.bankCorpBondHoldingsFromVector(settledBankCorpBonds)
@@ -42,6 +43,7 @@ private[banking] object BankFailurePipeline:
       bailInLoss = bailIn.loss,
       multiCapDestruction = failureDetection.capitalDestruction,
       interbankContagionLoss = failureDetection.contagion.totalLoss,
+      polishBankLevyTax = polishBankLevyTax,
       htmRealizedLoss = htmRealizedLoss,
       bankCapitalTerms = bankCapitalTerms,
     )

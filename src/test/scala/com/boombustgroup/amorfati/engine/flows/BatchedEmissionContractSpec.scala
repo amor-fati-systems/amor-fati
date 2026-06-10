@@ -115,6 +115,7 @@ class BatchedEmissionContractSpec extends AnyFlatSpec with Matchers:
       corpBondCoupon = PLN(25000),
       corpBondDefaultLoss = PLN(45000),
       bfgLevy = PLN(80000),
+      polishBankLevyTax = PLN(25000),
       unrealizedBondLoss = PLN(40000),
       bailInLoss = PLN(30000),
       nbpRemittance = PLN(50000),

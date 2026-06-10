@@ -6,6 +6,7 @@ import org.scalatest.matchers.should.Matchers
 import com.boombustgroup.amorfati.Generators
 import com.boombustgroup.amorfati.agents.Banking
 import com.boombustgroup.amorfati.agents.Banking.BankStatus
+import com.boombustgroup.amorfati.agents.banking.PolishBankLevyAssetPerimeter
 import com.boombustgroup.amorfati.engine.SimulationMonth.ExecutionMonth
 import com.boombustgroup.amorfati.engine.mechanisms.Macroprudential
 import com.boombustgroup.amorfati.types.*
@@ -97,6 +98,51 @@ class KnfBfgSpec extends AnyFlatSpec with Matchers:
     decimal(result.total) shouldBe expected +- BigDecimal("0.01")
     result.perBank(2) shouldBe PLN.Zero
     result.perBank(0) should be > PLN.Zero
+  }
+
+  "Banking.computePolishBankLevy" should "tax explicit assets above statutory deductions and threshold" in {
+    val capital  = PLN(50000)
+    val govBonds = PLN(80000)
+    val excess   = PLN(300000)
+    val active   = mkBankRow(
+      id = 0,
+      deposits = PLN(800000),
+      loans = p.banking.polishBankLevyAssetThreshold + capital + excess,
+      capital = capital,
+      govBondHoldings = govBonds,
+    )
+    val taxable  = Banking.computePolishBankLevyTaxableAssets(active.bank, PolishBankLevyAssetPerimeter.fromBankStocks(active.stocks, PLN.Zero))
+    val result   = Banking.computePolishBankLevy(Vector(active.bank), Vector(active.stocks), _ => PLN.Zero)
+
+    taxable shouldBe excess
+    result.total shouldBe taxable * p.banking.polishBankLevyMonthlyRate
+  }
+
+  it should "not treat negative capital as an addition to the Polish bank levy base" in {
+    val active  = mkBankRow(
+      id = 0,
+      deposits = PLN(800000),
+      loans = p.banking.polishBankLevyAssetThreshold + PLN(300000),
+      capital = PLN(-50000),
+    )
+    val taxable = Banking.computePolishBankLevyTaxableAssets(active.bank, PolishBankLevyAssetPerimeter.fromBankStocks(active.stocks, PLN.Zero))
+
+    taxable shouldBe PLN(300000)
+  }
+
+  it should "exempt failed-bank shells from the Polish bank levy" in {
+    val failed =
+      mkBankRow(
+        id = 0,
+        deposits = PLN(1000000),
+        loans = p.banking.polishBankLevyAssetThreshold + PLN(500000),
+        capital = PLN(100000),
+        status = BankStatus.Failed(ExecutionMonth(4)),
+      )
+    val result = Banking.computePolishBankLevy(Vector(failed.bank), Vector(failed.stocks), _ => PLN.Zero)
+
+    result.perBank.head shouldBe PLN.Zero
+    result.total shouldBe PLN.Zero
   }
 
   "Banking.applyBailIn" should "haircut only failed-bank uninsured deposit stocks" in {

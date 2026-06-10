@@ -19,6 +19,7 @@ private[banking] object BankingLedgerClosing:
       multi: MultiBankResult,
       prevBankAgg: Banking.Aggregate,
       bfgLevy: PLN,
+      polishBankLevyTax: PLN,
   )(using p: SimParams): LedgerClosingResult =
     val issuerSettledFirmBalances =
       CorporateBondOwnership.applyAmortization(in.firm.ledgerFinancialState.firms, multi.reassignedFirms, in.openEconomy.corpBonds.corpBondAmort)
@@ -70,6 +71,7 @@ private[banking] object BankingLedgerClosing:
       consumerNplLoss = in.householdFinancial.consumerNplLoss,
       corpBondDefaultLoss = in.openEconomy.corpBonds.corpBondBankDefaultLoss,
       bfgLevy = bfgLevy,
+      polishBankLevyTax = polishBankLevyTax,
       unrealizedBondLoss = bankCapitalTerms.unrealizedBondLoss,
       htmRealizedLoss = multi.htmRealizedLoss,
       eclProvisionChange = bankCapitalTerms.eclProvisionChange,

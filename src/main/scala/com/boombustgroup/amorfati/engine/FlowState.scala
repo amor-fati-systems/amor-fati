@@ -51,6 +51,7 @@ case class FlowState(
     realizedTaxShadowShare: Share = Share.Zero,                                             // current-period realized aggregate tax-side shadow share
     bailInLoss: PLN = PLN.Zero,                                                             // bail-in deposit haircut imposed on bank creditors
     bfgLevyTotal: PLN = PLN.Zero,                                                           // BFG resolution levy from all banks
+    polishBankLevyTaxTotal: PLN = PLN.Zero,                                                 // Polish tax on selected financial institutions paid by banks
     bankCapital: BankCapitalDiagnostics = BankCapitalDiagnostics.zero,                      // monthly bank-capital waterfall diagnostics
     bankFailure: BankFailureDiagnostics = BankFailureDiagnostics.zero,                      // monthly bank-failure trigger diagnostics
     bankResolution: BankResolutionDiagnostics = BankResolutionDiagnostics.zero,             // monthly bank-resolution count diagnostics

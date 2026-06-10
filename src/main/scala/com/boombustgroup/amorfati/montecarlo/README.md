@@ -221,6 +221,7 @@ BankCapital_ConsumerNplLoss
 BankCapital_CorpBondDefaultLoss
 BankCapital_InterbankContagionLoss
 BankCapital_BfgLevy
+BankCapital_PolishBankLevyTax
 BankCapital_UnrealizedBondLoss
 BankCapital_HtmRealizedLoss
 BankCapital_EclProvisionChange
@@ -248,7 +249,9 @@ are positive when they reduce capital. `BankCapital_RetainedIncome` is positive
 when retained bank income raises capital. `BankCapital_RealizedCreditLoss` is
 the sum of firm-loan, mortgage, consumer-credit, and bank-held corporate-bond
 losses. `BankCapital_InterbankContagionLoss` is the separate counterparty loss
-from failed-bank interbank exposures. `BankCapital_WaterfallResidual` reports
+from failed-bank interbank exposures. `BankCapital_PolishBankLevyTax` is the
+monthly Polish financial-institutions tax paid by active bank rows to central
+government. `BankCapital_WaterfallResidual` reports
 the remaining unexplained capital delta after the ordinary waterfall terms and
 the exactness patch. It should stay close to zero; non-zero values indicate a
 missing diagnostic term.

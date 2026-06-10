@@ -37,7 +37,7 @@ These counts are rendered from `CalibrationProvenance.Baseline` at generation ti
 | Status | Count |
 | --- | --- |
 | `EMPIRICAL` | 37 |
-| `EMPIRICAL_TRANSFORMED` | 17 |
+| `EMPIRICAL_TRANSFORMED` | 18 |
 | `CODE_NOTE_EMPIRICAL` | 62 |
 | `ASSUMED` | 33 |
 | `TUNED_NEEDS_VALIDATION` | 89 |
@@ -62,6 +62,7 @@ Rows below have been migrated from informal code-note provenance to typed source
 | `pop.initialUnemploymentRate` | Labor market | `GUS registered unemployment` | March 2026 | https://stat.gov.pl/en/topics/labour-market/ | Registered-unemployment stock used as the opening household labor-force unemployment rate. |
 | `fiscal.govBaseSpending` | Fiscal stance | `MF state-budget 2026 spending plan` | 2026 budget plan | https://www.gov.pl/web/finance/state-budget | Annual expenditure plan 918.9bn PLN divided by 12 and scaled by gdpRatio at runtime. |
 | `banking.initGovBonds`, `initNbpGovBonds` | Banking and central-bank balance sheets | `NBP MFI and central-bank government securities bridge` | 2026-04-30 model-start bridge | https://nbp.pl/en/statistic-and-financial-reporting/monetary-and-financial-statistics/consolidated-balance-sheet-of-mfis/ | Bank and NBP government-bond opening stocks are mapped to model holder buckets and scaled by gdpRatio. |
+| `banking.polishBankLevyMonthlyRate`, `polishBankLevyAssetThreshold` | Polish bank taxation | `Ustawa z dnia 15 stycznia 2016 r. o podatku od niektórych instytucji finansowych` | Act in force at 2026-04-30 model start | https://api.sejm.gov.pl/eli/acts/DU/2016/68 | Art. 7 sets the 0.0366% monthly rate; art. 5 defines the PLN 4bn threshold and deductions. The threshold is scaled by gdpRatio for the bank-archetype balance-sheet scale. |
 | `banking.initialCcyb` | Banking macroprudential buffers | `Dz.U. 2024 poz. 1400 countercyclical buffer regulation` | Active at 2026-04-30 model start | https://eli.gov.pl/eli/DU/2024/1400/ogl | The 1% Polish CCyB rate is used as the opening macroprudential state; the later 2% regulation is outside the 2026-04-30 baseline. |
 | `banking.osiiBuffers` | Banking macroprudential buffers | `KNF O-SII buffer adequacy review` | Decisions active at 2026-04-30 model start; decision communication dated 2025-11-25 | https://www.knf.gov.pl/?articleId=96131&p_id=18 | Named bank rows use the KNF O-SII table directly; Alior receives 0 because it is not on the list, BPS/Coop maps the cooperative-bank O-SII rows, and Other banks carries Handlowy/SGB/residual exposure. |
 | `forex.importPropensity` | External sector | `GUS/NBP import-to-GDP bridge` | 2026-04-30 model-start bridge | docs/empirical-validation-source-manifest.csv target: Current account | Aggregate imports are normalized to GDP and used as the import-propensity coefficient. |
@@ -366,6 +367,7 @@ a concrete diagnostic artifact path.
 | `banking.lcrMin`, `nsfrMin` | `1.0, 1.0` | multiplier | Basel III | Minimum LCR/NSFR | Direct | `BankingConfig` | `EMPIRICAL` |
 | `banking.p2rAddons` | `[0.015, 0.010, 0.030, 0.015, 0.020, 0.025, 0.020, 0.020, 0.025, 0.020]` | multiplier by bank | 2026-04-30 bank-archetype P2R bridge prior; public row-level source incomplete | SREP/P2R add-ons | Direct bridge prior by default bank archetype | `BankingConfig` | `CODE_NOTE_EMPIRICAL` |
 | `banking.bfgLevyRate` | `0.0024` | annual rate | Code note bridge: BFG bridge prior | Resolution levy | .monthly in use | `BankingConfig` | `CODE_NOTE_EMPIRICAL` |
+| `banking.polishBankLevyMonthlyRate`, `polishBankLevyAssetThreshold` | `0.000366, 4e9` | monthly rate/raw PLN | Polish financial-institutions tax act | Bank asset tax paid to central government | Rate is direct; threshold is scaled by gdpRatio in SimParams.defaults | `BankingConfig`, `SimParams`, `BankTaxation`, `FiscalBudget` | `EMPIRICAL_TRANSFORMED` |
 | `banking.bfgDepositGuarantee` | `425370` | PLN/depositor | BFG EUR 100,000 guarantee converted at model-start PLN/EUR 4.2537 | Deposit guarantee threshold | Direct | `BankingConfig` | `EMPIRICAL_TRANSFORMED` |
 | `banking.initialCcyb` | `0.010` | multiplier | Polish CCyB regulation active at the 2026-04-30 model start | Opening countercyclical capital buffer | Direct opening macroprudential state | `BankingConfig`, `Macroprudential`, `WorldInit` | `EMPIRICAL` |
 | `banking.ccybMax` | `0.025` | multiplier | Code note bridge: endogenous CCyB rule guardrail | Max CCyB build-rule cap | Direct cap; not the opening CCyB rate | `BankingConfig`, `Macroprudential` | `CODE_NOTE_EMPIRICAL` |

@@ -188,6 +188,7 @@ object Sfc:
       tourismExport: PLN,                       // inbound tourism → deposit inflow + export
       tourismImport: PLN,                       // outbound tourism → deposit outflow + import
       bfgLevy: PLN,                             // BFG levy (bank capital expense)
+      polishBankLevyTax: PLN,                   // Polish bank levy tax (bank capital expense; central-government revenue)
       bailInLoss: PLN,                          // bail-in deposit destruction
       bankCapitalDestruction: PLN,              // Capital wiped when bank fails (shareholders wiped)
       interbankContagionLoss: PLN,              // counterparty loss on failed-bank interbank exposures
@@ -419,7 +420,7 @@ object Sfc:
         "bank capital change (profit retention + losses)",
         expected = {
           val losses                 = flows.nplLoss + flows.mortgageNplLoss + flows.consumerNplLoss +
-            flows.corpBondDefaultLoss + flows.bfgLevy + flows.unrealizedBondLoss +
+            flows.corpBondDefaultLoss + flows.bfgLevy + flows.polishBankLevyTax + flows.unrealizedBondLoss +
             flows.htmRealizedLoss + flows.eclProvisionChange + flows.interbankContagionLoss +
             flows.bankCapitalDestruction
           val consumerInterestIncome = flows.consumerDebtService - flows.consumerPrincipalRepaid

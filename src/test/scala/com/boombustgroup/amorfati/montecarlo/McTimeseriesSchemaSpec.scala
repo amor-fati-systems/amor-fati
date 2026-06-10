@@ -350,6 +350,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     "BankEcl_MigrationRate",
     "BankEcl_GdpGrowthMonthly",
     "BfgLevyTotal",
+    "PolishBankLevyTaxTotal",
     "BfgFundBalance",
     "BailInLoss",
     "BankCapital_Opening",
@@ -363,6 +364,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     "BankCapital_CorpBondDefaultLoss",
     "BankCapital_InterbankContagionLoss",
     "BankCapital_BfgLevy",
+    "BankCapital_PolishBankLevyTax",
     "BankCapital_UnrealizedBondLoss",
     "BankCapital_HtmRealizedLoss",
     "BankCapital_EclProvisionChange",
@@ -548,7 +550,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     MetricValue.fromRaw(Share.fraction(numerator, denominator).toLong)
 
   "McTimeseriesSchema" should "expose the stable schema contract" in {
-    McTimeseriesSchema.nCols shouldBe 486
+    McTimeseriesSchema.nCols shouldBe 488
     McTimeseriesSchema.colNames.toVector shouldBe expectedColNames
   }
 

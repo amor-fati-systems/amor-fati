@@ -477,6 +477,7 @@ object SfcMatrixEvidence:
               FlowMechanism.BankCcNplLoss,
               FlowMechanism.BankCorpBondLoss,
               FlowMechanism.BankBfgLevy,
+              FlowMechanism.BankPolishLevyTax,
               FlowMechanism.BankUnrealizedLoss,
             ),
             "Bank capital is a persisted unsupported diagnostic stock, not a supported transferable ledger asset; this identity validates its exact P&L delta, including non-batch htmRealizedLoss, eclProvisionChange, interbankContagionLoss, and bankCapitalDestruction from BankingEconomics.",

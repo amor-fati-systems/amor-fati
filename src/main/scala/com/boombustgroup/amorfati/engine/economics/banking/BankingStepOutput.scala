@@ -26,6 +26,7 @@ final case class StepOutput(
     newJst: Jst.State,                                            // local government state
     housingAfterFlows: HousingMarket.State,                       // housing market after mortgage flows
     bfgLevy: PLN,                                                 // BFG resolution fund levy (aggregate)
+    polishBankLevyTax: PLN,                                       // Polish bank levy paid to central government
     bailInLoss: PLN,                                              // bail-in deposit destruction (aggregate)
     multiCapDestruction: PLN,                                     // capital wiped when banks fail
     interbankContagionLoss: PLN,                                  // counterparty losses from failed-bank interbank exposures

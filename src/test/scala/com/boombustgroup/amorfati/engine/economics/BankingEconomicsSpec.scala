@@ -52,6 +52,7 @@ class BankingEconomicsSpec extends AnyFlatSpec with Matchers:
         corpBondCoupon = prepared.s8.corpBonds.corpBondBankCoupon,
         corpBondDefaultLoss = prepared.s8.corpBonds.corpBondBankDefaultLoss,
         bfgLevy = s9.bfgLevy,
+        polishBankLevyTax = s9.polishBankLevyTax,
         unrealizedBondLoss = s9.unrealizedBondLoss,
         bailInLoss = s9.bailInLoss,
         nbpRemittance = prepared.s8.banking.nbpRemittance,

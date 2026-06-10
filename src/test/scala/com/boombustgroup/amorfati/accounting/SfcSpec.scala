@@ -269,6 +269,7 @@ class SfcSpec extends AnyFlatSpec with Matchers:
     tourismExport = PLN.Zero,
     tourismImport = PLN.Zero,
     bfgLevy = PLN.Zero,
+    polishBankLevyTax = PLN.Zero,
     bailInLoss = PLN.Zero,
     bankCapitalDestruction = PLN.Zero,
     interbankContagionLoss = PLN.Zero,
@@ -418,6 +419,15 @@ class SfcSpec extends AnyFlatSpec with Matchers:
     val result = Sfc.validateStockExactness(prev, curr, flows)
     result shouldBe a[Left[?, ?]]
     errorDelta(result, Sfc.SfcIdentity.BankCapital) shouldBe (BigDecimal("5000.0") +- BigDecimal("0.01")) // actual=0, expected=-5000
+  }
+
+  it should "include Polish bank levy tax in bank capital" in {
+    val prev   =
+      zeroSnap.copy(firmCash = PLN(500000), bankCapital = PLN(200000), bankDeposits = PLN(1000000))
+    val curr   = prev.copy(bankCapital = prev.bankCapital - PLN(3200))
+    val flows  = zeroFlows.copy(polishBankLevyTax = PLN(3200))
+    val result = Sfc.validateStockExactness(prev, curr, flows)
+    result shouldBe Right(())
   }
 
   it should "include interbank contagion loss in bank capital" in {

@@ -85,6 +85,7 @@ object SfcSemanticProjection:
       tourismExport = evidence.amount(FlowMechanism.TourismExport),
       tourismImport = evidence.amount(FlowMechanism.TourismImport),
       bfgLevy = evidence.amount(FlowMechanism.BankBfgLevy),
+      polishBankLevyTax = evidence.amount(FlowMechanism.BankPolishLevyTax),
       bailInLoss = evidence.amount(FlowMechanism.BankBailIn),
       bankCapitalDestruction = banking.capitalDestruction,
       interbankContagionLoss = banking.interbankContagionLoss,

@@ -126,6 +126,7 @@ object FlowMechanism:
   val GovCustomsDutyRevenue: MechanismId          = MechanismId(94)
   val BankCorpBondCoupon: MechanismId             = MechanismId(95)
   val CarryTradeFlow: MechanismId                 = MechanismId(96)
+  val BankPolishLevyTax: MechanismId              = MechanismId(117)
   // Holder-resolved government bond circuits
   val GovBondPrimaryMarket: MechanismId           = MechanismId(97)
   val GovBondForeignPurchase: MechanismId         = MechanismId(98)
@@ -231,6 +232,7 @@ object FlowMechanism:
     BankCcNplLoss,
     BankCorpBondLoss,
     BankBfgLevy,
+    BankPolishLevyTax,
     BankUnrealizedLoss,
     BankReserveInterest,
     BankStandingFacility,

@@ -13,8 +13,8 @@ import com.boombustgroup.ledger.*
   *
   * ZUS/NFZ/Earmarked subventions are NOT emitted here — those are already
   * emitted by their respective flow mechanisms. This avoids double-counting.
-  * Firm CIT, household PIT, dividend tax, NBP remittance, and SOE dividends are
-  * also emitted elsewhere with their own mechanism IDs.
+  * Firm CIT, household PIT, dividend tax, NBP remittance, Polish bank levy, and
+  * SOE dividends are also emitted elsewhere with their own mechanism IDs.
   *
   * Per-HH unemployment benefits and 800+ transfers will become
   * BatchedFlow.Broadcast when Household is migrated (#121). For now: aggregate
@@ -46,6 +46,7 @@ object GovBudgetFlows:
       FlowMechanism.EquityGovDividend,
     ) ++ DirectTreasuryRevenueMechanisms ++ Vector(
       FlowMechanism.BankNbpRemittance,
+      FlowMechanism.BankPolishLevyTax,
     )
 
   case class Input(

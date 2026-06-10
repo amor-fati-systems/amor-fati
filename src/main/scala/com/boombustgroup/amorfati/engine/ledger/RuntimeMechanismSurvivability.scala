@@ -216,6 +216,7 @@ object RuntimeMechanismSurvivability:
       FlowMechanism.BankCorpBondCoupon,
       FlowMechanism.BankCorpBondLoss,
       FlowMechanism.BankBfgLevy,
+      FlowMechanism.BankPolishLevyTax,
       FlowMechanism.BankUnrealizedLoss,
       FlowMechanism.BankNbpRemittance,
     ),
