@@ -246,6 +246,7 @@ case class FirmCreditRejectionBreakdown(
     capitalBuffer: PLN = PLN.Zero,
     lcrGate: PLN = PLN.Zero,
     nsfrGate: PLN = PLN.Zero,
+    portfolioPreference: PLN = PLN.Zero,
     unclassified: PLN = PLN.Zero,
 ):
   def +(other: FirmCreditRejectionBreakdown): FirmCreditRejectionBreakdown =
@@ -255,6 +256,7 @@ case class FirmCreditRejectionBreakdown(
       capitalBuffer = capitalBuffer + other.capitalBuffer,
       lcrGate = lcrGate + other.lcrGate,
       nsfrGate = nsfrGate + other.nsfrGate,
+      portfolioPreference = portfolioPreference + other.portfolioPreference,
       unclassified = unclassified + other.unclassified,
     )
 
@@ -265,9 +267,10 @@ object FirmCreditRejectionBreakdown:
     if amount <= PLN.Zero then zero
     else
       reason match
-        case Some(Banking.CreditRejectionReason.FailedBank)        => FirmCreditRejectionBreakdown(failedBank = amount)
-        case Some(Banking.CreditRejectionReason.CapitalAdequacy)   => FirmCreditRejectionBreakdown(carGate = amount)
-        case Some(Banking.CreditRejectionReason.CapitalBuffer)     => FirmCreditRejectionBreakdown(capitalBuffer = amount)
-        case Some(Banking.CreditRejectionReason.LiquidityCoverage) => FirmCreditRejectionBreakdown(lcrGate = amount)
-        case Some(Banking.CreditRejectionReason.StableFunding)     => FirmCreditRejectionBreakdown(nsfrGate = amount)
-        case None                                                  => FirmCreditRejectionBreakdown(unclassified = amount)
+        case Some(Banking.CreditRejectionReason.FailedBank)          => FirmCreditRejectionBreakdown(failedBank = amount)
+        case Some(Banking.CreditRejectionReason.CapitalAdequacy)     => FirmCreditRejectionBreakdown(carGate = amount)
+        case Some(Banking.CreditRejectionReason.CapitalBuffer)       => FirmCreditRejectionBreakdown(capitalBuffer = amount)
+        case Some(Banking.CreditRejectionReason.LiquidityCoverage)   => FirmCreditRejectionBreakdown(lcrGate = amount)
+        case Some(Banking.CreditRejectionReason.StableFunding)       => FirmCreditRejectionBreakdown(nsfrGate = amount)
+        case Some(Banking.CreditRejectionReason.PortfolioPreference) => FirmCreditRejectionBreakdown(portfolioPreference = amount)
+        case None                                                    => FirmCreditRejectionBreakdown(unclassified = amount)

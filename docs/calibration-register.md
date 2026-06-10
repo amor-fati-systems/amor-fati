@@ -40,7 +40,7 @@ These counts are rendered from `CalibrationProvenance.Baseline` at generation ti
 | `EMPIRICAL_TRANSFORMED` | 18 |
 | `CODE_NOTE_EMPIRICAL` | 62 |
 | `ASSUMED` | 33 |
-| `TUNED_NEEDS_VALIDATION` | 89 |
+| `TUNED_NEEDS_VALIDATION` | 90 |
 | `POLICY_SCENARIO` | 7 |
 | `PLACEHOLDER` | 1 |
 | `UNKNOWN_SOURCE` | 0 |
@@ -81,7 +81,7 @@ a concrete diagnostic artifact path.
 | --- | ---: | ---: | ---: |
 | `HISTORICAL_FIT` | 33 | 5 | 28 |
 | `STYLIZED_FACT_TARGET` | 11 | 7 | 4 |
-| `SENSITIVITY_RANGE` | 31 | 5 | 26 |
+| `SENSITIVITY_RANGE` | 32 | 5 | 27 |
 | `MODEL_BEHAVIOR_CALIBRATION` | 14 | 0 | 14 |
 
 ### Evidence Paths
@@ -152,6 +152,7 @@ a concrete diagnostic artifact path.
 | `monetary.maxRateChange` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` |  |  | Monthly policy-rate adjustment cap | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
 | `monetary.nairu` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` |  |  | NAIRU | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
 | `banking.creditManagementCarBuffer`, `creditCarShortfallPenaltyScale` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` |  |  | Management CAR buffer and CAR-shortfall pricing scale | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `banking.portfolioCapitalHurdleRate`, `portfolioWedgePriceShare`, `portfolioWedgeQuantitySensitivity` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` |  |  | Private-credit versus sovereign-return wedge | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
 | `banking.depositPanicRate` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` |  |  | Panic switching after failure | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
 | `banking.eclMigrationSensitivity`, `eclGdpSensitivity`, `eclMaxMigration` | `HISTORICAL_FIT` | `MISSING_VALIDATION_EVIDENCE` |  |  | Stage 1 to Stage 2 migration under unemployment deterioration or GDP contraction | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
 | `forex.irpSensitivity`, `exRateAdjSpeed` | `SENSITIVITY_RANGE` | docs/sensitivity-robustness-workflow.md | sensitivity-summary.csv | external-risk-off | FX and external-balance sensitivity | SensitivityRobustnessExport varies IRP sensitivity in the external-risk-off scenario and reports FX/current-account metrics. |
@@ -360,6 +361,7 @@ a concrete diagnostic artifact path.
 | `banking.baseSpread` | `0.015` | annual rate | Structural bank-pricing spread prior | Base firm-loan spread | Direct | `BankingConfig` | `ASSUMED` |
 | `banking.minCar` | `0.08` | multiplier/share | Code note bridge: Basel III CRR | Minimum capital adequacy | Direct | `BankingConfig` | `EMPIRICAL` |
 | `banking.creditManagementCarBuffer`, `creditCarShortfallPenaltyScale` | `0.03, 2.0` | multiplier | Bank credit-supply architecture prior | Management CAR buffer and CAR-shortfall pricing scale | Applied above effectiveMinCar to smooth risk-weighted origination and pricing pressure | `BankingConfig`, `BankCreditApproval` | `TUNED_NEEDS_VALIDATION` |
+| `banking.portfolioCapitalHurdleRate`, `portfolioWedgePriceShare`, `portfolioWedgeQuantitySensitivity` | `0.10, 0.50, 1.0` | annual rate/share/multiplier | Bank portfolio-choice architecture prior | Private-credit versus sovereign-return wedge | Splits negative wedge into price and quantity channels after expected-loss, capital, and Polish-bank-levy costs | `BankingConfig`, `BankPortfolioChoice`, `BankCreditApproval` | `TUNED_NEEDS_VALIDATION` |
 | `banking.firmLoanRiskWeight`, `consumerLoanRiskWeight`, `mortgageLoanRiskWeight`, `corpBondRiskWeight`, `interbankAssetRiskWeight`, `sovereignRiskWeight`, `reserveRiskWeight`, `rwaOperationalRiskFloor`, `rwaCapitalBackstop` | `1.00, 1.00, 0.35, 0.50, 0.20, 0.00, 0.00, 0.01, 0.10` | share | Code note bridge: Basel/CRR standardized exposure classes | Regulatory RWA perimeter for bank CAR | Direct | `BankingConfig`, `BankRiskWeightedAssets` | `CODE_NOTE_EMPIRICAL` |
 | `banking.loanRecovery` | `0.30` | share | Structural corporate-loan workout recovery prior | Corporate loan recovery | Direct | `BankingConfig` | `ASSUMED` |
 | `banking.firmLoanAmortRate` | `1/60` | monthly rate | Code note bridge: NBP bridge prior maturity | Five-year average loan maturity | Direct | `BankingConfig` | `CODE_NOTE_EMPIRICAL` |

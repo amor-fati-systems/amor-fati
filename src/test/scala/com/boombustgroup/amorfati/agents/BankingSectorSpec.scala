@@ -82,8 +82,17 @@ class BankingSectorSpec extends AnyFlatSpec with Matchers:
       rng: RandomStream = RandomStream.seeded(42),
       ccyb: Multiplier = Multiplier.Zero,
       corpBondHoldings: PLN = PLN.Zero,
+      cfg: Banking.Config = configs(0),
+      refRate: Rate = Rate.decimal(5, 2),
+      bondYield: Rate = Rate.Zero,
   )(using SimParams): Banking.CreditApproval =
-    Banking.creditApproval(Banking.CreditApprovalContext(row.bank, ccyb, corpBondHoldings), row.stocks, product, amount, rng)
+    Banking.creditApproval(
+      Banking.CreditApprovalContext(row.bank, ccyb, corpBondHoldings, Banking.CreditPortfolioContext(cfg, refRate, bondYield)),
+      row.stocks,
+      product,
+      amount,
+      rng,
+    )
 
   private def canLend(
       row: BankRow,
@@ -92,8 +101,17 @@ class BankingSectorSpec extends AnyFlatSpec with Matchers:
       rng: RandomStream = RandomStream.seeded(42),
       ccyb: Multiplier = Multiplier.Zero,
       corpBondHoldings: PLN = PLN.Zero,
+      cfg: Banking.Config = configs(0),
+      refRate: Rate = Rate.decimal(5, 2),
+      bondYield: Rate = Rate.Zero,
   )(using SimParams): Boolean =
-    Banking.canLend(Banking.CreditApprovalContext(row.bank, ccyb, corpBondHoldings), row.stocks, product, amount, rng)
+    Banking.canLend(
+      Banking.CreditApprovalContext(row.bank, ccyb, corpBondHoldings, Banking.CreditPortfolioContext(cfg, refRate, bondYield)),
+      row.stocks,
+      product,
+      amount,
+      rng,
+    )
 
   "Banking.DefaultConfigs" should "split opening credit concentration across default rows" in {
     configs.map(_.id.toInt) shouldBe configs.indices.toVector
@@ -128,16 +146,44 @@ class BankingSectorSpec extends AnyFlatSpec with Matchers:
 
   "Banking.lendingRate" should "price failed banks, NPL stress, and bank-specific spread from explicit stocks" in {
     val failed = mkBankRow(status = BankStatus.Failed(ExecutionMonth(30)))
-    Banking.lendingRate(failed.bank, failed.stocks, configs(0), Rate.decimal(5, 2), Rate.Zero, PLN.Zero, Multiplier.Zero) shouldBe Rate.decimal(55, 2)
+    Banking.lendingRate(
+      failed.bank,
+      failed.stocks,
+      configs(0),
+      Rate.decimal(5, 2),
+      Rate.Zero,
+      PLN.Zero,
+      Multiplier.Zero,
+      Banking.CreditProduct.FirmLoan,
+    ) shouldBe
+      Rate.decimal(55, 2)
 
     val lowNpl  = mkBankRow(nplAmount = PLN(10000))
     val highNpl = mkBankRow(nplAmount = PLN(200000))
-    Banking.lendingRate(highNpl.bank, highNpl.stocks, configs(0), Rate.decimal(5, 2), Rate.Zero, PLN.Zero, Multiplier.Zero) should be >
-      Banking.lendingRate(lowNpl.bank, lowNpl.stocks, configs(0), Rate.decimal(5, 2), Rate.Zero, PLN.Zero, Multiplier.Zero)
+    Banking.lendingRate(
+      highNpl.bank,
+      highNpl.stocks,
+      configs(0),
+      Rate.decimal(5, 2),
+      Rate.Zero,
+      PLN.Zero,
+      Multiplier.Zero,
+      Banking.CreditProduct.FirmLoan,
+    ) should be >
+      Banking.lendingRate(lowNpl.bank, lowNpl.stocks, configs(0), Rate.decimal(5, 2), Rate.Zero, PLN.Zero, Multiplier.Zero, Banking.CreditProduct.FirmLoan)
 
     val base = mkBankRow(nplAmount = PLN.Zero)
-    Banking.lendingRate(base.bank, base.stocks, configs(5), Rate.decimal(5, 2), Rate.Zero, PLN.Zero, Multiplier.Zero) should be >
-      Banking.lendingRate(base.bank, base.stocks, configs(0), Rate.decimal(5, 2), Rate.Zero, PLN.Zero, Multiplier.Zero)
+    Banking.lendingRate(
+      base.bank,
+      base.stocks,
+      configs(5),
+      Rate.decimal(5, 2),
+      Rate.Zero,
+      PLN.Zero,
+      Multiplier.Zero,
+      Banking.CreditProduct.FirmLoan,
+    ) should be >
+      Banking.lendingRate(base.bank, base.stocks, configs(0), Rate.decimal(5, 2), Rate.Zero, PLN.Zero, Multiplier.Zero, Banking.CreditProduct.FirmLoan)
   }
 
   "Banking.canLend" should "reject failed banks and low projected CAR" in {
@@ -215,14 +261,85 @@ class BankingSectorSpec extends AnyFlatSpec with Matchers:
   }
 
   it should "route NPL pressure through pricing instead of approval probability" in {
-    val lowNpl  = mkBankRow(loans = PLN(1000000), capital = PLN(500000), nplAmount = PLN.Zero)
-    val highNpl = mkBankRow(loans = PLN(1000000), capital = PLN(500000), nplAmount = PLN(400000))
+    given SimParams = SimParamsTestOverrides.bankPortfolioChoice(Share.One, Multiplier(20))
+    val lowNpl      = mkBankRow(loans = PLN(1000000), capital = PLN(500000), nplAmount = PLN.Zero)
+    val highNpl     = mkBankRow(loans = PLN(1000000), capital = PLN(500000), nplAmount = PLN(400000))
 
-    Banking.lendingRate(highNpl.bank, highNpl.stocks, configs(0), Rate.decimal(5, 2), Rate.Zero, PLN.Zero, Multiplier.Zero) should be >
-      Banking.lendingRate(lowNpl.bank, lowNpl.stocks, configs(0), Rate.decimal(5, 2), Rate.Zero, PLN.Zero, Multiplier.Zero)
+    Banking.lendingRate(
+      highNpl.bank,
+      highNpl.stocks,
+      configs(0),
+      Rate.decimal(5, 2),
+      Rate.Zero,
+      PLN.Zero,
+      Multiplier.Zero,
+      Banking.CreditProduct.FirmLoan,
+    ) should be >
+      Banking.lendingRate(lowNpl.bank, lowNpl.stocks, configs(0), Rate.decimal(5, 2), Rate.Zero, PLN.Zero, Multiplier.Zero, Banking.CreditProduct.FirmLoan)
 
     approval(lowNpl, Banking.CreditProduct.FirmLoan, PLN(100000)).approvalProbability shouldBe Some(Share.One)
     approval(highNpl, Banking.CreditProduct.FirmLoan, PLN(100000)).approvalProbability shouldBe Some(Share.One)
+  }
+
+  it should "route a negative private-credit wedge into loan pricing when bonds become attractive" in {
+    val row = mkBankRow(loans = PLN(1000000), capital = PLN(500000))
+
+    val lowBondRate  =
+      Banking.lendingRate(row.bank, row.stocks, configs(0), Rate.decimal(5, 2), Rate.Zero, PLN.Zero, Multiplier.Zero, Banking.CreditProduct.FirmLoan)
+    val highBondRate = Banking.lendingRate(
+      row.bank,
+      row.stocks,
+      configs(0),
+      Rate.decimal(5, 2),
+      Rate.decimal(20, 2),
+      PLN.Zero,
+      Multiplier.Zero,
+      Banking.CreditProduct.FirmLoan,
+    )
+
+    highBondRate should be > lowBondRate
+  }
+
+  it should "route the non-priced wedge share into an audited portfolio-preference throttle" in {
+    given SimParams = SimParamsTestOverrides.bankPortfolioChoice(Share.Zero, Multiplier(20))
+    val row         = mkBankRow(loans = PLN(1000000), capital = PLN(1000000))
+    val decision    = approval(
+      row,
+      Banking.CreditProduct.FirmLoan,
+      PLN(1000),
+      RandomStream.seeded(1L),
+      bondYield = Rate(1),
+    )
+
+    decision.approved shouldBe false
+    decision.approvalProbability shouldBe Some(Share.Zero)
+    decision.audit.rejectionReason shouldBe Some(Banking.CreditRejectionReason.PortfolioPreference)
+    val portfolioAudit = decision.audit.portfolioChoice.get
+    portfolioAudit.wedge should be < Rate.Zero
+    portfolioAudit.wedgeQuantityThrottle shouldBe Share.Zero
+    portfolioAudit.wedgePriceContribution shouldBe Rate.Zero
+  }
+
+  it should "leave approval untouched when the whole wedge is priced" in {
+    given SimParams = SimParamsTestOverrides.bankPortfolioChoice(Share.One, Multiplier(20))
+    val row         = mkBankRow(loans = PLN(1000000), capital = PLN(1000000))
+
+    val decision = approval(row, Banking.CreditProduct.FirmLoan, PLN(1000), bondYield = Rate(1))
+
+    decision.approved shouldBe true
+    decision.approvalProbability shouldBe Some(Share.One)
+    decision.audit.portfolioChoice.get.wedgeQuantityThrottle shouldBe Share.One
+  }
+
+  it should "not reduce approval just because a bank holds more government bonds" in {
+    val loanFocused = mkBankRow(deposits = PLN(1000000), loans = PLN(800000), capital = PLN(500000), govBondHoldings = PLN.Zero)
+    val bondHeavy   = mkBankRow(deposits = PLN(1000000), loans = PLN(800000), capital = PLN(500000), govBondHoldings = PLN(10000000))
+
+    val loanFocusedApproval = approval(loanFocused, Banking.CreditProduct.FirmLoan, PLN(100000), bondYield = Rate.Zero)
+    val bondHeavyApproval   = approval(bondHeavy, Banking.CreditProduct.FirmLoan, PLN(100000), bondYield = Rate.Zero)
+
+    loanFocusedApproval.approvalProbability shouldBe Some(Share.One)
+    bondHeavyApproval.approvalProbability shouldBe Some(Share.One)
   }
 
   it should "project approval CAR through the requested credit product bucket" in {

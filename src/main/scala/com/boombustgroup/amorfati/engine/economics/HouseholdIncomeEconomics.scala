@@ -77,12 +77,21 @@ object HouseholdIncomeEconomics:
           .zip(bankStocks)
           .zip(bsec.configs)
           .map { case ((b, stocks), cfg) =>
-            Banking.lendingRate(b, stocks, cfg, lendingBaseRate, w.gov.bondYield, bankCorpBonds(b.id), w.mechanisms.macropru.ccyb)
+            Banking.lendingRate(
+              b,
+              stocks,
+              cfg,
+              lendingBaseRate,
+              w.gov.bondYield,
+              bankCorpBonds(b.id),
+              w.mechanisms.macropru.ccyb,
+              Banking.CreditProduct.ConsumerLoan,
+            )
           },
         depositRates = banks.map(_ => Banking.hhDepositRate(w.nbp.referenceRate)),
       ),
     )
-    val bankCreditSupply = capitalAwareBankCreditSupply(banks, bankStocks, ccyb, bankCorpBonds)
+    val bankCreditSupply = capitalAwareBankCreditSupply(banks, bankStocks, bsec.configs, ccyb, bankCorpBonds, lendingBaseRate, w.gov.bondYield)
     val eqReturn         = w.financialMarkets.equity.monthlyReturn
     val secWages         = Some(SectoralMobility.sectorWages(afterWages))
     val secVacancies     = Some(SectoralMobility.sectorVacancies(afterWages, firms))
@@ -150,18 +159,33 @@ object HouseholdIncomeEconomics:
   private[economics] def capitalAwareBankCreditSupply(
       banks: Vector[Banking.BankState],
       bankStocks: Vector[Banking.BankFinancialStocks],
+      configs: Vector[Banking.Config],
       ccyb: Multiplier,
       bankCorpBonds: BankId => PLN,
+      lendingBaseRate: Rate,
+      bondYield: Rate,
   )(using p: SimParams): Household.BankCreditSupply =
     require(
-      banks.length == bankStocks.length,
-      s"HouseholdIncomeEconomics bank-credit supply requires aligned bank rows, got ${banks.length} banks and ${bankStocks.length} stock rows",
+      banks.length == bankStocks.length && banks.length == configs.length,
+      s"HouseholdIncomeEconomics bank-credit supply requires aligned bank rows, stocks, and configs; banks=${banks.length}, stocks=${bankStocks.length}, configs=${configs.length}",
     )
     val approvedFirmExposureByBank     = Array.fill(banks.length)(PLN.Zero)
     val approvedConsumerExposureByBank = Array.fill(banks.length)(PLN.Zero)
     val approvedMortgageExposureByBank = Array.fill(banks.length)(PLN.Zero)
     val approvalContexts               =
-      banks.indices.map(idx => Banking.CreditApprovalContext(banks(idx), ccyb, bankCorpBonds(BankId(idx)))).toVector
+      banks.indices.map { idx =>
+        val bankId = BankId(idx)
+        Banking.CreditApprovalContext(
+          bank = banks(idx),
+          ccyb = ccyb,
+          corpBondHoldings = bankCorpBonds(bankId),
+          portfolio = Banking.CreditPortfolioContext(
+            config = configs(idx),
+            refRate = lendingBaseRate,
+            bondYield = bondYield,
+          ),
+        )
+      }.toVector
 
     new Household.BankCreditSupply:
       override def approve(bankId: BankId, product: Banking.CreditProduct, amount: PLN, approvalRng: RandomStream): Banking.CreditApproval =

@@ -13,9 +13,8 @@ import com.boombustgroup.amorfati.types.*
   */
 private[agents] object BankCreditApproval:
 
-  private val FailedBankSpread: Rate             = Rate.decimal(50, 2)
-  private val NplSpreadCap: Rate                 = Rate.decimal(15, 2)
-  private val CrowdingOutSensitivity: Multiplier = Multiplier.decimal(30, 2)
+  private val FailedBankSpread: Rate = Rate.decimal(50, 2)
+  private val NplSpreadCap: Rate     = Rate.decimal(15, 2)
 
   /** Returns the internal management CAR target used for pricing and
     * risk-weighted credit-supply throttling.
@@ -52,22 +51,33 @@ private[agents] object BankCreditApproval:
   def hhDepositRate(refRate: Rate)(using p: SimParams): Rate =
     (refRate - p.household.depositSpread).max(Rate.Zero)
 
-  /** Prices firm lending from monetary stance, bank-specific spread, risk
-    * stress, capital pressure, and government-bond crowding-out.
+  /** Prices bank lending from monetary stance, bank-specific spread, product
+    * credit risk, capital pressure, and the portfolio-choice wedge.
     */
-  def lendingRate(bank: BankState, stocks: BankFinancialStocks, cfg: Config, refRate: Rate, bondYield: Rate, corpBondHoldings: PLN, ccyb: Multiplier)(using
-      p: SimParams,
-  ): Rate =
+  def lendingRate(
+      bank: BankState,
+      stocks: BankFinancialStocks,
+      cfg: Config,
+      refRate: Rate,
+      bondYield: Rate,
+      corpBondHoldings: PLN,
+      ccyb: Multiplier,
+      product: CreditProduct,
+  )(using p: SimParams): Rate =
     if bank.failed then refRate + FailedBankSpread
     else
-      val nplSpread   = (BankRegulatoryMetrics.nplRatio(bank, stocks) * p.banking.nplSpreadFactor).toRate.min(NplSpreadCap)
-      val carTarget   = managementCarTarget(bank.id.toInt, ccyb)
-      val bankCar     = BankRegulatoryMetrics.car(bank, stocks, corpBondHoldings)
-      val carPenalty  =
-        if bankCar < carTarget then ((carTarget - bankCar) * p.banking.creditCarShortfallPenaltyScale).toRate
-        else Rate.Zero
-      val crowdingOut = (bondYield - refRate - p.banking.baseSpread).max(Rate.Zero) * CrowdingOutSensitivity
-      refRate + p.banking.baseSpread + cfg.lendingSpread + nplSpread + carPenalty + crowdingOut
+      val prePortfolioRate = lendingRateBeforePortfolio(bank, stocks, cfg, refRate, corpBondHoldings, ccyb, product)
+      val portfolioAudit   = BankPortfolioChoice.compute(
+        bank = bank,
+        stocks = stocks,
+        product = product,
+        amount = PLN.Zero,
+        loanRateBeforePortfolio = prePortfolioRate,
+        bondYield = bondYield,
+        corpBondHoldings = corpBondHoldings,
+        ccyb = ccyb,
+      )
+      prePortfolioRate + BankPortfolioChoice.pricePremium(portfolioAudit)
 
   /** Returns the boolean approval decision for callers that do not need audit
     * fields.
@@ -118,7 +128,26 @@ private[agents] object BankCreditApproval:
       val lcrOk                                                             = currentLcr >= p.banking.lcrMin
       val currentNsfr                                                       = BankRegulatoryMetrics.nsfr(bank, stocks, context.corpBondHoldings)
       val nsfrOk                                                            = currentNsfr >= p.banking.nsfrMin
-      val approvalP                                                         = throttle
+      val portfolioAudit                                                    = BankPortfolioChoice.compute(
+        bank = bank,
+        stocks = stocks,
+        product = product,
+        amount = amount,
+        loanRateBeforePortfolio = lendingRateBeforePortfolio(
+          bank,
+          stocks,
+          context.portfolio.config,
+          context.portfolio.refRate,
+          context.corpBondHoldings,
+          context.ccyb,
+          product,
+        ),
+        bondYield = context.portfolio.bondYield,
+        corpBondHoldings = context.corpBondHoldings,
+        ccyb = context.ccyb,
+      )
+      val portfolioThrottle                                                 = BankPortfolioChoice.supplyThrottle(portfolioAudit)
+      val approvalP                                                         = throttle * portfolioThrottle
       def audit(reason: Option[CreditRejectionReason]): CreditApprovalAudit =
         CreditApprovalAudit(
           rejectionReason = reason,
@@ -130,6 +159,7 @@ private[agents] object BankCreditApproval:
           lcrMin = Some(p.banking.lcrMin),
           nsfr = Some(currentNsfr),
           nsfrMin = Some(p.banking.nsfrMin),
+          portfolioChoice = Some(portfolioAudit),
         )
       if carOk && lcrOk && nsfrOk then
         val roll     = Share.random(rng)
@@ -140,7 +170,7 @@ private[agents] object BankCreditApproval:
           approved = approved,
           approvalProbability = Some(approvalP),
           approvalRoll = Some(roll),
-          audit = audit(if approved then None else Some(CreditRejectionReason.CapitalBuffer)),
+          audit = audit(if approved then None else Some(discretionaryRejectionReason(throttle, portfolioThrottle))),
         )
       else
         val reason =
@@ -155,3 +185,24 @@ private[agents] object BankCreditApproval:
           approvalRoll = None,
           audit = audit(Some(reason)),
         )
+
+  private def lendingRateBeforePortfolio(
+      bank: BankState,
+      stocks: BankFinancialStocks,
+      cfg: Config,
+      refRate: Rate,
+      corpBondHoldings: PLN,
+      ccyb: Multiplier,
+      product: CreditProduct,
+  )(using p: SimParams): Rate =
+    val nplSpread  = (BankRegulatoryMetrics.nplRatio(bank, stocks, product) * p.banking.nplSpreadFactor).toRate.min(NplSpreadCap)
+    val carTarget  = managementCarTarget(bank.id.toInt, ccyb)
+    val bankCar    = BankRegulatoryMetrics.car(bank, stocks, corpBondHoldings)
+    val carPenalty =
+      if bankCar < carTarget then ((carTarget - bankCar) * p.banking.creditCarShortfallPenaltyScale).toRate
+      else Rate.Zero
+    refRate + p.banking.baseSpread + cfg.lendingSpread + nplSpread + carPenalty
+
+  private def discretionaryRejectionReason(capitalThrottle: Share, portfolioThrottle: Share): CreditRejectionReason =
+    if portfolioThrottle < Share.One && portfolioThrottle <= capitalThrottle then CreditRejectionReason.PortfolioPreference
+    else CreditRejectionReason.CapitalBuffer

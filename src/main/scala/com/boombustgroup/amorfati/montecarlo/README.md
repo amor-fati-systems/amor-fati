@@ -364,6 +364,7 @@ FirmCredit_RejectedCarGate
 FirmCredit_RejectedCapitalBuffer
 FirmCredit_RejectedLcrGate
 FirmCredit_RejectedNsfrGate
+FirmCredit_RejectedPortfolioPreference
 FirmCredit_RejectedUnclassified
 FirmCredit_ApprovalRate
 FirmCredit_InvestmentDemand

@@ -41,6 +41,14 @@ object SimParamsTestOverrides:
       ),
     )
 
+  def bankPortfolioChoice(priceShare: Share, quantitySensitivity: Multiplier): SimParams =
+    SimParams.defaults.copy(
+      banking = SimParams.defaults.banking.copy(
+        portfolioWedgePriceShare = priceShare,
+        portfolioWedgeQuantitySensitivity = quantitySensitivity,
+      ),
+    )
+
   val pfronDeficit: SimParams =
     SimParams.defaults.copy(
       earmarked = SimParams.defaults.earmarked.copy(

@@ -109,16 +109,15 @@ r^{dep}_{b,tau} =
   max(r^{NBP}_{tau} - householdDepositSpread, 0)
 ```
 
-Firm lending rates are bank-specific:
+Bank-credit lending rates first form a product-aware pre-portfolio private-credit rate:
 
 ```text
-r^{loan}_{b,tau} =
+r^{preLoan}_{b,tau}(q) =
   r^{base}_{tau}
   + baseSpread
   + lendingSpread_b
-  + min(NPLRatio_b * nplSpreadFactor, NplSpreadCap)
+  + min(NPLRatio_b(q) * nplSpreadFactor, NplSpreadCap)
   + capitalPenalty_b
-  + crowdingOutSpread_b
 ```
 
 where:
@@ -136,10 +135,41 @@ managementCAR_b(ccyb_tau) =
 capitalPenalty_b =
   max(managementCAR_b(ccyb_tau) - CAR_b, 0)
   * creditCarShortfallPenaltyScale
+```
 
-crowdingOutSpread_b =
-  max(govBondYield_tau - r^{base}_{tau} - baseSpread, 0)
-  * crowdingOutSensitivity
+The government-bond channel is a portfolio-choice wedge, not a loanable-funds
+capacity subtraction. For product bucket `q`, the bank compares the
+risk-adjusted private-credit return with the sovereign return:
+
+```text
+expectedLossCost_b(q) =
+  NPLRatio_b(q) * LGD_q
+
+capitalCost_b(q) =
+  portfolioCapitalHurdleRate
+  * (effectiveMinCar_b(ccyb_tau) + creditManagementCarBuffer)
+  * riskWeight_q
+
+polishBankLevyCost_b(q, A) =
+  annualized marginal Polish-bank-levy rate on the requested private-credit asset
+
+r^{loan,RA}_{b,tau}(q, A) =
+  r^{preLoan}_{b,tau}(q)
+  - expectedLossCost_b(q)
+  - capitalCost_b(q)
+  - polishBankLevyCost_b(q, A)
+
+r^{bond,RA}_{b,tau} =
+  govBondYield_tau
+
+wedge_b(q, A) =
+  r^{loan,RA}_{b,tau}(q, A) - r^{bond,RA}_{b,tau}
+
+portfolioPricePremium_b(q, A) =
+  max(-wedge_b(q, A), 0) * portfolioWedgePriceShare
+
+r^{loan}_{b,tau}(q) =
+  r^{preLoan}_{b,tau}(q) + portfolioPricePremium_b(q, 0)
 ```
 
 The capital stack used by `Macroprudential.effectiveMinCar` is auditable from
@@ -206,16 +236,28 @@ capitalThrottle_b(q, A) =
         creditManagementCarBuffer, 0, 1)
 
 approvalP_b(q, A) = capitalThrottle_b(q, A)
+                     * portfolioThrottle_b(q, A)
+
+portfolioThrottle_b(q, A) =
+  1 - clamp(
+        max(-wedge_b(q, A), 0)
+        * (1 - portfolioWedgePriceShare)
+        * portfolioWedgeQuantitySensitivity,
+        0,
+        1
+      )
 ```
 
 The proposal is approved when the hard regulatory gates pass and the replay
 draw is below `approvalP_b`. A bank at or above `managementCAR_b` has
-`approvalP_b = 1`; a bank between the hard floor and the management target
-reduces new risk-weighted credit supply smoothly. NPL pressure is not
-independently multiplied into the approval probability; it enters through loan
-pricing, IFRS 9 / ECL provisioning, and the resulting capital path. Reserve
-requirements are not a per-loan approval gate. They are handled through LCR/NSFR,
-reserve settlement, standing facilities, and bank P&L.
+`capitalThrottle_b = 1`; portfolio preference can still reduce approval if the
+risk-adjusted sovereign alternative dominates private credit. A bank between
+the hard floor and the management target reduces new risk-weighted credit supply
+smoothly. NPL pressure is not independently multiplied into the approval
+probability; it enters through loan pricing, expected-loss/provisioning terms,
+and the resulting capital path. Reserve requirements are not a per-loan approval
+gate. They are handled through LCR/NSFR, reserve settlement, standing
+facilities, and bank P&L.
 
 This approval rule is a regulatory heuristic and behavioral credit-supply
 surface, not an SFC identity. The resulting origination, repayment, default,
