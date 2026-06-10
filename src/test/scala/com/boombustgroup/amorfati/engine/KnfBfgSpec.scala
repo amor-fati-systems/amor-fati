@@ -110,7 +110,7 @@ class KnfBfgSpec extends AnyFlatSpec with Matchers:
       capital = capital,
       govBondHoldings = govBonds,
     )
-    val taxable  = Banking.polishBankLevyTaxableAssets(active.bank, active.stocks, PLN.Zero)
+    val taxable  = Banking.polishBankLevyTaxableAssets(active.bank, Banking.TaxableBankBalanceSheet.from(active.stocks, PLN.Zero))
     val result   = Banking.computePolishBankLevy(Vector(active.bank), Vector(active.stocks), _ => PLN.Zero)
 
     taxable shouldBe excess

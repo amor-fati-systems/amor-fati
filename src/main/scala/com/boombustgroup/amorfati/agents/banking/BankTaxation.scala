@@ -14,16 +14,10 @@ import com.boombustgroup.amorfati.types.*
   */
 private[agents] object BankTaxation:
 
-  /** Explicit balance-sheet assets available to the current bank archetype. */
-  def explicitAssets(stocks: BankFinancialStocks, corpBondHoldings: PLN): PLN =
-    stocks.firmLoan + stocks.consumerLoan + stocks.mortgageLoan +
-      BankRegulatoryMetrics.govBondHoldings(stocks) + stocks.reserve +
-      stocks.interbankLoan.max(PLN.Zero) + corpBondHoldings
-
   /** Taxable bank-asset base after modeled statutory deductions. */
-  def polishBankLevyTaxableAssets(bank: BankState, stocks: BankFinancialStocks, corpBondHoldings: PLN)(using p: SimParams): PLN =
-    val deductions = bank.capital.max(PLN.Zero) + BankRegulatoryMetrics.govBondHoldings(stocks)
-    (explicitAssets(stocks, corpBondHoldings) - deductions - p.banking.polishBankLevyAssetThreshold).max(PLN.Zero)
+  def polishBankLevyTaxableAssets(bank: BankState, balanceSheet: TaxableBankBalanceSheet)(using p: SimParams): PLN =
+    val deductions = bank.capital.max(PLN.Zero) + balanceSheet.govBondHoldings
+    (balanceSheet.explicitAssets - deductions - p.banking.polishBankLevyAssetThreshold).max(PLN.Zero)
 
   /** Computes the monthly Polish bank levy for each live bank row. */
   def computePolishBankLevy(
@@ -35,5 +29,7 @@ private[agents] object BankTaxation:
     val perBank =
       rows.map: (bank, stocks) =>
         if bank.failed then PLN.Zero
-        else polishBankLevyTaxableAssets(bank, stocks, bankCorpBondHoldings(bank.id)) * p.banking.polishBankLevyMonthlyRate
+        else
+          val taxableBalanceSheet = TaxableBankBalanceSheet.from(stocks, bankCorpBondHoldings(bank.id))
+          polishBankLevyTaxableAssets(bank, taxableBalanceSheet) * p.banking.polishBankLevyMonthlyRate
     Banking.PerBankAmounts(perBank, perBank.sumPln)

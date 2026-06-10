@@ -4,13 +4,19 @@ import com.boombustgroup.amorfati.agents.*
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.markets.FiscalBudget
 import com.boombustgroup.amorfati.engine.mechanisms.TaxRevenue
-import com.boombustgroup.amorfati.types.*
 
 /** Computes government, tax, and JST state used by the banking close. */
 private[banking] object BankingPublicFinanceStage:
 
-  def compute(in: StepInput, polishBankLevyTax: PLN)(using p: SimParams): GovJstResult =
-    val tax = TaxRevenue.compute(
+  def compute(in: StepInput)(using p: SimParams): GovJstResult =
+    val openingBankBooks = OpeningBankBooks.from(in.ledgerFinancialState)
+    val polishBankLevy   =
+      Banking.computePolishBankLevy(
+        in.banks,
+        openingBankBooks.financialStocks,
+        openingBankBooks.corpBondHoldings,
+      )
+    val tax              = TaxRevenue.compute(
       TaxRevenue.Input(
         consumption = in.householdIncome.consumption,
         pitRevenue = in.householdIncome.pitRevenue,
@@ -32,7 +38,7 @@ private[banking] object BankingPublicFinanceStage:
         govDividendRevenue = in.priceEquity.stateOwnedGovDividends,
         vat = tax.vatAfterEvasion,
         nbpRemittance = in.openEconomy.banking.nbpRemittance,
-        polishBankLevyTax = polishBankLevyTax,
+        polishBankLevyTax = polishBankLevy.total,
         exciseRevenue = tax.exciseAfterEvasion,
         customsDutyRevenue = tax.customsDutyRevenue,
         unempBenefitSpend = unempBenefitSpend,
@@ -72,5 +78,6 @@ private[banking] object BankingPublicFinanceStage:
       newJst = jstResult.state,
       jstCash = jstResult.closingDeposits,
       jstDepositChange = jstResult.depositChange,
+      polishBankLevy = polishBankLevy,
       tax = tax,
     )

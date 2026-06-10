@@ -3,7 +3,7 @@ package com.boombustgroup.amorfati.engine.economics.banking
 import com.boombustgroup.amorfati.agents.*
 import com.boombustgroup.amorfati.engine.*
 import com.boombustgroup.amorfati.engine.diagnostics.banking.*
-import com.boombustgroup.amorfati.engine.ledger.LedgerFinancialState
+import com.boombustgroup.amorfati.engine.ledger.{CorporateBondOwnership, LedgerFinancialState}
 import com.boombustgroup.amorfati.engine.markets.{FiscalBudget, HousingMarket}
 import com.boombustgroup.amorfati.engine.mechanisms.TaxRevenue
 import com.boombustgroup.amorfati.types.*
@@ -17,12 +17,25 @@ final case class GovBondRuntimeMovements(
     tfiPurchaseByBank: Vector[PLN],
 )
 
+private[banking] final case class OpeningBankBooks(
+    financialStocks: Vector[Banking.BankFinancialStocks],
+    corpBondHoldings: Banking.BankCorpBondHoldings,
+)
+
+private[banking] object OpeningBankBooks:
+  def from(ledgerFinancialState: LedgerFinancialState): OpeningBankBooks =
+    OpeningBankBooks(
+      financialStocks = ledgerFinancialState.banks.map(LedgerFinancialState.projectBankFinancialStocks),
+      corpBondHoldings = bankId => CorporateBondOwnership.bankHolderFor(ledgerFinancialState, bankId),
+    )
+
 private[banking] final case class GovJstResult(
     newGovWithYield: FiscalBudget.GovState,
     newGovBondOutstanding: PLN,
     newJst: Jst.State,
     jstCash: PLN,
     jstDepositChange: PLN,
+    polishBankLevy: Banking.PerBankAmounts,
     tax: TaxRevenue.Output,
 )
 

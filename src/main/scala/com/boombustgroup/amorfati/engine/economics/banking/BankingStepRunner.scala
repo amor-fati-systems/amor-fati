@@ -2,7 +2,7 @@ package com.boombustgroup.amorfati.engine.economics.banking
 
 import com.boombustgroup.amorfati.agents.{Banking, QuasiFiscal}
 import com.boombustgroup.amorfati.config.SimParams
-import com.boombustgroup.amorfati.engine.ledger.{CorporateBondOwnership, LedgerFinancialState}
+import com.boombustgroup.amorfati.engine.ledger.LedgerFinancialState
 
 /** Banking sector economics runner.
   *
@@ -20,25 +20,17 @@ object BankingStepRunner:
   val StepOutput: com.boombustgroup.amorfati.engine.economics.banking.StepOutput.type =
     com.boombustgroup.amorfati.engine.economics.banking.StepOutput
 
-  private def bankCorpBondHoldings(ledgerFinancialState: LedgerFinancialState): Banking.BankCorpBondHoldings =
-    bankId => CorporateBondOwnership.bankHolderFor(ledgerFinancialState, bankId)
-
   def runStep(rawIn: StepInput)(using p: SimParams): StepOutput =
     val in                       = rawIn
-    val openingBankStocks        = in.ledgerFinancialState.banks.map(LedgerFinancialState.projectBankFinancialStocks)
+    val openingBankBooks         = OpeningBankBooks.from(in.ledgerFinancialState)
+    val openingBankStocks        = openingBankBooks.financialStocks
     val prevBankAgg              =
       Banking.aggregateFromBankStocks(
         in.banks,
         openingBankStocks,
-        bankCorpBondHoldings(in.ledgerFinancialState),
+        openingBankBooks.corpBondHoldings,
       )
-    val polishBankLevy           =
-      Banking.computePolishBankLevy(
-        in.banks,
-        openingBankStocks,
-        bankCorpBondHoldings(in.ledgerFinancialState),
-      )
-    val govJst                   = BankingPublicFinanceStage.compute(in, polishBankLevy.total)
+    val govJst                   = BankingPublicFinanceStage.compute(in)
     val housing                  = BankingHousingStage.compute(in)
     val bfgLevy                  = Banking.computeBfgLevy(in.banks, openingBankStocks).total
     val investNetDepositFlow     = BankingHouseholdBooks.investmentTimingDepositFlow(in)
@@ -60,7 +52,7 @@ object BankingStepRunner:
       quasiFiscalDepositChange,
       housing.mortgageFlows,
       wf,
-      polishBankLevy,
+      govJst.polishBankLevy,
     )
     val ledgerClosing            = BankingLedgerClosing.close(
       in = in,
