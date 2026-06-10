@@ -136,6 +136,32 @@ class EmpiricalValidationManifestSpec extends AnyFlatSpec with Matchers:
     credit.status shouldBe "PARTIAL"
     credit.value("notes") should include("GDP denominator bridge")
 
+    val totalCreditGrowth = rowByTarget(rows, "Credit/GDP - total credit stock growth")
+    totalCreditGrowth.status shouldBe "PARTIAL"
+    totalCreditGrowth.value("source_provider") shouldBe "NBP"
+    totalCreditGrowth.value("model_target") shouldBe "timeseries:TotalCreditStock:pct_change"
+    totalCreditGrowth.value("notes") should include("NBP MFI stock-series extraction")
+
+    val firmLoanGrowth = rowByTarget(rows, "Credit/GDP - bank firm loan growth")
+    firmLoanGrowth.status shouldBe "PARTIAL"
+    firmLoanGrowth.value("model_target") shouldBe "timeseries:BankFirmLoans:pct_change"
+    firmLoanGrowth.value("notes") should include("sector-definition mapping")
+
+    val consumerLoanGrowth = rowByTarget(rows, "Credit/GDP - consumer loan growth")
+    consumerLoanGrowth.status shouldBe "PARTIAL"
+    consumerLoanGrowth.value("model_target") shouldBe "timeseries:ConsumerLoans:pct_change"
+    consumerLoanGrowth.value("notes") should include("product-definition mapping")
+
+    val firmApproval = rowByTarget(rows, "Credit supply - firm approval rate bridge")
+    firmApproval.status shouldBe "MISSING_DATA_BRIDGE"
+    firmApproval.value("model_target") shouldBe "timeseries:FirmCredit_ApprovalRate:mean"
+    firmApproval.value("notes") should include("SLOOS balance-of-opinion")
+
+    val consumerApproval = rowByTarget(rows, "Credit supply - consumer approval rate bridge")
+    consumerApproval.status shouldBe "MISSING_DATA_BRIDGE"
+    consumerApproval.value("model_target") shouldBe "timeseries:ConsumerCredit_ApprovedToDemand:mean"
+    consumerApproval.value("notes") should include("SLOOS balance-of-opinion")
+
     val currentAccount = rowByTarget(rows, "Current account")
     currentAccount.status shouldBe "PARTIAL"
     currentAccount.value("notes") should include("BoP cadence")
@@ -183,6 +209,17 @@ class EmpiricalValidationManifestSpec extends AnyFlatSpec with Matchers:
     val liquidity = rowByTarget(rows, "Bank capital/liquidity - LCR NSFR NPL bridge")
     liquidity.status shouldBe "PARTIAL"
     liquidity.value("notes") should include("sector average versus model minimum")
+
+    val aggregateNplTrajectory = rowByTarget(rows, "Bank capital/liquidity - aggregate NPL trajectory")
+    aggregateNplTrajectory.status shouldBe "PARTIAL"
+    aggregateNplTrajectory.value("source_provider") shouldBe "KNF"
+    aggregateNplTrajectory.value("model_target") shouldBe "timeseries:MaxBankNPL:max"
+    aggregateNplTrajectory.value("notes") should include("KNF NPL trajectory extraction")
+
+    val consumerNplTrajectory = rowByTarget(rows, "Bank capital/liquidity - consumer credit NPL trajectory")
+    consumerNplTrajectory.status shouldBe "PARTIAL"
+    consumerNplTrajectory.value("model_target") shouldBe "timeseries:ConsumerCredit_NplRatioGross:max"
+    consumerNplTrajectory.value("notes") should include("product-level KNF/NBP NPL series")
 
     val mortgageStock = rowByTarget(rows, "Housing and mortgages - mortgage stock/GDP")
     mortgageStock.status shouldBe "READY"
