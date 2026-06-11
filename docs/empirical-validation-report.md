@@ -225,13 +225,13 @@ Future work should refine a continuous credit-supply rule with soft CAR/LCR/NSFR
 cushions and risk-adjusted-return effects before retuning capital levels or RWA
 weights.
 
-### Dynamic Credit-Supply Validation
+### Dynamic Credit Validation
 
-Terminal prudential ratios and dynamic credit-supply validation answer different
+Terminal prudential ratios and dynamic credit validation answer different
 questions. `AggregateBankCAR` checks whether the model lands near the KNF
-banking-sector capital-ratio comparator at the end of the run. Dynamic
-credit-supply validation asks whether the path of private credit, approval
-rates, and NPL pressure is empirically plausible over the run horizon.
+banking-sector capital-ratio comparator at the end of the run. Dynamic credit
+validation asks whether the path of private credit, approval rates, borrower
+demand, and NPL pressure is empirically plausible over the run horizon.
 
 The source manifest therefore carries separate partial bridge rows for:
 
@@ -344,6 +344,12 @@ If the NBP release reports net demand increase as
 `increased_share - decreased_share`, keep the sign. If it reports net demand
 decrease directly, multiply by `-1` before comparison. The model side must use
 the same calendar window as the cited source question.
+
+Current manifest rows use `model_target = timeseries:*:delta`, a first-to-last
+summary over the cited model run. The quarterly `D_model(q)` and
+`Delta_model(q)` formulation below is the intended SLOOS-aligned aggregation and
+requires the remaining bridge work before promotion out of
+`MISSING_DATA_BRIDGE`.
 
 ```text
 D_model(q)      = mean borrower-demand proxy over months in quarter q and all cited seeds
