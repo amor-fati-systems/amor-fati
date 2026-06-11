@@ -122,6 +122,7 @@ snapshot CSVs.
 | Wages | GUS average wage, sector wage indices | `MarketWage`, `MeanEmployedWage`, `MinWageLevel`; terminal `_hh.csv` fields `MeanMonthlyIncome`, `MeanEmployedWage`, `WageP10`, `WageP50`, `WageP90` | Mean wage level and growth; minimum/market wage ratio; terminal wage distribution |
 | Credit/GDP | NBP credit aggregates to GDP | `TotalCreditToGdp`, `TotalCreditStock`, `BankFirmLoans`, `BankFirmLoansToGdp`, `ConsumerLoans`, `ConsumerLoansToGdp`, `MortgageStock`, `MortgageToGdp`, `NbfiLoanStock`, `NbfiLoansToGdp`, `CreditToGdpGap`; terminal `_banks.csv` field `Loans` | Credit/GDP level, gap, household/firm/mortgage/NBFI split |
 | Credit-supply standards | NBP `Sytuacja na rynku kredytowym` senior loan officer survey | `FirmCredit_ApprovalRate`, `ConsumerCredit_ApprovedToDemand`, and model-only rejection decomposition columns | Directional change in approval proxies after the SLOOS bridge is extracted; never direct level comparison |
+| Credit demand | NBP `Sytuacja na rynku kredytowym` borrower-demand questions | `FirmCredit_CreditDemand`, `ConsumerCreditDemand`, and demand-normalized decomposition columns such as `ConsumerCredit_ApprovedToDemand` and `ConsumerCredit_RejectedToDemand` | Directional change in borrower-demand proxies after the SLOOS demand bridge is extracted; never evidence of bank-side tightening |
 | Public debt/GDP | MF public debt, ESA2010 general-government debt | `DebtToGdp`, `Esa2010DebtToGdp`, `GovDebt`, `QfBondsOutstanding`, `BondsOutstanding` | Terminal debt/GDP and path against thresholds |
 | Current account | NBP balance of payments | `CurrentAccount`, `CurrentAccountToGdp`, `CurrentAccountPrimaryIncome`, `CurrentAccountSecondaryIncome`, `CurrentAccountClosureResidual`, `TradeBalance_OE`, `TradeBalanceToGdp`, `Exports_OE`, `ExportsToGdp`, `TotalImports_OE`, `ImportsToGdp`, `ImportedIntermToImports`, `NetRemittances`, `NetTourismBalance`, `FDI` | Annualized current-account/GDP, component signs, and exported BoP closure |
 | Firm-size distribution | GUS/REGON firm-size distribution | Terminal `_firms.csv` fields `FirmSize_Micro`, `FirmSize_Small`, `FirmSize_Medium`, `FirmSize_Large` and share fields | Terminal firm-size distribution (living firms only) |
@@ -241,6 +242,8 @@ The source manifest therefore carries separate partial bridge rows for:
 | Consumer-loan growth | `timeseries:ConsumerLoans:pct_change` | NBP consumer-credit stock extraction and product-definition mapping remain open. |
 | Firm approval proxy | `timeseries:FirmCredit_ApprovalRate:delta` | SLOOS source-window extraction and directional criterion remain open. |
 | Consumer approval proxy | `timeseries:ConsumerCredit_ApprovedToDemand:delta` | SLOOS source-window extraction and directional criterion remain open. |
+| Firm borrower-demand proxy | `timeseries:FirmCredit_CreditDemand:delta` | SLOOS demand-question extraction, sign convention, and directional criterion remain open. |
+| Consumer borrower-demand proxy | `timeseries:ConsumerCreditDemand:delta` | SLOOS consumer-demand extraction, sign convention, and directional criterion remain open. |
 | Aggregate NPL trajectory | `timeseries:MaxBankNPL:max` | KNF NPL trajectory extraction and regulatory-definition mapping remain open. |
 | Consumer NPL trajectory | `timeseries:ConsumerCredit_NplRatioGross:max` | Product-level KNF/NBP NPL extraction and definition mapping remain open. |
 
@@ -313,6 +316,55 @@ Firm credit-rejection decomposition columns such as
 useful for explaining why the model tightened credit supply, but they do not
 have direct public NBP or KNF comparators and should not be promoted to
 empirical-validation rows without a source bridge.
+
+### SLOOS Credit-Demand Bridge
+
+SLOOS demand questions are borrower-demand evidence, not credit-supply
+evidence. They must remain separate from the credit-standard and approval
+bridge above so a falling private-credit path can be decomposed into weak
+borrower demand versus tighter bank supply.
+
+The same baseline vintage rule applies: for the `2026-04-30` Amor Fati
+calibration snapshot, use the latest NBP SLOOS release that was publicly
+available on or before `2026-04-30`. Later releases are ex-post validation
+unless the baseline itself is deliberately refreshed.
+
+The source side should use realized demand questions, not expectation questions,
+unless a row is explicitly labelled as expectations validation. The initial
+bridge maps only unsecured consumer-credit and enterprise borrower demand:
+
+| NBP SLOOS segment | Amor Fati model proxy | Scope |
+| --- | --- | --- |
+| Enterprise / corporate credit demand | `FirmCredit_CreditDemand` | Borrower-side firm-credit demand before bank approval. `FirmCredit_InvestmentDemand` and `FirmCredit_TechDemand` are supporting decomposition columns until the source bridge names a matching product split. |
+| Consumer credit demand | `ConsumerCreditDemand` | Borrower-side unsecured household consumer-credit demand before approval. Approved/rejected-to-demand ratios are decomposition diagnostics, not direct demand comparators. |
+| Housing credit demand | Not mapped by #793 | Mortgage demand belongs to the secured-credit bridge because collateral, DSTI/LTV, and product maturity differ from unsecured consumer credit. |
+| Credit-standard questions | Not mapped by #793 | Standards and approval belong to the SLOOS credit-supply bridge above. |
+
+If the NBP release reports net demand increase as
+`increased_share - decreased_share`, keep the sign. If it reports net demand
+decrease directly, multiply by `-1` before comparison. The model side must use
+the same calendar window as the cited source question.
+
+```text
+D_model(q)      = mean borrower-demand proxy over months in quarter q and all cited seeds
+Delta_model(q)  = D_model(q) - D_model(q - 1)
+SLOOS_demand(q) = increased_share(q) - decreased_share(q)
+```
+
+Directional interpretation:
+
+| Source signal | Expected model signal |
+| --- | --- |
+| `SLOOS_demand(q) > 0` | `Delta_model(q) > 0`: stronger borrower demand |
+| `SLOOS_demand(q) < 0` | `Delta_model(q) < 0`: weaker borrower demand |
+| near zero | no material directional claim unless a deadband is documented |
+
+Before a demand row can move out of `MISSING_DATA_BRIDGE`, the source manifest
+must record the exact NBP release, table or chart identifier, whether the
+question is realized or expected, segment, sign convention, source deadband if
+any, model aggregation window, empirical value, tolerance or directional
+criterion, and the model run metadata. Demand rows must not be used as evidence
+of bank-side tightening.
 
 ### Seed-Count Policy
 
