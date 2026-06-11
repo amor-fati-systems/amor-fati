@@ -168,6 +168,26 @@ class EmpiricalValidationManifestSpec extends AnyFlatSpec with Matchers:
     consumerApproval.value("notes") should include("sloos-credit-supply-bridge")
     consumerApproval.value("notes") should include("Do not use releases after 2026-04-30")
 
+    val firmDemand = rowByTarget(rows, "Credit demand - firm borrower-demand bridge")
+    firmDemand.status shouldBe "MISSING_DATA_BRIDGE"
+    firmDemand.value("vintage") should include("2026-04-30")
+    firmDemand.value("unit") shouldBe "credit-demand delta"
+    firmDemand.value("model_target") shouldBe "timeseries:FirmCredit_CreditDemand:delta"
+    firmDemand.value("transformation") should include("Do not use demand questions as evidence of bank-side tightening")
+    firmDemand.value("notes") should include("sloos-credit-demand-bridge")
+    firmDemand.value("notes") should include("Mortgage-demand questions belong to the secured-credit bridge")
+    firmDemand.value("notes") should include("Do not use releases after 2026-04-30")
+
+    val consumerDemand = rowByTarget(rows, "Credit demand - consumer borrower-demand bridge")
+    consumerDemand.status shouldBe "MISSING_DATA_BRIDGE"
+    consumerDemand.value("vintage") should include("2026-04-30")
+    consumerDemand.value("unit") shouldBe "credit-demand delta"
+    consumerDemand.value("model_target") shouldBe "timeseries:ConsumerCreditDemand:delta"
+    consumerDemand.value("transformation") should include("Do not use demand questions as evidence of bank-side tightening")
+    consumerDemand.value("notes") should include("sloos-credit-demand-bridge")
+    consumerDemand.value("notes") should include("Mortgage-demand questions belong to the secured-credit bridge")
+    consumerDemand.value("notes") should include("Do not use releases after 2026-04-30")
+
     val currentAccount = rowByTarget(rows, "Current account")
     currentAccount.status shouldBe "PARTIAL"
     currentAccount.value("notes") should include("BoP cadence")
