@@ -343,6 +343,59 @@ class EmpiricalValidationExportSpec extends AnyFlatSpec with Matchers:
     } finally deleteRecursively(root)
   }
 
+  it should "compute delta as the mean per-seed first-to-last level change" in {
+    Files.createDirectories(Path.of("target"))
+    val root = Files.createTempDirectory(Path.of("target"), "empirical-validation-delta-")
+    val mc   = root.resolve("mc")
+    val out  = root.resolve("out")
+    Files.createDirectories(mc)
+
+    try {
+      write(
+        mc.resolve("validation-baseline_credit-supply_2m_seed001.csv"),
+        """Month;FirmCredit_ApprovalRate
+          |1;0.80
+          |2;0.75
+          |""".stripMargin,
+      )
+      write(
+        mc.resolve("validation-baseline_credit-supply_2m_seed002.csv"),
+        """Month;FirmCredit_ApprovalRate
+          |1;0.50
+          |2;0.60
+          |""".stripMargin,
+      )
+
+      val sourceManifest = root.resolve("source-manifest.csv")
+      write(
+        sourceManifest,
+        """target;source_provider;source_url;dataset_code;vintage;accessed_at;license_or_reuse_note;frequency;unit;transformation;model_target;status;empirical_value;tolerance;criterion;notes
+          |Firm credit supply;NBP;https://nbp.pl;SLOOS;fixture;2026-04-30;public citation;quarterly;delta;first-to-last approval proxy change;timeseries:FirmCredit_ApprovalRate:delta;READY;0.025;0.001;absolute distance;fixture source
+          |""".stripMargin,
+      )
+
+      val result = EmpiricalValidationExport
+        .run(
+          Config(
+            sourceManifest = sourceManifest,
+            mcDir = mc,
+            out = out,
+            runId = "credit-supply",
+            outputPrefix = "validation-baseline",
+            durationMonths = 2,
+            seeds = 2,
+            commit = "test-commit",
+            parameterBranch = "test",
+          ),
+        )
+        .fold(err => fail(err), identity)
+
+      val row = result.rows.find(_.target == "Firm credit supply").getOrElse(fail("Expected firm credit supply row"))
+      row.status shouldBe SnapshotStatus.PassBaseline
+      row.modelValue shouldBe Some(BigDecimal("0.025"))
+    } finally deleteRecursively(root)
+  }
+
   it should "consume the checked-in manifest with real-economy comparator rows" in {
     Files.createDirectories(Path.of("target"))
     val root = Files.createTempDirectory(Path.of("target"), "empirical-validation-real-economy-")

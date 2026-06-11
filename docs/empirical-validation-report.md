@@ -121,6 +121,7 @@ snapshot CSVs.
 | Unemployment | GUS BAEL / registered unemployment | `Unemployment`, `Unemp_Central`, `Unemp_South`, `Unemp_East`, `Unemp_Northwest`, `Unemp_Southwest`, `Unemp_North` | Mean level, volatility, regional dispersion |
 | Wages | GUS average wage, sector wage indices | `MarketWage`, `MeanEmployedWage`, `MinWageLevel`; terminal `_hh.csv` fields `MeanMonthlyIncome`, `MeanEmployedWage`, `WageP10`, `WageP50`, `WageP90` | Mean wage level and growth; minimum/market wage ratio; terminal wage distribution |
 | Credit/GDP | NBP credit aggregates to GDP | `TotalCreditToGdp`, `TotalCreditStock`, `BankFirmLoans`, `BankFirmLoansToGdp`, `ConsumerLoans`, `ConsumerLoansToGdp`, `MortgageStock`, `MortgageToGdp`, `NbfiLoanStock`, `NbfiLoansToGdp`, `CreditToGdpGap`; terminal `_banks.csv` field `Loans` | Credit/GDP level, gap, household/firm/mortgage/NBFI split |
+| Credit-supply standards | NBP `Sytuacja na rynku kredytowym` senior loan officer survey | `FirmCredit_ApprovalRate`, `ConsumerCredit_ApprovedToDemand`, and model-only rejection decomposition columns | Directional change in approval proxies after the SLOOS bridge is extracted; never direct level comparison |
 | Public debt/GDP | MF public debt, ESA2010 general-government debt | `DebtToGdp`, `Esa2010DebtToGdp`, `GovDebt`, `QfBondsOutstanding`, `BondsOutstanding` | Terminal debt/GDP and path against thresholds |
 | Current account | NBP balance of payments | `CurrentAccount`, `CurrentAccountToGdp`, `CurrentAccountPrimaryIncome`, `CurrentAccountSecondaryIncome`, `CurrentAccountClosureResidual`, `TradeBalance_OE`, `TradeBalanceToGdp`, `Exports_OE`, `ExportsToGdp`, `TotalImports_OE`, `ImportsToGdp`, `ImportedIntermToImports`, `NetRemittances`, `NetTourismBalance`, `FDI` | Annualized current-account/GDP, component signs, and exported BoP closure |
 | Firm-size distribution | GUS/REGON firm-size distribution | Terminal `_firms.csv` fields `FirmSize_Micro`, `FirmSize_Small`, `FirmSize_Medium`, `FirmSize_Large` and share fields | Terminal firm-size distribution (living firms only) |
@@ -238,8 +239,8 @@ The source manifest therefore carries separate partial bridge rows for:
 | Aggregate credit-stock growth | `timeseries:TotalCreditStock:pct_change` | NBP MFI stock-series extraction and horizon alignment remain open. |
 | Firm-loan growth | `timeseries:BankFirmLoans:pct_change` | NBP enterprise/NFC credit stock extraction and sector-definition mapping remain open. |
 | Consumer-loan growth | `timeseries:ConsumerLoans:pct_change` | NBP consumer-credit stock extraction and product-definition mapping remain open. |
-| Firm approval proxy | `timeseries:FirmCredit_ApprovalRate:mean` | SLOOS balance-of-opinion mapping is unresolved. |
-| Consumer approval proxy | `timeseries:ConsumerCredit_ApprovedToDemand:mean` | SLOOS balance-of-opinion mapping is unresolved. |
+| Firm approval proxy | `timeseries:FirmCredit_ApprovalRate:delta` | SLOOS source-window extraction and directional criterion remain open. |
+| Consumer approval proxy | `timeseries:ConsumerCredit_ApprovedToDemand:delta` | SLOOS source-window extraction and directional criterion remain open. |
 | Aggregate NPL trajectory | `timeseries:MaxBankNPL:max` | KNF NPL trajectory extraction and regulatory-definition mapping remain open. |
 | Consumer NPL trajectory | `timeseries:ConsumerCredit_NplRatioGross:max` | Product-level KNF/NBP NPL extraction and definition mapping remain open. |
 
@@ -250,12 +251,61 @@ be read as a path-distance statistic; slope, RMSE, dynamic time warping, and
 posterior-calibration metrics belong to later calibration-governance work after
 source series are ingested.
 
-SLOOS rows are not numeric validation rows yet. The NBP senior loan officer
-survey is a categorical balance-of-opinion survey, so it requires a documented
-bridge from tightening/easing responses to a model construct such as a change
-in approval or rejection rates. Issue #790 tracks that bridge. Until it exists,
-the manifest keeps approval-proxy rows as `MISSING_DATA_BRIDGE` and does not
-assign empirical values or tolerances.
+### SLOOS Credit-Supply Bridge
+
+SLOOS rows are not numeric validation rows yet. The NBP
+`Sytuacja na rynku kredytowym` survey is a quarterly balance-of-opinion survey
+of bank credit standards and demand. It is not an approval-rate level series.
+Issue #790 therefore defines the bridge as a directional supply-tightening
+mapping, not as a direct comparison between survey percentages and model
+approval probabilities.
+
+The baseline vintage rule is strict: for the `2026-04-30` Amor Fati calibration
+snapshot, use the latest NBP SLOOS release that was publicly available on or
+before `2026-04-30`. Later releases may be used only after a deliberate
+baseline refresh or in a clearly labelled ex-post validation exercise. This
+prevents future survey information from leaking into the model-start evidence
+surface.
+
+The source side should use realized credit-standard changes, not expectation
+questions, unless the row is explicitly labelled as a forward-looking scenario
+or expectations validation row. The product mapping is:
+
+| NBP SLOOS segment | Amor Fati model proxy | Scope |
+| --- | --- | --- |
+| Enterprise / corporate credit standards | `FirmCredit_ApprovalRate` | Bank-side supply for firm credit. SME/large-firm splits require a later model segment bridge. |
+| Consumer credit standards | `ConsumerCredit_ApprovedToDemand` | Bank-side and borrower-side approved-to-demand proxy for unsecured household consumer credit. |
+| Housing credit standards | Not mapped by #790 | Mortgage approval is a separate secured-credit bridge. |
+| Credit demand questions | Not mapped by #790 | Demand belongs to separate credit-demand validation rows, not supply standards. |
+
+If the NBP release reports net tightening as `tightened - eased`, convert it to
+a net-easing sign by multiplying by `-1`. If it reports net easing directly,
+keep the sign. The source-side object is a directional change over a declared
+window, normally a calendar-quarter change in realized standards. The model-side
+object must use the same window. Current manifest rows expose
+`timeseries:*:delta`, a first-to-last model summary for the cited run, and must
+not be promoted until the source window is recorded explicitly.
+
+```text
+A_model(q)      = mean approval proxy over months in quarter q and all cited seeds
+Delta_model(q)  = A_model(q) - A_model(q - 1)
+SLOOS_easing(q) = eased_share(q) - tightened_share(q)
+```
+
+Directional interpretation:
+
+| Source signal | Expected model signal |
+| --- | --- |
+| `SLOOS_easing(q) > 0` | `Delta_model(q) > 0`: easier standards, higher approval proxy |
+| `SLOOS_easing(q) < 0` | `Delta_model(q) < 0`: tighter standards, lower approval proxy |
+| near zero | no material directional claim unless a deadband is documented |
+
+Before a SLOOS row can move out of `MISSING_DATA_BRIDGE`, the source manifest
+must record the exact NBP release, table or chart identifier, whether the
+question is realized or expected, segment, sign convention, source deadband if
+any, model aggregation window, empirical value, tolerance or directional
+criterion, and the model run metadata. Until then the manifest keeps SLOOS rows
+as `MISSING_DATA_BRIDGE` with no empirical value and no tolerance.
 
 Firm credit-rejection decomposition columns such as
 `FirmCredit_RejectedCapitalBuffer` and
