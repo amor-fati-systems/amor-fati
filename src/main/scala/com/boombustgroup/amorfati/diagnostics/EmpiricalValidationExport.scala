@@ -97,6 +97,9 @@ object EmpiricalValidationExport:
     /** Sum of all selected observations. */
     case Sum extends ModelStatistic("sum")
 
+    /** Per-seed first-to-last level change, computed as last - first. */
+    case Delta extends ModelStatistic("delta")
+
     /** Per-seed first-to-last stock growth, computed as last / first - 1. */
     case PctChange extends ModelStatistic("pct_change")
 
@@ -109,6 +112,8 @@ object EmpiricalValidationExport:
         case "MIN"                                                        => Right(Min)
         case "MAX"                                                        => Right(Max)
         case "SUM"                                                        => Right(Sum)
+        case "DELTA" | "DIFF" | "CHANGE" | "FIRST_TO_LAST_DELTA"          =>
+          Right(Delta)
         case "PCT_CHANGE" | "PCTCHANGE" | "PCT-CHANGE" | "PERCENT_CHANGE" =>
           Right(PctChange)
         case other                                                        => Left(s"Unknown model statistic: $other")
@@ -140,7 +145,7 @@ object EmpiricalValidationExport:
             parsedStatistic <- ModelStatistic.parse(statistic)
           yield ModelTarget(parsedSurface, column.trim, parsedStatistic)
         case _                                                          =>
-          Left("model_target must use <timeseries|terminal_hh|terminal_banks|terminal_firms>:<column>:<terminal|first|mean|min|max|sum|pct_change>")
+          Left("model_target must use <timeseries|terminal_hh|terminal_banks|terminal_firms>:<column>:<terminal|first|mean|min|max|sum|delta|pct_change>")
 
   final case class SourceManifestRow(
       target: String,
@@ -461,6 +466,8 @@ object EmpiricalValidationExport:
             aggregate(allTimeSeriesValues(column), statistic)
           case ModelStatistic.Sum       =>
             aggregate(allTimeSeriesValues(column), statistic)
+          case ModelStatistic.Delta     =>
+            sequence(timeSeries.map(rows => delta(rows, column))).map(mean)
           case ModelStatistic.PctChange =>
             sequence(timeSeries.map(rows => pctChange(rows, column))).map(mean)
 
@@ -480,6 +487,7 @@ object EmpiricalValidationExport:
             case ModelStatistic.Min                            => aggregate(values, ModelStatistic.Min)
             case ModelStatistic.Max                            => aggregate(values, ModelStatistic.Max)
             case ModelStatistic.Sum                            => aggregate(values, ModelStatistic.Sum)
+            case ModelStatistic.Delta                          => Left("delta is only supported for timeseries model targets")
             case ModelStatistic.PctChange                      => Left("pct_change is only supported for timeseries model targets")
 
     private def allTimeSeriesValues(column: String): Either[String, Vector[BigDecimal]] =
@@ -498,6 +506,12 @@ object EmpiricalValidationExport:
         value <- Either.cond(first != BigDecimal(0), last / first - BigDecimal(1), s"cannot compute pct_change for $column because first value is zero")
       yield value
 
+    private def delta(rows: Vector[CsvRow], column: String): Either[String, BigDecimal] =
+      for
+        first <- firstValue(rows, column)
+        last  <- terminalValue(rows, column, "last")
+      yield last - first
+
     private def aggregate(valuesAttempt: Either[String, Vector[BigDecimal]], statistic: ModelStatistic): Either[String, BigDecimal] =
       valuesAttempt.flatMap: values =>
         if values.isEmpty then Left("no numeric values found")
@@ -508,6 +522,7 @@ object EmpiricalValidationExport:
             case ModelStatistic.Max                            => Right(values.max)
             case ModelStatistic.Sum                            => Right(values.sum)
             case ModelStatistic.First                          => Right(values.head)
+            case ModelStatistic.Delta                          => Left("delta requires per-seed first and last timeseries values")
             case ModelStatistic.PctChange                      => Left("pct_change requires per-seed first and last timeseries values")
 
   private object MonteCarloOutput:

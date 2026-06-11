@@ -154,13 +154,19 @@ class EmpiricalValidationManifestSpec extends AnyFlatSpec with Matchers:
 
     val firmApproval = rowByTarget(rows, "Credit supply - firm approval rate bridge")
     firmApproval.status shouldBe "MISSING_DATA_BRIDGE"
-    firmApproval.value("model_target") shouldBe "timeseries:FirmCredit_ApprovalRate:mean"
-    firmApproval.value("notes") should include("SLOOS balance-of-opinion")
+    firmApproval.value("vintage") should include("2026-04-30")
+    firmApproval.value("model_target") shouldBe "timeseries:FirmCredit_ApprovalRate:delta"
+    firmApproval.value("transformation") should include("Do not compare survey levels directly")
+    firmApproval.value("notes") should include("sloos-credit-supply-bridge")
+    firmApproval.value("notes") should include("Do not use releases after 2026-04-30")
 
     val consumerApproval = rowByTarget(rows, "Credit supply - consumer approval rate bridge")
     consumerApproval.status shouldBe "MISSING_DATA_BRIDGE"
-    consumerApproval.value("model_target") shouldBe "timeseries:ConsumerCredit_ApprovedToDemand:mean"
-    consumerApproval.value("notes") should include("SLOOS balance-of-opinion")
+    consumerApproval.value("vintage") should include("2026-04-30")
+    consumerApproval.value("model_target") shouldBe "timeseries:ConsumerCredit_ApprovedToDemand:delta"
+    consumerApproval.value("transformation") should include("Do not compare survey levels directly")
+    consumerApproval.value("notes") should include("sloos-credit-supply-bridge")
+    consumerApproval.value("notes") should include("Do not use releases after 2026-04-30")
 
     val currentAccount = rowByTarget(rows, "Current account")
     currentAccount.status shouldBe "PARTIAL"
