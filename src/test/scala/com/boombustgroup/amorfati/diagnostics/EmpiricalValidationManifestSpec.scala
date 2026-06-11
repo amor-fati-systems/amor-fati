@@ -168,6 +168,16 @@ class EmpiricalValidationManifestSpec extends AnyFlatSpec with Matchers:
     consumerApproval.value("notes") should include("sloos-credit-supply-bridge")
     consumerApproval.value("notes") should include("Do not use releases after 2026-04-30")
 
+    val mortgageStandards = rowByTarget(rows, "Credit supply - mortgage standards bridge")
+    mortgageStandards.status shouldBe "MISSING_DATA_BRIDGE"
+    mortgageStandards.value("vintage") should include("2026-04-30")
+    mortgageStandards.value("unit") shouldBe "supply-constrained mortgage-origination delta"
+    mortgageStandards.value("model_target") shouldBe "timeseries:MortgageOriginationSupplyConstrained:delta"
+    mortgageStandards.value("transformation") should include("Do not fold mortgage standards into unsecured consumer-credit validation")
+    mortgageStandards.value("notes") should include("sloos-mortgage-credit-standards-bridge")
+    mortgageStandards.value("notes") should include("Mortgage-demand questions require a separate secured-credit demand bridge")
+    mortgageStandards.value("notes") should include("Do not use releases after 2026-04-30")
+
     val firmDemand = rowByTarget(rows, "Credit demand - firm borrower-demand bridge")
     firmDemand.status shouldBe "MISSING_DATA_BRIDGE"
     firmDemand.value("vintage") should include("2026-04-30")

@@ -121,7 +121,7 @@ snapshot CSVs.
 | Unemployment | GUS BAEL / registered unemployment | `Unemployment`, `Unemp_Central`, `Unemp_South`, `Unemp_East`, `Unemp_Northwest`, `Unemp_Southwest`, `Unemp_North` | Mean level, volatility, regional dispersion |
 | Wages | GUS average wage, sector wage indices | `MarketWage`, `MeanEmployedWage`, `MinWageLevel`; terminal `_hh.csv` fields `MeanMonthlyIncome`, `MeanEmployedWage`, `WageP10`, `WageP50`, `WageP90` | Mean wage level and growth; minimum/market wage ratio; terminal wage distribution |
 | Credit/GDP | NBP credit aggregates to GDP | `TotalCreditToGdp`, `TotalCreditStock`, `BankFirmLoans`, `BankFirmLoansToGdp`, `ConsumerLoans`, `ConsumerLoansToGdp`, `MortgageStock`, `MortgageToGdp`, `NbfiLoanStock`, `NbfiLoansToGdp`, `CreditToGdpGap`; terminal `_banks.csv` field `Loans` | Credit/GDP level, gap, household/firm/mortgage/NBFI split |
-| Credit-supply standards | NBP `Sytuacja na rynku kredytowym` senior loan officer survey | `FirmCredit_ApprovalRate`, `ConsumerCredit_ApprovedToDemand`, and model-only rejection decomposition columns | Directional change in approval proxies after the SLOOS bridge is extracted; never direct level comparison |
+| Credit-supply standards | NBP `Sytuacja na rynku kredytowym` senior loan officer survey | `FirmCredit_ApprovalRate`, `ConsumerCredit_ApprovedToDemand`, `MortgageOriginationSupplyConstrained`, and model-only rejection decomposition columns | Directional change in approval or supply-constraint proxies after the SLOOS bridge is extracted; never direct level comparison |
 | Credit demand | NBP `Sytuacja na rynku kredytowym` borrower-demand questions | `FirmCredit_CreditDemand`, `ConsumerCreditDemand`, and demand-normalized decomposition columns such as `ConsumerCredit_ApprovedToDemand` and `ConsumerCredit_RejectedToDemand` | Directional change in borrower-demand proxies after the SLOOS demand bridge is extracted; never evidence of bank-side tightening |
 | Public debt/GDP | MF public debt, ESA2010 general-government debt | `DebtToGdp`, `Esa2010DebtToGdp`, `GovDebt`, `QfBondsOutstanding`, `BondsOutstanding` | Terminal debt/GDP and path against thresholds |
 | Current account | NBP balance of payments | `CurrentAccount`, `CurrentAccountToGdp`, `CurrentAccountPrimaryIncome`, `CurrentAccountSecondaryIncome`, `CurrentAccountClosureResidual`, `TradeBalance_OE`, `TradeBalanceToGdp`, `Exports_OE`, `ExportsToGdp`, `TotalImports_OE`, `ImportsToGdp`, `ImportedIntermToImports`, `NetRemittances`, `NetTourismBalance`, `FDI` | Annualized current-account/GDP, component signs, and exported BoP closure |
@@ -131,7 +131,7 @@ snapshot CSVs.
 | Inequality | GUS household surveys, EU-SILC, OECD income/wealth indicators | Terminal `_hh.csv` fields `Gini_Individual`, `Gini_Wealth`, `ConsumptionP10`, `ConsumptionP50`, `ConsumptionP90`, `PovertyRate_50pct`, `PovertyRate_30pct` | Terminal Gini, poverty rates, consumption percentile ratios |
 | Sectoral output | GUS national accounts by sector, supply-use tables | `BPO_Output`, `Manuf_Output`, `Retail_Output`, `Health_Output`, `Public_Output`, `Agri_Output` | Sector output shares and growth |
 | External prices and FX | NBP exchange rate, ECB/Eurostat external prices | `ExRate`, `ForeignPriceIndex`, `GvcImportCostIndex`, `CommodityPriceIndex`, `FxReserves`, `FxInterventionAmt` | FX level/volatility, reserve path, import-cost shocks |
-| Housing and mortgages | NBP housing prices, mortgage stock, KNF mortgage risk | `HousingPriceIndex`, `WawHpi`, `KrkHpi`, `WroHpi`, `GdnHpi`, `LdzHpi`, `PozHpi`, `RestHpi`, `MortgageStock`, `MortgageOrigination`, `MortgageRepayment`, `MortgageDefault`, `MortgageNetStockFlow`, `MortgageToGdp` | HPI path, regional dispersion, mortgage/GDP, stock-flow runoff, defaults |
+| Housing and mortgages | NBP housing prices, mortgage stock, KNF mortgage risk | `HousingPriceIndex`, `WawHpi`, `KrkHpi`, `WroHpi`, `GdnHpi`, `LdzHpi`, `PozHpi`, `RestHpi`, `MortgageStock`, `MortgageOrigination`, `MortgageOriginationSupplyConstrained`, `MortgageRepayment`, `MortgageDefault`, `MortgageNetStockFlow`, `MortgageToGdp`, `AvgMortgageRate` | HPI path, regional dispersion, mortgage/GDP, stock-flow runoff, secured-credit supply constraints, defaults |
 | Fiscal stance | MF budget execution, Eurostat deficit/GDP | `DeficitToGdp`, `GovCurrentSpend`, `GovCapitalSpendDomestic`, `DebtService`, `FiscalRuleBinding`, `GovSpendingCutRatio` | Deficit/GDP, expenditure mix, fiscal-rule episodes |
 | Monetary and financial market conditions | NBP reference rate, WIBOR, bond yields, GPW | `RefRate`, `WIBOR_1M`, `WIBOR_3M`, `WIBOR_6M`, `BondYield`, `GpwIndex`, `GpwMarketCap`, `CorpBondYield`, `CorpBondSpread` | Policy-rate path, spread behavior, market stress |
 
@@ -242,6 +242,7 @@ The source manifest therefore carries separate partial bridge rows for:
 | Consumer-loan growth | `timeseries:ConsumerLoans:pct_change` | NBP consumer-credit stock extraction and product-definition mapping remain open. |
 | Firm approval proxy | `timeseries:FirmCredit_ApprovalRate:delta` | SLOOS source-window extraction and directional criterion remain open. |
 | Consumer approval proxy | `timeseries:ConsumerCredit_ApprovedToDemand:delta` | SLOOS source-window extraction and directional criterion remain open. |
+| Mortgage supply-constraint proxy | `timeseries:MortgageOriginationSupplyConstrained:delta` | SLOOS housing-credit standards extraction and secured-credit directional criterion remain open. |
 | Firm borrower-demand proxy | `timeseries:FirmCredit_CreditDemand:delta` | SLOOS demand-question extraction, sign convention, and directional criterion remain open. |
 | Consumer borrower-demand proxy | `timeseries:ConsumerCreditDemand:delta` | SLOOS consumer-demand extraction, sign convention, and directional criterion remain open. |
 | Aggregate NPL trajectory | `timeseries:MaxBankNPL:max` | KNF NPL trajectory extraction and regulatory-definition mapping remain open. |
@@ -278,7 +279,7 @@ or expectations validation row. The product mapping is:
 | --- | --- | --- |
 | Enterprise / corporate credit standards | `FirmCredit_ApprovalRate` | Bank-side supply for firm credit. SME/large-firm splits require a later model segment bridge. |
 | Consumer credit standards | `ConsumerCredit_ApprovedToDemand` | Bank-side and borrower-side approved-to-demand proxy for unsecured household consumer credit. |
-| Housing credit standards | Not mapped by #790 | Mortgage approval is a separate secured-credit bridge. |
+| Housing credit standards | `MortgageOriginationSupplyConstrained` | Secured-credit standards belong to the mortgage bridge below, not to unsecured consumer-credit validation. |
 | Credit demand questions | Not mapped by #790 | Demand belongs to separate credit-demand validation rows, not supply standards. |
 
 If the NBP release reports net tightening as `tightened - eased`, convert it to
@@ -316,6 +317,58 @@ Firm credit-rejection decomposition columns such as
 useful for explaining why the model tightened credit supply, but they do not
 have direct public NBP or KNF comparators and should not be promoted to
 empirical-validation rows without a source bridge.
+
+### SLOOS Mortgage-Credit Standards Bridge
+
+Mortgage credit standards are secured-credit evidence, not unsecured consumer
+credit evidence. They must remain separate because mortgage origination depends
+on collateral values, LTV/DSTI constraints, housing prices, mortgage rates, and
+secured default mechanics.
+
+The same baseline vintage rule applies: for the `2026-04-30` Amor Fati
+calibration snapshot, use the latest NBP SLOOS release that was publicly
+available on or before `2026-04-30`. Later releases are ex-post validation
+unless the baseline itself is deliberately refreshed.
+
+The source side should use realized housing-credit standard changes, not demand
+or expectation questions, unless a row is explicitly labelled as expectations
+or demand validation. The initial secured-credit standards bridge is:
+
+| NBP SLOOS segment | Amor Fati model proxy | Scope |
+| --- | --- | --- |
+| Housing / mortgage credit standards | `MortgageOriginationSupplyConstrained` | Supply-side secured-credit constraint proxy. A tightening episode should raise the constrained-origination incidence, all else equal. |
+| Mortgage origination volume | `MortgageOrigination`, `MortgageOriginationToStock` | Supporting diagnostics only, because realized origination mixes standards, borrower demand, housing prices, and interest rates. |
+| Mortgage price channel | `AvgMortgageRate` | Supporting diagnostic for secured-credit pricing; not a direct SLOOS standards comparator. |
+| Housing / mortgage credit demand | Not mapped by #792 | Mortgage demand needs a separate secured-credit demand bridge if it is promoted later. |
+
+If the NBP release reports net tightening as `tightened - eased`, convert it to
+a net-easing sign by multiplying by `-1`. If it reports net easing directly,
+keep the sign. Current manifest rows use
+`model_target = timeseries:MortgageOriginationSupplyConstrained:delta`, a
+first-to-last summary over the cited model run. The quarterly `M_model(q)` and
+`Delta_model(q)` formulation below is the intended SLOOS-aligned aggregation and
+requires the remaining bridge work before promotion out of
+`MISSING_DATA_BRIDGE`.
+
+```text
+M_model(q)      = mean MortgageOriginationSupplyConstrained over months in quarter q and all cited seeds
+Delta_model(q)  = M_model(q) - M_model(q - 1)
+SLOOS_easing(q) = eased_share(q) - tightened_share(q)
+```
+
+Directional interpretation:
+
+| Source signal | Expected model signal |
+| --- | --- |
+| `SLOOS_easing(q) > 0` | `Delta_model(q) < 0`: easier standards, lower constrained-origination incidence |
+| `SLOOS_easing(q) < 0` | `Delta_model(q) > 0`: tighter standards, higher constrained-origination incidence |
+| near zero | no material directional claim unless a deadband is documented |
+
+Before a mortgage-standards row can move out of `MISSING_DATA_BRIDGE`, the
+source manifest must record the exact NBP release, table or chart identifier,
+whether the question is realized or expected, segment, sign convention, source
+deadband if any, model aggregation window, empirical value, tolerance or
+directional criterion, and the model run metadata.
 
 ### SLOOS Credit-Demand Bridge
 
