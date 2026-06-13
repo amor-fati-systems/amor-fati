@@ -1,10 +1,12 @@
 package com.boombustgroup.amorfati.engine.economics
 
 import com.boombustgroup.amorfati.FixedPointSpecSupport.*
+import com.boombustgroup.amorfati.agents.Nbp
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.World
 import com.boombustgroup.amorfati.engine.SimulationMonth.ExecutionMonth
 import com.boombustgroup.amorfati.engine.flows.*
+import com.boombustgroup.amorfati.engine.ledger.LedgerFinancialState
 import com.boombustgroup.amorfati.init.{InitRandomness, WorldInit}
 import com.boombustgroup.amorfati.random.RandomStream
 import com.boombustgroup.amorfati.types.*
@@ -42,22 +44,27 @@ class OpenEconEconomicsSpec extends AnyFlatSpec with Matchers:
     ledgerFinancialState = baseLedgerFinancialState,
   )
 
-  private def runOpenEcon(world: World): OpenEconEconomics.StepOutput =
+  private def runOpenEcon(
+      world: World,
+      ledgerFinancialState: LedgerFinancialState = baseLedgerFinancialState,
+      priceEquity: PriceEquityEconomics.StepOutput = s7,
+      params: SimParams = p,
+  ): OpenEconEconomics.StepOutput =
     OpenEconEconomics.runStep(
       OpenEconEconomics.StepInput(
         world = world,
-        ledgerFinancialState = baseLedgerFinancialState,
+        ledgerFinancialState = ledgerFinancialState,
         fiscal = s1,
         labor = s2,
         householdIncome = s3,
         demand = s4,
         firm = s5,
         householdFinancial = s6,
-        priceEquity = s7,
+        priceEquity = priceEquity,
         banks = init.banks,
         commodityRng = RandomStream.seeded(TestSeed),
       ),
-    )
+    )(using params)
 
   private val result = runOpenEcon(w)
 
@@ -95,6 +102,36 @@ class OpenEconEconomicsSpec extends AnyFlatSpec with Matchers:
 
   it should "produce a valid bond yield" in {
     decimal(result.monetary.newBondYield) should be >= BigDecimal("0.0")
+  }
+
+  it should "cap QE requests against annualized GDP in the open-economy call-site" in {
+    val monthlyGdp        = s7.gdp
+    val annualGdp         = monthlyGdp * 12
+    val annualCapHeadroom = p.monetary.qePace
+    val openingNbpBonds   = annualGdp * p.monetary.qeMaxGdpShare - annualCapHeadroom
+    val bankSupply        = annualCapHeadroom * 2
+    val qeLedger          = baseLedgerFinancialState.copy(
+      banks = baseLedgerFinancialState.banks.zipWithIndex.map {
+        case (bank, 0) => bank.copy(govBondAfs = bankSupply, govBondHtm = PLN.Zero)
+        case (bank, _) => bank.copy(govBondAfs = PLN.Zero, govBondHtm = PLN.Zero)
+      },
+      nbp = baseLedgerFinancialState.nbp.copy(govBondHoldings = openingNbpBonds),
+    )
+    val qeWorld           = w.copy(
+      nbp = Nbp.State(p.monetary.rateFloor, qeActive = true, qeCumulative = PLN.Zero, lastFxTraded = PLN.Zero),
+      mechanisms = w.mechanisms.copy(
+        expectations = w.mechanisms.expectations.copy(
+          expectedInflation = Rate.decimal(-2, 2),
+          expectedRate = p.monetary.rateFloor,
+          forwardGuidanceRate = p.monetary.rateFloor,
+        ),
+      ),
+    )
+    val qeSurface         = s7.copy(newInfl = Rate.decimal(-5, 2))
+    val qeResult          = runOpenEcon(qeWorld, qeLedger, qeSurface)
+
+    openingNbpBonds should be > (monthlyGdp * p.monetary.qeMaxGdpShare)
+    qeResult.monetary.qePurchaseAmount shouldBe annualCapHeadroom
   }
 
   it should "return corporate bond projection separately from market memory in runStep" in {

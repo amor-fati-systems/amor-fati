@@ -387,7 +387,8 @@ object OpenEconEconomics:
       govBondHoldings = in.ledgerFinancialState.nbp.govBondHoldings,
       foreignAssets = in.ledgerFinancialState.nbp.foreignAssets,
     )
-    val qeRequest        = Nbp.executeQe(preQeNbp, preQeNbpStocks, bankAgg.govBondHoldings, in.priceEquity.gdp, in.priceEquity.newInfl, newExp.expectedInflation)
+    val qeRequest        =
+      Nbp.executeQe(preQeNbp, preQeNbpStocks, bankAgg.govBondHoldings, annualGdpForBonds, in.priceEquity.newInfl, newExp.expectedInflation)
     val qePurchaseAmount = qeRequest.requestedPurchase
     val postFxNbp        = qeRequest.nbpState.copy(monthly = qeRequest.nbpState.monthly.copy(lastFxTraded = fxResult.eurTraded))
     val postFxNbpStocks  = preQeNbpStocks.copy(

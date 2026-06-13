@@ -1142,10 +1142,12 @@ referenceRate' =
 Government bond yield is:
 
 ```text
+annualGdp = 12 * monthlyGdp
+
 bondYield =
   max(referenceRate + termPremium, bundYield + termPremium)
   + fiscalRisk(debtToGdp)
-  - qeCompression(nbpBondHoldings / GDP)
+  - qeCompression(qeCumulative / annualGdp)
   - foreignDemandDiscount(if NFA > 0)
   + credibilityPremium
 ```
@@ -1153,7 +1155,15 @@ bondYield =
 QE activates near the lower bound when realized or expected inflation is below
 target by the configured threshold. QE purchases are requested by NBP but
 settled through the bond waterfall, so actual sold bonds leave banks and enter
-NBP holdings exactly.
+NBP holdings exactly. The requested purchase is capped against the same
+annualized GDP basis used by bond-market ratios:
+
+```text
+qeRequest =
+  min(max(qeMaxGdpShare * annualGdp - nbpGovBondHoldings, 0),
+      bankGovBondHoldings,
+      qePace)
+```
 
 The SGP fiscal correction applies to discretionary government purchases after
 subtracting lagged non-purchase outlays from the 3% deficit path:
