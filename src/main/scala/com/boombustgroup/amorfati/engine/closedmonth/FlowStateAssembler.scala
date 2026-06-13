@@ -54,6 +54,8 @@ object FlowStateAssembler:
       netFirmBirths = lifecycle.netBirths,
       taxEvasionLoss = informal.taxEvasionLoss,
       realizedTaxShadowShare = informal.realizedTaxShadowShare,
+      nbpBondIncome = in.openEconomy.banking.nbpRemittance + in.openEconomy.banking.totalReserveInterest + in.openEconomy.banking.totalStandingFacilityIncome,
+      nbpFiscalRemittance = in.openEconomy.banking.nbpRemittance,
       bailInLoss = in.banking.bailInLoss,
       bfgLevyTotal = in.banking.bfgLevy,
       polishBankLevyTaxTotal = in.banking.polishBankLevyTax,

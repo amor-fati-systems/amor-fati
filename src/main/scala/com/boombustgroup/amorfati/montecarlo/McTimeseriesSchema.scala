@@ -446,7 +446,8 @@ object McTimeseriesSchema:
     ColumnDef.macroPln("NbpBondHoldings", ctx => ctx.ledgerFinancialState.nbp.govBondHoldings),
     ColumnDef("QeActive", ctx => ctx.world.nbp.qeActive),
     ColumnDef.macroPln("DebtService", ctx => ctx.world.gov.debtServiceSpend),
-    ColumnDef.macroPln("NbpRemittance", ctx => ctx.ledgerFinancialState.nbp.govBondHoldings * ctx.world.gov.bondYield.monthly),
+    ColumnDef.macroPln("NbpRemittance", ctx => ctx.world.flows.nbpFiscalRemittance),
+    ColumnDef.macroPln("NbpBondIncome", ctx => ctx.world.flows.nbpBondIncome),
     // Monetary plumbing
     ColumnDef.macroPln("ReserveInterest", ctx => ctx.world.plumbing.reserveInterestTotal),
     ColumnDef.macroPln("StandingFacilityNet", ctx => ctx.world.plumbing.standingFacilityNet),
@@ -1193,6 +1194,7 @@ object McTimeseriesSchema:
     val QeActive: Col                                  = lookup("QeActive")
     val DebtService: Col                               = lookup("DebtService")
     val NbpRemittance: Col                             = lookup("NbpRemittance")
+    val NbpBondIncome: Col                             = lookup("NbpBondIncome")
     val FxReserves: Col                                = lookup("FxReserves")
     val FxInterventionAmt: Col                         = lookup("FxInterventionAmt")
     val FxInterventionActive: Col                      = lookup("FxInterventionActive")
