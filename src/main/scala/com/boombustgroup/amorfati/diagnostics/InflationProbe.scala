@@ -78,161 +78,172 @@ object InflationProbe:
     println(s"seed=$seed months=$months")
 
     (1 to months).foreach: month =>
-      val population        = world.laborForcePopulation
-      val contract          = MonthRandomness.Contract.fromSeed(seed * 1000 + month)
-      val s1                = FiscalConstraintEconomics.compute(world, banks, ledgerFinancialState, ExecutionMonth(month))
-      val s2Pre             = LaborEconomics.compute(world, firms, hhs, s1)
-      val prevWage          = world.householdMarket.marketWage
-      val rawLaborWage      = RegionalClearing.clear(world.regionalWages, s1.resWage, s2Pre.laborDemand, population).nationalWage
-      val expWagePressure   =
+      val population         = world.laborForcePopulation
+      val contract           = MonthRandomness.Contract.fromSeed(seed * 1000 + month)
+      val fiscal             = FiscalConstraintEconomics.compute(world, banks, ledgerFinancialState, ExecutionMonth(month))
+      val openingLabor       = LaborEconomics.compute(world, firms, hhs, fiscal)
+      val prevWage           = world.householdMarket.marketWage
+      val rawLaborWage       = RegionalClearing.clear(world.regionalWages, fiscal.resWage, openingLabor.laborDemand, population).nationalWage
+      val expWagePressure    =
         (summon[SimParams].labor.expWagePassthrough * world.mechanisms.expectations.expectedInflation.max(Rate.Zero).toCoefficient) / 12
-      val observedEmployed  = Household.countEmployed(hhs)
-      val tightWagePressure = LaborEconomics.nairuWagePressure(population, Math.max(s2Pre.employed, observedEmployed))
-      val expectedWage      = rawLaborWage * expWagePressure.growthMultiplier
-      val tightnessFloor    = prevWage * tightWagePressure.growthMultiplier
-      val wageAfterExp      = s1.resWage.max(expectedWage.max(tightnessFloor))
-      val aggUnionDensity   =
+      val observedEmployed   = Household.countEmployed(hhs)
+      val tightWagePressure  = LaborEconomics.nairuWagePressure(population, Math.max(openingLabor.employed, observedEmployed))
+      val expectedWage       = rawLaborWage * expWagePressure.growthMultiplier
+      val tightnessFloor     = prevWage * tightWagePressure.growthMultiplier
+      val wageAfterExp       = fiscal.resWage.max(expectedWage.max(tightnessFloor))
+      val aggUnionDensity    =
         summon[SimParams].sectorDefs.zipWithIndex
           .map((s, i) => s.share * summon[SimParams].labor.unionDensity(i))
           .foldLeft(Share.Zero)(_ + _)
-      val unionAdjustedWage =
+      val unionAdjustedWage  =
         if wageAfterExp < prevWage then
           val decline = prevWage - wageAfterExp
-          s1.resWage.max(wageAfterExp + decline * summon[SimParams].labor.unionRigidity * aggUnionDensity)
+          fiscal.resWage.max(wageAfterExp + decline * summon[SimParams].labor.unionRigidity * aggUnionDensity)
         else wageAfterExp
-      val supplyAtPrev      = laborSupplyCount(world.householdMarket.marketWage, s1.resWage, population)
-      val newSupply         = laborSupplyCount(unionAdjustedWage, s1.resWage, population)
-      val excessDemand      = (s2Pre.laborDemand - supplyAtPrev).ratioTo(population)
-      val phillipsGrowth    = if prevWage > PLN.Zero then rawLaborWage / prevWage - Scalar.One else Scalar.Zero
-      val expGrowth         = expWagePressure.toScalar
-      val tightGrowth       = tightWagePressure.toScalar
-      val unionGrowth       = if wageAfterExp > PLN.Zero then unionAdjustedWage / wageAfterExp - Scalar.One else Scalar.Zero
-      val payroll           = SocialSecurity.payrollBase(hhs)
-      val payrollZus        = SocialSecurity.zusStep(payroll, s2Pre.newDemographics.retirees)
-      val s3                =
+      val supplyAtPrev       = laborSupplyCount(world.householdMarket.marketWage, fiscal.resWage, population)
+      val newSupply          = laborSupplyCount(unionAdjustedWage, fiscal.resWage, population)
+      val excessDemand       = (openingLabor.laborDemand - supplyAtPrev).ratioTo(population)
+      val phillipsGrowth     = if prevWage > PLN.Zero then rawLaborWage / prevWage - Scalar.One else Scalar.Zero
+      val expGrowth          = expWagePressure.toScalar
+      val tightGrowth        = tightWagePressure.toScalar
+      val unionGrowth        = if wageAfterExp > PLN.Zero then unionAdjustedWage / wageAfterExp - Scalar.One else Scalar.Zero
+      val payroll            = SocialSecurity.payrollBase(hhs)
+      val payrollZus         = SocialSecurity.zusStep(payroll, openingLabor.newDemographics.retirees)
+      val householdIncome    =
         HouseholdIncomeEconomics.compute(
           world,
           firms,
           hhs,
           banks,
           ledgerFinancialState,
-          s1.lendingBaseRate,
-          s1.resWage,
-          s2Pre.newWage,
+          fiscal.lendingBaseRate,
+          fiscal.resWage,
+          openingLabor.newWage,
           contract.stages.householdIncomeEconomics.newStream(),
           pensionIncome = payrollZus.pensionPayments,
         )
-      val s4                = DemandEconomics.compute(world, s2Pre.employed, s2Pre.living, s3.domesticCons)
-      val s5                = FirmEconomics.runStep(world, firms, hhs, banks, ledgerFinancialState, s1, s2Pre, s3, s4, contract.stages.firmEconomics.newStream())
-      val living            = s5.ioFirms.filter(Firm.isAlive)
-      val s2                = LaborEconomics.reconcilePostFirmStep(world, s1, s2Pre, living, s5.households)
-      val s6                =
-        HouseholdFinancialEconomics.compute(world, s1.m, s2.employed, s3.hhAgg, contract.stages.householdFinancialEconomics.newStream())
-      val s7                = PriceEquityEconomics.compute(
+      val demand             = DemandEconomics.compute(world, openingLabor.employed, openingLabor.living, householdIncome.domesticCons)
+      val firm               = FirmEconomics.runStep(
+        world,
+        firms,
+        hhs,
+        banks,
+        ledgerFinancialState,
+        fiscal,
+        openingLabor,
+        householdIncome,
+        demand,
+        contract.stages.firmEconomics.newStream(),
+      )
+      val living             = firm.ioFirms.filter(Firm.isAlive)
+      val labor              = LaborEconomics.reconcilePostFirmStep(world, fiscal, openingLabor, living, firm.households)
+      val householdFinancial =
+        HouseholdFinancialEconomics.compute(world, fiscal.m, labor.employed, householdIncome.hhAgg, contract.stages.householdFinancialEconomics.newStream())
+      val priceEquity        = PriceEquityEconomics.compute(
         w = world,
-        month = s1.m,
-        wageGrowth = s2.wageGrowth,
-        avgDemandMult = s4.avgDemandMult,
-        sectorMults = s4.sectorMults,
+        month = fiscal.m,
+        wageGrowth = labor.wageGrowth,
+        avgDemandMult = demand.avgDemandMult,
+        sectorMults = demand.sectorMults,
         totalSystemLoans = ledgerFinancialState.banks.map(_.firmLoan).sumPln,
-        firmStep = s5,
+        firmStep = firm,
         ledgerFinancialState = ledgerFinancialState,
       )
-      val s8                =
+      val openEconomy        =
         OpenEconEconomics.runStep(
           OpenEconEconomics.StepInput(
-            world,
-            ledgerFinancialState,
-            s1,
-            s2,
-            s3,
-            s4,
-            s5,
-            s6,
-            s7,
-            banks,
-            contract.stages.openEconEconomics.newStream(),
+            world = world,
+            ledgerFinancialState = ledgerFinancialState,
+            fiscal = fiscal,
+            labor = labor,
+            householdIncome = householdIncome,
+            demand = demand,
+            firm = firm,
+            householdFinancial = householdFinancial,
+            priceEquity = priceEquity,
+            banks = banks,
+            commodityRng = contract.stages.openEconEconomics.newStream(),
           ),
         )
-      val s9                =
+      val banking            =
         BankingEconomics.runStep(
           BankingEconomics.StepInput(
-            world,
-            ledgerFinancialState,
-            s1,
-            s2,
-            s3,
-            s4,
-            s5,
-            s6,
-            s7,
-            s8,
-            banks,
-            contract.stages.bankingEconomics.newStream(),
+            world = world,
+            ledgerFinancialState = ledgerFinancialState,
+            fiscal = fiscal,
+            labor = labor,
+            householdIncome = householdIncome,
+            demand = demand,
+            firm = firm,
+            householdFinancial = householdFinancial,
+            priceEquity = priceEquity,
+            openEconomy = openEconomy,
+            banks = banks,
+            depositRng = contract.stages.bankingEconomics.newStream(),
           ),
         )
 
       val exRateDeviation = world.forex.exchangeRate.deviationFrom(summon[SimParams].forex.baseExRate)
       val priceUpd        = PriceLevel.update(
-        // PriceLevel reads the current pre-policy expectation; s8.newExp is next month's post-policy anchor.
+        // PriceLevel reads the current pre-policy expectation; openEconomy.monetary.newExp is next month's post-policy anchor.
         expectedInflation = world.mechanisms.expectations.expectedInflation,
         prevPrice = world.priceLevel,
-        demandMult = s4.avgDemandMult,
-        wageGrowth = s2.wageGrowth,
+        demandMult = demand.avgDemandMult,
+        wageGrowth = labor.wageGrowth,
         exRateDeviation = exRateDeviation,
         importCostIndex = world.external.gvc.importCostIndex,
       )
-      val unemp           = world.unemploymentRate(s2.employed)
-      val realRate        = s8.monetary.newRefRate - s8.monetary.newExp.expectedInflation
-      val govBreakdown    = govPurchasesBreakdown(world, s2Pre.employed)
+      val unemp           = world.unemploymentRate(labor.employed)
+      val realRate        = openEconomy.monetary.newRefRate - openEconomy.monetary.newExp.expectedInflation
+      val govBreakdown    = govPurchasesBreakdown(world, openingLabor.employed)
       val debtToGdp       =
-        if s7.gdp > PLN.Zero then s9.newGovWithYield.cumulativeDebt / (s7.gdp * 12) else Scalar.Zero
+        if priceEquity.gdp > PLN.Zero then banking.newGovWithYield.cumulativeDebt / (priceEquity.gdp * 12) else Scalar.Zero
       val deficitToGdp    =
-        if s7.gdp > PLN.Zero then s9.newGovWithYield.deficit / s7.gdp else Scalar.Zero
+        if priceEquity.gdp > PLN.Zero then banking.newGovWithYield.deficit / priceEquity.gdp else Scalar.Zero
 
       println(
-        s"m=$month u=${pct(unemp.toScalar)} pi=${pct(s7.newInfl.toScalar)} wage=${s2.newWage.format(0)} wg=${pct(s2.wageGrowth.toScalar)} demand=${(s4.avgDemandMult / Multiplier.One).format(3)} markup=${pct(s5.markupInflation.toScalar)}",
+        s"m=$month u=${pct(unemp.toScalar)} pi=${pct(priceEquity.newInfl.toScalar)} wage=${labor.newWage.format(0)} wg=${pct(labor.wageGrowth.toScalar)} demand=${(demand.avgDemandMult / Multiplier.One).format(3)} markup=${pct(firm.markupInflation.toScalar)}",
       )
       println(
         s"  channels monthly: demand=${pct(priceUpd.demandPull.toScalar)}pp cost=${pct(priceUpd.costPush.toScalar)}pp import=${pct(priceUpd.importPush.toScalar)}pp raw=${pct(priceUpd.rawMonthly.toScalar)}pp floor=${pct(priceUpd.flooredMonthly.toScalar)}pp",
       )
       println(
-        s"  annualized: base=${pct(priceUpd.inflation.toScalar)} markup=${pct(s5.markupInflation.toScalar)} total=${pct(s7.newInfl.toScalar)} exDev=${pct(exRateDeviation.toCoefficient.toScalar)} importCost=${world.external.gvc.importCostIndex.format(3)} commodity=${world.external.gvc.commodityPriceIndex.format(3)}",
+        s"  annualized: base=${pct(priceUpd.inflation.toScalar)} markup=${pct(firm.markupInflation.toScalar)} total=${pct(priceEquity.newInfl.toScalar)} exDev=${pct(exRateDeviation.toCoefficient.toScalar)} importCost=${world.external.gvc.importCostIndex.format(3)} commodity=${world.external.gvc.commodityPriceIndex.format(3)}",
       )
       println(
-        s"  policy: ref=${pct(s8.monetary.newRefRate.toScalar)} expPi=${pct(s8.monetary.newExp.expectedInflation.toScalar)} real=${pct(realRate.toScalar)} cred=${pct(s8.monetary.newExp.credibility.toScalar)} fg=${pct(s8.monetary.newExp.forwardGuidanceRate.toScalar)}",
+        s"  policy: ref=${pct(openEconomy.monetary.newRefRate.toScalar)} expPi=${pct(openEconomy.monetary.newExp.expectedInflation.toScalar)} real=${pct(realRate.toScalar)} cred=${pct(openEconomy.monetary.newExp.credibility.toScalar)} fg=${pct(openEconomy.monetary.newExp.forwardGuidanceRate.toScalar)}",
       )
       println(
         s"  wages: phillips=${pct(phillipsGrowth)} exp=${pct(expGrowth)} tight=${pct(tightGrowth)} union=${pct(unionGrowth)} raw=${rawLaborWage.format(0)} afterExp=${wageAfterExp.format(0)} final=${unionAdjustedWage.format(0)}",
       )
       println(
-        s"  labor: demand=${s2Pre.laborDemand} supplyPrev=${supplyAtPrev} supplyNew=${newSupply} excess=${pct(excessDemand)} employedPre=${s2Pre.employed} employedPost=${s2.employed}",
+        s"  labor: demand=${openingLabor.laborDemand} supplyPrev=${supplyAtPrev} supplyNew=${newSupply} excess=${pct(excessDemand)} employedPre=${openingLabor.employed} employedPost=${labor.employed}",
       )
       println(
-        s"  households: income=${s3.totalIncome.format(0)} cons=${s3.consumption.format(0)} domesticCons=${s3.domesticCons.format(0)} importCons=${s3.importCons.format(0)}",
+        s"  households: income=${householdIncome.totalIncome.format(0)} cons=${householdIncome.consumption.format(0)} domesticCons=${householdIncome.domesticCons.format(0)} importCons=${householdIncome.importCons.format(0)}",
       )
       println(
-        s"  fiscal: govPurch=${s4.govPurchases.format(0)} govCur=${s9.newGovWithYield.govCurrentSpend.format(0)} govCapDom=${s9.newGovWithYield.govCapitalSpend.format(0)} euProjCap=${s9.newGovWithYield.euProjectCapital.format(0)} euCofinDom=${s9.newGovWithYield.euCofinancing.format(0)} def=${s9.newGovWithYield.deficit.format(0)} def/gdp=${pct(deficitToGdp)} debt/gdp=${pct(debtToGdp)} rule=${s4.fiscalRuleStatus.bindingRule} cut=${pct(s4.fiscalRuleStatus.spendingCutRatio.toScalar)}",
+        s"  fiscal: govPurch=${demand.govPurchases.format(0)} govCur=${banking.newGovWithYield.govCurrentSpend.format(0)} govCapDom=${banking.newGovWithYield.govCapitalSpend.format(0)} euProjCap=${banking.newGovWithYield.euProjectCapital.format(0)} euCofinDom=${banking.newGovWithYield.euCofinancing.format(0)} def=${banking.newGovWithYield.deficit.format(0)} def/gdp=${pct(deficitToGdp)} debt/gdp=${pct(debtToGdp)} rule=${demand.fiscalRuleStatus.bindingRule} cut=${pct(demand.fiscalRuleStatus.spendingCutRatio.toScalar)}",
       )
       println(
         s"  gov raw target: base=${govBreakdown.base.format(0)} recycleCf=${govBreakdown.recycleCounterfactual.format(0)} stimulus=${govBreakdown.stimulus.format(0)} raw=${govBreakdown.rawTarget.format(0)} zusSurplus=${govBreakdown.zusNetSurplus.format(0)} unempGap=${pct(govBreakdown.unempGap.toScalar)}",
       )
-      println(s"  top pressure: ${topPressures(s4.sectorDemandPressure)}")
-      println(s"  ${sectorSignals("sectorMult", s4.sectorMults)}")
-      println(s"  ${sectorSignals("pressure", s4.sectorDemandPressure)}")
-      println(s"  ${sectorSignals("hiring", s4.sectorHiringSignal)}")
+      println(s"  top pressure: ${topPressures(demand.sectorDemandPressure)}")
+      println(s"  ${sectorSignals("sectorMult", demand.sectorMults)}")
+      println(s"  ${sectorSignals("pressure", demand.sectorDemandPressure)}")
+      println(s"  ${sectorSignals("hiring", demand.sectorHiringSignal)}")
 
       val monthExecution = MonthExecution(
         openingWorld = world,
-        fiscal = s1,
-        labor = s2,
-        householdIncome = s3,
-        demand = s4,
-        firm = s5,
-        householdFinancial = s6,
-        priceEquity = s7,
-        openEconomy = s8,
-        banking = s9,
+        fiscal = fiscal,
+        labor = labor,
+        householdIncome = householdIncome,
+        demand = demand,
+        firm = firm,
+        householdFinancial = householdFinancial,
+        priceEquity = priceEquity,
+        openEconomy = openEconomy,
+        banking = banking,
       )
       val closing        = MonthClosing.closeExecution(monthExecution, contract.closing.newStreams())
       val seedOut        = SignalExtraction

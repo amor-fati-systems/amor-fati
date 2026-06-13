@@ -199,15 +199,16 @@ object BankReconciliationDiagnostics:
 
 /** Monthly IFRS 9 / ECL provisioning diagnostics.
   *
-  * Allowances are accounting provisions implied by the S1/S2/S3 staging stock.
-  * `excessAllowance` is the amount above an all-performing Stage-1 baseline.
+  * Allowances are accounting provisions implied by the Stage 1/2/3 staging
+  * stock. `excessAllowance` is the amount above an all-performing Stage-1
+  * baseline.
   */
 case class BankEclDiagnostics(
     openingAllowance: PLN = PLN.Zero,                // ECL allowance implied by opening bank staging
     closingAllowance: PLN = PLN.Zero,                // ECL allowance implied by closing bank staging
     baselineStage1Allowance: PLN = PLN.Zero,         // closing staged ECL book if all stayed at Stage 1
     excessAllowance: PLN = PLN.Zero,                 // closing allowance above the all-Stage-1 baseline
-    migrationRate: Share = Share.Zero,               // macro-driven S1->S2 migration rate used this month
+    migrationRate: Share = Share.Zero,               // macro-driven Stage 1 to Stage 2 migration rate used this month
     gdpGrowthMonthly: Coefficient = Coefficient.Zero, // month-on-month GDP growth used by ECL staging
 )
 

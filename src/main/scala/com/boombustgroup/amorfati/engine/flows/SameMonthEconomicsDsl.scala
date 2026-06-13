@@ -300,17 +300,17 @@ private[flows] object SameMonthEconomicsDsl:
     MonthWorkflow.pure(
       OpenEconEconomics.runStep(
         OpenEconEconomics.StepInput(
-          in.world,
-          in.ledger,
-          in.fiscal,
-          in.labor,
-          in.householdIncome,
-          in.demand,
-          in.firm,
-          in.householdFinancial,
-          in.priceEquity,
-          in.banks,
-          in.rng,
+          world = in.world,
+          ledgerFinancialState = in.ledger,
+          fiscal = in.fiscal,
+          labor = in.labor,
+          householdIncome = in.householdIncome,
+          demand = in.demand,
+          firm = in.firm,
+          householdFinancial = in.householdFinancial,
+          priceEquity = in.priceEquity,
+          banks = in.banks,
+          commodityRng = in.rng,
         ),
       ),
     )

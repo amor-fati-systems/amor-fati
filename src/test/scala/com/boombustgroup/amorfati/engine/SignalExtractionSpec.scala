@@ -68,6 +68,6 @@ class SignalExtractionSpec extends AnyFlatSpec with Matchers:
     result.provenance.sectorHiringSignal.stage shouldBe MonthTraceStage.DemandEconomics
     result.provenance.startupAbsorptionRate.value shouldBe Share.decimal(55, 2)
     result.provenance.startupAbsorptionRate.source shouldBe "StartupStaffing.assign.startupAbsorptionRate"
-    result.provenance.sectorDemandPressure.source shouldBe "s4.sectorDemandPressure"
-    result.provenance.sectorHiringSignal.source shouldBe "s4.sectorHiringSignal"
+    result.provenance.sectorDemandPressure.source shouldBe "demand.sectorDemandPressure"
+    result.provenance.sectorHiringSignal.source shouldBe "demand.sectorHiringSignal"
   }

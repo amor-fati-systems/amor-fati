@@ -11,12 +11,13 @@ import com.boombustgroup.amorfati.types.*
   *     increase in credit risk. Provision = portfolio × eclRate1 (~1%).
   *   - '''Stage 2''' (watch, lifetime ECL): loans with significant increase in
   *     credit risk (GDP decline, unemployment spike). Provision = portfolio ×
-  *     eclRate2 (~5-10%). Macro trigger shifts loans S1→S2 en masse.
+  *     eclRate2 (~5-10%). Macro trigger shifts loans from Stage 1 to Stage 2 en
+  *     masse.
   *   - '''Stage 3''' (default): non-performing loans. Provision = portfolio ×
   *     eclRate3 (= 1 − recovery rate). This is the current NPL treatment.
   *
-  * Pro-cyclical amplification: GDP downturn → mass S1→S2 migration →
-  * provisioning cliff → capital hit → lending restriction → deeper downturn.
+  * Pro-cyclical amplification: GDP downturn → mass Stage 1 to Stage 2 migration
+  * → provisioning cliff → capital hit → lending restriction → deeper downturn.
   * Forward-looking: provisions are booked BEFORE defaults materialize.
   *
   * Pure functions — no mutable state. Per-bank staging computed from macro
@@ -52,7 +53,7 @@ object EclStaging:
   def allowance(state: State)(using p: SimParams): PLN =
     state.stage1 * p.banking.eclRate1 + state.stage2 * p.banking.eclRate2 + state.stage3 * p.banking.eclRate3
 
-  /** Compute macro-driven S1→S2 migration rate.
+  /** Compute macro-driven Stage 1 to Stage 2 migration rate.
     *
     * When unemployment deteriorates relative to the carried reference level or
     * GDP contracts, a fraction of performing loans migrates to Stage 2
@@ -96,16 +97,16 @@ object EclStaging:
     val migration: Share = migrationRate(unemployment, referenceUnemployment, gdpGrowthMonthly)
 
     // Stage transitions
-    val s1ToS2: PLN = prev.stage1 * migration             // macro-driven migration
-    val s2ToS3: PLN = nplNew                              // actual defaults enter S3
-    val s3Cure: PLN = prev.stage3 * p.banking.eclCureRate // some S3 loans recover
+    val stage1ToStage2: PLN = prev.stage1 * migration             // macro-driven migration
+    val stage2ToStage3: PLN = nplNew                              // actual defaults enter Stage 3
+    val stage3Cure: PLN     = prev.stage3 * p.banking.eclCureRate // some Stage 3 loans recover
 
     // Updated stages
-    val newS3: PLN = (prev.stage3 + s2ToS3 - s3Cure).max(PLN.Zero)
-    val newS2: PLN = (prev.stage2 + s1ToS2 - s2ToS3 + s3Cure).max(PLN.Zero)
-    val newS1: PLN = (totalLoans - newS2 - newS3).max(PLN.Zero)
+    val newStage3: PLN = (prev.stage3 + stage2ToStage3 - stage3Cure).max(PLN.Zero)
+    val newStage2: PLN = (prev.stage2 + stage1ToStage2 - stage2ToStage3 + stage3Cure).max(PLN.Zero)
+    val newStage1: PLN = (totalLoans - newStage2 - newStage3).max(PLN.Zero)
 
-    val newStaging: State = State(newS1, newS2, newS3)
+    val newStaging: State = State(newStage1, newStage2, newStage3)
 
     // Provision = Σ(stage × eclRate) — change vs previous month
     val prevProvision: PLN   = allowance(prev)

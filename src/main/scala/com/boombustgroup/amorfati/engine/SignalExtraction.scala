@@ -153,17 +153,17 @@ object SignalExtraction:
         inflation = SignalProvenance(
           seedOut.inflation,
           MonthTraceStage.PriceEquityEconomics,
-          "s7.newInfl -> closedWorld.inflation",
+          "priceEquity.newInfl -> closedWorld.inflation",
         ),
         expectedInflation = SignalProvenance(
           seedOut.expectedInflation,
           MonthTraceStage.OpenEconEconomics,
-          "s8.monetary.newExp.expectedInflation -> closedWorld.mechanisms.expectations.expectedInflation",
+          "openEconomy.monetary.newExp.expectedInflation -> closedWorld.mechanisms.expectations.expectedInflation",
         ),
         laggedHiringSlack = SignalProvenance(
           seedOut.laggedHiringSlack,
           MonthTraceStage.LaborEconomics,
-          "s2.operationalHiringSlack",
+          "labor.operationalHiringSlack",
         ),
         startupAbsorptionRate = SignalProvenance(
           seedOut.startupAbsorptionRate,
@@ -173,17 +173,17 @@ object SignalExtraction:
         sectorDemandMult = SignalProvenance(
           seedOut.sectorDemandMult,
           MonthTraceStage.DemandEconomics,
-          "s4.sectorMults",
+          "demand.sectorMults",
         ),
         sectorDemandPressure = SignalProvenance(
           seedOut.sectorDemandPressure,
           MonthTraceStage.DemandEconomics,
-          "s4.sectorDemandPressure",
+          "demand.sectorDemandPressure",
         ),
         sectorHiringSignal = SignalProvenance(
           seedOut.sectorHiringSignal,
           MonthTraceStage.DemandEconomics,
-          "s4.sectorHiringSignal",
+          "demand.sectorHiringSignal",
         ),
       ),
     )
