@@ -166,6 +166,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     "QeActive",
     "DebtService",
     "NbpRemittance",
+    "NbpBondIncome",
     "ReserveInterest",
     "StandingFacilityNet",
     "DepositFacilityUsage",
@@ -558,7 +559,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     MetricValue.fromRaw(Share.fraction(numerator, denominator).toLong)
 
   "McTimeseriesSchema" should "expose the stable schema contract" in {
-    McTimeseriesSchema.nCols shouldBe 496
+    McTimeseriesSchema.nCols shouldBe 497
     McTimeseriesSchema.colNames.toVector shouldBe expectedColNames
   }
 
@@ -1197,6 +1198,19 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     valueAt(row, "GovOutlaysToGdp") shouldBe MetricValue.fromRaw(Share.decimal(32, 2).toLong)
     valueAt(row, "GovTotalOutlaysToGdp") shouldBe MetricValue.fromRaw(Share.decimal(38, 2).toLong)
     valueAt(row, "GovPrimaryDeficitToGdp") shouldBe MetricValue.fromRaw(Share.decimal(2, 2).toLong)
+  }
+
+  it should "distinguish NBP fiscal remittance from gross NBP bond income" in {
+    val world = init.world.copy(
+      flows = init.world.flows.copy(
+        nbpBondIncome = PLN(12),
+        nbpFiscalRemittance = PLN(7),
+      ),
+    )
+    val row   = computeRow(world)
+
+    valueAt(row, "NbpBondIncome") shouldBe polandScale(PLN(12))
+    valueAt(row, "NbpRemittance") shouldBe polandScale(PLN(7))
   }
 
   it should "emit total GFCF and investment-to-GDP ratios" in {

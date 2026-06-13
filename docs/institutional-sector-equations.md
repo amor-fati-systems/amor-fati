@@ -799,17 +799,17 @@ Representative output columns include:
 | Surface | Columns |
 | --- | --- |
 | Fiscal stance | `GovCurrentSpend`, `GovCapitalSpendDomestic`, `DebtService`, `GovPrimaryDeficitToGdp`, `DebtToGdp`, `DeficitToGdp`, `FiscalRuleBinding`, `GovSpendingCutRatio`, `PublicCapitalStock` |
-| Government bonds and NBP | `RefRate`, `BondYield`, `WeightedCoupon`, `BondsOutstanding`, `ForeignBondHoldings`, `NbpBondHoldings`, `QeActive`, `NbpRemittance`, `FxReserves`, `FxInterventionAmt` |
+| Government bonds and NBP | `RefRate`, `BondYield`, `WeightedCoupon`, `BondsOutstanding`, `ForeignBondHoldings`, `NbpBondHoldings`, `QeActive`, `NbpRemittance`, `NbpBondIncome`, `FxReserves`, `FxInterventionAmt` |
 | Social funds and JST | `ZusContributions`, `ZusPensionPayments`, `ZusGovSubvention`, `NfzContributions`, `NfzSpending`, `NfzBalance`, `NfzGovSubvention`, `PpkContributions`, `PpkBondHoldings`, `FpBalance`, `FpContributions`, `PfronBalance`, `FgspBalance`, `FgspSpending`, `JstRevenue`, `JstSpending`, `JstDebt`, `JstDeposits`, `JstDeficit` |
 | External sector | `NFA`, `CurrentAccount`, `CurrentAccountToGdp`, `CurrentAccountPrimaryIncome`, `CurrentAccountSecondaryIncome`, `CurrentAccountClosureResidual`, `CapitalAccount`, `CapitalAccountToGdp`, `TradeBalance_OE`, `Exports_OE`, `TotalImports_OE`, `FDI`, `RemittanceOutflow`, `DiasporaRemittanceInflow`, `NetRemittances`, `TourismExport`, `TourismImport`, `NetTourismBalance`, `TourismSeasonalFactor` |
 | Insurance | `InsLifeReserves`, `InsNonLifeReserves`, `InsGovBondHoldings`, `InsLifePremium`, `InsNonLifePremium`, `InsLifeClaims`, `InsNonLifeClaims` |
 | NBFI/TFI | `NbfiTfiAum`, `NbfiTfiGovBondHoldings`, `NbfiLoanStock`, `NbfiOrigination`, `NbfiRepayment`, `NbfiDefaults`, `NbfiNetStockFlow`, `NbfiOriginationToStock`, `NbfiRepaymentToStock`, `NbfiDefaultsToStock`, `NbfiBankTightness`, `NbfiDepositDrain`, `NbfiDepositDrainToAum`, `NbfiLoansToGdp` |
 | Quasi-fiscal | `QfBondsOutstanding`, `QfNbpHoldings`, `QfLoanPortfolio`, `QfIssuance`, `Esa2010DebtToGdp` |
 
-The central-government equation above uses `NbpFiscalRemittance_tau`, the net
-transfer to the budget. The current public `NbpRemittance` CSV column is a
-legacy gross NBP government-bond-income surface; #729 tracks the output naming
-and net/gross split.
+`NbpRemittance` reports the net fiscal transfer to the budget:
+`NbpBondIncome - ReserveInterest - StandingFacilityNet`. `NbpBondIncome`
+reports the gross NBP government-bond coupon income before reserve and
+standing-facility costs.
 
 ## Validation Coverage
 

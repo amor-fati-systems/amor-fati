@@ -49,6 +49,8 @@ case class FlowState(
     netFirmBirths: Int = 0,                                                                 // net new firms appended to vector
     taxEvasionLoss: PLN = PLN.Zero,                                                         // tax lost to 4-channel evasion (CIT+VAT+PIT+excise)
     realizedTaxShadowShare: Share = Share.Zero,                                             // current-period realized aggregate tax-side shadow share
+    nbpBondIncome: PLN = PLN.Zero,                                                          // gross NBP government-bond coupon income
+    nbpFiscalRemittance: PLN = PLN.Zero,                                                    // net NBP fiscal transfer to the central-government budget
     bailInLoss: PLN = PLN.Zero,                                                             // bail-in deposit haircut imposed on bank creditors
     bfgLevyTotal: PLN = PLN.Zero,                                                           // BFG resolution levy from all banks
     polishBankLevyTaxTotal: PLN = PLN.Zero,                                                 // Polish tax on selected financial institutions paid by banks
