@@ -204,76 +204,88 @@ object LaborDemandProbe:
       val beforeAll = sectorSnapshots(firms)
       val hiring    = hiringSummaries(world, firms, ledgerFinancialState)
 
-      val s1      = FiscalConstraintEconomics.compute(world, banks, ledgerFinancialState, ExecutionMonth(month))
-      val s2Pre   = LaborEconomics.compute(world, firms, hhs, s1)
-      val payroll = SocialSecurity.payrollBase(hhs)
-      val zus     = SocialSecurity.zusStep(payroll, s2Pre.newDemographics.retirees)
-      val s3      =
+      val fiscal             = FiscalConstraintEconomics.compute(world, banks, ledgerFinancialState, ExecutionMonth(month))
+      val openingLabor       = LaborEconomics.compute(world, firms, hhs, fiscal)
+      val payroll            = SocialSecurity.payrollBase(hhs)
+      val zus                = SocialSecurity.zusStep(payroll, openingLabor.newDemographics.retirees)
+      val householdIncome    =
         HouseholdIncomeEconomics.compute(
           world,
           firms,
           hhs,
           banks,
           ledgerFinancialState,
-          s1.lendingBaseRate,
-          s1.resWage,
-          s2Pre.newWage,
+          fiscal.lendingBaseRate,
+          fiscal.resWage,
+          openingLabor.newWage,
           contract.stages.householdIncomeEconomics.newStream(),
           pensionIncome = zus.pensionPayments,
         )
-      val s4      = DemandEconomics.compute(world, s2Pre.employed, s2Pre.living, s3.domesticCons)
-      val s5      = FirmEconomics.runStep(world, firms, hhs, banks, ledgerFinancialState, s1, s2Pre, s3, s4, contract.stages.firmEconomics.newStream())
-      val s2Post  = LaborEconomics.reconcilePostFirmStep(world, s1, s2Pre, s5.ioFirms.filter(Firm.isAlive), s5.households)
-      val s6      = HouseholdFinancialEconomics.compute(world, s1.m, s2Post.employed, s3.hhAgg, contract.stages.householdFinancialEconomics.newStream())
-      val s7      = PriceEquityEconomics.compute(
+      val demand             = DemandEconomics.compute(world, openingLabor.employed, openingLabor.living, householdIncome.domesticCons)
+      val firm               = FirmEconomics.runStep(
+        world,
+        firms,
+        hhs,
+        banks,
+        ledgerFinancialState,
+        fiscal,
+        openingLabor,
+        householdIncome,
+        demand,
+        contract.stages.firmEconomics.newStream(),
+      )
+      val labor              = LaborEconomics.reconcilePostFirmStep(world, fiscal, openingLabor, firm.ioFirms.filter(Firm.isAlive), firm.households)
+      val householdFinancial =
+        HouseholdFinancialEconomics.compute(world, fiscal.m, labor.employed, householdIncome.hhAgg, contract.stages.householdFinancialEconomics.newStream())
+      val priceEquity        = PriceEquityEconomics.compute(
         w = world,
-        month = s1.m,
-        wageGrowth = s2Post.wageGrowth,
-        avgDemandMult = s4.avgDemandMult,
-        sectorMults = s4.sectorMults,
+        month = fiscal.m,
+        wageGrowth = labor.wageGrowth,
+        avgDemandMult = demand.avgDemandMult,
+        sectorMults = demand.sectorMults,
         totalSystemLoans = ledgerFinancialState.banks.map(_.firmLoan).sumPln,
-        firmStep = s5,
+        firmStep = firm,
         ledgerFinancialState = ledgerFinancialState,
       )
-      val s8      =
+      val openEconomy        =
         OpenEconEconomics.runStep(
           OpenEconEconomics.StepInput(
-            world,
-            ledgerFinancialState,
-            s1,
-            s2Post,
-            s3,
-            s4,
-            s5,
-            s6,
-            s7,
-            banks,
-            contract.stages.openEconEconomics.newStream(),
+            world = world,
+            ledgerFinancialState = ledgerFinancialState,
+            fiscal = fiscal,
+            labor = labor,
+            householdIncome = householdIncome,
+            demand = demand,
+            firm = firm,
+            householdFinancial = householdFinancial,
+            priceEquity = priceEquity,
+            banks = banks,
+            commodityRng = contract.stages.openEconEconomics.newStream(),
           ),
         )
-      val s9      =
+      val banking            =
         BankingEconomics.runStep(
           BankingEconomics.StepInput(
-            world,
-            ledgerFinancialState,
-            s1,
-            s2Post,
-            s3,
-            s4,
-            s5,
-            s6,
-            s7,
-            s8,
-            banks,
-            contract.stages.bankingEconomics.newStream(),
+            world = world,
+            ledgerFinancialState = ledgerFinancialState,
+            fiscal = fiscal,
+            labor = labor,
+            householdIncome = householdIncome,
+            demand = demand,
+            firm = firm,
+            householdFinancial = householdFinancial,
+            priceEquity = priceEquity,
+            openEconomy = openEconomy,
+            banks = banks,
+            depositRng = contract.stages.bankingEconomics.newStream(),
           ),
         )
 
-      val afterFirm = sectorSnapshots(s5.ioFirms)
-      val changes   = sectorChangeSummaries(firms, s5.ioFirms)
-      val matchPost = laborMatchSnapshot(s5.ioFirms, s5.households)
+      val afterFirm = sectorSnapshots(firm.ioFirms)
+      val changes   = sectorChangeSummaries(firms, firm.ioFirms)
+      val matchPost = laborMatchSnapshot(firm.ioFirms, firm.households)
       println(
-        s"m=$month preLaborDemand=${s2Pre.laborDemand} postFirmDemand=${s5.ioFirms.filter(Firm.isAlive).map(Firm.workerCount).sum} employedPre=${s2Pre.employed} employedPost=${s2Post.employed} unempPost=${matchPost.unemployed} retrainingPost=${matchPost.retraining} bankruptPost=${matchPost.bankrupt} vacanciesPost=${matchPost.vacancies} overstaffedPost=${matchPost.overstaffed} invalidEmp=${matchPost.invalidEmployed} immIn=${s2Pre.newImmig.monthlyInflow} immOut=${s2Pre.newImmig.monthlyOutflow}",
+        s"m=$month preLaborDemand=${openingLabor.laborDemand} postFirmDemand=${firm.ioFirms.filter(Firm.isAlive).map(Firm.workerCount).sum} employedPre=${openingLabor.employed} employedPost=${labor.employed} unempPost=${matchPost.unemployed} retrainingPost=${matchPost.retraining} bankruptPost=${matchPost.bankrupt} vacanciesPost=${matchPost.vacancies} overstaffedPost=${matchPost.overstaffed} invalidEmp=${matchPost.invalidEmployed} immIn=${openingLabor.newImmig.monthlyInflow} immOut=${openingLabor.newImmig.monthlyOutflow}",
       )
       printHiringSummaries("  pre-step hiring diagnostics:", hiring)
       printSectorTable("  sector deltas after FirmEconomics:", beforeAll, afterFirm)
@@ -281,15 +293,15 @@ object LaborDemandProbe:
 
       val monthExecution = MonthExecution(
         openingWorld = world,
-        fiscal = s1,
-        labor = s2Post,
-        householdIncome = s3,
-        demand = s4,
-        firm = s5,
-        householdFinancial = s6,
-        priceEquity = s7,
-        openEconomy = s8,
-        banking = s9,
+        fiscal = fiscal,
+        labor = labor,
+        householdIncome = householdIncome,
+        demand = demand,
+        firm = firm,
+        householdFinancial = householdFinancial,
+        priceEquity = priceEquity,
+        openEconomy = openEconomy,
+        banking = banking,
       )
       val closing        = MonthClosing.closeExecution(monthExecution, contract.closing.newStreams())
       val seedOut        = SignalExtraction

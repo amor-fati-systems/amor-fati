@@ -344,7 +344,7 @@ object Banking:
       loansMedium: PLN,                                    // medium-term corporate-loan maturity bucket (1–5 years)
       loansLong: PLN,                                      // long-term corporate-loan maturity bucket (> 5 years)
       consumerNpl: PLN,                                    // consumer credit NPL stock
-      eclStaging: EclStaging.State = EclStaging.State.zero, // IFRS 9 ECL staging (S1/S2/S3)
+      eclStaging: EclStaging.State = EclStaging.State.zero, // IFRS 9 ECL staging (Stage 1/2/3)
   ):
 
     /** Whether this bank has been resolved by BFG. */

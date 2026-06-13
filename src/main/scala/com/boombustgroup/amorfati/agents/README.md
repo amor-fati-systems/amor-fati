@@ -22,7 +22,7 @@ carry behavioral state, operational diagnostics, and legacy unsupported metrics.
 | `Nbp.scala` | National Bank of Poland | Reference rate, QE policy metrics, monthly FX operations; gov bond holdings and FX reserves are ledger-owned | BankCapital (reserve interest), Nfa (FX intervention), BondClearing (QE bonds) |
 | `DepositMobility.scala` | Deposit flight (Diamond-Dybvig) | Boundary `bankId` reassignment, health-based flight, panic contagion; delayed routing only, no same-month balance-sheet transfer | Future BankDeposits routing via reassigned households |
 | `EarmarkedFunds.scala` | FP, PFRON, FGŚP | Payroll-funded statutory funds, bankruptcy payouts, ALMP | GovDebt (gov subvention) |
-| `EclStaging.scala` | IFRS 9 ECL provisioning | S1/S2/S3 staging, macro-driven migration, forward-looking provisions | BankCapital (provision) |
+| `EclStaging.scala` | IFRS 9 ECL provisioning | Stage 1/2/3 staging, macro-driven migration, forward-looking provisions | BankCapital (provision) |
 | `InterbankContagion.scala` | Interbank contagion (Lehman channel) | 7×7 bilateral exposure matrix, counterparty losses, liquidity hoarding | InterbankNetting |
 | `QuasiFiscal.scala` | BGK + PFR (consolidated) | Monthly issuance and lending diagnostics; bonds, holder split, and loan portfolio are ledger projections | BondClearing (quasi-fiscal bonds) |
 | `SocialSecurity.scala` | ZUS, NFZ, PPK, demographics | Contribution/pension/health flows, retirees, working-age pop; fund cash and PPK bond holdings are ledger-owned | BondClearing (PPK bonds), FusBalance, NfzBalance |

@@ -45,15 +45,15 @@ class OpenEconEconomicsSpec extends AnyFlatSpec with Matchers:
   private def runOpenEcon(world: World): OpenEconEconomics.StepOutput =
     OpenEconEconomics.runStep(
       OpenEconEconomics.StepInput(
-        w = world,
+        world = world,
         ledgerFinancialState = baseLedgerFinancialState,
-        s1 = s1,
-        s2 = s2,
-        s3 = s3,
-        s4 = s4,
-        s5 = s5,
-        s6 = s6,
-        s7 = s7,
+        fiscal = s1,
+        labor = s2,
+        householdIncome = s3,
+        demand = s4,
+        firm = s5,
+        householdFinancial = s6,
+        priceEquity = s7,
         banks = init.banks,
         commodityRng = RandomStream.seeded(TestSeed),
       ),

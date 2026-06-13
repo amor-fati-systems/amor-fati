@@ -32,8 +32,9 @@ private[banking] object BankMultiBankStage:
     val openingBankStocks   = in.ledgerFinancialState.banks.map(LedgerFinancialState.projectBankFinancialStocks)
     // We keep the opening bank-side consumer-loan stock but realign it to the
     // current household routing keys and household-level consumer-loan balances
-    // carried into s5. This assumes no stage between the opening ledger snapshot
-    // and s5 mutates household consumerLoan principal; only routing may drift.
+    // carried into the firm stage. This assumes no stage between the opening
+    // ledger snapshot and firm stage mutates household consumerLoan principal;
+    // only routing may drift.
     val bankStocks          = BankingHouseholdBooks.alignConsumerLoanBookToHouseholdRouting(
       in.firm.households,
       in.firm.ledgerFinancialState.households,

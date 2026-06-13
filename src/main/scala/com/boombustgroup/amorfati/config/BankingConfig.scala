@@ -156,14 +156,15 @@ import com.boombustgroup.amorfati.types.*
   * @param eclRate3
   *   Stage 3 (default) ECL provision rate (1 − recovery, KNF: ~50%)
   * @param eclMigrationSensitivity
-  *   sensitivity of S1→S2 migration to unemployment deterioration over the
-  *   carried reference unemployment rate
+  *   sensitivity of Stage 1 to Stage 2 migration to unemployment deterioration
+  *   over the carried reference unemployment rate
   * @param eclGdpSensitivity
-  *   sensitivity of S1→S2 migration to GDP contraction
+  *   sensitivity of Stage 1 to Stage 2 migration to GDP contraction
   * @param eclMaxMigration
-  *   maximum monthly S1→S2 migration rate (structural cap)
+  *   maximum monthly Stage 1 to Stage 2 migration rate (structural cap)
   * @param eclCureRate
-  *   monthly cure rate: fraction of S3 loans returning to S2 (restructuring)
+  *   monthly cure rate: fraction of Stage 3 loans returning to Stage 2
+  *   (restructuring)
   */
 case class BankingConfig(
     // Initial balance sheet (raw — scaled by gdpRatio in SimParams.defaults)

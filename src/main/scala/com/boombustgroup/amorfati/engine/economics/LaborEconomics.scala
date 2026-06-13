@@ -73,14 +73,14 @@ object LaborEconomics:
       w: World,
       firms: Vector[Firm.State],
       households: Vector[Household.State],
-      s1: FiscalConstraintEconomics.StepOutput,
+      fiscal: FiscalConstraintEconomics.StepOutput,
   )(using p: SimParams): StepOutput =
     val living           = firms.filter(Firm.isAlive)
     val laborDemand      = living.map(f => Firm.workerCount(f)).sum
     val laborForce       = w.laborForcePopulation
     val observedEmployed = Household.countEmployed(households)
-    val cleared          = clearLaborMarket(w, s1.resWage, laborDemand, laborForce, observedEmployed)
-    val availableLabor   = LaborMarket.laborSupplyAtWage(cleared.wage, s1.resWage, laborForce)
+    val cleared          = clearLaborMarket(w, fiscal.resWage, laborDemand, laborForce, observedEmployed)
+    val availableLabor   = LaborMarket.laborSupplyAtWage(cleared.wage, fiscal.resWage, laborForce)
 
     // Immigration
     val unempRateForImmig      = w.unemploymentRate(cleared.employed)
@@ -130,7 +130,7 @@ object LaborEconomics:
     */
   def reconcilePostFirmStep(
       w: World,
-      s1: FiscalConstraintEconomics.StepOutput,
+      fiscal: FiscalConstraintEconomics.StepOutput,
       pre: StepOutput,
       postLiving: Vector[Firm.State],
       postHouseholds: Vector[Household.State],
@@ -138,9 +138,9 @@ object LaborEconomics:
     val postLaborDemand    = postLiving.map(Firm.workerCount).sum
     val postLaborForce     = pre.newDemographics.workingAgePop.max(1)
     val realizedEmployment = Household.countEmployed(postHouseholds)
-    val cleared            = clearLaborMarket(w, s1.resWage, postLaborDemand, postLaborForce, realizedEmployment)
+    val cleared            = clearLaborMarket(w, fiscal.resWage, postLaborDemand, postLaborForce, realizedEmployment)
     val employedCap        = Math.min(realizedEmployment, pre.newDemographics.workingAgePop)
-    val postAvailableLabor = LaborMarket.laborSupplyAtWage(cleared.wage, s1.resWage, postLaborForce)
+    val postAvailableLabor = LaborMarket.laborSupplyAtWage(cleared.wage, fiscal.resWage, postLaborForce)
     val postHiringHeadroom = postLiving.map(f => Firm.monthlyHiringHeadroom(Firm.workerCount(f))).sum
     val newNfz             = SocialSecurity.nfzStep(
       employedCap,
