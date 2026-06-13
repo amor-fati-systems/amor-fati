@@ -375,16 +375,13 @@ DebtService_tau =
 QE is a policy request, not a direct stock mutation. QE activates when the
 reference rate is near the lower bound and realized or expected inflation is
 materially below target. The requested purchase is bounded by the GDP-share
-ceiling, bank-held bond supply, and QE pace.
-
-Current executable behavior passes the same-month GDP surface into the QE cap
-helper. #728 tracks whether this should be changed to the annualized GDP basis
-used by bond-market ratios. Until that follow-up lands, the implemented request
-is:
+ceiling, bank-held bond supply, and QE pace. The GDP-share ceiling uses the
+same annualized GDP basis as the bond-market debt/GDP and QE-compression
+ratios:
 
 ```text
 QeRequest_tau =
-  min(max(qeMaxGdpShare * GDP_tau - NbpGovBondHoldings_t, 0),
+  min(max(qeMaxGdpShare * AnnualGDP_tau - NbpGovBondHoldings_t, 0),
       BankGovBondHoldings_t,
       QePace_tau)
 ```
@@ -836,9 +833,6 @@ and net/gross split.
   intra-year budget amendments, or cash/accrual reconciliation in detail.
 - The NBP rule is a Taylor-type policy heuristic with a QE lower-bound branch
   and FX-intervention band. It is not an estimated reaction function.
-- The current QE cap basis and NBP remittance output naming are tracked in
-  #728 and #729. Until those follow-ups land, this document describes the
-  executable behavior and flags the observable-output ambiguity explicitly.
 - External-sector behavior combines structural trade, GVC, remittance,
   tourism, FDI, portfolio, carry-trade, and capital-flight channels. Several
   coefficients remain calibration or scenario targets rather than final
