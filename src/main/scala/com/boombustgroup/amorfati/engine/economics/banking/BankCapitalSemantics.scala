@@ -3,9 +3,9 @@ package com.boombustgroup.amorfati.engine.economics.banking
 /** Contract for every production path that writes or computes
   * `Banking.BankState.capital`.
   *
-  * ADR 0001 keeps bank capital as a regulatory/accounting buffer rather than a
+  * Bank capital is a regulatory/accounting buffer rather than a
   * holder-resolved equity asset. This registry is the guardrail for that
-  * decision: every production write site must have a named economic category,
+  * contract: every production write site must have a named economic category,
   * an SFC treatment, and an explicit loss absorber.
   */
 object BankCapitalSemantics:
@@ -72,7 +72,7 @@ object BankCapitalSemantics:
         "CapitalPnlOutput(newCapital = in.prevCapital - losses + retainedIncome)",
       ),
       sfcTreatment = "Monthly BankCapital identity: retained income increases capital; realized banking losses reduce it.",
-      absorber = "Bank regulatory/accounting capital buffer absorbs losses; unretained income has no holder-resolved bank-equity receiver under ADR 0001.",
+      absorber = "Bank regulatory/accounting capital buffer absorbs losses; unretained income has no holder-resolved bank-equity receiver.",
       diagnostics = "BankCapital_RetainedIncome, BankCapital_RealizedCreditLoss, BankCapital_BfgLevy, BankCapital_UnrealizedBondLoss.",
     ),
     WriteSite(

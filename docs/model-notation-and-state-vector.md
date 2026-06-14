@@ -231,8 +231,8 @@ with the main stock families:
 | `K^B_{b,t}` | `BankState.capital` | diagnostic stock, PLN | regulatory/accounting bank-capital buffer, not holder-resolved ledger equity |
 
 `K^B_{b,t}` is intentionally outside `LedgerFinancialState.BankBalances`.
-ADR 0001 defines it as persisted bank regulatory/accounting state validated by
-SFC, not transferable holder-resolved bank equity.
+It is persisted bank regulatory/accounting state validated by SFC, not
+transferable holder-resolved bank equity.
 
 ## Macro And Market State
 

@@ -20,7 +20,6 @@ financial-stability block.
 | [Monthly transition function](monthly-transition-function.md) | Month-step timing and deterministic transition contract. |
 | [Behavioral rule catalog](behavioral-equations-and-decision-rules.md#banking-rules) | Implementation-oriented banking rules and output-column map. |
 | [Institutional sector equations](institutional-sector-equations.md) | NBP, insurance, NBFI/TFI, quasi-fiscal, public-sector, and external-sector equations. |
-| [ADR 0001: Bank Capital SFC Semantics](adr/0001-bank-capital-sfc-semantics.md) | Bank-capital ownership, SFC, bail-in, and capital-destruction semantics. |
 | [Bank balance-sheet benchmark](bank-balance-sheet-benchmark.md) | Opening bank balance-sheet guardrails and calibration-warning bands. |
 | [Engine invariants and semantics](engine-invariants-and-semantics.md) | Failure semantics, hard invariants, warning surfaces, and known limitations. |
 | [`agents/Banking.scala`](../src/main/scala/com/boombustgroup/amorfati/agents/Banking.scala) and [`agents/banking/*`](../src/main/scala/com/boombustgroup/amorfati/agents/banking) | Bank domain facade, credit approval, regulatory metrics, bond portfolio, capital waterfall, and resolution helpers. |
@@ -97,8 +96,9 @@ K^B_{b,t} = BankState.capital
 
 `K^B` is persisted operational state and an SFC-validated diagnostic stock. It
 is not a holder-resolved ledger equity instrument and does not live in
-`LedgerFinancialState.BankBalances`. ADR 0001 is the authoritative ownership
-contract for this field.
+`LedgerFinancialState.BankBalances`. The bank-capital ownership contract is
+kept in this section, [engine invariants and semantics](engine-invariants-and-semantics.md),
+and the [bank balance-sheet benchmark](bank-balance-sheet-benchmark.md).
 
 ## Lending Rates And Approval
 
@@ -773,8 +773,8 @@ Focused diagnostics:
 - Bank capital is not holder-resolved bank equity. It is regulatory/accounting
   state, persisted on bank rows and SFC-validated through BankCapital.
 - The unretained share of bank gross income has no owner-side dividend receiver
-  in the current model. It is an explicit unowned outflow limitation under ADR
-  0001, not a hidden transfer to bank shareholders.
+  in the current model. It is an explicit unowned outflow limitation, not a
+  hidden transfer to bank shareholders.
 - Deposit insurance is not modeled at individual account granularity. Bail-in
   uses an aggregate guarantee/haircut rule for newly failed bank rows.
 - There is no bridge-bank, nationalization, or public recapitalization

@@ -48,7 +48,6 @@ first-pass path.
 | Artifact | Owner class | Purpose |
 | --- | --- | --- |
 | [README.md](../README.md) | Canonical reviewer spine | Repository front door, status overview, model identity, and top-level documentation entry. |
-| [docs/adr/0001-bank-capital-sfc-semantics.md](adr/0001-bank-capital-sfc-semantics.md) | ADR or decision record | Accepted decision defining bank capital as SFC-validated regulatory state rather than holder-resolved equity. |
 | [docs/bank-balance-sheet-benchmark.md](bank-balance-sheet-benchmark.md) | Diagnostics or profiling appendix | Bank balance-sheet benchmark diagnostic and bank-capital source interpretation. |
 | [docs/bank-failure-ablations.md](bank-failure-ablations.md) | Diagnostics or profiling appendix | Bank-failure ablation diagnostic methodology and interpretation. |
 | [docs/banking-and-financial-sector-equations.md](banking-and-financial-sector-equations.md) | Canonical reviewer spine | Paper-facing banking and financial-sector equations, timing, SFC mapping, diagnostics, and limitations. |
