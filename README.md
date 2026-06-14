@@ -50,15 +50,13 @@ That is the hard floor under every experiment in the model. Behavioral rules, po
 
 ## Table of Contents
 
-- [Why](#why)
-- [What Is Technically Distinctive](#what-is-technically-distinctive)
-- [Core Invariants](#core-invariants)
-- [State Ontology](#state-ontology)
-- [Verified Ledger](#verified-ledger)
-- [Model Documentation](#model-documentation)
-- [Ledger-Derived Matrix Artifacts](#ledger-derived-matrix-artifacts)
-- [Tech Stack](#tech-stack)
-- [License](#license)
+1. [Why](#why)
+2. [What Is Technically Distinctive](#what-is-technically-distinctive)
+3. [Core Invariants](#core-invariants)
+4. [State Ontology](#state-ontology)
+5. [Verified Ledger](#verified-ledger)
+6. [Model Documentation](#model-documentation)
+7. [Ledger-Derived Matrix Artifacts](#ledger-derived-matrix-artifacts)
 
 ## Why
 
