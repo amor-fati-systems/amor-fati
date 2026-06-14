@@ -50,7 +50,6 @@ That is the hard floor under every experiment in the model. Behavioral rules, po
 
 ## Table of Contents
 
-- [Quick Start](#quick-start)
 - [Why](#why)
 - [What Is Technically Distinctive](#what-is-technically-distinctive)
 - [Core Invariants](#core-invariants)
@@ -60,35 +59,6 @@ That is the hard floor under every experiment in the model. Behavioral rules, po
 - [Ledger-Derived Matrix Artifacts](#ledger-derived-matrix-artifacts)
 - [Tech Stack](#tech-stack)
 - [License](#license)
-
-## Quick Start
-
-Use the Nix shell for the CI-like local toolchain, then run the test suite:
-
-```bash
-git clone --recurse-submodules https://github.com/boombustgroup/amor-fati.git
-cd amor-fati
-nix develop
-sbt test
-```
-
-If you are not using Nix, install JDK 21 and use the sbt version pinned in
-`project/build.properties`. If the repository was cloned without submodules,
-initialize the ledger module before running the build:
-
-```bash
-git submodule update --init --recursive
-```
-
-Run a one-seed, 12-month smoke simulation:
-
-```bash
-sbt "runMain com.boombustgroup.amorfati.Main 1 local-smoke --duration 12 --run-id smoke"
-```
-
-This writes generated CSV outputs under `mc/`, which is intentionally ignored
-by git. Diagnostics, generated-output checks, CI parity, output paths, and local
-troubleshooting live in [docs/operations.md](docs/operations.md).
 
 ## Why
 
