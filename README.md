@@ -132,12 +132,13 @@ the canonical first-pass path for scientific review:
 
 Generated SFC snapshots live under
 [docs/sfc-matrix-artifacts/](docs/sfc-matrix-artifacts/), but they are not a
-separate README reading path. Start with
-[docs/sfc-matrix-evidence.md](docs/sfc-matrix-evidence.md) for regeneration
-commands, sign conventions, exact reconciliation rows, and coverage gaps. The
-hand-maintained [model equations to SFC map](docs/model-equations-to-sfc-map.md)
-connects model equation families to those generated rows, identities, and
-runtime evidence.
+separate README reading path:
+
+| Step | Entry point | Boundary |
+| --- | --- | --- |
+| 1. Generated matrix snapshots | [SFC matrix artifacts](docs/sfc-matrix-artifacts/) | Generated BSM/TFM snapshots, matrix mapping, flow-mechanism semantics, and stock-flow reconciliation artifacts. |
+| 2. Evidence and regeneration | [SFC matrix evidence](docs/sfc-matrix-evidence.md) | Regeneration commands, sign conventions, exact reconciliation rows, and coverage gaps. |
+| 3. Equation mapping | [Model equations to SFC map](docs/model-equations-to-sfc-map.md) | Hand-maintained bridge from model equation families to generated rows, identities, and runtime evidence. |
 
 ## Tech Stack
 
