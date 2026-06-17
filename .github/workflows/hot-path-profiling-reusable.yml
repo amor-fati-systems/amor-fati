@@ -280,7 +280,7 @@ jobs:
                   "banking economics",
                   "firm economics",
                   "household economics",
-                  "diagnostics CSV export paths",
+                  "diagnostics TSV export paths",
               ],
               "command": (
                   "nix develop --command java "
