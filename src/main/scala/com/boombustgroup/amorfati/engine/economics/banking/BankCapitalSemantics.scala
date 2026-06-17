@@ -3,10 +3,10 @@ package com.boombustgroup.amorfati.engine.economics.banking
 /** Contract for every production path that writes or computes
   * `Banking.BankState.capital`.
   *
-  * Bank capital is a regulatory/accounting buffer rather than a
-  * holder-resolved equity asset. This registry is the guardrail for that
-  * contract: every production write site must have a named economic category,
-  * an SFC treatment, and an explicit loss absorber.
+  * Bank capital is a regulatory/accounting buffer rather than a holder-resolved
+  * equity asset. This registry is the guardrail for that contract: every
+  * production write site must have a named economic category, an SFC treatment,
+  * and an explicit loss absorber.
   */
 object BankCapitalSemantics:
 

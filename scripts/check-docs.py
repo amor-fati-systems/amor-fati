@@ -6,7 +6,7 @@ structural contracts that should not require human interpretation:
 
 - local Markdown links point to existing files/directories;
 - local Markdown anchors point to existing headings;
-- every committed docs/ artifact is listed in docs/documentation-architecture.md.
+- every committed docs/ artifact is listed in docs/README.md.
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ from urllib.parse import unquote, urlsplit
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DOCS_DIR = REPO_ROOT / "docs"
 README = REPO_ROOT / "README.md"
-DOCUMENTATION_ARCHITECTURE = DOCS_DIR / "documentation-architecture.md"
+DOCUMENTATION_INDEX = DOCS_DIR / "README.md"
 
 EXTERNAL_SCHEMES = {"http", "https", "mailto", "tel", "data"}
 
@@ -196,7 +196,7 @@ def resolve_local_path(base: Path, path_part: str) -> Path | None:
 
 
 def validate_documentation_inventory() -> list[str]:
-    inventory = DOCUMENTATION_ARCHITECTURE.read_text(encoding="utf-8")
+    inventory = DOCUMENTATION_INDEX.read_text(encoding="utf-8")
     tracked = git_ls_files(["README.md", "docs"])
     errors: list[str] = []
     for relative_path in tracked:
@@ -204,7 +204,7 @@ def validate_documentation_inventory() -> list[str]:
         if expected not in inventory:
             errors.append(
                 f"{relative_path}: missing documentation ownership entry in "
-                "docs/documentation-architecture.md"
+                "docs/README.md"
             )
     return errors
 
