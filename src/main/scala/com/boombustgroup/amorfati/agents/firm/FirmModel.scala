@@ -179,7 +179,7 @@ case class FirmDecisionTrace(
     laborAdjustmentResidualRoll: Option[Share],
 )
 object FirmDecisionTrace:
-  enum DecisionType(val csvValue: String):
+  enum DecisionType(val tsvValue: String):
     case Survive       extends DecisionType("survive")
     case Upsize        extends DecisionType("upsize")
     case Downsize      extends DecisionType("downsize")
@@ -189,7 +189,7 @@ object FirmDecisionTrace:
     case UpgradeFailed extends DecisionType("upgrade-failed")
     case Bankrupt      extends DecisionType("bankrupt")
 
-  enum TechCreditSource(val csvValue: String):
+  enum TechCreditSource(val tsvValue: String):
     case SelectedUpgrade       extends TechCreditSource("selected-upgrade")
     case BankRejectedCandidate extends TechCreditSource("bank-rejected-candidate")
 

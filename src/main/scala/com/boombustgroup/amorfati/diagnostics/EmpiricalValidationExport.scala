@@ -30,9 +30,9 @@ object EmpiricalValidationExport:
 
   final case class ExportResult(paths: Vector[Path], rows: Vector[SnapshotRow])
 
-  private type CsvRow = DelimitedTextRows.Row
+  private type TsvRow = DelimitedTextRows.Row
 
-  extension (row: CsvRow)
+  extension (row: TsvRow)
     private def decimal(column: String): Either[String, BigDecimal] =
       row.required(column).flatMap(parseDecimal(_, column))
 
@@ -300,7 +300,7 @@ object EmpiricalValidationExport:
       .flatMap: rows =>
         sequence(rows.zipWithIndex.map((row, idx) => parseSourceRow(row).left.map(err => s"$path row ${idx + 2}: $err")))
 
-  private def parseSourceRow(row: CsvRow): Either[String, SourceManifestRow] =
+  private def parseSourceRow(row: TsvRow): Either[String, SourceManifestRow] =
     val parsed =
       for
         target      <- row.required("target")
@@ -348,7 +348,7 @@ object EmpiricalValidationExport:
         case Vector(row) => parseModelRunManifest(row, fallbackOutputDir).left.map(err => s"$path row 2: $err")
         case rows        => Left(s"$path must contain exactly one model run row, got ${rows.length}")
 
-  private def parseModelRunManifest(row: CsvRow, fallbackOutputDir: Path): Either[String, ModelRunManifest] =
+  private def parseModelRunManifest(row: TsvRow, fallbackOutputDir: Path): Either[String, ModelRunManifest] =
     for
       runId          <- row.required("run_id")
       outputPrefix   <- row.required("output_prefix")
@@ -443,10 +443,10 @@ object EmpiricalValidationExport:
     yield Vector(sourcePath, runPath, snapshotTsvPath)
 
   private final case class MonteCarloOutput(
-      timeSeries: Vector[Vector[CsvRow]],
-      household: Option[Vector[CsvRow]],
-      banks: Option[Vector[CsvRow]],
-      firms: Option[Vector[CsvRow]],
+      timeSeries: Vector[Vector[TsvRow]],
+      household: Option[Vector[TsvRow]],
+      banks: Option[Vector[TsvRow]],
+      firms: Option[Vector[TsvRow]],
   ):
     def evaluate(target: ModelTarget): Either[String, BigDecimal] =
       target.surface match
@@ -456,7 +456,7 @@ object EmpiricalValidationExport:
         case ModelSurface.TerminalFirms     => evaluateTerminal("firms", firms, target.column, target.statistic)
 
     private def evaluateTimeSeries(column: String, statistic: ModelStatistic): Either[String, BigDecimal] =
-      if timeSeries.isEmpty then Left("no per-seed timeseries CSV files found")
+      if timeSeries.isEmpty then Left("no per-seed timeseries TSV files found")
       else
         statistic match
           case ModelStatistic.Terminal  =>
@@ -478,12 +478,12 @@ object EmpiricalValidationExport:
 
     private def evaluateTerminal(
         label: String,
-        rowsOpt: Option[Vector[CsvRow]],
+        rowsOpt: Option[Vector[TsvRow]],
         column: String,
         statistic: ModelStatistic,
     ): Either[String, BigDecimal] =
       rowsOpt match
-        case None       => Left(s"terminal $label summary CSV not found")
+        case None       => Left(s"terminal $label summary TSV not found")
         case Some(rows) =>
           val values = sequence(rows.map(_.decimal(column)))
           statistic match
@@ -498,20 +498,20 @@ object EmpiricalValidationExport:
     private def allTimeSeriesValues(column: String): Either[String, Vector[BigDecimal]] =
       sequence(timeSeries.flatMap(rows => rows.map(_.decimal(column))))
 
-    private def terminalValue(rows: Vector[CsvRow], column: String, position: String): Either[String, BigDecimal] =
+    private def terminalValue(rows: Vector[TsvRow], column: String, position: String): Either[String, BigDecimal] =
       rows.lastOption.toRight(s"seed timeseries has no $position row").flatMap(_.decimal(column))
 
-    private def firstValue(rows: Vector[CsvRow], column: String): Either[String, BigDecimal] =
-      rows.headOption.toRight("CSV has no first row").flatMap(_.decimal(column))
+    private def firstValue(rows: Vector[TsvRow], column: String): Either[String, BigDecimal] =
+      rows.headOption.toRight("TSV has no first row").flatMap(_.decimal(column))
 
-    private def pctChange(rows: Vector[CsvRow], column: String): Either[String, BigDecimal] =
+    private def pctChange(rows: Vector[TsvRow], column: String): Either[String, BigDecimal] =
       for
         first <- firstValue(rows, column)
         last  <- terminalValue(rows, column, "last")
         value <- Either.cond(first != BigDecimal(0), last / first - BigDecimal(1), s"cannot compute pct_change for $column because first value is zero")
       yield value
 
-    private def delta(rows: Vector[CsvRow], column: String): Either[String, BigDecimal] =
+    private def delta(rows: Vector[TsvRow], column: String): Either[String, BigDecimal] =
       for
         first <- firstValue(rows, column)
         last  <- terminalValue(rows, column, "last")
@@ -536,33 +536,33 @@ object EmpiricalValidationExport:
       else
         for
           seedFiles <- matchingSeedFiles(manifest)
-          series    <- sequence(seedFiles.map(readSemicolonCsv))
-          household <- readOptionalCsv(manifest.outputDir.resolve(s"${manifest.filePrefix}_hh.csv"))
-          banks     <- readOptionalCsv(manifest.outputDir.resolve(s"${manifest.filePrefix}_banks.csv"))
-          firms     <- readOptionalCsv(manifest.outputDir.resolve(s"${manifest.filePrefix}_firms.csv"))
+          series    <- sequence(seedFiles.map(readTsv))
+          household <- readOptionalTsv(manifest.outputDir.resolve(s"${manifest.filePrefix}_hh.tsv"))
+          banks     <- readOptionalTsv(manifest.outputDir.resolve(s"${manifest.filePrefix}_banks.tsv"))
+          firms     <- readOptionalTsv(manifest.outputDir.resolve(s"${manifest.filePrefix}_firms.tsv"))
         yield MonteCarloOutput(series, household, banks, firms)
 
   private def matchingSeedFiles(manifest: ModelRunManifest): Either[String, Vector[Path]] =
     if !Files.isDirectory(manifest.outputDir) then Left(s"Monte Carlo output directory does not exist: ${manifest.outputDir}")
     else if manifest.seedCount > 0 then
-      val expected = (1 to manifest.seedCount).map(seed => manifest.outputDir.resolve(f"${manifest.filePrefix}_seed$seed%03d.csv")).toVector
+      val expected = (1 to manifest.seedCount).map(seed => manifest.outputDir.resolve(f"${manifest.filePrefix}_seed$seed%03d.tsv")).toVector
       val existing = expected.filter(Files.exists(_))
       if existing.length == expected.length then Right(existing)
       else
         val missing = expected.filterNot(Files.exists(_)).map(_.getFileName.toString)
-        Left(s"Missing expected seed CSV files: ${missing.mkString(", ")}")
+        Left(s"Missing expected seed TSV files: ${missing.mkString(", ")}")
     else
       listDirectory(manifest.outputDir).map: paths =>
         paths
-          .filter(path => path.getFileName.toString.matches(java.util.regex.Pattern.quote(manifest.filePrefix) + "_seed[0-9]+\\.csv"))
+          .filter(path => path.getFileName.toString.matches(java.util.regex.Pattern.quote(manifest.filePrefix) + "_seed[0-9]+\\.tsv"))
           .sortBy(_.getFileName.toString)
 
-  private def readOptionalCsv(path: Path): Either[String, Option[Vector[CsvRow]]] =
-    if Files.exists(path) then readSemicolonCsv(path).map(Some(_))
+  private def readOptionalTsv(path: Path): Either[String, Option[Vector[TsvRow]]] =
+    if Files.exists(path) then readTsv(path).map(Some(_))
     else Right(None)
 
-  private def readSemicolonCsv(path: Path): Either[String, Vector[CsvRow]] =
-    DelimitedTextRows.readRows(path, DelimitedTextFormat.SemicolonCsv)
+  private def readTsv(path: Path): Either[String, Vector[TsvRow]] =
+    DelimitedTextRows.readRows(path, DelimitedTextFormat.Tsv)
 
   private[diagnostics] lazy val SourceManifestTsvSchema: DelimitedTextSchema[SourceManifestRow] =
     DelimitedTextSchema.fromCells(SourceManifestHeader, DelimitedTextFormat.Tsv): row =>

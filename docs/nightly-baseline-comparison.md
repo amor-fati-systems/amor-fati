@@ -82,7 +82,7 @@ These checks should fail in every profile:
 | SFC exactness | Any month returns an SFC validation error |
 | Ledger conservation | Any ledger conservation or survivability check fails |
 | Month completeness | A seed emits fewer monthly rows than the profile horizon |
-| CSV shape | Required CSV is missing, empty, malformed, or lacks required columns |
+| TSV shape | Required TSV is missing, empty, malformed, or lacks required columns |
 | Numeric validity | Required numeric field is non-finite or unparsable |
 | Impossible accounting state | Negative stock or ratio appears where the model contract says it is impossible |
 | Active bank validity | Invalid active-bank invariant is raised |
@@ -149,7 +149,7 @@ seed, scenario, and diagnostic surface. It should:
 ## Threshold Definition Contract
 
 Later implementation should keep threshold definitions in a versioned,
-reviewable artifact. A CSV or typed Scala registry is acceptable, but it must
+reviewable artifact. A TSV or typed Scala registry is acceptable, but it must
 expose the same logical fields:
 
 | Field | Meaning |
@@ -175,10 +175,10 @@ Each comparison run should emit:
 
 ```text
 comparison-summary.md
-comparison-summary.csv
+comparison-summary.tsv
 ```
 
-The CSV should contain at least:
+The TSV should contain at least:
 
 | Column | Meaning |
 | --- | --- |

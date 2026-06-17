@@ -14,7 +14,7 @@ import scala.util.Using
   * the diagnostics profile.
   *
   * This layer is intentionally post-processing only: it reads the manifest
-  * steps and baseline Monte Carlo seed CSVs, applies documented threshold
+  * steps and baseline Monte Carlo seed TSVs, applies documented threshold
   * semantics, and writes machine/human summaries without launching more
   * simulations.
   */
@@ -160,7 +160,7 @@ private[diagnostics] object NightlyHealthSummary:
             observed = "baseline-monte-carlo step missing",
             threshold = "Baseline normal-validation evidence must be present.",
             source = "run-manifest.json",
-            details = "The health summary cannot evaluate normal-path economic thresholds without baseline seed CSVs.",
+            details = "The health summary cannot evaluate normal-path economic thresholds without baseline seed TSVs.",
           ),
         )
       case Some(step) =>
@@ -173,7 +173,7 @@ private[diagnostics] object NightlyHealthSummary:
                 status = MetricStatus.Fail,
                 hard = true,
                 observed = err,
-                threshold = "Baseline seed CSVs must be present, well-formed, and contain required health columns.",
+                threshold = "Baseline seed TSVs must be present, well-formed, and contain required health columns.",
                 source = step.outputDir.toString,
                 details = "This is an artifact/readiness failure, not an economic finding.",
               ),
@@ -200,12 +200,12 @@ private[diagnostics] object NightlyHealthSummary:
       label = "Baseline Monte Carlo artifacts",
       status = if rowCountOk then MetricStatus.Pass else MetricStatus.Fail,
       hard = true,
-      observed = s"${series.files.length} seed CSV(s), ${series.rowCount} monthly row(s)",
-      threshold = expectedRows.fold("At least one non-empty baseline seed CSV with all required health columns.")(rows =>
+      observed = s"${series.files.length} seed TSV(s), ${series.rowCount} monthly row(s)",
+      threshold = expectedRows.fold("At least one non-empty baseline seed TSV with all required health columns.")(rows =>
         s"Exactly $rows monthly row(s), derived from baseline seeds=${step.seeds.getOrElse("?")} and months=${step.months.getOrElse("?")}.",
       ),
       source = series.files.map(_.getFileName.toString).mkString(", "),
-      details = "Seed CSVs are reused from the baseline Monte Carlo step.",
+      details = "Seed TSVs are reused from the baseline Monte Carlo step.",
     )
 
   private def bankFailureMetric(series: BaselineSeries): Metric =
@@ -222,7 +222,7 @@ private[diagnostics] object NightlyHealthSummary:
       observed =
         s"max_bank_failures=$maxFailures; cumulative_new_failures=$cumulativeNew; all_failed_fallback=$allFailedFallback; invalid_active_bank_invariant=$invalidInvariant",
       threshold = "All bank-failure and bank-resolution failure counters must remain 0 on normal baseline paths.",
-      source = "baseline Monte Carlo seed CSVs",
+      source = "baseline Monte Carlo seed TSVs",
       details = "Stress-channel bank failures are not evaluated here; this metric only reads the normal baseline Monte Carlo step.",
     )
 
@@ -243,7 +243,7 @@ private[diagnostics] object NightlyHealthSummary:
       hard = nonPositiveRows > 0,
       observed = s"min_monthly_gdp=${series.min("MonthlyGdpProxy")}; terminal_below_opening_seed_count=$terminalDrop/${series.files.length}",
       threshold = "MonthlyGdpProxy must stay positive; terminal-below-opening seeds are warnings until calibrated as hard trend thresholds.",
-      source = "baseline Monte Carlo seed CSVs",
+      source = "baseline Monte Carlo seed TSVs",
       details = "The five-year profile validates operational sanity, not long-horizon cycle claims.",
     )
 
@@ -258,7 +258,7 @@ private[diagnostics] object NightlyHealthSummary:
       hard = true,
       observed = s"min=$minValue; max=$maxValue",
       threshold = s"$NormalCreditToGdpLowerBound <= TotalCreditToGdp <= $NormalCreditToGdpUpperBound",
-      source = "baseline Monte Carlo seed CSVs",
+      source = "baseline Monte Carlo seed TSVs",
       details = "This is a blow-up guard shared with the baseline invariant integration gate, not a calibration target.",
     )
 
@@ -272,7 +272,7 @@ private[diagnostics] object NightlyHealthSummary:
       hard = true,
       observed = extrema.map((column, bounds) => s"$column=[${bounds._1},${bounds._2}]").mkString("; "),
       threshold = s"All monitored default/NPL ratios must satisfy $RatioLowerBound <= value <= $RatioUpperBound.",
-      source = "baseline Monte Carlo seed CSVs",
+      source = "baseline Monte Carlo seed TSVs",
       details = "Positive defaults are allowed; impossible negative or above-100% rates are not.",
     )
 
@@ -292,7 +292,7 @@ private[diagnostics] object NightlyHealthSummary:
       observed =
         s"bank_capital_waterfall_abs_max=$waterfallMax; bank_capital_waterfall_to_gdp_max=$waterfallGdp; bank_reconciliation_abs_max=$reconMax; bank_reconciliation_to_gdp_max=$reconGdp; fof_abs_max=$fofMax; fof_to_gdp_max=$fofGdp",
       threshold = s"Runtime SFC exactness must complete; exported residuals must remain <= $ResidualToGdpUpperBound of annualized GDP.",
-      source = "baseline Monte Carlo seed CSVs and runtime SFC completion",
+      source = "baseline Monte Carlo seed TSVs and runtime SFC completion",
       details = "Runtime SFC exactness failures stop the baseline step; exported residual columns catch material accounting drift at macro scale.",
     )
 
@@ -306,7 +306,7 @@ private[diagnostics] object NightlyHealthSummary:
       hard = false,
       observed = s"household_negative_deposit_count_max=$maxCount; household_negative_deposit_share_max=$maxShare",
       threshold = "Reported as warning when household negative deposit diagnostics are non-zero.",
-      source = "baseline Monte Carlo seed CSVs",
+      source = "baseline Monte Carlo seed TSVs",
       details =
         "Bank/firm hard non-negative stock invariants are enforced by runtime and integration tests; household negative deposits remain a diagnostic signal.",
     )
@@ -375,11 +375,11 @@ private[diagnostics] object NightlyHealthSummary:
 
   private def loadBaseline(step: ManifestStep): Either[String, BaselineSeries] =
     for
-      files <- seedCsvFiles(step.outputDir)
+      files <- seedTsvFiles(step.outputDir)
       rows  <- readSeedRows(files)
     yield BaselineSeries(files, rows)
 
-  private def seedCsvFiles(outputDir: Path): Either[String, Vector[Path]] =
+  private def seedTsvFiles(outputDir: Path): Either[String, Vector[Path]] =
     if !Files.isDirectory(outputDir) then Left(s"baseline output directory is missing: $outputDir")
     else
       Using.resource(Files.list(outputDir)): stream =>
@@ -387,23 +387,23 @@ private[diagnostics] object NightlyHealthSummary:
           .iterator()
           .asScala
           .filter(path => Files.isRegularFile(path))
-          .filter(path => path.getFileName.toString.endsWith(".csv"))
+          .filter(path => path.getFileName.toString.endsWith(".tsv"))
           .filter(path => path.getFileName.toString.contains("_seed"))
           .toVector
           .sortBy(_.toString)
-        Either.cond(files.nonEmpty, files, s"baseline seed CSV files are missing under $outputDir")
+        Either.cond(files.nonEmpty, files, s"baseline seed TSV files are missing under $outputDir")
 
   private def readSeedRows(files: Vector[Path]): Either[String, Vector[BaselineRow]] =
     val parsed = files.foldLeft[Either[String, Vector[BaselineRow]]](Right(Vector.empty)): (acc, file) =>
       acc.flatMap(rows => readSeedRows(file).map(rows ++ _))
     parsed.flatMap: rows =>
-      Either.cond(rows.nonEmpty, rows, s"baseline seed CSV files contain no monthly rows: ${files.mkString(", ")}")
+      Either.cond(rows.nonEmpty, rows, s"baseline seed TSV files contain no monthly rows: ${files.mkString(", ")}")
 
   private def readSeedRows(file: Path): Either[String, Vector[BaselineRow]] =
     val lines = Files.readAllLines(file, StandardCharsets.UTF_8).asScala.toVector.filter(_.trim.nonEmpty)
-    if lines.isEmpty then Left(s"empty seed CSV: $file")
+    if lines.isEmpty then Left(s"empty seed TSV: $file")
     else
-      val header  = lines.head.split(";", -1).toVector
+      val header  = lines.head.split("\t", -1).toVector
       val missing = RequiredBaselineColumns.filterNot(header.contains)
       if missing.nonEmpty then Left(s"${file.getFileName} is missing required health columns: ${missing.mkString(", ")}")
       else
@@ -412,7 +412,7 @@ private[diagnostics] object NightlyHealthSummary:
           acc.flatMap: rows =>
             val (line, zeroBasedIndex) = rowWithIndex
             val rowNumber              = zeroBasedIndex + 2
-            val parts                  = line.split(";", -1)
+            val parts                  = line.split("\t", -1)
             if parts.length < header.length then Left(s"${file.getFileName}:$rowNumber has ${parts.length} cells, expected ${header.length}")
             else parseRequiredValues(file, rowNumber, parts, index).map(parsed => rows :+ BaselineRow(file, rowNumber, parsed))
 

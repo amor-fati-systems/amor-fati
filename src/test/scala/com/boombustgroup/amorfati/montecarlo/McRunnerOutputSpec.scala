@@ -14,7 +14,7 @@ class McRunnerOutputSpec extends AnyFlatSpec with Matchers:
 
   given SimParams = SimParams.defaults
 
-  "runZIO" should "match runSingle CSV outputs on a small deterministic run" in
+  "runZIO" should "match runSingle TSV outputs on a small deterministic run" in
     withTempDir: outputDir =>
       val rc       = McRunConfig(nSeeds = 2, outputPrefix = "regression", runDurationMonths = 4, runId = "fixed")
       val expected = expectedFiles(rc)
@@ -26,18 +26,18 @@ class McRunnerOutputSpec extends AnyFlatSpec with Matchers:
         withClue(s"$name: ") {
           Files.readAllLines(outputDir.resolve(name), UTF_8).asScala.toVector shouldBe lines
         }
-      val firmSummary      = Files.readAllLines(outputDir.resolve(s"${filePrefix(rc)}_firms.csv"), UTF_8).asScala.toVector
+      val firmSummary      = Files.readAllLines(outputDir.resolve(s"${filePrefix(rc)}_firms.tsv"), UTF_8).asScala.toVector
       firmSummary.head should include("FirmSize_Micro")
       firmSummary.head should include("FirmSize_LargeShare")
       firmSummary.tail should have size rc.nSeeds
-      firmSummary.tail.foreach(_.split(";").length shouldBe firmSummary.head.split(";").length)
-      val householdSummary = Files.readAllLines(outputDir.resolve(s"${filePrefix(rc)}_hh.csv"), UTF_8).asScala.toVector
+      firmSummary.tail.foreach(_.split("\t").length shouldBe firmSummary.head.split("\t").length)
+      val householdSummary = Files.readAllLines(outputDir.resolve(s"${filePrefix(rc)}_hh.tsv"), UTF_8).asScala.toVector
       householdSummary.head should include("MeanMonthlyIncome")
       householdSummary.head should include("WageP90")
       householdSummary.tail should have size rc.nSeeds
-      householdSummary.tail.foreach(_.split(";").length shouldBe householdSummary.head.split(";").length)
+      householdSummary.tail.foreach(_.split("\t").length shouldBe householdSummary.head.split("\t").length)
 
-  it should "write deterministic selected firm decision traces without changing baseline CSV outputs" in
+  it should "write deterministic selected firm decision traces without changing baseline TSV outputs" in
     withTempDir: baselineDir =>
       withTempDir: traceDir =>
         withTempDir: repeatTraceDir =>
@@ -60,7 +60,7 @@ class McRunnerOutputSpec extends AnyFlatSpec with Matchers:
           traceLines shouldBe repeatTraceLines
           traceLines.head shouldBe McFirmDecisionTraceSchema.header
           traceLines.tail should have size traceRc.runDurationMonths
-          traceLines.tail.foreach(_.split(";", -1).length shouldBe traceLines.head.split(";", -1).length)
+          traceLines.tail.foreach(_.split("\t", -1).length shouldBe traceLines.head.split("\t", -1).length)
 
   private def runToDir(rc: McRunConfig, outputDir: Path): Unit =
     Unsafe.unsafe: unsafe =>
@@ -80,25 +80,25 @@ class McRunnerOutputSpec extends AnyFlatSpec with Matchers:
   private def expectedSeedLines(result: RunResult): Vector[String] =
     val rows = result.timeSeries.executionMonths.map: month =>
       val row = result.timeSeries.monthRow(month)
-      McTimeseriesSchema.csvSchema.render((month, row))
-    McTimeseriesSchema.csvSchema.header +: rows
+      McTimeseriesSchema.tsvSchema.render((month, row))
+    McTimeseriesSchema.tsvSchema.header +: rows
 
   private def expectedSummaryFiles(rc: McRunConfig, summaries: Vector[McTerminalSummaryRows]): Map[String, Vector[String]] =
     McTerminalSummarySchema.specs
       .map: spec =>
         val fileName = spec.outputFile(new java.io.File("."), rc).getName
-        val rows     = summaries.flatMap(_.rowsFor(spec.id)).map(spec.csvSchema.render)
-        fileName -> (spec.csvSchema.header +: rows)
+        val rows     = summaries.flatMap(_.rowsFor(spec.id)).map(spec.tsvSchema.render)
+        fileName -> (spec.tsvSchema.header +: rows)
       .toMap
 
   private def filePrefix(rc: McRunConfig): String =
     s"${rc.outputPrefix}_${rc.runId}_${rc.runDurationMonths}m"
 
   private def seedFileName(seed: Long, rc: McRunConfig): String =
-    f"${filePrefix(rc)}_seed${seed}%03d.csv"
+    f"${filePrefix(rc)}_seed${seed}%03d.tsv"
 
   private def decisionTraceFileName(rc: McRunConfig): String =
-    s"${filePrefix(rc)}_firm_decision_trace.csv"
+    s"${filePrefix(rc)}_firm_decision_trace.tsv"
 
   private def listFileNames(outputDir: Path): Set[String] =
     Using.resource(Files.list(outputDir)) { paths =>

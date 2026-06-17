@@ -37,7 +37,7 @@ from the operations index.
 | Integration smoke | PR and push | `.github/workflows/ci.yml` `test` job | `nix develop --command sbt "integrationTests / Test / test"` | End-to-end smoke over the root project and integration-test project | Hard fail on integration-level regression |
 | Coverage upload | PR and push | `.github/workflows/ci.yml` `test` job | `codecov/codecov-action` | Publish non-heavy unit coverage | Non-blocking upload; CI does not fail if Codecov upload fails |
 | Nightly diagnostics | Scheduled on `main`; manual dispatch | `.github/workflows/diagnostics-{smoke,nightly,extended}.yml` via reusable diagnostics workflow | Build `sbt assembly` under Nix, then run `NightlyDiagnosticsProfileRunner` from the jar | Long validation and diagnostics artifacts over `smoke`, `nightly`, and `extended` profiles | Hard fail on runner/build failure and hard invariants; economic outcomes are interpreted by profile classification |
-| Nightly health summary | After a non-dry-run diagnostics profile completes | `NightlyHealthSummary` via `NightlyDiagnosticsProfileRunner` | Reuse `run-manifest.json` and baseline Monte Carlo seed CSVs to write `health-summary.json` and `health-summary.md` | Compact machine/human verdict answering whether `main` stayed normal-path healthy overnight | Hard fail on normal-validation threshold breaches; warn/report for soft research signals; do not turn stress/exploratory outcomes into normal-path failures |
+| Nightly health summary | After a non-dry-run diagnostics profile completes | `NightlyHealthSummary` via `NightlyDiagnosticsProfileRunner` | Reuse `run-manifest.json` and baseline Monte Carlo seed TSVs to write `health-summary.json` and `health-summary.md` | Compact machine/human verdict answering whether `main` stayed normal-path healthy overnight | Hard fail on normal-validation threshold breaches; warn/report for soft research signals; do not turn stress/exploratory outcomes into normal-path failures |
 | Nightly performance telemetry | Every diagnostics profile step | `NightlyDiagnosticsProfileRunner` manifest telemetry plus [performance regression budgets](performance-regression-budgets.md) | Per-step duration, seed-month throughput, artifact size/row counts, JVM memory/GC observations, and soft same-profile baseline comparisons in `run-manifest.json` and `performance-regression-report.*` | Lightweight regression visibility before heavier profilers exist | Soft warnings only; hard budgets require documented promotion |
 | Manual diagnostics | Local or workflow dispatch | Maintainer | `nix develop --command java -cp target/scala-3.8.2/amor-fati.jar com.boombustgroup.amorfati.diagnostics.NightlyDiagnosticsProfileRunner ...` | Reproduce or inspect profile outputs outside PR CI | Evidence only unless explicitly promoted to a CI/nightly gate |
 | Hot-path profiling | Manual or weekly on `main` | `.github/workflows/hot-path-profiling-{smoke,nightly,extended}.yml` via reusable profiling workflow plus [performance regression budgets](performance-regression-budgets.md) | Build `sbt assembly` under Nix, then run a profiled diagnostics workload with JFR and a manifest-to-manifest budget report | Hot-path timing/allocation visibility for FlowSimulation, banking, firms, households, runtime ledger execution, SFC projection, and diagnostics exports | Report-only; workflow fails on build/profiling/JFR capture failure, not on soft performance-budget warnings |
@@ -45,13 +45,13 @@ from the operations index.
 ## Existing Integration Ownership
 
 The current integration suite is intentionally small. Its main existing test is
-`McRunnerCsvIntegrationSpec`, which validates deterministic Monte Carlo CSV
+`McRunnerTsvIntegrationSpec`, which validates deterministic Monte Carlo TSV
 output, schema headers, snapshot files, and bank-capital waterfall accounting on
 a short run. It is not the owner of every macro-financial sanity condition.
 
 New PR-level normal-path engine-health checks belong in integration tests only
 when they need a short multi-month engine run and cannot be expressed as a
-focused unit or property test. #683 extends this layer with a non-CSV baseline
+focused unit or property test. #683 extends this layer with a non-TSV baseline
 invariant gate.
 
 ## Nightly Profile Ownership
@@ -104,7 +104,7 @@ Use this routing rule before adding a new check:
 | --- | --- | --- |
 | Local mechanism invariant, algebraic identity, schema rule, parser behavior | Root unit/property tests | Nightly diagnostics |
 | Slow but focused mechanism/property test | Heavy-tagged root test | Integration tests unless it needs end-to-end state |
-| Short multi-month normal-path engine health | `integrationTests / Test / test` | CSV determinism tests |
+| Short multi-month normal-path engine health | `integrationTests / Test / test` | TSV determinism tests |
 | Markdown links, anchors, and documentation ownership inventory | `scripts/check-docs.py` in the generated-output CI job | Prose style linting |
 | Generated docs/resources consistency | Existing generated-output script | Unit tests |
 | Long Monte Carlo, scenario, robustness, diagnostic export validation | Nightly diagnostics profile | PR unit tests |

@@ -48,7 +48,7 @@ Useful shorthand:
 
 The output-column references below refer to the Monte Carlo time-series schema
 in `src/main/scala/com/boombustgroup/amorfati/montecarlo/McTimeseriesSchema.scala`.
-Those CSV outputs are the primary numeric evidence surface for these rules.
+Those TSV outputs are the primary numeric evidence surface for these rules.
 
 ## Timing Contract
 

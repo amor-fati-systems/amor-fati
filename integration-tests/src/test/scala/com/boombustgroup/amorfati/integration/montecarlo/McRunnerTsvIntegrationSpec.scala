@@ -16,37 +16,258 @@ import java.nio.file.{Files, Path}
 import scala.jdk.CollectionConverters.*
 import scala.util.Using
 
-class McRunnerCsvIntegrationSpec extends AnyFlatSpec with Matchers:
+class McRunnerTsvIntegrationSpec extends AnyFlatSpec with Matchers:
 
   given SimParams = SimParams.defaults
 
   private val DurationMonths     = 3
   private val Seeds              = Vector(1L, 2L)
   private val OutputPrefix       = "mc-it"
-  private val RunId              = "csvspec"
-  private val HhLiquidityHeader  =
-    "HouseholdLiquidity_NetDemandDeposit;HouseholdLiquidity_PositiveDemandDeposits;HouseholdLiquidity_ImplicitOverdraft;HouseholdLiquidity_NegativeDepositCount;HouseholdLiquidity_NegativeDepositShare;HouseholdLiquidity_MinDemandDeposit;HouseholdLiquidity_DepositP01;HouseholdLiquidity_DepositP05;HouseholdLiquidity_DepositP10;HouseholdLiquidity_DepositP25;HouseholdLiquidity_DepositP50;HouseholdLiquidity_DepositP75;HouseholdLiquidity_DepositP90;HouseholdLiquidity_DepositP95;HouseholdLiquidity_DepositP99"
-  private val HhDistressHeader   =
-    "HH_Distress_Current;HH_Distress_LiquidityStress;HH_Distress_Arrears;HH_Distress_Restructuring;HH_Distress_Defaulted;HH_Distress_Bankruptcy;HH_Distress_ActiveShare"
-  private val ExpectedHhHeader   =
-    "Seed;HH_Employed;HH_Unemployed;HH_Retraining;HH_Bankrupt;" +
-      HhDistressHeader +
-      ";MeanMonthlyIncome;MeanEmployedWage;WageP10;WageP50;WageP90;MeanSavings;MedianSavings;Gini_Individual;Gini_Wealth;MeanSkill;MeanHealthPenalty;RetrainingAttempts;RetrainingSuccesses;ConsumptionP10;ConsumptionP50;ConsumptionP90;BankruptcyRate;MeanMonthsToRuin;PovertyRate_50pct;PovertyRate_30pct;" +
-      HhLiquidityHeader
-  private val ExpectedBankHeader =
-    "Seed;BankId;Deposits;Loans;Capital;NPL;CAR;GovBonds;InterbankNet;Failed"
-  private val ExpectedFirmHeader =
-    "Seed;Firm_Living;FirmSize_Micro;FirmSize_Small;FirmSize_Medium;FirmSize_Large;FirmSize_MicroShare;FirmSize_SmallShare;FirmSize_MediumShare;FirmSize_LargeShare"
-  private val ExpectedFirmSnapshotHeader =
-    "RunId;Seed;Month;FirmId;Sector;Region;SizeClass;Workers;TechState;BankruptcyReason;DigitalReadiness;Cash;FirmLoan;Equity;BankId;RiskProfile;InitialSize;CapitalStock;Inventory;GreenCapital;ForeignOwned;StateOwned"
-  private val ConsumerBankPortfolioHeader =
-    "ConsumerBankPortfolioRiskAdjustedLoanReturn;ConsumerBankPortfolioRiskAdjustedBondReturn;ConsumerBankPortfolioWedge;ConsumerBankPortfolioExpectedLossComponent;ConsumerBankPortfolioCapitalComponent;ConsumerBankPortfolioLevyComponent;ConsumerBankPortfolioFundingComponent;ConsumerBankPortfolioPriceShare;ConsumerBankPortfolioPriceContribution;ConsumerBankPortfolioQuantityThrottle"
-  private val ExpectedHouseholdSnapshotHeader =
-    "RunId;Seed;Month;HouseholdId;Status;Region;ContractType;BankId;Wage;Rent;MPC;Skill;HealthPenalty;FinancialDistressMonths;FinancialDistressState;DemandDeposit;MortgageLoan;ConsumerLoan;Equity;PositiveDeposit;ImplicitOverdraft;NetLiquidPosition;NetFinancialPosition;OpeningDemandDeposit;OpeningConsumerLoan;MonthlyIncome;Consumption;UnmetBasicConsumption;DiscretionaryConsumptionCompression;RentPaid;MortgageDebtService;ConsumerApprovedOrigination;ConsumerCreditDemand;ConsumerRejectedOrigination;ConsumerBankRejectedOrigination;ConsumerBankApprovalProduct;ConsumerBankRejectionReason;ConsumerBankApprovalProbability;ConsumerBankApprovalRoll;ConsumerBankProjectedCAR;ConsumerBankMinCAR;ConsumerBankManagementCAR;ConsumerBankCapitalThrottle;ConsumerBankLCR;ConsumerBankNSFR;" +
-      ConsumerBankPortfolioHeader +
-      ";LiquidityShortfallFinancing;ConsumptionShortfall;RentArrears;MortgageArrears;ConsumerDebtArrears;TemporaryOverdraft;ConsumerDebtService;ConsumerDefault;ConsumerLoanDefault;LiquidityBridgeChargeOff;ConsumerPrincipal;ClosingConsumerLoan"
-  private val ExpectedHouseholdShortfallCohortHeader =
-    "RunId;Seed;Month;Dimension;Cohort;HouseholdCount;ShortfallHouseholdCount;ShortfallHouseholdShare;LiquidityShortfallFinancing;ShortfallShareOfMonth;ConsumptionShortfall;RentArrears;MortgageArrears;ConsumerDebtArrears;TemporaryOverdraft;ConsumerApprovedOrigination;ConsumerCreditDemand;ConsumerRejectedOrigination;ConsumerBankRejectedOrigination;ConsumerDebtService;ConsumerDefault;ConsumerLoanDefault;LiquidityBridgeChargeOff;ConsumerPrincipal;OpeningDemandDeposit;ClosingDemandDeposit;OpeningConsumerLoan;ClosingConsumerLoan;MonthlyIncome;Consumption;UnmetBasicConsumption;DiscretionaryConsumptionCompression;Rent;MortgageDebtService;RentToIncome;MortgageDebtServiceToIncome;ConsumerDebtServiceToIncome;ClosingConsumerLoanToIncome"
+  private val RunId              = "tsvspec"
+  private val HhLiquidityColumns = columns(
+    """
+      HouseholdLiquidity_NetDemandDeposit
+      HouseholdLiquidity_PositiveDemandDeposits
+      HouseholdLiquidity_ImplicitOverdraft
+      HouseholdLiquidity_NegativeDepositCount
+      HouseholdLiquidity_NegativeDepositShare
+      HouseholdLiquidity_MinDemandDeposit
+      HouseholdLiquidity_DepositP01
+      HouseholdLiquidity_DepositP05
+      HouseholdLiquidity_DepositP10
+      HouseholdLiquidity_DepositP25
+      HouseholdLiquidity_DepositP50
+      HouseholdLiquidity_DepositP75
+      HouseholdLiquidity_DepositP90
+      HouseholdLiquidity_DepositP95
+      HouseholdLiquidity_DepositP99
+    """,
+  )
+  private val HhDistressColumns  = columns(
+    """
+      HH_Distress_Current
+      HH_Distress_LiquidityStress
+      HH_Distress_Arrears
+      HH_Distress_Restructuring
+      HH_Distress_Defaulted
+      HH_Distress_Bankruptcy
+      HH_Distress_ActiveShare
+    """,
+  )
+  private val ExpectedHhHeader   = tsv(
+    columns(
+      """
+        Seed
+        HH_Employed
+        HH_Unemployed
+        HH_Retraining
+        HH_Bankrupt
+      """,
+    ) ++ HhDistressColumns ++ columns(
+      """
+        MeanMonthlyIncome
+        MeanEmployedWage
+        WageP10
+        WageP50
+        WageP90
+        MeanSavings
+        MedianSavings
+        Gini_Individual
+        Gini_Wealth
+        MeanSkill
+        MeanHealthPenalty
+        RetrainingAttempts
+        RetrainingSuccesses
+        ConsumptionP10
+        ConsumptionP50
+        ConsumptionP90
+        BankruptcyRate
+        MeanMonthsToRuin
+        PovertyRate_50pct
+        PovertyRate_30pct
+      """,
+    ) ++ HhLiquidityColumns,
+  )
+  private val ExpectedBankHeader = tsv(
+    columns(
+      """
+        Seed
+        BankId
+        Deposits
+        Loans
+        Capital
+        NPL
+        CAR
+        GovBonds
+        InterbankNet
+        Failed
+      """,
+    ),
+  )
+  private val ExpectedFirmHeader = tsv(
+    columns(
+      """
+        Seed
+        Firm_Living
+        FirmSize_Micro
+        FirmSize_Small
+        FirmSize_Medium
+        FirmSize_Large
+        FirmSize_MicroShare
+        FirmSize_SmallShare
+        FirmSize_MediumShare
+        FirmSize_LargeShare
+      """,
+    ),
+  )
+  private val ExpectedFirmSnapshotHeader = tsvHeader(
+    """
+      RunId
+      Seed
+      Month
+      FirmId
+      Sector
+      Region
+      SizeClass
+      Workers
+      TechState
+      BankruptcyReason
+      DigitalReadiness
+      Cash
+      FirmLoan
+      Equity
+      BankId
+      RiskProfile
+      InitialSize
+      CapitalStock
+      Inventory
+      GreenCapital
+      ForeignOwned
+      StateOwned
+    """,
+  )
+  private val ConsumerBankPortfolioColumns = columns(
+    """
+      ConsumerBankPortfolioRiskAdjustedLoanReturn
+      ConsumerBankPortfolioRiskAdjustedBondReturn
+      ConsumerBankPortfolioWedge
+      ConsumerBankPortfolioExpectedLossComponent
+      ConsumerBankPortfolioCapitalComponent
+      ConsumerBankPortfolioLevyComponent
+      ConsumerBankPortfolioFundingComponent
+      ConsumerBankPortfolioPriceShare
+      ConsumerBankPortfolioPriceContribution
+      ConsumerBankPortfolioQuantityThrottle
+    """,
+  )
+  private val ExpectedHouseholdSnapshotHeader = tsv(
+    columns(
+      """
+        RunId
+        Seed
+        Month
+        HouseholdId
+        Status
+        Region
+        ContractType
+        BankId
+        Wage
+        Rent
+        MPC
+        Skill
+        HealthPenalty
+        FinancialDistressMonths
+        FinancialDistressState
+        DemandDeposit
+        MortgageLoan
+        ConsumerLoan
+        Equity
+        PositiveDeposit
+        ImplicitOverdraft
+        NetLiquidPosition
+        NetFinancialPosition
+        OpeningDemandDeposit
+        OpeningConsumerLoan
+        MonthlyIncome
+        Consumption
+        UnmetBasicConsumption
+        DiscretionaryConsumptionCompression
+        RentPaid
+        MortgageDebtService
+        ConsumerApprovedOrigination
+        ConsumerCreditDemand
+        ConsumerRejectedOrigination
+        ConsumerBankRejectedOrigination
+        ConsumerBankApprovalProduct
+        ConsumerBankRejectionReason
+        ConsumerBankApprovalProbability
+        ConsumerBankApprovalRoll
+        ConsumerBankProjectedCAR
+        ConsumerBankMinCAR
+        ConsumerBankManagementCAR
+        ConsumerBankCapitalThrottle
+        ConsumerBankLCR
+        ConsumerBankNSFR
+      """,
+    ) ++ ConsumerBankPortfolioColumns ++ columns(
+      """
+        LiquidityShortfallFinancing
+        ConsumptionShortfall
+        RentArrears
+        MortgageArrears
+        ConsumerDebtArrears
+        TemporaryOverdraft
+        ConsumerDebtService
+        ConsumerDefault
+        ConsumerLoanDefault
+        LiquidityBridgeChargeOff
+        ConsumerPrincipal
+        ClosingConsumerLoan
+      """,
+    ),
+  )
+  private val ExpectedHouseholdShortfallCohortHeader = tsvHeader(
+    """
+      RunId
+      Seed
+      Month
+      Dimension
+      Cohort
+      HouseholdCount
+      ShortfallHouseholdCount
+      ShortfallHouseholdShare
+      LiquidityShortfallFinancing
+      ShortfallShareOfMonth
+      ConsumptionShortfall
+      RentArrears
+      MortgageArrears
+      ConsumerDebtArrears
+      TemporaryOverdraft
+      ConsumerApprovedOrigination
+      ConsumerCreditDemand
+      ConsumerRejectedOrigination
+      ConsumerBankRejectedOrigination
+      ConsumerDebtService
+      ConsumerDefault
+      ConsumerLoanDefault
+      LiquidityBridgeChargeOff
+      ConsumerPrincipal
+      OpeningDemandDeposit
+      ClosingDemandDeposit
+      OpeningConsumerLoan
+      ClosingConsumerLoan
+      MonthlyIncome
+      Consumption
+      UnmetBasicConsumption
+      DiscretionaryConsumptionCompression
+      Rent
+      MortgageDebtService
+      RentToIncome
+      MortgageDebtServiceToIncome
+      ConsumerDebtServiceToIncome
+      ClosingConsumerLoanToIncome
+    """,
+  )
 
   private def rc =
     McRunConfig(
@@ -60,7 +281,7 @@ class McRunnerCsvIntegrationSpec extends AnyFlatSpec with Matchers:
     s"${rc.outputPrefix}_${rc.runId}_${rc.runDurationMonths}m"
 
   private def seedFileName(seed: Long, rc: McRunConfig) =
-    f"${filePrefix(rc)}_seed${seed}%03d.csv"
+    f"${filePrefix(rc)}_seed${seed}%03d.tsv"
 
   private def unsafeRun[A](zio: ZIO[Any, SimError, A]): A =
     Unsafe.unsafe:
@@ -87,8 +308,20 @@ class McRunnerCsvIntegrationSpec extends AnyFlatSpec with Matchers:
   private def readLines(path: Path): Vector[String] =
     Files.readAllLines(path).asScala.toVector
 
-  private def parseCsvRow(line: String): Vector[BigDecimal] =
-    line.split(';').toVector.map(value => BigDecimal(value.replace(',', '.')))
+  private def columns(raw: String): Vector[String] =
+    raw.linesIterator.map(_.trim).filter(_.nonEmpty).toVector
+
+  private def tsv(values: Iterable[String]): String =
+    values.mkString("\t")
+
+  private def tsvHeader(raw: String): String =
+    tsv(columns(raw))
+
+  private def splitTsv(line: String): Vector[String] =
+    line.split("\t", -1).toVector
+
+  private def parseTsvRow(line: String): Vector[BigDecimal] =
+    splitTsv(line).map(value => BigDecimal(value.replace(',', '.')))
 
   private def columnIndex(header: Vector[String], name: String): Int =
     val idx = header.indexOf(name)
@@ -213,24 +446,44 @@ class McRunnerCsvIntegrationSpec extends AnyFlatSpec with Matchers:
       .sorted
     val meanMonthlyIncome = if households.nonEmpty then a.totalIncome.divideBy(households.length) else PLN.Zero
     val meanEmployedWage  = if employedWages.nonEmpty then employedWages.sumPln.divideBy(employedWages.length) else PLN.Zero
-    s"$seed;${a.employed};${a.unemployed};${a.retraining};${a.bankrupt};" +
-      s"${a.distressCurrent};${a.distressLiquidityStress};${a.distressArrears};${a.distressRestructuring};${a.distressDefaulted};${a.distressBankruptcy};" +
-      s"${a.distressActiveShare(households.length).format(6)};" +
-      s"${meanMonthlyIncome.format(2)};${meanEmployedWage.format(2)};" +
-      s"${percentile(employedWages, Share.decimal(10, 2)).format(2)};" +
-      s"${percentile(employedWages, Share.decimal(50, 2)).format(2)};" +
-      s"${percentile(employedWages, Share.decimal(90, 2)).format(2)};" +
-      s"${a.meanSavings.format(2)};${a.medianSavings.format(2)};" +
-      s"${a.giniIndividual.format(6)};${a.giniWealth.format(6)};" +
-      s"${a.meanSkill.format(6)};${a.meanHealthPenalty.format(6)};" +
-      s"${a.retrainingAttempts};${a.retrainingSuccesses};" +
-      s"${a.consumptionP10.format(2)};${a.consumptionP50.format(2)};${a.consumptionP90.format(2)};" +
-      s"${a.bankruptcyRate.format(6)};" +
-      s"${a.meanMonthsToRuin.format(2)};" +
-      s"${a.povertyRate50.format(6)};${a.povertyRate30.format(6)};" +
-      expectedHhLiquiditySuffix(result)
+    tsv(
+      Vector(
+        seed.toString,
+        a.employed.toString,
+        a.unemployed.toString,
+        a.retraining.toString,
+        a.bankrupt.toString,
+        a.distressCurrent.toString,
+        a.distressLiquidityStress.toString,
+        a.distressArrears.toString,
+        a.distressRestructuring.toString,
+        a.distressDefaulted.toString,
+        a.distressBankruptcy.toString,
+        a.distressActiveShare(households.length).format(6),
+        meanMonthlyIncome.format(2),
+        meanEmployedWage.format(2),
+        percentile(employedWages, Share.decimal(10, 2)).format(2),
+        percentile(employedWages, Share.decimal(50, 2)).format(2),
+        percentile(employedWages, Share.decimal(90, 2)).format(2),
+        a.meanSavings.format(2),
+        a.medianSavings.format(2),
+        a.giniIndividual.format(6),
+        a.giniWealth.format(6),
+        a.meanSkill.format(6),
+        a.meanHealthPenalty.format(6),
+        a.retrainingAttempts.toString,
+        a.retrainingSuccesses.toString,
+        a.consumptionP10.format(2),
+        a.consumptionP50.format(2),
+        a.consumptionP90.format(2),
+        a.bankruptcyRate.format(6),
+        a.meanMonthsToRuin.format(2),
+        a.povertyRate50.format(6),
+        a.povertyRate30.format(6),
+      ) ++ expectedHhLiquidityFields(result),
+    )
 
-  private def expectedHhLiquiditySuffix(result: RunResult): String =
+  private def expectedHhLiquidityFields(result: RunResult): Vector[String] =
     val deposits      = result.terminalState.ledgerFinancialState.households.map(_.demandDeposit).sorted
     val net           = deposits.sumPln
     val positive      = deposits.filter(_ > PLN.Zero).sumPln
@@ -255,7 +508,7 @@ class McRunnerCsvIntegrationSpec extends AnyFlatSpec with Matchers:
       percentile(deposits, Share.decimal(90, 2)).format(2),
       percentile(deposits, Share.decimal(95, 2)).format(2),
       percentile(deposits, Share.decimal(99, 2)).format(2),
-    ).mkString(";")
+    )
 
   private def percentile(values: Vector[PLN], p: Share): PLN =
     if values.isEmpty then PLN.Zero
@@ -267,22 +520,31 @@ class McRunnerCsvIntegrationSpec extends AnyFlatSpec with Matchers:
     result.terminalState.banks.map: bank =>
       val balances = result.terminalState.ledgerFinancialState.banks(bank.id.toInt)
       val stocks   = LedgerFinancialState.projectBankFinancialStocks(balances)
-      s"$seed;${bank.id};" +
-        s"${stocks.totalDeposits.format(2)};${stocks.firmLoan.format(2)};${bank.capital.format(2)};" +
-        s"${Banking.nplRatio(bank, stocks).format(6)};${Banking.car(bank, stocks, balances.corpBond).format(6)};" +
-        s"${Banking.govBondHoldings(stocks).format(2)};${stocks.interbankLoan.format(2)};" +
-        s"${bank.failed}"
+      tsv(
+        Vector(
+          seed.toString,
+          bank.id.toString,
+          stocks.totalDeposits.format(2),
+          stocks.firmLoan.format(2),
+          bank.capital.format(2),
+          Banking.nplRatio(bank, stocks).format(6),
+          Banking.car(bank, stocks, balances.corpBond).format(6),
+          Banking.govBondHoldings(stocks).format(2),
+          stocks.interbankLoan.format(2),
+          bank.failed.toString,
+        ),
+      )
 
-  "runZIO".should("write deterministic per-seed and summary CSV files").in {
+  "runZIO".should("write deterministic per-seed and summary TSV files").in {
     withTempDir { outputDir =>
       unsafeRun(McRunner.runZIO(rc, outputDir.toFile))
 
       val expectedRuns      = Seeds.map(seed => seed -> expectedRun(seed)).toMap
       val expectedFileNames = (
         Seeds.map(seed => seedFileName(seed, rc)) :+
-          s"${filePrefix(rc)}_hh.csv" :+
-          s"${filePrefix(rc)}_banks.csv" :+
-          s"${filePrefix(rc)}_firms.csv"
+          s"${filePrefix(rc)}_hh.tsv" :+
+          s"${filePrefix(rc)}_banks.tsv" :+
+          s"${filePrefix(rc)}_firms.tsv"
       ).toSet
 
       Using.resource(Files.list(outputDir)): stream =>
@@ -292,13 +554,13 @@ class McRunnerCsvIntegrationSpec extends AnyFlatSpec with Matchers:
         val path   = outputDir.resolve(seedFileName(seed, rc))
         val lines  = readLines(path)
         val result = expectedRuns(seed)
-        val header = lines.head.split(';').toVector
+        val header = splitTsv(lines.head)
 
-        lines.head.shouldBe(McTimeseriesSchema.colNames.mkString(";"))
+        lines.head.shouldBe(McTimeseriesSchema.colNames.mkString("\t"))
         lines.length.shouldBe(DurationMonths + 1)
 
         for (line, monthIndex) <- lines.tail.zipWithIndex do
-          val actual   = parseCsvRow(line)
+          val actual   = parseTsvRow(line)
           val month    = ExecutionMonth.First.advanceBy(monthIndex)
           val expected = result.timeSeries.monthRow(month)
 
@@ -312,23 +574,23 @@ class McRunnerCsvIntegrationSpec extends AnyFlatSpec with Matchers:
             assertBankCapitalWaterfall(header, actual)
           }
 
-      val hhLines = readLines(outputDir.resolve(s"${filePrefix(rc)}_hh.csv"))
+      val hhLines = readLines(outputDir.resolve(s"${filePrefix(rc)}_hh.tsv"))
       hhLines.head.shouldBe(ExpectedHhHeader)
       hhLines.length.shouldBe(Seeds.length + 1)
       hhLines.tail.shouldBe(Seeds.map(seed => expectedHhRow(seed, expectedRuns(seed))))
 
-      val bankLines = readLines(outputDir.resolve(s"${filePrefix(rc)}_banks.csv"))
+      val bankLines = readLines(outputDir.resolve(s"${filePrefix(rc)}_banks.tsv"))
       bankLines.head.shouldBe(ExpectedBankHeader)
       bankLines.length.shouldBe(1 + expectedRuns.valuesIterator.map(_.terminalState.banks.length).sum)
       bankLines.tail.shouldBe(Seeds.flatMap(seed => expectedBankRows(seed, expectedRuns(seed))))
 
-      val firmLines = readLines(outputDir.resolve(s"${filePrefix(rc)}_firms.csv"))
+      val firmLines = readLines(outputDir.resolve(s"${filePrefix(rc)}_firms.tsv"))
       firmLines.head.shouldBe(ExpectedFirmHeader)
       firmLines.length.shouldBe(Seeds.length + 1)
       firmLines.tail.zip(Seeds).foreach: (line, seed) =>
         withClue(s"seed=$seed firms summary: ") {
-          val fields = line.split(';').toVector
-          fields.length.shouldBe(ExpectedFirmHeader.split(';').length)
+          val fields = splitTsv(line)
+          fields.length.shouldBe(splitTsv(ExpectedFirmHeader).length)
           fields.head.shouldBe(seed.toString)
         }
     }
@@ -347,29 +609,29 @@ class McRunnerCsvIntegrationSpec extends AnyFlatSpec with Matchers:
       unsafeRun(McRunner.runZIO(snapshotRc, outputDir.toFile))
 
       val expectedRun = McRunner.runSingle(1L, DurationMonths).fold(err => fail(err.toString), identity)
-      val snapshotLines = readLines(outputDir.resolve(s"${filePrefix(snapshotRc)}_firm_snapshots.csv"))
-      val snapshotHeader = snapshotLines.head.split(';').toVector
+      val snapshotLines = readLines(outputDir.resolve(s"${filePrefix(snapshotRc)}_firm_snapshots.tsv"))
+      val snapshotHeader = splitTsv(snapshotLines.head)
       snapshotLines.head.shouldBe(ExpectedFirmSnapshotHeader)
       snapshotLines.tail.size.shouldBe(expectedRun.terminalState.firms.length)
 
       val monthIdx = snapshotHeader.indexOf("Month")
       monthIdx should be >= 0
-      snapshotLines.tail.map(_.split(';')(monthIdx)).toSet.shouldBe(Set(DurationMonths.toString))
+      snapshotLines.tail.map(line => splitTsv(line)(monthIdx)).toSet.shouldBe(Set(DurationMonths.toString))
 
       val sizeClassIdx = snapshotHeader.indexOf("SizeClass")
       val techStateIdx = snapshotHeader.indexOf("TechState")
       sizeClassIdx should be >= 0
       techStateIdx should be >= 0
       val snapshotCounts = snapshotLines.tail
-        .map(_.split(';').toVector)
+        .map(splitTsv)
         .filter(row => row(techStateIdx) != "Bankrupt")
         .groupBy(row => row(sizeClassIdx))
         .view
         .mapValues(_.size)
         .toMap
 
-      val firmSummaryLine = readLines(outputDir.resolve(s"${filePrefix(snapshotRc)}_firms.csv"))(1)
-      val summaryFields   = ExpectedFirmHeader.split(';').toVector.zip(firmSummaryLine.split(';').toVector).toMap
+      val firmSummaryLine = readLines(outputDir.resolve(s"${filePrefix(snapshotRc)}_firms.tsv"))(1)
+      val summaryFields   = splitTsv(ExpectedFirmHeader).zip(splitTsv(firmSummaryLine)).toMap
 
       snapshotCounts.getOrElse("Micro", 0).shouldBe(summaryFields("FirmSize_Micro").toInt)
       snapshotCounts.getOrElse("Small", 0).shouldBe(summaryFields("FirmSize_Small").toInt)
@@ -391,8 +653,8 @@ class McRunnerCsvIntegrationSpec extends AnyFlatSpec with Matchers:
 
       unsafeRun(McRunner.runZIO(snapshotRc, outputDir.toFile))
 
-      val snapshotLines = readLines(outputDir.resolve(s"${filePrefix(snapshotRc)}_household_snapshots.csv"))
-      val header        = snapshotLines.head.split(';').toVector
+      val snapshotLines = readLines(outputDir.resolve(s"${filePrefix(snapshotRc)}_household_snapshots.tsv"))
+      val header        = splitTsv(snapshotLines.head)
       snapshotLines.head.shouldBe(ExpectedHouseholdSnapshotHeader)
       snapshotLines.tail should not be empty
 
@@ -403,16 +665,16 @@ class McRunnerCsvIntegrationSpec extends AnyFlatSpec with Matchers:
       hhIdIdx should be >= 0
       depositIdx should be >= 0
 
-      snapshotLines.tail.map(_.split(';')(monthIdx)).toSet.shouldBe(Set(DurationMonths.toString))
+      snapshotLines.tail.map(line => splitTsv(line)(monthIdx)).toSet.shouldBe(Set(DurationMonths.toString))
 
       snapshotLines.tail.foreach: line =>
-        val fields = line.split(';').toVector
-        fields.length.shouldBe(ExpectedHouseholdSnapshotHeader.split(';').length)
+        val fields = splitTsv(line)
+        fields.length.shouldBe(splitTsv(ExpectedHouseholdSnapshotHeader).length)
         fields(hhIdIdx).toInt should be >= 0
         BigDecimal(fields(depositIdx)) should be >= BigDecimal(0)
 
-      val cohortLines = readLines(outputDir.resolve(s"${filePrefix(snapshotRc)}_household_shortfall_cohorts.csv"))
-      val cohortHeader = cohortLines.head.split(';').toVector
+      val cohortLines = readLines(outputDir.resolve(s"${filePrefix(snapshotRc)}_household_shortfall_cohorts.tsv"))
+      val cohortHeader = splitTsv(cohortLines.head)
       cohortLines.head.shouldBe(ExpectedHouseholdShortfallCohortHeader)
       cohortLines.tail should not be empty
 
@@ -453,7 +715,7 @@ class McRunnerCsvIntegrationSpec extends AnyFlatSpec with Matchers:
       consumerLoanDefaultIdx should be >= 0
       liquidityBridgeChargeOffIdx should be >= 0
 
-      val allRows = cohortLines.tail.map(_.split(';').toVector).filter(row => row(dimensionIdx) == "All")
+      val allRows = cohortLines.tail.map(splitTsv).filter(row => row(dimensionIdx) == "All")
       allRows.map(row => row(cohortIdx)).toSet.shouldBe(Set("All"))
       allRows.foreach: row =>
         row(countIdx).toInt should be > 0

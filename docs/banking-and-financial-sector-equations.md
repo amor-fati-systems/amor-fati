@@ -764,7 +764,7 @@ Focused diagnostics:
 | Layer | Coverage |
 | --- | --- |
 | Unit and property tests | Banking sector specs, bank regulatory metrics, interbank, capital semantics, monetary plumbing, NBP runtime contracts, flow emitters, insurance, NBFI, quasi-fiscal, and SFC projection specs. |
-| Integration tests | Monte Carlo CSV integration, bank benchmark specs, SFC exactness tests, scenario diagnostics, and generated-output guards. |
+| Integration tests | Monte Carlo TSV integration, bank benchmark specs, SFC exactness tests, scenario diagnostics, and generated-output guards. |
 | Generated artifacts | SFC matrix evidence, flow-mechanism semantics, and stock-flow reconciliation documents expose accounting routes. |
 | Nightly diagnostics | Normal profiles should keep bank failure/all-failed semantics within expected bounds; stress/exploratory profiles report failure-channel behavior explicitly. |
 

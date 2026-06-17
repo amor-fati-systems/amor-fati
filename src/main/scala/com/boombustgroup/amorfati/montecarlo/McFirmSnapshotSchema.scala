@@ -26,7 +26,7 @@ private[montecarlo] object McFirmSnapshotSchema:
     "FirmId"           -> (row => row.firm.id.toInt.toString),
     "Sector"           -> (row => text(row.sectorName)),
     "Region"           -> (row => text(row.firm.region.toString)),
-    "SizeClass"        -> (row => row.sizeClass.csvValue),
+    "SizeClass"        -> (row => row.sizeClass.tsvValue),
     "Workers"          -> (row => row.workers.toString),
     "TechState"        -> (row => techState(row.firm.tech)),
     "BankruptcyReason" -> (row => bankruptcyReason(row.firm.tech)),
@@ -45,12 +45,12 @@ private[montecarlo] object McFirmSnapshotSchema:
   )
 
   val header: String =
-    columns.map(_._1).mkString(";")
+    columns.map(_._1).mkString("\t")
 
-  val csvSchema: McCsvSchema[Row] =
-    McCsvSchema(
+  val tsvSchema: McTsvSchema[Row] =
+    McTsvSchema(
       header = header,
-      render = row => columns.map(_._2(row)).mkString(";"),
+      render = row => columns.map(_._2(row)).mkString("\t"),
     )
 
   def rows(runId: String, seed: Long, month: ExecutionMonth, state: FlowSimulation.SimState)(using SimParams): Vector[Row] =
@@ -95,4 +95,4 @@ private[montecarlo] object McFirmSnapshotSchema:
       case BankruptReason.Other(msg)          => s"Other(${text(msg)})"
 
   private def text(value: String): String =
-    value.replace(';', ',').replace('\n', ' ').replace('\r', ' ')
+    value.replace('\t', ' ').replace('\n', ' ').replace('\r', ' ')

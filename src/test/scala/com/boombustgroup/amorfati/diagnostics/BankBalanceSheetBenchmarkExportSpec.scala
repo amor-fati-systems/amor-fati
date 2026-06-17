@@ -15,6 +15,9 @@ class BankBalanceSheetBenchmarkExportSpec extends AnyFlatSpec with Matchers:
   import BankBalanceSheetBenchmarkExport.*
   import com.boombustgroup.amorfati.types.*
 
+  private def tsv(fields: String*): String =
+    fields.mkString("\t")
+
   "BankBalanceSheetBenchmarkExport" should "parse CLI run controls" in {
     parseArgs(Vector("--seed-start", "2", "--seeds", "7", "--run-id", "bank-spec", "--out", "target/bank-spec")) shouldBe
       Right(Config(seedStart = 2L, seeds = 7, runId = "bank-spec", out = Path.of("target/bank-spec")))
@@ -105,19 +108,70 @@ class BankBalanceSheetBenchmarkExportSpec extends AnyFlatSpec with Matchers:
       assetShare = BigDecimal("0.20"),
     )
 
-    val seedCsv   = renderSeedMetricsCsv(rows)
-    val sumCsv    = renderSummaryCsv(summary)
-    val targetCsv = renderTargetsCsv(Targets)
-    val bankCsv   = renderBankRowsCsv(Vector(bankRow))
+    val seedTsv   = renderSeedMetricsTsv(rows)
+    val sumTsv    = renderSummaryTsv(summary)
+    val targetTsv = renderTargetsTsv(Targets)
+    val bankTsv   = renderBankRowsTsv(Vector(bankRow))
     val report    = renderReport(Config(seedStart = 2L, runId = "bank-spec", seeds = 2), summary)
 
-    seedCsv.linesIterator.next() shouldBe "RunId;Seed;Metric;Label;Value;Unit;GuardrailClass;Vintage;Lower;Upper;Status;SourceNote;Interpretation"
-    seedCsv should include("ReserveToDeposits")
-    sumCsv.linesIterator.next() shouldBe "RunId;Seeds;Metric;Label;Mean;Min;Max;Unit;GuardrailClass;Vintage;Lower;Upper;Status;SourceNote;Interpretation"
-    targetCsv should include("2026-04-30 model-start baseline")
-    bankCsv.linesIterator.next() shouldBe
-      "RunId;Seed;BankId;BankName;Capital;Assets;Deposits;TotalCredit;GovBondHoldings;GovBondShareOfAssets;PolishBankLevyTaxableAssets;PolishBankLevyTaxableAssetsShare;CapitalAdequacyRatio;EffectiveMinCar;CarBuffer;Lcr;Nsfr;CreditShare;DepositShare;AssetShare"
-    bankCsv should include("PKO BP")
+    seedTsv.linesIterator.next() shouldBe tsv(
+      "RunId",
+      "Seed",
+      "Metric",
+      "Label",
+      "Value",
+      "Unit",
+      "GuardrailClass",
+      "Vintage",
+      "Lower",
+      "Upper",
+      "Status",
+      "SourceNote",
+      "Interpretation",
+    )
+    seedTsv should include("ReserveToDeposits")
+    sumTsv.linesIterator.next() shouldBe tsv(
+      "RunId",
+      "Seeds",
+      "Metric",
+      "Label",
+      "Mean",
+      "Min",
+      "Max",
+      "Unit",
+      "GuardrailClass",
+      "Vintage",
+      "Lower",
+      "Upper",
+      "Status",
+      "SourceNote",
+      "Interpretation",
+    )
+    targetTsv should include("2026-04-30 model-start baseline")
+    bankTsv.linesIterator.next() shouldBe
+      tsv(
+        "RunId",
+        "Seed",
+        "BankId",
+        "BankName",
+        "Capital",
+        "Assets",
+        "Deposits",
+        "TotalCredit",
+        "GovBondHoldings",
+        "GovBondShareOfAssets",
+        "PolishBankLevyTaxableAssets",
+        "PolishBankLevyTaxableAssetsShare",
+        "CapitalAdequacyRatio",
+        "EffectiveMinCar",
+        "CarBuffer",
+        "Lcr",
+        "Nsfr",
+        "CreditShare",
+        "DepositShare",
+        "AssetShare",
+      )
+    bankTsv should include("PKO BP")
     report should include("--seed-start 2")
     report should include("ReserveToDeposits")
     report should include(BankCapitalSourceStatement)

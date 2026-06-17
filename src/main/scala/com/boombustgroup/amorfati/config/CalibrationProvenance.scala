@@ -340,7 +340,7 @@ object CalibrationProvenance:
           "docs/sensitivity-robustness-workflow.md",
           "Consumption-led demand sensitivity",
           "SensitivityRobustnessExport contains one-at-a-time household MPC scenarios for output, inflation, credit, and fiscal metrics.",
-          artifactLabel = Some("sensitivity-summary.csv"),
+          artifactLabel = Some("sensitivity-summary.tsv"),
           scenarioIds = Vector("mpc-low", "mpc-high"),
         ),
         "firm.productivityGrowth"      -> linkedEvidence(
@@ -355,7 +355,7 @@ object CalibrationProvenance:
           "docs/sensitivity-robustness-workflow.md",
           "Investment and balance-sheet sensitivity",
           "SensitivityRobustnessExport varies capital adjustment speed and records terminal deltas against baseline.",
-          artifactLabel = Some("sensitivity-summary.csv"),
+          artifactLabel = Some("sensitivity-summary.tsv"),
           scenarioIds = Vector("investment-fast"),
         ),
         "fiscal.govInitCapital"        -> linkedEvidence(
@@ -370,7 +370,7 @@ object CalibrationProvenance:
           "docs/sensitivity-robustness-workflow.md",
           "Monetary-policy sensitivity",
           "SensitivityRobustnessExport varies neutral rate and Taylor response together in the monetary-tight scenario.",
-          artifactLabel = Some("sensitivity-summary.csv"),
+          artifactLabel = Some("sensitivity-summary.tsv"),
           scenarioIds = Vector("monetary-tight"),
         ),
         "forex.irpSensitivity"         -> linkedEvidence(
@@ -378,7 +378,7 @@ object CalibrationProvenance:
           "docs/sensitivity-robustness-workflow.md",
           "FX and external-balance sensitivity",
           "SensitivityRobustnessExport varies IRP sensitivity in the external-risk-off scenario and reports FX/current-account metrics.",
-          artifactLabel = Some("sensitivity-summary.csv"),
+          artifactLabel = Some("sensitivity-summary.tsv"),
           scenarioIds = Vector("external-risk-off"),
         ),
         "pricing.demandSensitivity"    -> linkedEvidence(
@@ -386,7 +386,7 @@ object CalibrationProvenance:
           "docs/sensitivity-robustness-workflow.md",
           "Price-level and markup sensitivity",
           "SensitivityRobustnessExport varies cost pass-through in the markup-high scenario and reports inflation and wage-path metrics.",
-          artifactLabel = Some("sensitivity-summary.csv"),
+          artifactLabel = Some("sensitivity-summary.tsv"),
           scenarioIds = Vector("markup-high"),
         ),
         "housing.originationRate"      -> linkedEvidence(
@@ -401,7 +401,7 @@ object CalibrationProvenance:
           "docs/household-credit-stress-calibration.md",
           "Liquidity shortfall versus approved consumer-credit origination",
           "HouseholdCreditStressCalibrationExport reports ShortfallToApprovedOrigination and rejected consumer-credit demand diagnostics for the #534 credit-access calibration.",
-          artifactLabel = Some("household-credit-stress-summary.csv"),
+          artifactLabel = Some("household-credit-stress-summary.tsv"),
           scenarioIds = Vector("issue-534"),
         ),
         "nbfi.creditBaseRate"          -> linkedEvidence(

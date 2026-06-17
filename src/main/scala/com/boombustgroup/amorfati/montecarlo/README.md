@@ -3,41 +3,41 @@
 The `montecarlo` package owns the Monte Carlo runner, output schemas,
 delimited-text I/O, console progress reporting, and typed result/error
 wrappers. It is the only consumer of `McRunConfig` — the engine pipeline has no
-dependency on this package. Runtime Monte Carlo artifacts remain semicolon CSVs;
-the shared delimited-text layer also supports TSV artifacts used by diagnostics.
+dependency on this package. Runtime Monte Carlo artifacts are TSVs, using the
+same shared delimited-text layer as diagnostic TSV artifacts.
 
 ## Files
 
 | File | Object | Role |
 |------|--------|------|
-| `McRunner.scala` | `McRunner` | Orchestrates the Monte Carlo run: initializes seeds, streams monthly snapshots, writes per-seed CSVs, collects terminal summaries and optional firm micro exports |
+| `McRunner.scala` | `McRunner` | Orchestrates the Monte Carlo run: initializes seeds, streams monthly snapshots, writes per-seed TSVs, collects terminal summaries and optional firm micro exports |
 | `McSeedMonth.scala` | `McSeedMonth` | Canonical monthly seed snapshot shared with diagnostics: execution month, timeseries row, opening/closing state, and lightweight monthly tap payloads |
 | `McDiagnosticRunner.scala` | `McDiagnosticRunner` | Shared scenario/seed diagnostic runner using the same seed-stream path and bounded `mapZIOPar` parallelism as production runs |
 | `McRunConfig.scala` | `McRunConfig` | Runtime config from CLI args: `nSeeds`, `outputPrefix`, `runDurationMonths`, `runId`, `firmSnapshotSchedule`, `householdSnapshotSchedule`, `householdSnapshotSelection`, `firmDecisionTraceSelection` |
 | `McFirmSnapshotSchedule.scala` | `McFirmSnapshotSchedule` | Disabled/terminal/cadence/explicit-month firm microdata export schedule |
-| `McFirmSnapshotSchema.scala` | `McFirmSnapshotSchema` | Generic per-firm snapshot CSV header and row rendering |
-| `McFirmSnapshotCsv.scala` | `McFirmSnapshotCsv` | Optional per-seed firm snapshot chunk writer and combined CSV finalizer |
+| `McFirmSnapshotSchema.scala` | `McFirmSnapshotSchema` | Generic per-firm snapshot TSV header and row rendering |
+| `McFirmSnapshotTsv.scala` | `McFirmSnapshotTsv` | Optional per-seed firm snapshot chunk writer and combined TSV finalizer |
 | `McHouseholdSnapshotSchedule.scala` | `McHouseholdSnapshotSchedule` | Disabled/terminal/cadence/explicit-month household microdata export schedule |
 | `McHouseholdSnapshotSelection.scala` | `McHouseholdSnapshotSelection` | Household snapshot row selector: all, negative deposits, liquidity shortfall, or either condition |
-| `McHouseholdSnapshotSchema.scala` | `McHouseholdSnapshotSchema` | Generic per-household liquidity snapshot CSV header and row rendering |
-| `McHouseholdSnapshotCsv.scala` | `McHouseholdSnapshotCsv` | Optional per-seed household snapshot chunk writer and combined CSV finalizer |
+| `McHouseholdSnapshotSchema.scala` | `McHouseholdSnapshotSchema` | Generic per-household liquidity snapshot TSV header and row rendering |
+| `McHouseholdSnapshotTsv.scala` | `McHouseholdSnapshotTsv` | Optional per-seed household snapshot chunk writer and combined TSV finalizer |
 | `McHouseholdShortfallCohortSchema.scala` | `McHouseholdShortfallCohortSchema` | Household shortfall cohort aggregation schema for status/region/contract/burden diagnostics |
-| `McHouseholdShortfallCohortCsv.scala` | `McHouseholdShortfallCohortCsv` | Optional per-seed household shortfall cohort writer and combined CSV finalizer |
+| `McHouseholdShortfallCohortTsv.scala` | `McHouseholdShortfallCohortTsv` | Optional per-seed household shortfall cohort writer and combined TSV finalizer |
 | `McFirmDecisionTraceSelection.scala` | `McFirmDecisionTraceSelection` | Disabled/all/explicit-id/first-N firm decision trace selector |
-| `McFirmDecisionTraceSchema.scala` | `McFirmDecisionTraceSchema` | Generic per-firm decision trace CSV header and row rendering |
-| `McFirmDecisionTraceCsv.scala` | `McFirmDecisionTraceCsv` | Optional per-seed firm decision trace chunk writer and combined CSV finalizer |
+| `McFirmDecisionTraceSchema.scala` | `McFirmDecisionTraceSchema` | Generic per-firm decision trace TSV header and row rendering |
+| `McFirmDecisionTraceTsv.scala` | `McFirmDecisionTraceTsv` | Optional per-seed firm decision trace chunk writer and combined TSV finalizer |
 | `McFirmSizeClass.scala` | `McFirmSizeClass` | Shared worker-count size-class boundary used by terminal counts and firm snapshots |
 | `McHouseholdLiquidityDiagnostics.scala` | `McHouseholdLiquidityDiagnostics` | Shared household demand-deposit distribution diagnostics for timeseries and terminal summaries |
-| `McTimeseriesSchema.scala` | `McTimeseriesSchema` | Timeseries schema composed from domain column groups, with typed `Col` definitions, `compute`, and shared `csvSchema` |
-| `DelimitedTextFormat.scala` | `DelimitedTextFormat` | Format descriptor and cell escaping for semicolon CSV and TSV output |
+| `McTimeseriesSchema.scala` | `McTimeseriesSchema` | Timeseries schema composed from domain column groups, with typed `Col` definitions, `compute`, and shared `tsvSchema` |
+| `DelimitedTextFormat.scala` | `DelimitedTextFormat` | Format descriptor and cell escaping for TSV output |
 | `DelimitedTextSchema.scala` | `DelimitedTextSchema` | Shared header/render contract for delimited-text rows |
 | `DelimitedTextFile.scala` | `DelimitedTextFile` | Generic streaming delimited-text sink with parent-dir creation, temp-file finalization, and fold support |
-| `DelimitedTextRows.scala` | `DelimitedTextRows` | Shared delimited-text row reader used by CSV consumers and TSV diagnostics |
-| `McCsvFile.scala` | `McCsvFile` | Backward-compatible semicolon-CSV facade over `DelimitedTextFile` |
-| `McTimeseriesCsv.scala` | `McTimeseriesCsv` | Production per-seed timeseries CSV sink backed by `McCsvFile` |
+| `DelimitedTextRows.scala` | `DelimitedTextRows` | Shared delimited-text row reader used by TSV consumers and diagnostics |
+| `McTsvFile.scala` | `McTsvFile` | Runtime TSV facade over `DelimitedTextFile` |
+| `McTimeseriesTsv.scala` | `McTimeseriesTsv` | Production per-seed timeseries TSV sink backed by `McTsvFile` |
 | `McTerminalSummarySchema.scala` | `McTerminalSummarySchema` | Household/bank/firm terminal summary schemas and terminal-state row extraction; bank stock columns read `LedgerFinancialState` |
-| `McTerminalSummaryCsv.scala` | `McTerminalSummaryCsv` | Writes aggregate household/bank/firm terminal summary CSVs |
-| `McCsvSchema.scala` | `McCsvSchema` | Backward-compatible semicolon-CSV schema facade over `DelimitedTextSchema` |
+| `McTerminalSummaryTsv.scala` | `McTerminalSummaryTsv` | Writes aggregate household/bank/firm terminal summary TSVs |
+| `McTsvSchema.scala` | `McTsvSchema` | Runtime TSV schema facade over `DelimitedTextSchema` |
 | `McOutputFiles.scala` | `McOutputFiles` | Output directory preparation and stable output file naming |
 | `McRunnerConsole.scala` | `McRunnerConsole` | Console progress/status rendering for runs, seeds, and saved files |
 | `McTypes.scala` | `SimError`, `RunResult`, `TimeSeries` | Typed runtime/output errors plus zero-cost wrappers for simulation output |
@@ -60,15 +60,15 @@ Main ──→ McRunner.runZIO(rc)
            │     stepSnapshot
            │       └── McTimeseriesSchema.compute -> Array[MetricValue]
            │
-           │     McTimeseriesCsv.writeStreaming(seed.csv)
-           │       └── optional McFirmSnapshotCsv.tapSeedSnapshots(...)
+           │     McTimeseriesTsv.writeStreaming(seed.tsv)
+           │       └── optional McFirmSnapshotTsv.tapSeedSnapshots(...)
            │     McTerminalSummarySchema.fromTerminalState
            │
-           ├── McTerminalSummaryCsv.writeAll(hh.csv, banks.csv, firms.csv)
-           ├── optional McFirmSnapshotCsv.combineSeedFiles(firm_snapshots.csv)
-           ├── optional McHouseholdSnapshotCsv.combineSeedFiles(household_snapshots.csv)
-           ├── optional McHouseholdShortfallCohortCsv.combineSeedFiles(household_shortfall_cohorts.csv)
-           ├── optional McFirmDecisionTraceCsv.combineSeedFiles(firm_decision_trace.csv)
+           ├── McTerminalSummaryTsv.writeAll(hh.tsv, banks.tsv, firms.tsv)
+           ├── optional McFirmSnapshotTsv.combineSeedFiles(firm_snapshots.tsv)
+           ├── optional McHouseholdSnapshotTsv.combineSeedFiles(household_snapshots.tsv)
+           ├── optional McHouseholdShortfallCohortTsv.combineSeedFiles(household_shortfall_cohorts.tsv)
+           ├── optional McFirmDecisionTraceTsv.combineSeedFiles(firm_decision_trace.tsv)
            └── McRunnerConsole.emit(...)
 ```
 
@@ -81,15 +81,13 @@ Diagnostics that need Monte Carlo seed execution should use
 `McDiagnosticRunner` and `McRunner.seedMonths`, not `runSingle`. That keeps
 scenario/seed sweeps on the same initialization and monthly runtime path as
 `Main`, preserves bounded seed parallelism through `mapZIOPar`, and lets
-diagnostic CSVs stream rows through `McCsvFile` while retaining only the small
+diagnostic TSVs stream rows through `McTsvFile` while retaining only the small
 fold state needed for summaries.
 
-`McCsvFile` and `McCsvSchema` intentionally preserve the existing semicolon-CSV
-runtime contract. New code that needs a different delimiter should use
-`DelimitedTextFile`, `DelimitedTextSchema`, and `DelimitedTextRows` directly with
-an explicit `DelimitedTextFormat`; for example, empirical-validation snapshots
-use `DelimitedTextFormat.Tsv` while Monte Carlo seed and summary artifacts keep
-`DelimitedTextFormat.SemicolonCsv`.
+`McTsvFile` and `McTsvSchema` define the runtime TSV contract. New code should
+prefer them for Monte Carlo artifacts and use `DelimitedTextFile`,
+`DelimitedTextSchema`, and `DelimitedTextRows` directly only when it needs a more
+generic delimited-text adapter.
 
 `runDurationMonths` is a Monte Carlo/runtime concern. It controls how
 many monthly snapshots the runner materializes, but it is not part of
@@ -255,7 +253,7 @@ BankCreditLoss_CorpBondLossRate
 ```
 
 These columns follow the same pattern as household and firm aggregate
-diagnostics: they are cheap monthly sector metrics in each seed CSV, while
+diagnostics: they are cheap monthly sector metrics in each seed TSV, while
 heavier per-agent drilldowns remain separate optional outputs. Loss components
 are positive when they reduce capital. `BankCapital_RetainedIncome` is positive
 when retained bank income raises capital. `BankCapital_RealizedCreditLoss` is
@@ -501,7 +499,7 @@ separate insufficient origination from ordinary maturity/default runoff.
 
 ## Household Liquidity Diagnostics
 
-The timeseries schema and terminal `_hh.csv` summary include generic household
+The timeseries schema and terminal `_hh.tsv` summary include generic household
 liquidity diagnostics from ledger-owned household demand-deposit balances:
 
 ```text
@@ -647,8 +645,8 @@ Household micro snapshots are disabled by default. When enabled, the runner
 writes two combined files:
 
 ```text
-mc/<prefix>_<run-id>_<months>m_household_snapshots.csv
-mc/<prefix>_<run-id>_<months>m_household_shortfall_cohorts.csv
+mc/<prefix>_<run-id>_<months>m_household_snapshots.tsv
+mc/<prefix>_<run-id>_<months>m_household_shortfall_cohorts.tsv
 ```
 
 The schedule flag mirrors firm snapshots:
@@ -692,7 +690,7 @@ opening/closing consumer-loan stock, monthly income, consumption, rent, mortgage
 debt service, monthly consumer-credit demand/approval/rejection flow components, and the split
 shortfall-settlement components.
 
-The companion `household_shortfall_cohorts.csv` is always computed from the full
+The companion `household_shortfall_cohorts.tsv` is always computed from the full
 household snapshot boundary, regardless of the micro row selector. This keeps
 cohort shares meaningful even when `--household-snapshot-selector shortfall`
 writes only shortfalling micro rows. Cohort dimensions include `All`, `Status`,
@@ -709,7 +707,7 @@ Firm microdata is disabled by default. When enabled, the runner writes one
 combined file:
 
 ```text
-mc/<prefix>_<run-id>_<months>m_firm_snapshots.csv
+mc/<prefix>_<run-id>_<months>m_firm_snapshots.tsv
 ```
 
 The CLI flag is:
@@ -724,7 +722,7 @@ Snapshot rows are one firm per selected execution month and include run id,
 seed, month, firm id, sector, region, size class, workers, tech state,
 bankruptcy reason, digital readiness, cash, firm loan, equity, bank id, risk
 profile, initial size, capital stock, inventory, green capital, and ownership
-flags. The existing terminal `_firms.csv` aggregate remains unchanged.
+flags. The existing terminal `_firms.tsv` aggregate remains unchanged.
 
 ## Firm Decision Traces
 
@@ -732,7 +730,7 @@ Firm decision traces are disabled by default. When enabled, the runner writes
 one combined file:
 
 ```text
-mc/<prefix>_<run-id>_<months>m_firm_decision_trace.csv
+mc/<prefix>_<run-id>_<months>m_firm_decision_trace.tsv
 ```
 
 The CLI flag is:

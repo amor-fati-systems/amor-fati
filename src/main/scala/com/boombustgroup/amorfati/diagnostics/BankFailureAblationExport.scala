@@ -1,8 +1,8 @@
 package com.boombustgroup.amorfati.diagnostics
 
 import com.boombustgroup.amorfati.config.BankFailureAblationScenarios
-import com.boombustgroup.amorfati.montecarlo.McCsvFile
-import com.boombustgroup.amorfati.montecarlo.McCsvSchema
+import com.boombustgroup.amorfati.montecarlo.McTsvFile
+import com.boombustgroup.amorfati.montecarlo.McTsvSchema
 import com.boombustgroup.amorfati.montecarlo.McDiagnosticRunner
 import com.boombustgroup.amorfati.montecarlo.McSeedMonth
 import com.boombustgroup.amorfati.montecarlo.McTimeseriesSchema
@@ -147,9 +147,9 @@ object BankFailureAblationExport:
   def runZIO(config: Config): ZIO[Any, String, ExportResult] =
     for
       validConfig <- ZIO.fromEither(validate(config))
-      seedResults <- McCsvFile
+      seedResults <- McTsvFile
         .writeFold(
-          validConfig.runRoot.resolve("bank-failure-ablation-seeds.csv"),
+          validConfig.runRoot.resolve("bank-failure-ablation-seeds.tsv"),
           McDiagnosticRunner.runScenarioSeeds(
             Scenarios,
             validConfig.seedRange,
@@ -157,7 +157,7 @@ object BankFailureAblationExport:
             _.id,
             _.params,
           )((scenario, seed, months) => computeSeedResult(validConfig, scenario, seed, months)),
-          SeedCsvSchema,
+          SeedTsvSchema,
           Vector.newBuilder[SeedResult],
         )((builder, row) => builder += row)(DiagnosticIo.outputFailure)
         .map(_.result())
@@ -364,39 +364,98 @@ object BankFailureAblationExport:
       )
 
   private def writeArtifactsZIO(config: Config, summary: Vector[SummaryResult]): ZIO[Any, String, Vector[Path]] =
-    val seedPath     = config.runRoot.resolve("bank-failure-ablation-seeds.csv")
-    val summaryPath  = config.runRoot.resolve("bank-failure-ablation-summary.csv")
-    val scenarioPath = config.runRoot.resolve("bank-failure-ablation-scenarios.csv")
+    val seedPath     = config.runRoot.resolve("bank-failure-ablation-seeds.tsv")
+    val summaryPath  = config.runRoot.resolve("bank-failure-ablation-summary.tsv")
+    val scenarioPath = config.runRoot.resolve("bank-failure-ablation-scenarios.tsv")
     val reportPath   = config.runRoot.resolve("bank-failure-ablation-report.md")
     for
-      _ <- McCsvFile.writeAll(summaryPath, summary, SummaryCsvSchema)(DiagnosticIo.outputFailure)
-      _ <- McCsvFile.writeAll(scenarioPath, Scenarios, ScenarioCsvSchema)(DiagnosticIo.outputFailure)
+      _ <- McTsvFile.writeAll(summaryPath, summary, SummaryTsvSchema)(DiagnosticIo.outputFailure)
+      _ <- McTsvFile.writeAll(scenarioPath, Scenarios, ScenarioTsvSchema)(DiagnosticIo.outputFailure)
       _ <- DiagnosticIo.writeText(reportPath, renderReport(config, summary))
     yield Vector(seedPath, summaryPath, scenarioPath, reportPath)
 
-  private[diagnostics] def renderSeedCsv(rows: Vector[SeedResult]): String =
-    renderCsv(SeedCsvSchema, rows)
+  private[diagnostics] def renderSeedTsv(rows: Vector[SeedResult]): String =
+    renderTsv(SeedTsvSchema, rows)
 
-  private[diagnostics] def renderSummaryCsv(rows: Vector[SummaryResult]): String =
-    renderCsv(SummaryCsvSchema, rows)
+  private[diagnostics] def renderSummaryTsv(rows: Vector[SummaryResult]): String =
+    renderTsv(SummaryTsvSchema, rows)
 
-  private[diagnostics] def renderScenarioCsv(scenarios: Vector[BankFailureAblationScenarios.Spec]): String =
-    renderCsv(ScenarioCsvSchema, scenarios)
+  private[diagnostics] def renderScenarioTsv(scenarios: Vector[BankFailureAblationScenarios.Spec]): String =
+    renderTsv(ScenarioTsvSchema, scenarios)
 
-  private val SeedCsvSchema: McCsvSchema[SeedResult] =
-    val header =
-      "RunId;ScenarioId;ScenarioLabel;Seed;Months;FirstFailureMonth;FirstFailureReasonCode;FirstFailureBankId;TerminalFailures;PeakFailures;CumulativeNewFailures;CumulativeRealizedCreditLoss;CumulativeInterbankContagionLoss;CumulativeEclProvisionChange;CumulativeBailInLoss;CumulativeCapitalDestruction;CumulativeReconciliationResidualAbs;FirstFailureRealizedCreditLoss;FirstFailureEclProvisionChange;FirstFailureConsumerNplLoss;FirstFailureFirmNplLoss;FirstFailureMortgageNplLoss;FirstFailureCorpBondDefaultLoss;FirstFailureInterbankContagionLoss;FirstFailureReconciliationResidual;FirstFailureDepositBailInLoss;TerminalTotalCreditToGdp;TerminalUnemployment;TerminalInflation;Interpretation"
-    McCsvSchema(header, renderSeedRow)
+  private val SeedTsvSchema: McTsvSchema[SeedResult] =
+    val header = McTsvSchema.header(
+      "RunId",
+      "ScenarioId",
+      "ScenarioLabel",
+      "Seed",
+      "Months",
+      "FirstFailureMonth",
+      "FirstFailureReasonCode",
+      "FirstFailureBankId",
+      "TerminalFailures",
+      "PeakFailures",
+      "CumulativeNewFailures",
+      "CumulativeRealizedCreditLoss",
+      "CumulativeInterbankContagionLoss",
+      "CumulativeEclProvisionChange",
+      "CumulativeBailInLoss",
+      "CumulativeCapitalDestruction",
+      "CumulativeReconciliationResidualAbs",
+      "FirstFailureRealizedCreditLoss",
+      "FirstFailureEclProvisionChange",
+      "FirstFailureConsumerNplLoss",
+      "FirstFailureFirmNplLoss",
+      "FirstFailureMortgageNplLoss",
+      "FirstFailureCorpBondDefaultLoss",
+      "FirstFailureInterbankContagionLoss",
+      "FirstFailureReconciliationResidual",
+      "FirstFailureDepositBailInLoss",
+      "TerminalTotalCreditToGdp",
+      "TerminalUnemployment",
+      "TerminalInflation",
+      "Interpretation",
+    )
+    McTsvSchema(header, renderSeedRow)
 
-  private val SummaryCsvSchema: McCsvSchema[SummaryResult] =
-    val header =
-      "RunId;ScenarioId;ScenarioLabel;Seeds;Months;FailedSeeds;FirstFailureMonthMean;FirstFailureMonthMin;FirstFailureMonthMax;TerminalFailuresMean;PeakFailuresMean;CumulativeNewFailuresMean;CumulativeRealizedCreditLossMean;CumulativeInterbankContagionLossMean;CumulativeEclProvisionChangeMean;CumulativeBailInLossMean;CumulativeCapitalDestructionMean;CumulativeReconciliationResidualAbsMean;FirstFailureRealizedCreditLossMean;FirstFailureEclProvisionChangeMean;FirstFailureConsumerNplLossMean;FirstFailureFirmNplLossMean;FirstFailureMortgageNplLossMean;FirstFailureCorpBondDefaultLossMean;FirstFailureInterbankContagionLossMean;TerminalTotalCreditToGdpMean;TerminalUnemploymentMean;TerminalInflationMean;Interpretation"
-    McCsvSchema(header, renderSummaryRow)
+  private val SummaryTsvSchema: McTsvSchema[SummaryResult] =
+    val header = McTsvSchema.header(
+      "RunId",
+      "ScenarioId",
+      "ScenarioLabel",
+      "Seeds",
+      "Months",
+      "FailedSeeds",
+      "FirstFailureMonthMean",
+      "FirstFailureMonthMin",
+      "FirstFailureMonthMax",
+      "TerminalFailuresMean",
+      "PeakFailuresMean",
+      "CumulativeNewFailuresMean",
+      "CumulativeRealizedCreditLossMean",
+      "CumulativeInterbankContagionLossMean",
+      "CumulativeEclProvisionChangeMean",
+      "CumulativeBailInLossMean",
+      "CumulativeCapitalDestructionMean",
+      "CumulativeReconciliationResidualAbsMean",
+      "FirstFailureRealizedCreditLossMean",
+      "FirstFailureEclProvisionChangeMean",
+      "FirstFailureConsumerNplLossMean",
+      "FirstFailureFirmNplLossMean",
+      "FirstFailureMortgageNplLossMean",
+      "FirstFailureCorpBondDefaultLossMean",
+      "FirstFailureInterbankContagionLossMean",
+      "TerminalTotalCreditToGdpMean",
+      "TerminalUnemploymentMean",
+      "TerminalInflationMean",
+      "Interpretation",
+    )
+    McTsvSchema(header, renderSummaryRow)
 
-  private val ScenarioCsvSchema: McCsvSchema[BankFailureAblationScenarios.Spec] =
-    McCsvSchema(
-      header = "ScenarioId;ScenarioLabel;Interpretation",
-      render = scenario => Vector(scenario.id, scenario.label, scenario.interpretation).map(csv).mkString(";"),
+  private val ScenarioTsvSchema: McTsvSchema[BankFailureAblationScenarios.Spec] =
+    McTsvSchema(
+      header = McTsvSchema.header("ScenarioId", "ScenarioLabel", "Interpretation"),
+      render = scenario => Vector(scenario.id, scenario.label, scenario.interpretation).map(tsv).mkString("\t"),
     )
 
   private def renderSeedRow(row: SeedResult): String =
@@ -431,7 +490,7 @@ object BankFailureAblationExport:
       renderDecimal(row.terminalUnemployment),
       renderDecimal(row.terminalInflation),
       row.interpretation,
-    ).map(csv).mkString(";")
+    ).map(tsv).mkString("\t")
 
   private def renderSummaryRow(row: SummaryResult): String =
     Vector(
@@ -464,9 +523,9 @@ object BankFailureAblationExport:
       renderDecimal(row.terminalUnemploymentMean),
       renderDecimal(row.terminalInflationMean),
       row.interpretation,
-    ).map(csv).mkString(";")
+    ).map(tsv).mkString("\t")
 
-  private def renderCsv[A](schema: McCsvSchema[A], rows: Vector[A]): String =
+  private def renderTsv[A](schema: McTsvSchema[A], rows: Vector[A]): String =
     (schema.header +: rows.map(schema.render)).mkString("\n") + "\n"
 
   private[diagnostics] def renderReport(config: Config, summary: Vector[SummaryResult]): String =
@@ -589,9 +648,9 @@ object BankFailureAblationExport:
     val rendered = renderDecimal(value)
     if value > BigDecimal(0) then s"+$rendered" else rendered
 
-  private def csv(value: String): String =
+  private def tsv(value: String): String =
     val escaped = value.replace("\"", "\"\"")
-    if escaped.exists(ch => ch == ';' || ch == '"' || ch == '\n' || ch == '\r') then s""""$escaped""""
+    if escaped.exists(ch => ch == '\t' || ch == '"' || ch == '\n' || ch == '\r') then s""""$escaped""""
     else escaped
 
   private def markdownRow(values: Vector[String]): String =
@@ -611,8 +670,8 @@ object BankFailureAblationExport:
       |  bankFailureAblations [--seed-start N] [--seeds N] [--months N] [--out PATH] [--run-id ID]
       |
       |Runs baseline plus controlled bank-failure ablation scenarios and writes:
-      |  bank-failure-ablation-seeds.csv
-      |  bank-failure-ablation-summary.csv
-      |  bank-failure-ablation-scenarios.csv
+      |  bank-failure-ablation-seeds.tsv
+      |  bank-failure-ablation-summary.tsv
+      |  bank-failure-ablation-scenarios.tsv
       |  bank-failure-ablation-report.md
       |""".stripMargin

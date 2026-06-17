@@ -10,67 +10,67 @@ import java.nio.file.{Files, Path}
 import scala.jdk.CollectionConverters.*
 import scala.util.Using
 
-class McCsvFileSpec extends AnyFlatSpec with Matchers:
+class McTsvFileSpec extends AnyFlatSpec with Matchers:
 
-  private val schema = McCsvSchema[Int]("Value", _.toString)
+  private val schema = McTsvSchema[Int]("Value", _.toString)
 
-  "McCsvFile" should "write streamed rows through a temp file and return the fold state" in
+  "McTsvFile" should "write streamed rows through a temp file and return the fold state" in
     withTempDir: dir =>
-      val output = dir.resolve("nested").resolve("values.csv")
+      val output = dir.resolve("nested").resolve("values.tsv")
       val result = run:
-        McCsvFile.writeFold(output, ZStream.fromIterable(Vector(1, 2, 3)), schema, Vector.newBuilder[Int])((builder, row) => builder += row)(
+        McTsvFile.writeFold(output, ZStream.fromIterable(Vector(1, 2, 3)), schema, Vector.newBuilder[Int])((builder, row) => builder += row)(
           outputFailure,
         )
 
       result.result() shouldBe Vector(1, 2, 3)
       Files.readAllLines(output, UTF_8).asScala.toVector shouldBe Vector("Value", "1", "2", "3")
-      Files.exists(output.resolveSibling("values.csv.tmp")) shouldBe false
+      Files.exists(output.resolveSibling("values.tsv.tmp")) shouldBe false
 
   it should "remove the temp file and leave no final file when the row stream fails" in
     withTempDir: dir =>
-      val output = dir.resolve("values.csv")
+      val output = dir.resolve("values.tsv")
       val rows   = ZStream.succeed(1) ++ ZStream.fail("boom")
 
-      run(McCsvFile.writeFold(output, rows, schema, ())((_, _) => ())(outputFailure).either) shouldBe Left("boom")
+      run(McTsvFile.writeFold(output, rows, schema, ())((_, _) => ())(outputFailure).either) shouldBe Left("boom")
       Files.exists(output) shouldBe false
-      Files.exists(output.resolveSibling("values.csv.tmp")) shouldBe false
+      Files.exists(output.resolveSibling("values.tsv.tmp")) shouldBe false
 
-  it should "split streamed rows across two CSV files while returning one fold state" in
+  it should "split streamed rows across two TSV files while returning one fold state" in
     withTempDir: dir =>
-      val leftOutput  = dir.resolve("left.csv")
-      val rightOutput = dir.resolve("nested").resolve("right.csv")
+      val leftOutput  = dir.resolve("left.tsv")
+      val rightOutput = dir.resolve("nested").resolve("right.tsv")
       val rows        = ZStream.fromIterable(Vector(1, 2, 3, 4))
       val result      = run:
-        McCsvFile.writeSplitFold(leftOutput, rightOutput, rows, schema, schema, Vector.newBuilder[Int]) { row =>
+        McTsvFile.writeSplitFold(leftOutput, rightOutput, rows, schema, schema, Vector.newBuilder[Int]) { row =>
           if row % 2 == 0 then Right(row) else Left(row)
         }((builder, row) => builder += row)(outputFailure)
 
       result.result() shouldBe Vector(1, 2, 3, 4)
       Files.readAllLines(leftOutput, UTF_8).asScala.toVector shouldBe Vector("Value", "1", "3")
       Files.readAllLines(rightOutput, UTF_8).asScala.toVector shouldBe Vector("Value", "2", "4")
-      Files.exists(leftOutput.resolveSibling("left.csv.tmp")) shouldBe false
-      Files.exists(rightOutput.resolveSibling("right.csv.tmp")) shouldBe false
+      Files.exists(leftOutput.resolveSibling("left.tsv.tmp")) shouldBe false
+      Files.exists(rightOutput.resolveSibling("right.tsv.tmp")) shouldBe false
 
-  it should "reject split CSV writes to the same output path" in
+  it should "reject split TSV writes to the same output path" in
     withTempDir: dir =>
-      val output = dir.resolve("same.csv")
+      val output = dir.resolve("same.tsv")
       val result = run:
-        McCsvFile
+        McTsvFile
           .writeSplitFold(output, output, ZStream.fromIterable(Vector(1)), schema, schema, ()) { row =>
             Left(row)
           }((_, _) => ())(outputFailure)
           .either
 
-      result.left.getOrElse(fail("Expected split CSV path collision to fail")) should include("prepare split CSV outputs")
+      result.left.getOrElse(fail("Expected split TSV path collision to fail")) should include("prepare split TSV outputs")
       Files.exists(output) shouldBe false
 
-  it should "not finalize a streaming CSV when a non-empty stream is required" in
+  it should "not finalize a streaming TSV when a non-empty stream is required" in
     withTempDir: dir =>
-      val output = dir.resolve("values.csv")
+      val output = dir.resolve("values.tsv")
 
-      run(McCsvFile.writeStreaming(output, ZStream.empty, schema, "empty")(outputFailure).either) shouldBe Left("empty")
+      run(McTsvFile.writeStreaming(output, ZStream.empty, schema, "empty")(outputFailure).either) shouldBe Left("empty")
       Files.exists(output) shouldBe false
-      Files.exists(output.resolveSibling("values.csv.tmp")) shouldBe false
+      Files.exists(output.resolveSibling("values.tsv.tmp")) shouldBe false
 
   it should "write and read TSV rows through the shared delimited-text contract" in
     withTempDir: dir =>
@@ -110,7 +110,7 @@ class McCsvFileSpec extends AnyFlatSpec with Matchers:
     s"$operation $path ${err.getClass.getSimpleName}"
 
   private def withTempDir[A](f: Path => A): A =
-    val outputDir = Files.createTempDirectory("mc-csv-file")
+    val outputDir = Files.createTempDirectory("mc-tsv-file")
     try f(outputDir)
     finally deleteRecursively(outputDir)
 

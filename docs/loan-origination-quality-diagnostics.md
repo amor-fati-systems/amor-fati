@@ -17,15 +17,15 @@ sbt "loanOriginationQuality --seeds 2 --months 24 --outcome-window 12 --out targ
 
 The task writes:
 
-- `loan-origination-quality-households.csv`: household consumer-credit demand,
+- `loan-origination-quality-households.tsv`: household consumer-credit demand,
   underwriting capacity, approved/rejected principal, debt-service ratios,
   opening distress state, bank-side approval product/reason/probability/roll,
   bank gate CAR/LCR/NSFR audit ratios, bank health at origination, and later
   arrears/default/write-off outcomes.
-- `loan-origination-quality-firms.csv`: firm credit-decision rows, approved
+- `loan-origination-quality-firms.tsv`: firm credit-decision rows, approved
   principal, sector, size, technology state, cash/debt/profit diagnostics, bank
   health at origination, and later bankruptcy outcomes.
-- `loan-origination-quality-summary.csv`: cohort-level future-bad rates by
+- `loan-origination-quality-summary.tsv`: cohort-level future-bad rates by
   household income decile, household distress state, DSR band, firm sector,
   firm size, technology state, and opening bank-CAR band.
 - `loan-origination-quality-report.md`: short human-readable summary.

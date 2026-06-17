@@ -5,15 +5,15 @@ import zio.ZIO
 
 import java.io.File
 
-private[montecarlo] object McTimeseriesCsv:
+private[montecarlo] object McTimeseriesTsv:
 
   def writeStreaming[A](
       outputFile: File,
       rows: ZStream[Any, SimError, A],
-      schema: McCsvSchema[A],
+      schema: McTsvSchema[A],
       emptyError: => SimError,
   ): ZIO[Any, SimError, A] =
-    McCsvFile.writeStreaming(outputFile.toPath, rows, schema, emptyError)(outputFailure)
+    McTsvFile.writeStreaming(outputFile.toPath, rows, schema, emptyError)(outputFailure)
 
   private def outputFailure(operation: String, path: java.nio.file.Path, err: Throwable): SimError =
     SimError.OutputFailure(operation, path.toString, Option(err.getMessage).filter(_.nonEmpty).getOrElse(err.getClass.getSimpleName))

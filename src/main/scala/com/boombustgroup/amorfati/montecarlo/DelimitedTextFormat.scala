@@ -14,5 +14,4 @@ private[amorfati] final case class DelimitedTextFormat(label: String, delimiter:
     else value
 
 private[amorfati] object DelimitedTextFormat:
-  val SemicolonCsv: DelimitedTextFormat = DelimitedTextFormat("CSV", ';')
-  val Tsv: DelimitedTextFormat          = DelimitedTextFormat("TSV", '\t')
+  val Tsv: DelimitedTextFormat = DelimitedTextFormat("TSV", '\t')

@@ -12,7 +12,7 @@ import org.scalatest.matchers.should.Matchers
 
 /** PR-level integration gate for normal-path engine health.
   *
-  * This deliberately avoids CSV schemas and output-file checks. The contract is
+  * This deliberately avoids TSV schemas and output-file checks. The contract is
   * the runtime path itself: initialize a baseline world, execute a short
   * multi-month path through the shared month driver, and assert hard accounting
   * and balance-sheet invariants after every realized month.
@@ -26,7 +26,7 @@ class BaselineInvariantIntegrationSpec extends AnyFlatSpec with Matchers:
   // Blow-up guard for PR health checks, not a calibration target.
   private val MaxTotalCreditToGdp = Scalar(10)
 
-  "Baseline engine path" should "preserve non-CSV runtime invariants over a short PR horizon" in
+  "Baseline engine path" should "preserve non-TSV runtime invariants over a short PR horizon" in
     Seeds.foreach: seed =>
       var state = initialState(seed)
       assertOpeningStockConsistency(seed, state)

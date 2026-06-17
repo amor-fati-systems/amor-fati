@@ -53,11 +53,11 @@ nix develop -c java -jar target/scala-3.8.2/amor-fati.jar 5 issue617-external-ba
 The run completed all five seeds and wrote:
 
 ```text
-mc/issue617-external-baseline_20260525-617-external-baseline-after035_60m_seed001.csv
-mc/issue617-external-baseline_20260525-617-external-baseline-after035_60m_seed002.csv
-mc/issue617-external-baseline_20260525-617-external-baseline-after035_60m_seed003.csv
-mc/issue617-external-baseline_20260525-617-external-baseline-after035_60m_seed004.csv
-mc/issue617-external-baseline_20260525-617-external-baseline-after035_60m_seed005.csv
+mc/issue617-external-baseline_20260525-617-external-baseline-after035_60m_seed001.tsv
+mc/issue617-external-baseline_20260525-617-external-baseline-after035_60m_seed002.tsv
+mc/issue617-external-baseline_20260525-617-external-baseline-after035_60m_seed003.tsv
+mc/issue617-external-baseline_20260525-617-external-baseline-after035_60m_seed004.tsv
+mc/issue617-external-baseline_20260525-617-external-baseline-after035_60m_seed005.tsv
 ```
 
 Annual ratios are computed as `sum(flow) / sum(MonthlyGdpProxy)` across the five

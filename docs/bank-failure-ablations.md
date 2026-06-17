@@ -19,9 +19,9 @@ sbt "bankFailureAblations --seeds 2 --months 24 --out target/bank-failure-ablati
 
 The task writes:
 
-- `bank-failure-ablation-seeds.csv`: one row per scenario and seed.
-- `bank-failure-ablation-summary.csv`: mean/min/max style scenario summary.
-- `bank-failure-ablation-scenarios.csv`: scenario definitions and economic
+- `bank-failure-ablation-seeds.tsv`: one row per scenario and seed.
+- `bank-failure-ablation-summary.tsv`: mean/min/max style scenario summary.
+- `bank-failure-ablation-scenarios.tsv`: scenario definitions and economic
   interpretation.
 - `bank-failure-ablation-report.md`: human-readable summary.
 

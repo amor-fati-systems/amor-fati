@@ -9,8 +9,8 @@ The workflow deliberately separates two questions:
 
 | Surface | Question | Artifact |
 | --- | --- | --- |
-| Stochastic uncertainty | How much does the baseline move across seed bands? | Baseline rows in `envelope-summary.csv` and `robustness-report.md` |
-| Parameter sensitivity | How much does a selected one-at-a-time parameter change move terminal means versus baseline? | `sensitivity-summary.csv` and the parameter sensitivity section of `robustness-report.md` |
+| Stochastic uncertainty | How much does the baseline move across seed bands? | Baseline rows in `envelope-summary.tsv` and `robustness-report.md` |
+| Parameter sensitivity | How much does a selected one-at-a-time parameter change move terminal means versus baseline? | `sensitivity-summary.tsv` and the parameter sensitivity section of `robustness-report.md` |
 
 This is not a full global sensitivity design. It is a local research-review
 workflow that should stay cheap enough to run before larger empirical and
@@ -48,9 +48,9 @@ directory:
 
 | File | Purpose |
 | --- | --- |
-| `seed-metrics.csv` | Per scenario, seed, and metric terminal value plus path min/max/mean. |
-| `envelope-summary.csv` | Cross-seed envelopes by scenario and metric. |
-| `sensitivity-summary.csv` | Terminal mean deltas for each non-baseline scenario versus the baseline mean. |
+| `seed-metrics.tsv` | Per scenario, seed, and metric terminal value plus path min/max/mean. |
+| `envelope-summary.tsv` | Cross-seed envelopes by scenario and metric. |
+| `sensitivity-summary.tsv` | Terminal mean deltas for each non-baseline scenario versus the baseline mean. |
 | `robustness-report.md` | Human-readable report separating stochastic uncertainty from parameter sensitivity. |
 
 These files are generated outputs and should normally remain under `target/`.

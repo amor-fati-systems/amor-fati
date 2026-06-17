@@ -22,15 +22,15 @@ run with bounded `mapZIOPar` parallelism on the same monthly seed stream as
 The task writes:
 
 ```text
-<out>/<run-id>/hh-bank-lead-lag-bank-months.csv
-<out>/<run-id>/hh-bank-lead-lag-correlations.csv
-<out>/<run-id>/hh-bank-lead-lag-counterfactuals.csv
+<out>/<run-id>/hh-bank-lead-lag-bank-months.tsv
+<out>/<run-id>/hh-bank-lead-lag-correlations.tsv
+<out>/<run-id>/hh-bank-lead-lag-counterfactuals.tsv
 <out>/<run-id>/hh-bank-lead-lag-report.md
 ```
 
 ## Bank-Month Rows
 
-`hh-bank-lead-lag-bank-months.csv` is the join surface. Each row is one
+`hh-bank-lead-lag-bank-months.tsv` is the join surface. Each row is one
 `RunId` / scenario / seed / month / bank. Household flows are assigned to the
 bank referenced by the household during the household stage of that month.
 
@@ -60,7 +60,7 @@ Key bank-side columns:
 
 ## Correlation Versus Causality
 
-`hh-bank-lead-lag-correlations.csv` computes Pearson correlations over lag
+`hh-bank-lead-lag-correlations.tsv` computes Pearson correlations over lag
 windows `0..--lag-max`. For lag `k`, household metric values at `t-k` are
 paired with bank outcomes at `t` for the same scenario, seed, and bank.
 
@@ -68,7 +68,7 @@ These correlations answer: "does HH stress tend to move before this bank
 outcome?" They do not prove causality because a common macro shock can move
 households and banks together.
 
-`hh-bank-lead-lag-counterfactuals.csv` is the controlled intervention check. It
+`hh-bank-lead-lag-counterfactuals.tsv` is the controlled intervention check. It
 compares:
 
 - `baseline`: production configuration.

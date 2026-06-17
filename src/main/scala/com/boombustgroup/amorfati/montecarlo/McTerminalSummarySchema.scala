@@ -65,7 +65,7 @@ private[montecarlo] object McTerminalSummarySchema:
   private[montecarlo] final case class SummarySpec(
       id: McTerminalSummaryId,
       outputFile: (File, McRunConfig) => File,
-      csvSchema: McCsvSchema[String],
+      tsvSchema: McTsvSchema[String],
   )
 
   private val hhSchema: Vector[(String, HouseholdRow => String)] = Vector(
@@ -157,29 +157,29 @@ private[montecarlo] object McTerminalSummarySchema:
   )
 
   private[montecarlo] val specs = Vector(
-    // SummarySpec rows are pre-formatted by fromTerminalState, so McCsvSchema only
+    // SummarySpec rows are pre-formatted by fromTerminalState, so McTsvSchema only
     // carries the header contract here and render is intentionally identity.
     SummarySpec(
       McTerminalSummaryId.Household,
       McOutputFiles.householdFile,
-      McCsvSchema(
-        header = "Seed;" + hhSchema.map(_._1).mkString(";"),
+      McTsvSchema(
+        header = ("Seed" +: hhSchema.map(_._1)).mkString("\t"),
         render = identity,
       ),
     ),
     SummarySpec(
       McTerminalSummaryId.Banks,
       McOutputFiles.bankFile,
-      McCsvSchema(
-        header = "Seed;" + bankHeaders.mkString(";"),
+      McTsvSchema(
+        header = ("Seed" +: bankHeaders).mkString("\t"),
         render = identity,
       ),
     ),
     SummarySpec(
       McTerminalSummaryId.Firms,
       McOutputFiles.firmFile,
-      McCsvSchema(
-        header = "Seed;" + firmSchema.map(_._1).mkString(";"),
+      McTsvSchema(
+        header = ("Seed" +: firmSchema.map(_._1)).mkString("\t"),
         render = identity,
       ),
     ),
@@ -203,14 +203,14 @@ private[montecarlo] object McTerminalSummarySchema:
     )
 
   private def renderHouseholdRow(seed: Long, row: HouseholdRow): String =
-    s"$seed;" + hhSchema.map(_._2(row)).mkString(";")
+    (seed.toString +: hhSchema.map(_._2(row))).mkString("\t")
 
   private def renderBankRow(seed: Long, row: BankRow)(using SimParams): String =
-    s"$seed;" + bankSchema.map(_._2(row)).mkString(";")
+    (seed.toString +: bankSchema.map(_._2(row))).mkString("\t")
 
   private def renderFirmRow(seed: Long, firms: Vector[Firm.State])(using SimParams): String =
     val summary = firmSizeCounts(firms)
-    s"$seed;" + firmSchema.map(_._2(summary)).mkString(";")
+    (seed.toString +: firmSchema.map(_._2(summary))).mkString("\t")
 
   private def firmSizeCounts(firms: Vector[Firm.State])(using SimParams): FirmSizeCounts =
     val living = firms.filter(Firm.isAlive)

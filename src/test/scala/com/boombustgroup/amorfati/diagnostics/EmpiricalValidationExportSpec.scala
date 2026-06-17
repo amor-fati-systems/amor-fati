@@ -55,34 +55,34 @@ class EmpiricalValidationExportSpec extends AnyFlatSpec with Matchers:
 
     try {
       write(
-        mc.resolve("validation-baseline_validation-baseline_2m_seed001.csv"),
-        """Month;Inflation;Unemployment
-          |1;0.030000;0.050000
-          |2;0.040000;0.060000
+        mc.resolve("validation-baseline_validation-baseline_2m_seed001.tsv"),
+        """Month|Inflation|Unemployment
+          |1|0.030000|0.050000
+          |2|0.040000|0.060000
           |""".stripMargin,
       )
       write(
-        mc.resolve("validation-baseline_validation-baseline_2m_seed002.csv"),
-        """Month;Inflation;Unemployment
-          |1;0.050000;0.070000
-          |2;0.050000;0.080000
+        mc.resolve("validation-baseline_validation-baseline_2m_seed002.tsv"),
+        """Month|Inflation|Unemployment
+          |1|0.050000|0.070000
+          |2|0.050000|0.080000
           |""".stripMargin,
       )
       write(
-        mc.resolve("validation-baseline_validation-baseline_2m_hh.csv"),
-        """Seed;Gini_Individual;Gini_Wealth;ConsumptionP90;PovertyRate_50pct
-          |1;0.300000;0.650000;9000.00;0.100000
-          |2;0.320000;0.670000;9200.00;0.120000
+        mc.resolve("validation-baseline_validation-baseline_2m_hh.tsv"),
+        """Seed|Gini_Individual|Gini_Wealth|ConsumptionP90|PovertyRate_50pct
+          |1|0.300000|0.650000|9000.00|0.100000
+          |2|0.320000|0.670000|9200.00|0.120000
           |""".stripMargin,
       )
 
       val sourceManifest = root.resolve("source-manifest.tsv")
       write(
         sourceManifest,
-        """target;source_provider;source_url;dataset_code;vintage;accessed_at;license_or_reuse_note;frequency;unit;transformation;model_target;status;empirical_value;tolerance;criterion;notes
-          |Inflation;GUS;https://stat.gov.pl;CPI;2026-04;2026-04-30;public citation;monthly;ratio;annualized mean;timeseries:Inflation:terminal;READY;0.05;0.01;absolute distance;fixture source
-          |Inequality Gini;GUS;https://stat.gov.pl;HBS;2025;2026-04-30;public citation;annual;ratio;terminal household distribution;terminal_hh:Gini_Individual:mean;MISSING_DATA_BRIDGE;;;;terminal household field exists
-          |Missing target;GUS;https://stat.gov.pl;NA;2026;2026-04-30;public citation;monthly;ratio;none;timeseries:MissingColumn:mean;READY;1.0;0.1;absolute distance;
+        """target|source_provider|source_url|dataset_code|vintage|accessed_at|license_or_reuse_note|frequency|unit|transformation|model_target|status|empirical_value|tolerance|criterion|notes
+          |Inflation|GUS|https://stat.gov.pl|CPI|2026-04|2026-04-30|public citation|monthly|ratio|annualized mean|timeseries:Inflation:terminal|READY|0.05|0.01|absolute distance|fixture source
+          |Inequality Gini|GUS|https://stat.gov.pl|HBS|2025|2026-04-30|public citation|annual|ratio|terminal household distribution|terminal_hh:Gini_Individual:mean|MISSING_DATA_BRIDGE||||terminal household field exists
+          |Missing target|GUS|https://stat.gov.pl|NA|2026|2026-04-30|public citation|monthly|ratio|none|timeseries:MissingColumn:mean|READY|1.0|0.1|absolute distance|
           |""".stripMargin,
       )
 
@@ -137,8 +137,8 @@ class EmpiricalValidationExportSpec extends AnyFlatSpec with Matchers:
       val sourceManifest = root.resolve("source-manifest.tsv")
       write(
         sourceManifest,
-        """target;source_provider;source_url;dataset_code;vintage;accessed_at;license_or_reuse_note;frequency;unit;transformation;model_target;status;empirical_value;tolerance;criterion;notes
-          |Inflation;GUS;https://stat.gov.pl;CPI;2026-04;2026-04-30;public citation;monthly;ratio;annualized mean;timeseries:Inflation:terminal;READY;;;;
+        """target|source_provider|source_url|dataset_code|vintage|accessed_at|license_or_reuse_note|frequency|unit|transformation|model_target|status|empirical_value|tolerance|criterion|notes
+          |Inflation|GUS|https://stat.gov.pl|CPI|2026-04|2026-04-30|public citation|monthly|ratio|annualized mean|timeseries:Inflation:terminal|READY||||
           |""".stripMargin,
       )
 
@@ -175,17 +175,17 @@ class EmpiricalValidationExportSpec extends AnyFlatSpec with Matchers:
 
     try {
       write(
-        mc.resolve("validation-baseline_validation-baseline_1m_seed001.csv"),
-        """Month;Inflation
-          |1;0.030000
+        mc.resolve("validation-baseline_validation-baseline_1m_seed001.tsv"),
+        """Month|Inflation
+          |1|0.030000
           |""".stripMargin,
       )
 
       val sourceManifest = root.resolve("source-manifest.tsv")
       write(
         sourceManifest,
-        """target;source_provider;source_url;dataset_code;vintage;accessed_at;license_or_reuse_note;frequency;unit;transformation;model_target;status;empirical_value;tolerance;criterion;notes
-          |Inflation bridge;GUS;https://stat.gov.pl;CPI;2026-04;2026-04-30;public citation;monthly;ratio;annualized mean;timeseries:Inflation:terminal;PARTIAL;;;;documented bridge remains open
+        """target|source_provider|source_url|dataset_code|vintage|accessed_at|license_or_reuse_note|frequency|unit|transformation|model_target|status|empirical_value|tolerance|criterion|notes
+          |Inflation bridge|GUS|https://stat.gov.pl|CPI|2026-04|2026-04-30|public citation|monthly|ratio|annualized mean|timeseries:Inflation:terminal|PARTIAL||||documented bridge remains open
           |""".stripMargin,
       )
 
@@ -236,9 +236,9 @@ class EmpiricalValidationExportSpec extends AnyFlatSpec with Matchers:
         .left
         .getOrElse(fail("Expected missing seed files to fail"))
 
-      error should include("Missing expected seed CSV files")
-      error should include("validation-baseline_missing_120m_seed001.csv")
-      error should include("validation-baseline_missing_120m_seed003.csv")
+      error should include("Missing expected seed TSV files")
+      error should include("validation-baseline_missing_120m_seed001.tsv")
+      error should include("validation-baseline_missing_120m_seed003.tsv")
       Files.exists(root.resolve("out").resolve("baseline-validation-snapshot.tsv")) shouldBe false
     } finally deleteRecursively(root)
   }
@@ -252,25 +252,25 @@ class EmpiricalValidationExportSpec extends AnyFlatSpec with Matchers:
 
     try {
       write(
-        mc.resolve("validation-baseline_credit-growth_2m_seed001.csv"),
-        """Month;TotalCreditStock
-          |1;100.0
-          |2;120.0
+        mc.resolve("validation-baseline_credit-growth_2m_seed001.tsv"),
+        """Month|TotalCreditStock
+          |1|100.0
+          |2|120.0
           |""".stripMargin,
       )
       write(
-        mc.resolve("validation-baseline_credit-growth_2m_seed002.csv"),
-        """Month;TotalCreditStock
-          |1;200.0
-          |2;250.0
+        mc.resolve("validation-baseline_credit-growth_2m_seed002.tsv"),
+        """Month|TotalCreditStock
+          |1|200.0
+          |2|250.0
           |""".stripMargin,
       )
 
       val sourceManifest = root.resolve("source-manifest.tsv")
       write(
         sourceManifest,
-        """target;source_provider;source_url;dataset_code;vintage;accessed_at;license_or_reuse_note;frequency;unit;transformation;model_target;status;empirical_value;tolerance;criterion;notes
-          |Credit growth;NBP;https://nbp.pl;MFI credit stocks;fixture;2026-04-30;public citation;monthly;pct_change;first-to-last stock change;timeseries:TotalCreditStock:pct_change;READY;0.225;0.001;absolute distance;fixture source
+        """target|source_provider|source_url|dataset_code|vintage|accessed_at|license_or_reuse_note|frequency|unit|transformation|model_target|status|empirical_value|tolerance|criterion|notes
+          |Credit growth|NBP|https://nbp.pl|MFI credit stocks|fixture|2026-04-30|public citation|monthly|pct_change|first-to-last stock change|timeseries:TotalCreditStock:pct_change|READY|0.225|0.001|absolute distance|fixture source
           |""".stripMargin,
       )
 
@@ -305,18 +305,18 @@ class EmpiricalValidationExportSpec extends AnyFlatSpec with Matchers:
 
     try {
       write(
-        mc.resolve("validation-baseline_credit-growth-zero_2m_seed001.csv"),
-        """Month;TotalCreditStock
-          |1;0.0
-          |2;120.0
+        mc.resolve("validation-baseline_credit-growth-zero_2m_seed001.tsv"),
+        """Month|TotalCreditStock
+          |1|0.0
+          |2|120.0
           |""".stripMargin,
       )
 
       val sourceManifest = root.resolve("source-manifest.tsv")
       write(
         sourceManifest,
-        """target;source_provider;source_url;dataset_code;vintage;accessed_at;license_or_reuse_note;frequency;unit;transformation;model_target;status;empirical_value;tolerance;criterion;notes
-          |Credit growth;NBP;https://nbp.pl;MFI credit stocks;fixture;2026-04-30;public citation;monthly;pct_change;first-to-last stock change;timeseries:TotalCreditStock:pct_change;PARTIAL;;;;fixture source
+        """target|source_provider|source_url|dataset_code|vintage|accessed_at|license_or_reuse_note|frequency|unit|transformation|model_target|status|empirical_value|tolerance|criterion|notes
+          |Credit growth|NBP|https://nbp.pl|MFI credit stocks|fixture|2026-04-30|public citation|monthly|pct_change|first-to-last stock change|timeseries:TotalCreditStock:pct_change|PARTIAL||||fixture source
           |""".stripMargin,
       )
 
@@ -352,25 +352,25 @@ class EmpiricalValidationExportSpec extends AnyFlatSpec with Matchers:
 
     try {
       write(
-        mc.resolve("validation-baseline_credit-supply_2m_seed001.csv"),
-        """Month;FirmCredit_ApprovalRate
-          |1;0.80
-          |2;0.75
+        mc.resolve("validation-baseline_credit-supply_2m_seed001.tsv"),
+        """Month|FirmCredit_ApprovalRate
+          |1|0.80
+          |2|0.75
           |""".stripMargin,
       )
       write(
-        mc.resolve("validation-baseline_credit-supply_2m_seed002.csv"),
-        """Month;FirmCredit_ApprovalRate
-          |1;0.50
-          |2;0.60
+        mc.resolve("validation-baseline_credit-supply_2m_seed002.tsv"),
+        """Month|FirmCredit_ApprovalRate
+          |1|0.50
+          |2|0.60
           |""".stripMargin,
       )
 
       val sourceManifest = root.resolve("source-manifest.tsv")
       write(
         sourceManifest,
-        """target;source_provider;source_url;dataset_code;vintage;accessed_at;license_or_reuse_note;frequency;unit;transformation;model_target;status;empirical_value;tolerance;criterion;notes
-          |Firm credit supply;NBP;https://nbp.pl;SLOOS;fixture;2026-04-30;public citation;quarterly;delta;first-to-last approval proxy change;timeseries:FirmCredit_ApprovalRate:delta;READY;0.025;0.001;absolute distance;fixture source
+        """target|source_provider|source_url|dataset_code|vintage|accessed_at|license_or_reuse_note|frequency|unit|transformation|model_target|status|empirical_value|tolerance|criterion|notes
+          |Firm credit supply|NBP|https://nbp.pl|SLOOS|fixture|2026-04-30|public citation|quarterly|delta|first-to-last approval proxy change|timeseries:FirmCredit_ApprovalRate:delta|READY|0.025|0.001|absolute distance|fixture source
           |""".stripMargin,
       )
 
@@ -405,27 +405,27 @@ class EmpiricalValidationExportSpec extends AnyFlatSpec with Matchers:
 
     try {
       write(
-        mc.resolve("fixture_real-economy_1m_seed001.csv"),
-        """Month;MonthlyGdpProxy;Inflation;Unemployment;MarketWage;CreditToGdpGap;TotalCreditStock;BankFirmLoans;ConsumerLoans;FirmCredit_ApprovalRate;ConsumerCredit_ApprovedToDemand;MortgageOriginationSupplyConstrained;FirmCredit_CreditDemand;ConsumerCreditDemand;MaxBankNPL;ConsumerCredit_NplRatioGross;DebtToGdp;Esa2010DebtToGdp;CurrentAccount;FirmDeaths;AggregateBankCAR;MinBankCAR;MinBankLCR;Manuf_Output;ExRate;HousingPriceIndex;MortgageToGdp;MortgageDefault;DeficitToGdp;GovDomesticBudgetOutlays;RefRate
-          |1;1000000;0.030;0.061;9652.19;0.50;1000000;500000;200000;0.80;0.70;0;300000;150000;0.03;0.02;0.538;0.597;0.01;102;0.211;0.18;1.30;200000;4.25;100;0.1217;0;0.073;918900000000;0.0375
+        mc.resolve("fixture_real-economy_1m_seed001.tsv"),
+        """Month|MonthlyGdpProxy|Inflation|Unemployment|MarketWage|CreditToGdpGap|TotalCreditStock|BankFirmLoans|ConsumerLoans|FirmCredit_ApprovalRate|ConsumerCredit_ApprovedToDemand|MortgageOriginationSupplyConstrained|FirmCredit_CreditDemand|ConsumerCreditDemand|MaxBankNPL|ConsumerCredit_NplRatioGross|DebtToGdp|Esa2010DebtToGdp|CurrentAccount|FirmDeaths|AggregateBankCAR|MinBankCAR|MinBankLCR|Manuf_Output|ExRate|HousingPriceIndex|MortgageToGdp|MortgageDefault|DeficitToGdp|GovDomesticBudgetOutlays|RefRate
+          |1|1000000|0.030|0.061|9652.19|0.50|1000000|500000|200000|0.80|0.70|0|300000|150000|0.03|0.02|0.538|0.597|0.01|102|0.211|0.18|1.30|200000|4.25|100|0.1217|0|0.073|918900000000|0.0375
           |""".stripMargin,
       )
       write(
-        mc.resolve("fixture_real-economy_1m_firms.csv"),
-        """Seed;FirmSize_MicroShare;FirmSize_SmallShare;FirmSize_MediumShare;FirmSize_LargeShare
-          |1;0.959;0.034;0.006;0.001
+        mc.resolve("fixture_real-economy_1m_firms.tsv"),
+        """Seed|FirmSize_MicroShare|FirmSize_SmallShare|FirmSize_MediumShare|FirmSize_LargeShare
+          |1|0.959|0.034|0.006|0.001
           |""".stripMargin,
       )
       write(
-        mc.resolve("fixture_real-economy_1m_hh.csv"),
-        """Seed;Gini_Individual
-          |1;0.300
+        mc.resolve("fixture_real-economy_1m_hh.tsv"),
+        """Seed|Gini_Individual
+          |1|0.300
           |""".stripMargin,
       )
       write(
-        mc.resolve("fixture_real-economy_1m_banks.csv"),
-        """Seed;BankId;CAR;NPL;Capital;Deposits;Loans
-          |1;0;0.211;0.030;199000000000;2542300000000;557400000000
+        mc.resolve("fixture_real-economy_1m_banks.tsv"),
+        """Seed|BankId|CAR|NPL|Capital|Deposits|Loans
+          |1|0|0.211|0.030|199000000000|2542300000000|557400000000
           |""".stripMargin,
       )
 
@@ -468,7 +468,7 @@ class EmpiricalValidationExportSpec extends AnyFlatSpec with Matchers:
 
   private def write(path: Path, contents: String): Unit =
     val rendered =
-      if path.getFileName.toString.endsWith(".tsv") then contents.replace(';', '\t')
+      if path.getFileName.toString.endsWith(".tsv") then contents.replace('|', '\t')
       else contents
     Files.writeString(path, rendered, StandardCharsets.UTF_8)
 

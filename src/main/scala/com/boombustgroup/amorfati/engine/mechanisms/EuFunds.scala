@@ -18,7 +18,7 @@ import com.boombustgroup.amorfati.types.*
   *
   * The configured total is a Poland-scale empirical envelope. Runtime flows are
   * converted to the simulated balance-sheet scale with `gdpRatio`; Monte Carlo
-  * CSV export reverses that scaling for analyst-facing Poland-scale values.
+  * TSV export reverses that scaling for analyst-facing Poland-scale values.
   */
 object EuFunds:
 

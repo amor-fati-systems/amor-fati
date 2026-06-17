@@ -20,7 +20,7 @@ private[montecarlo] object McFirmDecisionTraceSchema:
     "FirmId"                             -> (row => row.trace.firmId.toInt.toString),
     "OpeningTechState"                   -> (row => techState(row.trace.openingTech)),
     "ClosingTechState"                   -> (row => techState(row.trace.closingTech)),
-    "DecisionType"                       -> (row => row.trace.decisionType.csvValue),
+    "DecisionType"                       -> (row => row.trace.decisionType.tsvValue),
     "BankruptcyReason"                   -> (row => row.trace.bankruptcyReason.fold("")(reason => text(bankruptcyReasonName(reason)))),
     "CashBefore"                         -> (row => row.trace.cashBefore.format(2)),
     "CashAfter"                          -> (row => row.trace.cashAfter.format(2)),
@@ -32,8 +32,8 @@ private[montecarlo] object McFirmDecisionTraceSchema:
     "WorkersAfter"                       -> (row => row.trace.workersAfter.toString),
     "Capex"                              -> (row => row.trace.capex.format(2)),
     "NewLoan"                            -> (row => row.trace.newLoan.format(2)),
-    "TechCreditDecisionType"             -> (row => row.trace.techCreditDecisionType.fold("")(_.csvValue)),
-    "TechCreditSource"                   -> (row => row.trace.techCreditSource.fold("")(_.csvValue)),
+    "TechCreditDecisionType"             -> (row => row.trace.techCreditDecisionType.fold("")(_.tsvValue)),
+    "TechCreditSource"                   -> (row => row.trace.techCreditSource.fold("")(_.tsvValue)),
     "TechCreditNeed"                     -> (row => row.trace.techCreditNeed.format(2)),
     "TechCreditAmount"                   -> (row => row.trace.techCreditAmount.format(2)),
     "DownPayment"                        -> (row => row.trace.downPayment.fold("")(_.format(2))),
@@ -108,12 +108,12 @@ private[montecarlo] object McFirmDecisionTraceSchema:
     ++ portfolioChoiceColumns("InvestmentBank", row => row.trace.investmentBankApprovalAudit)
 
   val header: String =
-    columns.map(_._1).mkString(";")
+    columns.map(_._1).mkString("\t")
 
-  val csvSchema: McCsvSchema[Row] =
-    McCsvSchema(
+  val tsvSchema: McTsvSchema[Row] =
+    McTsvSchema(
       header = header,
-      render = row => columns.map(_._2(row)).mkString(";"),
+      render = row => columns.map(_._2(row)).mkString("\t"),
     )
 
   def rows(
@@ -144,7 +144,7 @@ private[montecarlo] object McFirmDecisionTraceSchema:
       case BankruptReason.Other(msg)          => s"Other(${text(msg)})"
 
   private def text(value: String): String =
-    value.replace(';', ',').replace('\n', ' ').replace('\r', ' ')
+    value.replace('\t', ' ').replace('\n', ' ').replace('\r', ' ')
 
   private def creditRejectionReason(audit: Banking.CreditApprovalAudit): String =
     audit.rejectionReason.fold("")(reason => text(reason.diagnosticCode))

@@ -89,12 +89,12 @@ private[montecarlo] object McHouseholdSnapshotSchema:
   )
 
   val header: String =
-    columns.map(_._1).mkString(";")
+    columns.map(_._1).mkString("\t")
 
-  val csvSchema: McCsvSchema[Row] =
-    McCsvSchema(
+  val tsvSchema: McTsvSchema[Row] =
+    McTsvSchema(
       header = header,
-      render = row => columns.map(_._2(row)).mkString(";"),
+      render = row => columns.map(_._2(row)).mkString("\t"),
     )
 
   def rows(
@@ -160,4 +160,4 @@ private[montecarlo] object McHouseholdSnapshotSchema:
     value.fold("")(audit => select(audit).format(6))
 
   private def text(value: String): String =
-    value.replace(';', ',').replace('\n', ' ').replace('\r', ' ')
+    value.replace('\t', ' ').replace('\n', ' ').replace('\r', ' ')

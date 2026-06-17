@@ -19,10 +19,10 @@ sbt "householdCreditStressCalibration --seeds 5 --months 60 --out target/househo
 
 The task writes:
 
-- `household-credit-stress-seed-metrics.csv`: one terminal ratio per seed and
+- `household-credit-stress-seed-metrics.tsv`: one terminal ratio per seed and
   metric.
-- `household-credit-stress-summary.csv`: mean/min/max across seeds, with status.
-- `household-credit-stress-targets.csv`: documented target bands, vintage, and
+- `household-credit-stress-summary.tsv`: mean/min/max across seeds, with status.
+- `household-credit-stress-targets.tsv`: documented target bands, vintage, and
   semantics.
 - `household-credit-stress-report.md`: human-readable summary.
 

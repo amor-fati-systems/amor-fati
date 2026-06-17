@@ -42,21 +42,21 @@ For `--out target/scenarios --run-id local-review`, the runner writes:
 ```text
 target/scenarios/local-review/
   scenario-registry.md
-  scenario-deltas.csv
-  run-summary.csv
+  scenario-deltas.tsv
+  run-summary.tsv
   baseline/
     metadata.md
-    local-review_baseline_24m_seed001.csv
+    local-review_baseline_24m_seed001.tsv
   monetary-tightening/
     metadata.md
-    local-review_monetary-tightening_24m_seed001.csv
+    local-review_monetary-tightening_24m_seed001.tsv
 ```
 
-Each per-seed CSV uses `McTimeseriesSchema.colNames` as the header, so scenario
+Each per-seed TSV uses `McTimeseriesSchema.colNames` as the header, so scenario
 outputs can be compared directly with validation and robustness artifacts.
 
 The generated registry and per-scenario metadata are code-backed by
-`ScenarioRegistry`. `scenario-deltas.csv` includes the parameter diff plus
+`ScenarioRegistry`. `scenario-deltas.tsv` includes the parameter diff plus
 stable `ProvenanceClassification` ids, `SourceProvider`, `Vintage`, and
 `TransformationNotes` for each delta. The generated markdown files render
 human-readable provenance labels and repeat the per-delta transformation notes.
@@ -90,7 +90,7 @@ delta. The allowed `ProvenanceClassification` values are:
 ## Parameter Deltas
 
 The compact table below records the parameter diff. The generated
-`scenario-deltas.csv` appends provenance classification, source/provider,
+`scenario-deltas.tsv` appends provenance classification, source/provider,
 vintage, and transformation notes from the same `ScenarioRegistry` delta
 objects.
 

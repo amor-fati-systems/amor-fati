@@ -1,6 +1,6 @@
 package com.boombustgroup.amorfati.montecarlo
 
-/** Shared delimited-text row contract used by CSV and TSV outputs. */
+/** Shared delimited-text row contract used by generated TSV outputs. */
 private[amorfati] final case class DelimitedTextSchema[-Row](
     header: String,
     render: Row => String,

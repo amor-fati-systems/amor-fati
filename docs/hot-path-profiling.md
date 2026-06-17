@@ -84,7 +84,7 @@ micro cases, including:
 - banking economics
 - firm economics
 - household economics
-- diagnostics CSV export paths
+- diagnostics TSV export paths
 
 The workflow's purpose is profiling those paths. The health summary produced by
 the runner remains useful context, but the profiling workflow is not the owner

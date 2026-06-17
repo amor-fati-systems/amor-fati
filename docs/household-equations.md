@@ -615,7 +615,7 @@ between household credit stress and bank balance-sheet stress.
 | --- | --- |
 | Unit/property tests | `HouseholdSpec`, `HouseholdPropertySpec`, `BufferStockMpcSpec`, `PitSpec`, `SocialTransferSpec`, `ConsumerCreditSpec`, deposit mobility, household income/financial economics, household flow tests, labor-market and regional tests. |
 | Schema/diagnostic tests | Household snapshot schema/schedule, household shortfall cohorts, Monte Carlo schema, loan-origination quality diagnostics, HH-bank lead/lag diagnostics, and household credit-stress calibration. |
-| Integration/nightly | Monte Carlo CSV integration, nightly diagnostics, loan-origination quality, scenario runs, sensitivity/robustness, SFC matrix evidence, and generated-output guard. |
+| Integration/nightly | Monte Carlo TSV integration, nightly diagnostics, loan-origination quality, scenario runs, sensitivity/robustness, SFC matrix evidence, and generated-output guard. |
 | Accounting | Runtime ledger execution, household-flow exactness, mortgage-flow exactness, consumer-credit stock-flow diagnostics, SFC semantic projection, and household monthly row-to-aggregate reconciliation. |
 
 ## Current Limitations

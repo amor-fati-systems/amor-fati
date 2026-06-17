@@ -10,9 +10,9 @@ import java.io.{BufferedWriter, File}
 import java.nio.file.Files
 import scala.util.Using
 
-private[montecarlo] object McFirmSnapshotCsv:
+private[montecarlo] object McFirmSnapshotTsv:
 
-  private val operation = "write firm snapshot CSV"
+  private val operation = "write firm snapshot TSV"
 
   def tapSeedSnapshots[A](
       seed: Long,
@@ -57,7 +57,7 @@ private[montecarlo] object McFirmSnapshotCsv:
                   writer.write(it.next())
                   writer.newLine()
       .unit
-      .mapError(outputFailure("combine firm snapshot CSV", outputFile))
+      .mapError(outputFailure("combine firm snapshot TSV", outputFile))
 
   private def deleteSeedPartFiles(outputDir: File, rc: McRunConfig): ZIO[Any, SimError, Unit] =
     ZIO
@@ -67,7 +67,7 @@ private[montecarlo] object McFirmSnapshotCsv:
       .mapError(outputFailure(s"cleanup $operation seed part files", outputDir))
 
   private def finalizeFile(tempFile: File, outputFile: File): ZIO[Any, SimError, Unit] =
-    McCsvFile.finalizeFile(tempFile.toPath, outputFile.toPath, (operation, path, err) => outputFailure(operation, path.toFile)(err))
+    McTsvFile.finalizeFile(tempFile.toPath, outputFile.toPath, (operation, path, err) => outputFailure(operation, path.toFile)(err))
 
   private def writeSnapshotRows(
       writer: BufferedWriter,
@@ -81,7 +81,7 @@ private[montecarlo] object McFirmSnapshotCsv:
     else
       ZIO
         .attemptBlocking:
-          val schema = McFirmSnapshotSchema.csvSchema
+          val schema = McFirmSnapshotSchema.tsvSchema
           McFirmSnapshotSchema
             .rows(rc.runId, seed, month, state)
             .foreach: row =>

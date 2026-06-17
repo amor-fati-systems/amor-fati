@@ -170,7 +170,7 @@ class CalibrationProvenanceSpec extends AnyFlatSpec with Matchers:
     val mpc = baselineParameter("household.mpc").validationEvidence.getOrElse(fail("Expected MPC validation evidence"))
     mpc.mode shouldBe SensitivityRange
     mpc.evidencePath.getOrElse(fail("Expected MPC evidence path")) shouldBe "docs/sensitivity-robustness-workflow.md"
-    mpc.artifactLabel shouldBe Some("sensitivity-summary.csv")
+    mpc.artifactLabel shouldBe Some("sensitivity-summary.tsv")
     mpc.scenarioIds shouldBe Vector("mpc-low", "mpc-high")
     mpc.notes should include("one-at-a-time household MPC")
 

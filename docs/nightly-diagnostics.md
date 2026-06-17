@@ -24,7 +24,7 @@ operations index.
 - Write outputs under a profile-scoped root, not under the default local `mc/`
   directory.
 - Emit a machine-readable run manifest for every profile run.
-- Treat SFC exactness, ledger consistency, missing months, malformed CSV, and
+- Treat SFC exactness, ledger consistency, missing months, malformed TSV, and
   impossible accounting states as hard failures.
 - Treat economic research metrics as report or warning signals until their
   thresholds are explicitly justified.
@@ -59,7 +59,7 @@ Every run should include a manifest with at least:
 - logical diagnostic steps
 - per-step semantic classification and failure policy
 - per-step runtime telemetry: duration, normalized seed-month throughput where
-  applicable, artifact sizes, CSV row counts, and memory/GC observations
+  applicable, artifact sizes, TSV row counts, and memory/GC observations
 - output paths
 - start and end timestamps
 - Nix, Java, sbt, and project versions where practical
@@ -138,7 +138,7 @@ performance telemetry, JVM/OS runtime metadata, and final status.
 
 Per-step telemetry is intentionally orchestration-level evidence, not a
 correctness test. It records elapsed step time, `seeds × months` throughput when
-both dimensions are meaningful, emitted artifact file counts and bytes, CSV row
+both dimensions are meaningful, emitted artifact file counts and bytes, TSV row
 counts where available, and before/after memory plus GC deltas when the JVM
 exposes them. Missing or partial telemetry is represented in the manifest rather
 than launching duplicate simulations or adding assertions inside diagnostic
@@ -149,7 +149,7 @@ soft warning surface, not a diagnostics failure gate.
 
 The health summary reuses artifacts emitted by the configured diagnostics. It
 does not launch additional simulations. The first threshold layer reads the
-baseline Monte Carlo seed CSVs and manifest step statuses to produce a stable
+baseline Monte Carlo seed TSVs and manifest step statuses to produce a stable
 normal-path verdict over:
 
 - diagnostic completion by step classification
@@ -287,7 +287,7 @@ Comparison mode:
 
 Primary artifacts:
 
-- seed time-series CSV
+- seed time-series TSV
 - terminal household, bank, and firm summaries
 - SFC matrix evidence
 - scenario run summary
@@ -313,7 +313,7 @@ Recommended steps:
 
 Comparison mode:
 
-- hard-fail on invariants, missing months, malformed CSV, impossible
+- hard-fail on invariants, missing months, malformed TSV, impossible
   accounting states, SFC violations, and ledger failures
 - report or warn on research metrics such as GDP, inflation, unemployment,
   total credit to GDP, debt to GDP, current account to GDP, bank failures,
@@ -324,7 +324,7 @@ Comparison mode:
 
 Primary artifacts:
 
-- baseline Monte Carlo CSV outputs
+- baseline Monte Carlo TSV outputs
 - empirical validation snapshot and manifest
 - scenario registry artifacts and run summary
 - robustness envelope and sensitivity reports
@@ -383,7 +383,7 @@ Hard-fail candidates:
 - SFC validation failures
 - ledger conservation or survivability failures
 - missing monthly rows
-- malformed CSV files
+- malformed TSV files
 - impossible accounting states
 - invalid active-bank invariants
 - non-finite numeric outputs

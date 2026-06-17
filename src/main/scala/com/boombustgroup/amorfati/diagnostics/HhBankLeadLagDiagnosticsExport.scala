@@ -4,7 +4,7 @@ import com.boombustgroup.amorfati.agents.Banking
 import com.boombustgroup.amorfati.config.{HhBankLeadLagScenarios, SimParams}
 import com.boombustgroup.amorfati.engine.ledger.{CorporateBondOwnership, LedgerFinancialState}
 import com.boombustgroup.amorfati.fp.FixedPointBase
-import com.boombustgroup.amorfati.montecarlo.{McCsvFile, McCsvSchema, McDiagnosticRunner, McSeedMonth}
+import com.boombustgroup.amorfati.montecarlo.{McDiagnosticRunner, McSeedMonth, McTsvFile, McTsvSchema}
 import com.boombustgroup.amorfati.types.*
 import zio.ZIO
 import zio.stream.ZStream
@@ -170,9 +170,9 @@ object HhBankLeadLagDiagnosticsExport:
   def runZIO(config: Config): ZIO[Any, String, ExportResult] =
     for
       validConfig    <- ZIO.fromEither(validate(config))
-      bankRows       <- McCsvFile
+      bankRows       <- McTsvFile
         .writeFold(
-          validConfig.runRoot.resolve("hh-bank-lead-lag-bank-months.csv"),
+          validConfig.runRoot.resolve("hh-bank-lead-lag-bank-months.tsv"),
           McDiagnosticRunner
             .runScenarioSeedStreams(
               Scenarios,
@@ -181,7 +181,7 @@ object HhBankLeadLagDiagnosticsExport:
               _.id,
               _.params,
             )((scenario, seed, months) => computeBankRows(validConfig, scenario, seed, months)),
-          BankMonthCsvSchema,
+          BankMonthTsvSchema,
           Vector.newBuilder[BankMonthRow],
         )((builder, row) => builder += row)(DiagnosticIo.outputFailure)
         .map(_.result())
@@ -402,24 +402,57 @@ object HhBankLeadLagDiagnosticsExport:
       correlations: Vector[CorrelationResult],
       counterfactuals: Vector[CounterfactualResult],
   ): ZIO[Any, String, Vector[Path]] =
-    val bankRowsPath        = config.runRoot.resolve("hh-bank-lead-lag-bank-months.csv")
-    val correlationsPath    = config.runRoot.resolve("hh-bank-lead-lag-correlations.csv")
-    val counterfactualsPath = config.runRoot.resolve("hh-bank-lead-lag-counterfactuals.csv")
+    val bankRowsPath        = config.runRoot.resolve("hh-bank-lead-lag-bank-months.tsv")
+    val correlationsPath    = config.runRoot.resolve("hh-bank-lead-lag-correlations.tsv")
+    val counterfactualsPath = config.runRoot.resolve("hh-bank-lead-lag-counterfactuals.tsv")
     val reportPath          = config.runRoot.resolve("hh-bank-lead-lag-report.md")
     for
-      _ <- McCsvFile.writeAll(correlationsPath, correlations, CorrelationCsvSchema)(DiagnosticIo.outputFailure)
-      _ <- McCsvFile.writeAll(counterfactualsPath, counterfactuals, CounterfactualCsvSchema)(DiagnosticIo.outputFailure)
+      _ <- McTsvFile.writeAll(correlationsPath, correlations, CorrelationTsvSchema)(DiagnosticIo.outputFailure)
+      _ <- McTsvFile.writeAll(counterfactualsPath, counterfactuals, CounterfactualTsvSchema)(DiagnosticIo.outputFailure)
       _ <- DiagnosticIo.writeText(reportPath, renderReport(config, correlations, counterfactuals))
     yield Vector(bankRowsPath, correlationsPath, counterfactualsPath, reportPath)
 
-  private val BankMonthCsvSchema: McCsvSchema[BankMonthRow] =
-    val header =
-      "RunId;ScenarioId;ScenarioLabel;Seed;Month;BankId;BankName;HouseholdCount;HhMonthlyIncome;HhConsumerLoanDefault;HhLiquidityBridgeChargeOff;HhLiquidityShortfallFinancing;HhConsumerDefault;HhConsumerDebtService;HhConsumerApprovedOrigination;HhConsumerRejectedOrigination;HhConsumerBankRejectedOrigination;HhConsumerDebtArrears;HhMortgageArrears;BankConsumerLoanStock;BankConsumerNplStock;BankConsumerNplLoss;BankCapital;BankCapitalDelta;BankCar;BankLcr;BankFailed;BankNewFailure;BankFailureReasonCode;Unemployment;Inflation;MonthlyGdpProxy"
-    McCsvSchema(header, renderBankMonthRow)
+  private val BankMonthTsvSchema: McTsvSchema[BankMonthRow] =
+    val header = McTsvSchema.header(
+      "RunId",
+      "ScenarioId",
+      "ScenarioLabel",
+      "Seed",
+      "Month",
+      "BankId",
+      "BankName",
+      "HouseholdCount",
+      "HhMonthlyIncome",
+      "HhConsumerLoanDefault",
+      "HhLiquidityBridgeChargeOff",
+      "HhLiquidityShortfallFinancing",
+      "HhConsumerDefault",
+      "HhConsumerDebtService",
+      "HhConsumerApprovedOrigination",
+      "HhConsumerRejectedOrigination",
+      "HhConsumerBankRejectedOrigination",
+      "HhConsumerDebtArrears",
+      "HhMortgageArrears",
+      "BankConsumerLoanStock",
+      "BankConsumerNplStock",
+      "BankConsumerNplLoss",
+      "BankCapital",
+      "BankCapitalDelta",
+      "BankCar",
+      "BankLcr",
+      "BankFailed",
+      "BankNewFailure",
+      "BankFailureReasonCode",
+      "Unemployment",
+      "Inflation",
+      "MonthlyGdpProxy",
+    )
+    McTsvSchema(header, renderBankMonthRow)
 
-  private val CorrelationCsvSchema: McCsvSchema[CorrelationResult] =
-    val header = "RunId;ScenarioId;ScenarioLabel;LagMonths;HhMetric;BankMetric;Observations;Correlation;Interpretation"
-    McCsvSchema(
+  private val CorrelationTsvSchema: McTsvSchema[CorrelationResult] =
+    val header =
+      McTsvSchema.header("RunId", "ScenarioId", "ScenarioLabel", "LagMonths", "HhMetric", "BankMetric", "Observations", "Correlation", "Interpretation")
+    McTsvSchema(
       header,
       row =>
         Vector(
@@ -432,13 +465,26 @@ object HhBankLeadLagDiagnosticsExport:
           row.observations.toString,
           row.correlation.map(renderDecimal).getOrElse("NA"),
           row.interpretation,
-        ).map(csv).mkString(";"),
+        ).map(tsv).mkString("\t"),
     )
 
-  private val CounterfactualCsvSchema: McCsvSchema[CounterfactualResult] =
-    val header =
-      "RunId;ScenarioId;ScenarioLabel;Seeds;Months;FailedSeeds;FirstFailureMonthMean;TerminalFailuresMean;CumulativeNewFailuresMean;CumulativeConsumerNplLossMean;CumulativeHhConsumerLoanDefaultMean;CumulativeLiquidityBridgeChargeOffMean;Interpretation"
-    McCsvSchema(
+  private val CounterfactualTsvSchema: McTsvSchema[CounterfactualResult] =
+    val header = McTsvSchema.header(
+      "RunId",
+      "ScenarioId",
+      "ScenarioLabel",
+      "Seeds",
+      "Months",
+      "FailedSeeds",
+      "FirstFailureMonthMean",
+      "TerminalFailuresMean",
+      "CumulativeNewFailuresMean",
+      "CumulativeConsumerNplLossMean",
+      "CumulativeHhConsumerLoanDefaultMean",
+      "CumulativeLiquidityBridgeChargeOffMean",
+      "Interpretation",
+    )
+    McTsvSchema(
       header,
       row =>
         Vector(
@@ -455,7 +501,7 @@ object HhBankLeadLagDiagnosticsExport:
           renderDecimal(row.cumulativeHhConsumerLoanDefaultMean),
           renderDecimal(row.cumulativeLiquidityBridgeChargeOffMean),
           row.interpretation,
-        ).map(csv).mkString(";"),
+        ).map(tsv).mkString("\t"),
     )
 
   private def renderBankMonthRow(row: BankMonthRow): String =
@@ -492,7 +538,7 @@ object HhBankLeadLagDiagnosticsExport:
       renderDecimal(row.unemployment),
       renderDecimal(row.inflation),
       renderDecimal(row.monthlyGdpProxy),
-    ).map(csv).mkString(";")
+    ).map(tsv).mkString("\t")
 
   private def renderReport(config: Config, correlations: Vector[CorrelationResult], counterfactuals: Vector[CounterfactualResult]): String =
     val baseline = counterfactuals.find(_.scenarioId == "baseline")
@@ -570,9 +616,9 @@ object HhBankLeadLagDiagnosticsExport:
   private def renderDecimal(value: BigDecimal): String =
     value.setScale(6, RoundingMode.HALF_UP).bigDecimal.stripTrailingZeros.toPlainString
 
-  private def csv(value: String): String =
+  private def tsv(value: String): String =
     val escaped = value.replace("\"", "\"\"")
-    if escaped.exists(ch => ch == ';' || ch == '"' || ch == '\n' || ch == '\r') then s""""$escaped""""
+    if escaped.exists(ch => ch == '\t' || ch == '"' || ch == '\n' || ch == '\r') then s""""$escaped""""
     else escaped
 
   private def mean(values: Vector[BigDecimal]): Option[BigDecimal] =
@@ -597,8 +643,8 @@ object HhBankLeadLagDiagnosticsExport:
     """Usage: hhBankLeadLagDiagnostics [--seed-start N] [--seeds N] [--months N] [--lag-max N] [--out DIR] [--run-id ID]
       |
       |Writes:
-      |- hh-bank-lead-lag-bank-months.csv
-      |- hh-bank-lead-lag-correlations.csv
-      |- hh-bank-lead-lag-counterfactuals.csv
+      |- hh-bank-lead-lag-bank-months.tsv
+      |- hh-bank-lead-lag-correlations.tsv
+      |- hh-bank-lead-lag-counterfactuals.tsv
       |- hh-bank-lead-lag-report.md
       |""".stripMargin

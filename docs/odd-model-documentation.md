@@ -346,11 +346,11 @@ affect macro dynamics or distributional outcomes.
 Observation surfaces include:
 
 - `MonthTrace` for boundary, randomness, validation, and timing diagnostics;
-- Monte Carlo per-seed CSV time series;
-- household, bank, and firm terminal summary CSVs;
-- optional selected-month household micro snapshot and shortfall-cohort CSVs;
-- optional selected-month firm micro snapshot CSVs;
-- optional selected-firm decision trace CSVs for adoption, financing,
+- Monte Carlo per-seed TSV time series;
+- household, bank, and firm terminal summary TSVs;
+- optional selected-month household micro snapshot and shortfall-cohort TSVs;
+- optional selected-month firm micro snapshot TSVs;
+- optional selected-firm decision trace TSVs for adoption, financing,
   implementation, and labor/digital-investment gate audits;
 - SFC validation results;
 - ledger-derived symbolic BSM, TFM, and stock-flow reconciliation artifacts;

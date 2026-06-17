@@ -2,7 +2,7 @@ package com.boombustgroup.amorfati.diagnostics
 
 import com.boombustgroup.amorfati.config.RobustnessScenarios
 import com.boombustgroup.amorfati.config.RobustnessScenarios.{Scenario, ScenarioSet}
-import com.boombustgroup.amorfati.montecarlo.{McCsvFile, McCsvSchema, McDiagnosticRunner, McSeedMonth, McTimeseriesSchema, MetricValue}
+import com.boombustgroup.amorfati.montecarlo.{McDiagnosticRunner, McSeedMonth, McTimeseriesSchema, McTsvFile, McTsvSchema, MetricValue}
 import zio.ZIO
 import zio.stream.ZStream
 
@@ -75,13 +75,13 @@ object SensitivityRobustnessExport:
     for
       validConfig       <- ZIO.fromEither(validate(config))
       scenarios          = RobustnessScenarios.scenarios(validConfig.scenarioSet)
-      seedMetrics       <- McCsvFile
+      seedMetrics       <- McTsvFile
         .writeFold(
-          validConfig.out.resolve("seed-metrics.csv"),
+          validConfig.out.resolve("seed-metrics.tsv"),
           McDiagnosticRunner
             .runScenarioSeeds(scenarios, validConfig.seedRange, validConfig.months, _.id, _.params)(runSeed)
             .flatMap(rows => ZStream.fromIterable(rows)),
-          SeedMetricsCsvSchema,
+          SeedMetricsTsvSchema,
           Vector.newBuilder[SeedMetric],
         )((builder, row) => builder += row)(DiagnosticIo.outputFailure)
         .map(_.result())
@@ -218,27 +218,27 @@ object SensitivityRobustnessExport:
       envelopeMetrics: Vector[EnvelopeMetric],
       sensitivityMetrics: Vector[SensitivityMetric],
   ): ZIO[Any, String, Vector[Path]] =
-    val seedMetricsPath = config.out.resolve("seed-metrics.csv")
-    val envelopePath    = config.out.resolve("envelope-summary.csv")
-    val sensitivityPath = config.out.resolve("sensitivity-summary.csv")
+    val seedMetricsPath = config.out.resolve("seed-metrics.tsv")
+    val envelopePath    = config.out.resolve("envelope-summary.tsv")
+    val sensitivityPath = config.out.resolve("sensitivity-summary.tsv")
     val reportPath      = config.out.resolve("robustness-report.md")
 
     for
-      _ <- McCsvFile.writeAll(envelopePath, envelopeMetrics, EnvelopeCsvSchema)(DiagnosticIo.outputFailure)
-      _ <- McCsvFile.writeAll(sensitivityPath, sensitivityMetrics, SensitivityCsvSchema)(DiagnosticIo.outputFailure)
+      _ <- McTsvFile.writeAll(envelopePath, envelopeMetrics, EnvelopeTsvSchema)(DiagnosticIo.outputFailure)
+      _ <- McTsvFile.writeAll(sensitivityPath, sensitivityMetrics, SensitivityTsvSchema)(DiagnosticIo.outputFailure)
       _ <- DiagnosticIo.writeText(reportPath, renderReport(config, scenarios, envelopeMetrics, sensitivityMetrics))
     yield Vector(seedMetricsPath, envelopePath, sensitivityPath, reportPath)
 
-  private val SeedMetricsCsvSchema: McCsvSchema[SeedMetric] =
-    McCsvSchema(
-      header = "Scenario;Seed;Metric;Terminal;PathMin;PathMax;PathMean",
+  private val SeedMetricsTsvSchema: McTsvSchema[SeedMetric] =
+    McTsvSchema(
+      header = McTsvSchema.header("Scenario", "Seed", "Metric", "Terminal", "PathMin", "PathMax", "PathMean"),
       render =
-        row => Vector(row.scenarioId, row.seed.toString, row.metric.id, fmt(row.terminal), fmt(row.pathMin), fmt(row.pathMax), fmt(row.pathMean)).mkString(";"),
+        row => Vector(row.scenarioId, row.seed.toString, row.metric.id, fmt(row.terminal), fmt(row.pathMin), fmt(row.pathMax), fmt(row.pathMean)).mkString("\t"),
     )
 
-  private val EnvelopeCsvSchema: McCsvSchema[EnvelopeMetric] =
-    McCsvSchema(
-      header = "Scenario;Metric;TerminalMean;TerminalMin;TerminalMax;PathMin;PathMax;PathMean",
+  private val EnvelopeTsvSchema: McTsvSchema[EnvelopeMetric] =
+    McTsvSchema(
+      header = McTsvSchema.header("Scenario", "Metric", "TerminalMean", "TerminalMin", "TerminalMax", "PathMin", "PathMax", "PathMean"),
       render = row =>
         Vector(
           row.scenarioId,
@@ -249,12 +249,12 @@ object SensitivityRobustnessExport:
           fmt(row.pathMin),
           fmt(row.pathMax),
           fmt(row.pathMean),
-        ).mkString(";"),
+        ).mkString("\t"),
     )
 
-  private val SensitivityCsvSchema: McCsvSchema[SensitivityMetric] =
-    McCsvSchema(
-      header = "Scenario;Metric;BaselineTerminalMean;ScenarioTerminalMean;Delta;DeltaPct",
+  private val SensitivityTsvSchema: McTsvSchema[SensitivityMetric] =
+    McTsvSchema(
+      header = McTsvSchema.header("Scenario", "Metric", "BaselineTerminalMean", "ScenarioTerminalMean", "Delta", "DeltaPct"),
       render = row =>
         Vector(
           row.scenarioId,
@@ -263,7 +263,7 @@ object SensitivityRobustnessExport:
           fmt(row.scenarioMean),
           fmt(row.delta),
           row.deltaPct.map(fmt).getOrElse("NA"),
-        ).mkString(";"),
+        ).mkString("\t"),
     )
 
   private def renderReport(
@@ -348,9 +348,9 @@ object SensitivityRobustnessExport:
         "",
         "## Output Files",
         "",
-        "- `seed-metrics.csv`: per scenario, seed, and metric terminal/path statistics.",
-        "- `envelope-summary.csv`: cross-seed envelopes by scenario and metric.",
-        "- `sensitivity-summary.csv`: terminal mean deltas versus baseline.",
+        "- `seed-metrics.tsv`: per scenario, seed, and metric terminal/path statistics.",
+        "- `envelope-summary.tsv`: cross-seed envelopes by scenario and metric.",
+        "- `sensitivity-summary.tsv`: terminal mean deltas versus baseline.",
         "- `robustness-report.md`: this human-readable summary.",
       )
 

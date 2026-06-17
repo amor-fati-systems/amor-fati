@@ -8,6 +8,9 @@ import java.nio.file.Path
 
 class ScenarioRunExportSpec extends AnyFlatSpec with Matchers:
 
+  private def tsv(fields: String*): String =
+    fields.mkString("\t")
+
   "ScenarioRunExport" should "preserve default scenarios and all-scenario CLI selection" in {
     ScenarioRunExport.Config().scenarios.map(_.id) shouldBe ScenarioRegistry.defaultScenarioIds
     ScenarioRunExport.parseArgs(Vector("--scenarios", "all")).map(_.scenarios.map(_.id)) shouldBe Right(ScenarioRegistry.all.map(_.id))
@@ -24,8 +27,8 @@ class ScenarioRunExportSpec extends AnyFlatSpec with Matchers:
 
     val deltas = ScenarioRunExport.renderDeltas(scenarios)
     deltas.linesIterator.next() shouldBe
-      "Scenario;Parameter;Baseline;ScenarioValue;Note;ProvenanceClassification;SourceProvider;Vintage;TransformationNotes"
-    deltas should include("monetary-tightening;monetary.initialRate;0.0375;0.075;Higher starting reference rate.;policy_counterfactual")
+      tsv("Scenario", "Parameter", "Baseline", "ScenarioValue", "Note", "ProvenanceClassification", "SourceProvider", "Vintage", "TransformationNotes")
+    deltas should include(tsv("monetary-tightening", "monetary.initialRate", "0.0375", "0.075", "Higher starting reference rate.", "policy_counterfactual"))
     deltas should include("2026-04-30 baseline counterfactual")
     deltas should include("Raises the policy-rate starting point and Taylor-rule response relative to baseline.")
   }

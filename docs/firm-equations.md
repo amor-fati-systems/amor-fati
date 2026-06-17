@@ -614,7 +614,7 @@ publication-facing validation runs.
 | --- | --- |
 | Unit/property tests | `FirmSpec`, `FirmPropertySpec`, `SmoothLaborAdjustmentSpec`, `CesProductionSpec`, firm-size distribution, physical-capital, firm-entry, FDI composition, informal-economy, firm economics, and firm flow tests. |
 | Schema/diagnostic tests | Firm decision trace selection/schema, firm snapshot schema/schedule, Monte Carlo schema, and loan-origination quality diagnostics. |
-| Integration/nightly | Monte Carlo CSV integration, nightly diagnostics, loan-origination quality, sensitivity/robustness, scenario runs, SFC matrix evidence, and generated-output guard. |
+| Integration/nightly | Monte Carlo TSV integration, nightly diagnostics, loan-origination quality, sensitivity/robustness, scenario runs, SFC matrix evidence, and generated-output guard. |
 | Accounting | Runtime ledger execution, firm-credit stock-flow, corporate-bond ownership, equity issuance, tax, external, and SFC semantic projection tests. |
 
 ## Current Limitations

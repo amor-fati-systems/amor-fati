@@ -222,18 +222,18 @@ Example smoke run:
 sbt "runMain com.boombustgroup.amorfati.Main 1 local-smoke --duration 12 --run-id smoke"
 ```
 
-The main runner writes generated CSV files under `mc/`:
+The main runner writes generated TSV files under `mc/`:
 
 ```text
-mc/<prefix>_<run-id>_<months>m_seed001.csv
-mc/<prefix>_<run-id>_<months>m_hh.csv
-mc/<prefix>_<run-id>_<months>m_banks.csv
-mc/<prefix>_<run-id>_<months>m_firms.csv
+mc/<prefix>_<run-id>_<months>m_seed001.tsv
+mc/<prefix>_<run-id>_<months>m_hh.tsv
+mc/<prefix>_<run-id>_<months>m_banks.tsv
+mc/<prefix>_<run-id>_<months>m_firms.tsv
 ```
 
-Per-seed time-series CSV files emit macro PLN aggregates in Poland scale, ready
+Per-seed time-series TSV files emit macro PLN aggregates in Poland scale, ready
 for empirical analysis. The internal `gdpRatio` scaling factor is not emitted
-as a CSV column; it remains a model-computation boundary. Agent-level prices,
+as a TSV column; it remains a model-computation boundary. Agent-level prices,
 wages, indexes, rates, shares, and counts remain in their native units.
 
 The seed time-series files also include always-on aggregate diagnostic blocks
@@ -270,7 +270,7 @@ Firm-level micro snapshots are optional and off by default. Enable them with
 `--firm-snapshots months:1,6,12`. When enabled, the runner also writes:
 
 ```text
-mc/<prefix>_<run-id>_<months>m_firm_snapshots.csv
+mc/<prefix>_<run-id>_<months>m_firm_snapshots.tsv
 ```
 
 Firm decision traces are optional and off by default. Enable them with an
@@ -280,7 +280,7 @@ documented deterministic low-id sample `--firm-decision-trace first:25`, or with
 firm id and does not use the model RNG. When enabled, the runner also writes:
 
 ```text
-mc/<prefix>_<run-id>_<months>m_firm_decision_trace.csv
+mc/<prefix>_<run-id>_<months>m_firm_decision_trace.tsv
 ```
 
 The trace records one selected-firm row per month with opening/closing tech
@@ -553,7 +553,7 @@ A practical local loop for model changes:
    inflation, matrices, scenarios, or robustness behavior.
 5. Execute heavy and integration tests when the change touches month execution,
    flow simulation, Monte Carlo output, or shared ledger behavior.
-6. Compare generated CSVs or reports under `mc/` or `target/` before committing.
+6. Compare generated TSVs or reports under `mc/` or `target/` before committing.
 
 ## Troubleshooting
 
