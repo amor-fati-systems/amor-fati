@@ -515,7 +515,7 @@ Generated local outputs normally belong in ignored paths:
 
 Pull-request CI also runs `scripts/check-docs.py` under the same Nix
 development shell. The documentation hygiene guard validates local Markdown
-links, local Markdown anchors, and the `docs/documentation-architecture.md`
+links, local Markdown anchors, and the `docs/README.md`
 inventory coverage for every committed `docs/` artifact. It does not lint prose
 style or check external URLs.
 

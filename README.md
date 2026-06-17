@@ -118,7 +118,8 @@ That distinction matters. A nonlinear ABM can explore unstable, surprising, even
 
 Start with the [model specification](docs/model-specification.md). Its
 [Reviewer Reading Path](docs/model-specification.md#reviewer-reading-path) is
-the canonical first-pass path for scientific review:
+the canonical first-pass path for scientific review. For the complete
+documentation index, use [docs/README.md](docs/README.md):
 
 | Step | Entry point | Boundary |
 | --- | --- | --- |
