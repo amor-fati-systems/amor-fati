@@ -1,10 +1,9 @@
 package com.boombustgroup.amorfati.diagnostics
 
-import com.boombustgroup.amorfati.montecarlo.{McCsvFile, McCsvSchema}
+import com.boombustgroup.amorfati.montecarlo.{DelimitedTextFile, DelimitedTextFormat, DelimitedTextRows, DelimitedTextSchema}
 import com.boombustgroup.amorfati.util.BuildInfo
 import zio.ZIO
 
-import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path}
 import java.time.LocalDate
 import scala.jdk.CollectionConverters.*
@@ -30,6 +29,12 @@ object EmpiricalValidationExport:
     case Help
 
   final case class ExportResult(paths: Vector[Path], rows: Vector[SnapshotRow])
+
+  private type CsvRow = DelimitedTextRows.Row
+
+  extension (row: CsvRow)
+    private def decimal(column: String): Either[String, BigDecimal] =
+      row.required(column).flatMap(parseDecimal(_, column))
 
   final case class ModelRunManifest(
       runId: String,
@@ -290,8 +295,8 @@ object EmpiricalValidationExport:
         manifest.copy(seedCount = paths.length)
 
   private def readSourceManifest(path: Path): Either[String, Vector[SourceManifestRow]] =
-    Tsv
-      .readRows(path, SourceManifestHeader)
+    DelimitedTextRows
+      .readRows(path, DelimitedTextFormat.Tsv, SourceManifestHeader)
       .flatMap: rows =>
         sequence(rows.zipWithIndex.map((row, idx) => parseSourceRow(row).left.map(err => s"$path row ${idx + 2}: $err")))
 
@@ -337,8 +342,8 @@ object EmpiricalValidationExport:
         Right(row)
 
   private def readModelRunManifest(path: Path, fallbackOutputDir: Path): Either[String, ModelRunManifest] =
-    Tsv
-      .readRows(path, ModelRunManifestHeader)
+    DelimitedTextRows
+      .readRows(path, DelimitedTextFormat.Tsv, ModelRunManifestHeader)
       .flatMap:
         case Vector(row) => parseModelRunManifest(row, fallbackOutputDir).left.map(err => s"$path row 2: $err")
         case rows        => Left(s"$path must contain exactly one model run row, got ${rows.length}")
@@ -432,9 +437,9 @@ object EmpiricalValidationExport:
     val runManifestPath    = out.resolve("model-run-manifest.tsv")
     val snapshotPath       = out.resolve("baseline-validation-snapshot.tsv")
     for
-      sourcePath      <- McCsvFile.writeAll(sourceManifestPath, sourceRows, SourceManifestTsvSchema)(DiagnosticIo.outputFailure)
-      runPath         <- McCsvFile.writeAll(runManifestPath, Vector(modelRun), ModelRunManifestTsvSchema)(DiagnosticIo.outputFailure)
-      snapshotTsvPath <- McCsvFile.writeAll(snapshotPath, snapshot, SnapshotTsvSchema)(DiagnosticIo.outputFailure)
+      sourcePath      <- DelimitedTextFile.writeAll(sourceManifestPath, sourceRows, SourceManifestTsvSchema, DelimitedTextFormat.Tsv)(DiagnosticIo.outputFailure)
+      runPath         <- DelimitedTextFile.writeAll(runManifestPath, Vector(modelRun), ModelRunManifestTsvSchema, DelimitedTextFormat.Tsv)(DiagnosticIo.outputFailure)
+      snapshotTsvPath <- DelimitedTextFile.writeAll(snapshotPath, snapshot, SnapshotTsvSchema, DelimitedTextFormat.Tsv)(DiagnosticIo.outputFailure)
     yield Vector(sourcePath, runPath, snapshotTsvPath)
 
   private final case class MonteCarloOutput(
@@ -531,7 +536,7 @@ object EmpiricalValidationExport:
       else
         for
           seedFiles <- matchingSeedFiles(manifest)
-          series    <- sequence(seedFiles.map(path => SemicolonCsv.readRows(path)))
+          series    <- sequence(seedFiles.map(readSemicolonCsv))
           household <- readOptionalCsv(manifest.outputDir.resolve(s"${manifest.filePrefix}_hh.csv"))
           banks     <- readOptionalCsv(manifest.outputDir.resolve(s"${manifest.filePrefix}_banks.csv"))
           firms     <- readOptionalCsv(manifest.outputDir.resolve(s"${manifest.filePrefix}_firms.csv"))
@@ -553,153 +558,66 @@ object EmpiricalValidationExport:
           .sortBy(_.getFileName.toString)
 
   private def readOptionalCsv(path: Path): Either[String, Option[Vector[CsvRow]]] =
-    if Files.exists(path) then SemicolonCsv.readRows(path).map(Some(_))
+    if Files.exists(path) then readSemicolonCsv(path).map(Some(_))
     else Right(None)
 
-  private final case class CsvRow(values: Map[String, String]):
-    def required(column: String): Either[String, String] =
-      optional(column).toRight(s"Missing required column: $column")
+  private def readSemicolonCsv(path: Path): Either[String, Vector[CsvRow]] =
+    DelimitedTextRows.readRows(path, DelimitedTextFormat.SemicolonCsv)
 
-    def optional(column: String): Option[String] =
-      values.get(column).map(_.trim).filter(_.nonEmpty)
-
-    def decimal(column: String): Either[String, BigDecimal] =
-      required(column).flatMap(parseDecimal(_, column))
-
-  private object SemicolonCsv:
-    def readRows(path: Path, requiredColumns: Vector[String] = Vector.empty): Either[String, Vector[CsvRow]] =
-      DelimitedText.readRows(path, ';', requiredColumns)
-
-  private object Tsv:
-    def readRows(path: Path, requiredColumns: Vector[String] = Vector.empty): Either[String, Vector[CsvRow]] =
-      DelimitedText.readRows(path, '\t', requiredColumns)
-
-  private object DelimitedText:
-    def readRows(path: Path, delimiter: Char, requiredColumns: Vector[String] = Vector.empty): Either[String, Vector[CsvRow]] =
-      Try(Files.readAllLines(path, StandardCharsets.UTF_8).asScala.toVector).toEither.left
-        .map(err => s"Failed to read $path: ${err.getMessage}")
-        .flatMap: lines =>
-          val dataLines = lines.zipWithIndex.filter((line, _) => line.trim.nonEmpty && !line.trim.startsWith("#"))
-          dataLines.headOption match
-            case None                     => Left(s"$path is empty")
-            case Some((headerLine, hidx)) =>
-              for
-                header <- parseLine(headerLine, delimiter).left.map(err => s"$path line ${hidx + 1}: $err")
-                _      <- validateHeader(path, header, requiredColumns)
-                rows   <- sequence(
-                  dataLines.tail
-                    .map((line, idx) =>
-                      parseLine(line, delimiter).left
-                        .map(err => s"$path line ${idx + 1}: $err")
-                        .flatMap(cells => rowFromCells(path, idx + 1, header, cells)),
-                    )
-                    .toVector,
-                )
-              yield rows
-
-    private def validateHeader(path: Path, header: Vector[String], requiredColumns: Vector[String]): Either[String, Unit] =
-      val missing = requiredColumns.filterNot(header.contains)
-      Either.cond(missing.isEmpty, (), s"$path is missing required columns: ${missing.mkString(", ")}")
-
-    private def rowFromCells(path: Path, lineNumber: Int, header: Vector[String], cells: Vector[String]): Either[String, CsvRow] =
-      Either.cond(
-        cells.length == header.length,
-        CsvRow(header.zip(cells).toMap),
-        s"$path line $lineNumber has ${cells.length} cells, expected ${header.length}",
+  private[diagnostics] lazy val SourceManifestTsvSchema: DelimitedTextSchema[SourceManifestRow] =
+    DelimitedTextSchema.fromCells(SourceManifestHeader, DelimitedTextFormat.Tsv): row =>
+      Vector(
+        row.target,
+        row.sourceProvider,
+        row.sourceUrl,
+        row.datasetCode,
+        row.vintage,
+        row.accessedAt.map(_.toString).getOrElse(""),
+        row.licenseOrReuseNote,
+        row.frequency,
+        row.unit,
+        row.transformation,
+        row.modelTarget.render,
+        row.status.token,
+        row.empiricalValue.map(formatDecimal).getOrElse(""),
+        row.tolerance.map(formatDecimal).getOrElse(""),
+        row.criterion,
+        row.notes,
       )
 
-    private def parseLine(line: String, delimiter: Char): Either[String, Vector[String]] =
-      val cells  = Vector.newBuilder[String]
-      val cell   = new StringBuilder
-      var quoted = false
-      var i      = 0
-      while i < line.length do
-        val ch = line.charAt(i)
-        if quoted then
-          if ch == '"' then
-            if i + 1 < line.length && line.charAt(i + 1) == '"' then
-              cell.append('"')
-              i += 1
-            else quoted = false
-          else cell.append(ch)
-        else if ch == delimiter then
-          cells += cell.toString
-          cell.clear()
-        else if ch == '"' && cell.isEmpty then quoted = true
-        else cell.append(ch)
-        i += 1
-      if quoted then Left("Unterminated quoted cell")
-      else
-        cells += cell.toString
-        Right(cells.result().map(_.trim))
+  private[diagnostics] lazy val ModelRunManifestTsvSchema: DelimitedTextSchema[ModelRunManifest] =
+    DelimitedTextSchema.fromCells(ModelRunManifestHeader, DelimitedTextFormat.Tsv): manifest =>
+      Vector(
+        manifest.runId,
+        manifest.outputPrefix,
+        manifest.durationMonths.toString,
+        manifest.seedCount.toString,
+        manifest.commit,
+        manifest.parameterBranch,
+        manifest.outputDir.toString,
+      )
 
-  private[diagnostics] lazy val SourceManifestTsvSchema: McCsvSchema[SourceManifestRow] =
-    McCsvSchema(
-      header = SourceManifestHeader.mkString("\t"),
-      render = row =>
-        Vector(
-          row.target,
-          row.sourceProvider,
-          row.sourceUrl,
-          row.datasetCode,
-          row.vintage,
-          row.accessedAt.map(_.toString).getOrElse(""),
-          row.licenseOrReuseNote,
-          row.frequency,
-          row.unit,
-          row.transformation,
-          row.modelTarget.render,
-          row.status.token,
-          row.empiricalValue.map(formatDecimal).getOrElse(""),
-          row.tolerance.map(formatDecimal).getOrElse(""),
-          row.criterion,
-          row.notes,
-        ).map(tsv).mkString("\t"),
-    )
-
-  private[diagnostics] lazy val ModelRunManifestTsvSchema: McCsvSchema[ModelRunManifest] =
-    McCsvSchema(
-      header = ModelRunManifestHeader.mkString("\t"),
-      render = manifest =>
-        Vector(
-          manifest.runId,
-          manifest.outputPrefix,
-          manifest.durationMonths.toString,
-          manifest.seedCount.toString,
-          manifest.commit,
-          manifest.parameterBranch,
-          manifest.outputDir.toString,
-        ).map(tsv).mkString("\t"),
-    )
-
-  private[diagnostics] lazy val SnapshotTsvSchema: McCsvSchema[SnapshotRow] =
-    McCsvSchema(
-      header = SnapshotHeader.mkString("\t"),
-      render = row =>
-        Vector(
-          row.target,
-          row.sourceProvider,
-          row.sourceUrl,
-          row.datasetCode,
-          row.vintage,
-          row.accessedAt.map(_.toString).getOrElse(""),
-          row.frequency,
-          row.unit,
-          row.transformation,
-          row.modelRun,
-          row.modelTarget,
-          row.empiricalValue.map(formatSnapshotDecimal).getOrElse(""),
-          row.modelValue.map(formatSnapshotDecimal).getOrElse(""),
-          row.tolerance.map(formatSnapshotDecimal).getOrElse(""),
-          row.criterion,
-          row.status.token,
-          row.notes,
-        ).map(tsv).mkString("\t"),
-    )
-
-  private def tsv(value: String): String =
-    if value.exists(ch => ch == '\t' || ch == '"' || ch == '\n') then "\"" + value.replace("\"", "\"\"") + "\""
-    else value
+  private[diagnostics] lazy val SnapshotTsvSchema: DelimitedTextSchema[SnapshotRow] =
+    DelimitedTextSchema.fromCells(SnapshotHeader, DelimitedTextFormat.Tsv): row =>
+      Vector(
+        row.target,
+        row.sourceProvider,
+        row.sourceUrl,
+        row.datasetCode,
+        row.vintage,
+        row.accessedAt.map(_.toString).getOrElse(""),
+        row.frequency,
+        row.unit,
+        row.transformation,
+        row.modelRun,
+        row.modelTarget,
+        row.empiricalValue.map(formatSnapshotDecimal).getOrElse(""),
+        row.modelValue.map(formatSnapshotDecimal).getOrElse(""),
+        row.tolerance.map(formatSnapshotDecimal).getOrElse(""),
+        row.criterion,
+        row.status.token,
+        row.notes,
+      )
 
   private def listDirectory(path: Path): Either[String, Vector[Path]] =
     Try(Using.resource(Files.list(path))(_.iterator().asScala.toVector)).toEither.left.map(err => s"Failed to list $path: ${err.getMessage}")

@@ -1,9 +1,9 @@
 package com.boombustgroup.amorfati.montecarlo
 
-import com.boombustgroup.amorfati.util.CsvWriter
 import zio.ZIO
 
 import java.io.File
+import java.nio.file.Path
 
 private[montecarlo] object McTerminalSummaryCsv:
 
@@ -18,11 +18,8 @@ private[montecarlo] object McTerminalSummaryCsv:
       sortedResults: zio.Chunk[McTerminalSummaryRows],
   ) =
     val outputFile = spec.outputFile(outputDir, rc)
-    ZIO
-      .attemptBlocking:
-        val rows = sortedResults.flatMap(_.rowsFor(spec.id))
-        CsvWriter.write(outputFile, spec.csvSchema.header, rows)(spec.csvSchema.render)
-      .mapError(outputFailure(s"write ${spec.id.toString.toLowerCase} summary CSV", outputFile))
+    val rows       = sortedResults.flatMap(_.rowsFor(spec.id))
+    McCsvFile.writeAll(outputFile.toPath, rows, spec.csvSchema)(outputFailure).unit
 
-  private def outputFailure(operation: String, path: File)(err: Throwable): SimError =
-    SimError.OutputFailure(operation, path.getPath, Option(err.getMessage).filter(_.nonEmpty).getOrElse(err.getClass.getSimpleName))
+  private def outputFailure(operation: String, path: Path, err: Throwable): SimError =
+    SimError.OutputFailure(operation, path.toString, Option(err.getMessage).filter(_.nonEmpty).getOrElse(err.getClass.getSimpleName))

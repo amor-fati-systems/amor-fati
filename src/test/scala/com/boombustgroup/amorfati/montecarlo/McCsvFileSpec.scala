@@ -72,6 +72,35 @@ class McCsvFileSpec extends AnyFlatSpec with Matchers:
       Files.exists(output) shouldBe false
       Files.exists(output.resolveSibling("values.csv.tmp")) shouldBe false
 
+  it should "write and read TSV rows through the shared delimited-text contract" in
+    withTempDir: dir =>
+      val output    = dir.resolve("values.tsv")
+      val tsvSchema =
+        DelimitedTextSchema.fromCells[(String, String)](Vector("Name", "Note"), DelimitedTextFormat.Tsv): (name, note) =>
+          Vector(name, note)
+
+      run:
+        DelimitedTextFile.writeAll(
+          output,
+          Vector(("plain", "contains\ttab"), ("has \"quote\"", "value")),
+          tsvSchema,
+          DelimitedTextFormat.Tsv,
+        )(outputFailure)
+
+      Files.readAllLines(output, UTF_8).asScala.toVector shouldBe Vector(
+        "Name\tNote",
+        "plain\t\"contains\ttab\"",
+        "\"has \"\"quote\"\"\"\tvalue",
+      )
+
+      val parsed = DelimitedTextRows
+        .readRows(output, DelimitedTextFormat.Tsv, Vector("Name", "Note"))
+        .fold(err => fail(err), identity)
+      parsed.map(row => row.required("Name").toOption.get -> row.required("Note").toOption.get) shouldBe Vector(
+        "plain"         -> "contains\ttab",
+        "has \"quote\"" -> "value",
+      )
+
   private def run[A](effect: ZIO[Any, String, A]): A =
     Unsafe.unsafe: unsafe =>
       given Unsafe = unsafe
