@@ -37,7 +37,6 @@ as the operational entry point.
 | Operational appendix | Commands, CI, validation ownership, scenarios, robustness, and runbook material. Useful, but not the first scientific reading path. |
 | Diagnostics or profiling appendix | Specific diagnostic/profiling methodology, exporter interpretation, or investigation evidence. |
 | ADR or decision record | Durable architectural or semantic decision record. Preserve history unless superseded explicitly. |
-| Deprecated or merge candidate | Still present, but likely to be merged, archived, or replaced after review. Do not remove silently. |
 
 ## Complete Inventory
 
@@ -82,23 +81,7 @@ as the operational entry point.
 | [docs/nightly-diagnostics.md](nightly-diagnostics.md) | Operational appendix | Diagnostic profile taxonomy, nightly/extended execution semantics, and manifest policy. |
 | [docs/operations.md](operations.md) | Operational appendix | Command-oriented runbook for tests, diagnostics, generated outputs, and operational workflows. |
 | [docs/performance-regression-budgets.md](performance-regression-budgets.md) | Operational appendix | Performance regression budget policy and promotion criteria for profiling/diagnostic telemetry. |
-| [docs/README.md](README.md) | Operational appendix | Documentation index, ownership inventory, and cleanup source of truth. |
+| [docs/README.md](README.md) | Operational appendix | Documentation index and ownership inventory. |
 | [docs/scenario-registry.md](scenario-registry.md) | Operational appendix | Named policy and shock scenario registry with reproducible scenario-run metadata. |
 | [docs/sensitivity-robustness-workflow.md](sensitivity-robustness-workflow.md) | Operational appendix | Seed uncertainty and one-at-a-time robustness workflow for scenario and publication prep. |
 | [docs/validation-matrix.md](validation-matrix.md) | Operational appendix | Ownership map for CI, integration tests, generated-output validation, nightly diagnostics, stress, and profiling. |
-
-## Deprecated, Merged, And Merge Candidates
-
-The following documentation surface was removed after the inventory review:
-
-| Surface | Replacement | Rationale |
-| --- | --- | --- |
-| `model-spec-completeness-checklist.md` | [model-specification.md](model-specification.md), [docs README](README.md), and the sector equation documents linked from the reviewer path | The checklist had become a second hand-maintained coverage matrix beside the canonical reviewer path and inventory. Removing it reduces stale-review risk without deleting model behavior, generated evidence, or ADR history. |
-
-The following surfaces remain consolidation candidates:
-
-| Candidate group | Current files | Proposed direction |
-| --- | --- | --- |
-| Operational validation appendix | `operations.md`, `validation-matrix.md`, `nightly-diagnostics.md`, `nightly-baseline-comparison.md`, `performance-regression-budgets.md` | Use `operations.md#operational-appendix-index` as the operational entry point and keep detailed policy pages cross-linked from it. |
-| Diagnostic-method appendix | `bank-balance-sheet-benchmark.md`, `bank-failure-ablations.md`, `hh-bank-lead-lag-diagnostics.md`, `loan-origination-quality-diagnostics.md`, `hot-path-profiling.md` | Route diagnostic/profiling discovery through `operations.md#operational-appendix-index` so README and model spec do not enumerate each diagnostic document. |
-| Calibration evidence notes | `household-credit-stress-calibration.md`, `external-sector-baseline-calibration.md`, `private-credit-renewal-calibration.md` | Keep as evidence notes, but route them through calibration governance and data-bridge indexes. |
