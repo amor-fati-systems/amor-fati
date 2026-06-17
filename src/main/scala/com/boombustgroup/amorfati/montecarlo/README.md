@@ -1,9 +1,10 @@
 # Monte Carlo
 
 The `montecarlo` package owns the Monte Carlo runner, output schemas,
-CSV writers, console progress reporting, and typed result/error
-wrappers. It is the only consumer of `McRunConfig` — the engine
-pipeline has no dependency on this package.
+delimited-text I/O, console progress reporting, and typed result/error
+wrappers. It is the only consumer of `McRunConfig` — the engine pipeline has no
+dependency on this package. Runtime Monte Carlo artifacts remain semicolon CSVs;
+the shared delimited-text layer also supports TSV artifacts used by diagnostics.
 
 ## Files
 
@@ -28,11 +29,15 @@ pipeline has no dependency on this package.
 | `McFirmSizeClass.scala` | `McFirmSizeClass` | Shared worker-count size-class boundary used by terminal counts and firm snapshots |
 | `McHouseholdLiquidityDiagnostics.scala` | `McHouseholdLiquidityDiagnostics` | Shared household demand-deposit distribution diagnostics for timeseries and terminal summaries |
 | `McTimeseriesSchema.scala` | `McTimeseriesSchema` | Timeseries schema composed from domain column groups, with typed `Col` definitions, `compute`, and shared `csvSchema` |
-| `McCsvFile.scala` | `McCsvFile` | Generic streaming CSV sink with parent-dir creation, temp-file finalization, and fold support for diagnostics |
+| `DelimitedTextFormat.scala` | `DelimitedTextFormat` | Format descriptor and cell escaping for semicolon CSV and TSV output |
+| `DelimitedTextSchema.scala` | `DelimitedTextSchema` | Shared header/render contract for delimited-text rows |
+| `DelimitedTextFile.scala` | `DelimitedTextFile` | Generic streaming delimited-text sink with parent-dir creation, temp-file finalization, and fold support |
+| `DelimitedTextRows.scala` | `DelimitedTextRows` | Shared delimited-text row reader used by CSV consumers and TSV diagnostics |
+| `McCsvFile.scala` | `McCsvFile` | Backward-compatible semicolon-CSV facade over `DelimitedTextFile` |
 | `McTimeseriesCsv.scala` | `McTimeseriesCsv` | Production per-seed timeseries CSV sink backed by `McCsvFile` |
 | `McTerminalSummarySchema.scala` | `McTerminalSummarySchema` | Household/bank/firm terminal summary schemas and terminal-state row extraction; bank stock columns read `LedgerFinancialState` |
 | `McTerminalSummaryCsv.scala` | `McTerminalSummaryCsv` | Writes aggregate household/bank/firm terminal summary CSVs |
-| `McCsvSchema.scala` | `McCsvSchema` | Shared CSV header/render contract used by output schemas |
+| `McCsvSchema.scala` | `McCsvSchema` | Backward-compatible semicolon-CSV schema facade over `DelimitedTextSchema` |
 | `McOutputFiles.scala` | `McOutputFiles` | Output directory preparation and stable output file naming |
 | `McRunnerConsole.scala` | `McRunnerConsole` | Console progress/status rendering for runs, seeds, and saved files |
 | `McTypes.scala` | `SimError`, `RunResult`, `TimeSeries` | Typed runtime/output errors plus zero-cost wrappers for simulation output |
@@ -78,6 +83,13 @@ scenario/seed sweeps on the same initialization and monthly runtime path as
 `Main`, preserves bounded seed parallelism through `mapZIOPar`, and lets
 diagnostic CSVs stream rows through `McCsvFile` while retaining only the small
 fold state needed for summaries.
+
+`McCsvFile` and `McCsvSchema` intentionally preserve the existing semicolon-CSV
+runtime contract. New code that needs a different delimiter should use
+`DelimitedTextFile`, `DelimitedTextSchema`, and `DelimitedTextRows` directly with
+an explicit `DelimitedTextFormat`; for example, empirical-validation snapshots
+use `DelimitedTextFormat.Tsv` while Monte Carlo seed and summary artifacts keep
+`DelimitedTextFormat.SemicolonCsv`.
 
 `runDurationMonths` is a Monte Carlo/runtime concern. It controls how
 many monthly snapshots the runner materializes, but it is not part of
