@@ -51,6 +51,27 @@ class McTsvFileSpec extends AnyFlatSpec with Matchers:
       Files.exists(leftOutput.resolveSibling("left.tsv.tmp")) shouldBe false
       Files.exists(rightOutput.resolveSibling("right.tsv.tmp")) shouldBe false
 
+  it should "not delete finalized split outputs when the second finalize fails" in
+    withTempDir: dir =>
+      val leftOutput  = dir.resolve("left.tsv")
+      val rightOutput = dir.resolve("right.tsv")
+      Files.writeString(leftOutput, "preexisting\n", UTF_8)
+      Files.createDirectory(rightOutput)
+      Files.writeString(rightOutput.resolve("occupied"), "block replacement\n", UTF_8)
+
+      val result = run:
+        McTsvFile
+          .writeSplitFold(leftOutput, rightOutput, ZStream.fromIterable(Vector(1, 2)), schema, schema, ()) { row =>
+            if row == 1 then Left(row) else Right(row)
+          }((_, _) => ())(outputFailure)
+          .either
+
+      result.left.getOrElse(fail("Expected split TSV finalize failure")) should include("finalize TSV file")
+      Files.readAllLines(leftOutput, UTF_8).asScala.toVector shouldBe Vector("Value", "1")
+      Files.isDirectory(rightOutput) shouldBe true
+      Files.exists(leftOutput.resolveSibling("left.tsv.tmp")) shouldBe false
+      Files.exists(rightOutput.resolveSibling("right.tsv.tmp")) shouldBe false
+
   it should "reject split TSV writes to the same output path" in
     withTempDir: dir =>
       val output = dir.resolve("same.tsv")
@@ -100,6 +121,38 @@ class McTsvFileSpec extends AnyFlatSpec with Matchers:
         "plain"         -> "contains\ttab",
         "has \"quote\"" -> "value",
       )
+
+  it should "read quoted TSV fields that span physical lines" in
+    withTempDir: dir =>
+      val output = dir.resolve("values.tsv")
+      Files.writeString(
+        output,
+        "Name\tNote\nmulti\t\"line one\nline two\"\nplain\tvalue\n",
+        UTF_8,
+      )
+
+      val parsed = DelimitedTextRows.readRows(output, DelimitedTextFormat.Tsv, Vector("Name", "Note")).fold(err => fail(err), identity)
+      parsed.map(row => row.required("Name").toOption.get -> row.required("Note").toOption.get) shouldBe Vector(
+        "multi" -> "line one\nline two",
+        "plain" -> "value",
+      )
+
+  it should "reject duplicate delimited-text headers" in
+    withTempDir: dir =>
+      val output = dir.resolve("duplicate.tsv")
+      Files.writeString(output, "Name\tName\nleft\tright\n", UTF_8)
+
+      val error = DelimitedTextRows.readRows(output, DelimitedTextFormat.Tsv).left.getOrElse(fail("Expected duplicate header failure"))
+      error should include("duplicate columns: Name")
+
+  it should "fail fast when rendered row width differs from the schema header" in {
+    val badSchema =
+      DelimitedTextSchema.fromCells[Int](Vector("One", "Two"), DelimitedTextFormat.Tsv): value =>
+        Vector(value.toString)
+
+    val error = intercept[IllegalArgumentException](badSchema.render(1))
+    error.getMessage should include("TSV row has 1 cells, expected 2")
+  }
 
   private def run[A](effect: ZIO[Any, String, A]): A =
     Unsafe.unsafe: unsafe =>

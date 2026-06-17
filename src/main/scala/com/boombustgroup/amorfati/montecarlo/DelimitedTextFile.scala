@@ -62,10 +62,6 @@ private[amorfati] object DelimitedTextFile:
       val cleanupTemps  =
         deleteIfExists(leftTempFile, format, outputFailure) *>
           deleteIfExists(rightTempFile, format, outputFailure)
-      val rollback      =
-        deleteIfExists(leftOutputFile, format, outputFailure) *>
-          deleteIfExists(rightOutputFile, format, outputFailure) *>
-          cleanupTemps
       val writeFiles    =
         ZIO.scoped:
           for
@@ -87,7 +83,7 @@ private[amorfati] object DelimitedTextFile:
           (finalizeFile(leftTempFile, leftOutputFile, format, outputFailure) *>
             finalizeFile(rightTempFile, rightOutputFile, format, outputFailure))
             .as(finalState)
-            .onError(_ => rollback.ignore)
+            .onError(_ => cleanupTemps.ignore)
         .onError(_ => cleanupTemps.ignore)
 
   private def writeFoldValidated[E, A, S, B](

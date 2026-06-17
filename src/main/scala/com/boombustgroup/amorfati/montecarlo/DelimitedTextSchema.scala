@@ -18,5 +18,11 @@ private[amorfati] object DelimitedTextSchema:
   )(cells: Row => Vector[String]): DelimitedTextSchema[Row] =
     DelimitedTextSchema(
       header = format.header(columns),
-      render = row => format.join(cells(row)),
+      render = row =>
+        val values = cells(row)
+        require(
+          values.length == columns.length,
+          s"${format.label} row has ${values.length} cells, expected ${columns.length}",
+        )
+        format.join(values),
     )

@@ -14,6 +14,8 @@ private[amorfati] object DelimitedTextRows:
     def optional(column: String): Option[String] =
       values.get(column).map(_.trim).filter(_.nonEmpty)
 
+  private final case class LogicalRecord(text: String, lineNumber: Int)
+
   def readRows(
       path: Path,
       format: DelimitedTextFormat,
@@ -22,27 +24,29 @@ private[amorfati] object DelimitedTextRows:
     Try(Files.readAllLines(path, StandardCharsets.UTF_8).asScala.toVector).toEither.left
       .map(err => s"Failed to read $path: ${err.getMessage}")
       .flatMap: lines =>
-        val dataLines = lines.zipWithIndex.filter((line, _) => line.trim.nonEmpty && !line.trim.startsWith("#"))
-        dataLines.headOption match
-          case None                     => Left(s"$path is empty")
-          case Some((headerLine, hidx)) =>
+        val records = logicalRecords(lines, format).filter(record => record.text.trim.nonEmpty && !record.text.trim.startsWith("#"))
+        records.headOption match
+          case None               => Left(s"$path is empty")
+          case Some(headerRecord) =>
             for
-              header <- parseLine(headerLine, format).left.map(err => s"$path line ${hidx + 1}: $err")
+              header <- parseLine(headerRecord.text, format).left.map(err => s"$path line ${headerRecord.lineNumber}: $err")
               _      <- validateHeader(path, header, requiredColumns)
               rows   <- sequence(
-                dataLines.tail
-                  .map((line, idx) =>
-                    parseLine(line, format).left
-                      .map(err => s"$path line ${idx + 1}: $err")
-                      .flatMap(cells => rowFromCells(path, idx + 1, header, cells)),
+                records.tail
+                  .map(record =>
+                    parseLine(record.text, format).left
+                      .map(err => s"$path line ${record.lineNumber}: $err")
+                      .flatMap(cells => rowFromCells(path, record.lineNumber, header, cells)),
                   )
                   .toVector,
               )
             yield rows
 
   private def validateHeader(path: Path, header: Vector[String], requiredColumns: Vector[String]): Either[String, Unit] =
-    val missing = requiredColumns.filterNot(header.contains)
-    Either.cond(missing.isEmpty, (), s"$path is missing required columns: ${missing.mkString(", ")}")
+    val duplicates = header.groupBy(identity).collect { case (column, values) if values.length > 1 => column }.toVector.sorted
+    val missing    = requiredColumns.filterNot(header.contains)
+    if duplicates.nonEmpty then Left(s"$path has duplicate columns: ${duplicates.mkString(", ")}")
+    else Either.cond(missing.isEmpty, (), s"$path is missing required columns: ${missing.mkString(", ")}")
 
   private def rowFromCells(path: Path, lineNumber: Int, header: Vector[String], cells: Vector[String]): Either[String, Row] =
     Either.cond(
@@ -75,6 +79,22 @@ private[amorfati] object DelimitedTextRows:
     else
       cells += cell.toString
       Right(cells.result().map(_.trim))
+
+  private def logicalRecords(lines: Vector[String], format: DelimitedTextFormat): Vector[LogicalRecord] =
+    val records   = Vector.newBuilder[LogicalRecord]
+    val current   = new StringBuilder
+    var startLine = 1
+
+    lines.zipWithIndex.foreach: (line, idx) =>
+      if current.isEmpty then startLine = idx + 1
+      else current.append('\n')
+      current.append(line)
+      if parseLine(current.toString, format).isRight then
+        records += LogicalRecord(current.toString, startLine)
+        current.clear()
+
+    if current.nonEmpty then records += LogicalRecord(current.toString, startLine)
+    records.result()
 
   private def sequence[A](values: Iterable[Either[String, A]]): Either[String, Vector[A]] =
     values.foldLeft[Either[String, Vector[A]]](Right(Vector.empty)): (acc, next) =>

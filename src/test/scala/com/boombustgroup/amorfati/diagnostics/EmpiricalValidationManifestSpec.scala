@@ -1,13 +1,12 @@
 package com.boombustgroup.amorfati.diagnostics
 
 import com.boombustgroup.amorfati.diagnostics.EmpiricalValidationExport.{ModelTarget, SourceStatus}
+import com.boombustgroup.amorfati.montecarlo.{DelimitedTextFormat, DelimitedTextRows}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import java.nio.charset.StandardCharsets
-import java.nio.file.{Files, Path}
+import java.nio.file.Path
 import java.time.LocalDate
-import scala.jdk.CollectionConverters.*
 
 class EmpiricalValidationManifestSpec extends AnyFlatSpec with Matchers:
 
@@ -313,15 +312,12 @@ class EmpiricalValidationManifestSpec extends AnyFlatSpec with Matchers:
     commonErrors ++ parseErrors ++ statusErrors
 
   private def readManifest(): Vector[ManifestRow] =
-    val lines  = Files.readAllLines(manifestPath, StandardCharsets.UTF_8).asScala.toVector.filter(_.trim.nonEmpty)
-    lines.headOption.getOrElse(fail(s"$manifestPath is empty"))
-    val header = lines.head.split("\t", -1).toVector
-    lines.tail.zipWithIndex.map: (line, index) =>
-      val cells = line.split("\t", -1).toVector
-      withClue(s"$manifestPath line ${index + 2}") {
-        cells should have size header.size
-      }
-      ManifestRow(index + 2, header.zip(cells).toMap)
+    DelimitedTextRows
+      .readRows(manifestPath, DelimitedTextFormat.Tsv)
+      .fold(err => fail(err), identity)
+      .zipWithIndex
+      .map: (row, index) =>
+        ManifestRow(index + 2, row.values)
 
   private def parseStatus(row: ManifestRow): SourceStatus =
     SourceStatus.parse(row.status).fold(err => fail(error(row, err)), identity)
