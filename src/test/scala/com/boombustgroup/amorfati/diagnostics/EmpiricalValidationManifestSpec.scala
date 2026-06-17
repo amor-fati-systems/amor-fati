@@ -11,7 +11,7 @@ import scala.jdk.CollectionConverters.*
 
 class EmpiricalValidationManifestSpec extends AnyFlatSpec with Matchers:
 
-  private val manifestPath = Path.of("docs/empirical-validation-source-manifest.csv")
+  private val manifestPath = Path.of("docs/empirical-validation-source-manifest.tsv")
 
   private val canonicalStatusTokens = Set(
     "READY",
@@ -315,9 +315,9 @@ class EmpiricalValidationManifestSpec extends AnyFlatSpec with Matchers:
   private def readManifest(): Vector[ManifestRow] =
     val lines  = Files.readAllLines(manifestPath, StandardCharsets.UTF_8).asScala.toVector.filter(_.trim.nonEmpty)
     lines.headOption.getOrElse(fail(s"$manifestPath is empty"))
-    val header = lines.head.split(";", -1).toVector
+    val header = lines.head.split("\t", -1).toVector
     lines.tail.zipWithIndex.map: (line, index) =>
-      val cells = line.split(";", -1).toVector
+      val cells = line.split("\t", -1).toVector
       withClue(s"$manifestPath line ${index + 2}") {
         cells should have size header.size
       }

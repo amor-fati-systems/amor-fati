@@ -14,7 +14,7 @@ class EmpiricalValidationExportSpec extends AnyFlatSpec with Matchers:
     val parsed = EmpiricalValidationExport.parseArgs(
       Vector(
         "--source-manifest",
-        "target/source.csv",
+        "target/source.tsv",
         "--mc-dir",
         "target/mc",
         "--out",
@@ -39,7 +39,7 @@ class EmpiricalValidationExportSpec extends AnyFlatSpec with Matchers:
       case other                            => fail(s"Expected export command, got $other")
 
     (config.sourceManifest, config.mcDir, config.out, config.durationMonths, config.seeds, config.commit, config.parameterBranch) shouldBe
-      (Path.of("target/source.csv"), Path.of("target/mc"), Path.of("target/out"), 24, 3, "abc123", "main")
+      (Path.of("target/source.tsv"), Path.of("target/mc"), Path.of("target/out"), 24, 3, "abc123", "main")
   }
 
   it should "parse help as a successful command" in {
@@ -76,7 +76,7 @@ class EmpiricalValidationExportSpec extends AnyFlatSpec with Matchers:
           |""".stripMargin,
       )
 
-      val sourceManifest = root.resolve("source-manifest.csv")
+      val sourceManifest = root.resolve("source-manifest.tsv")
       write(
         sourceManifest,
         """target;source_provider;source_url;dataset_code;vintage;accessed_at;license_or_reuse_note;frequency;unit;transformation;model_target;status;empirical_value;tolerance;criterion;notes
@@ -103,9 +103,9 @@ class EmpiricalValidationExportSpec extends AnyFlatSpec with Matchers:
         .fold(err => fail(err), identity)
 
       result.paths.map(_.getFileName.toString).toSet shouldBe Set(
-        "source-manifest.csv",
-        "model-run-manifest.csv",
-        "baseline-validation-snapshot.csv",
+        "source-manifest.tsv",
+        "model-run-manifest.tsv",
+        "baseline-validation-snapshot.tsv",
       )
       result.rows.map(row => row.target -> row.status).toMap shouldBe Map(
         "Inflation"       -> SnapshotStatus.PassBaseline,
@@ -115,16 +115,16 @@ class EmpiricalValidationExportSpec extends AnyFlatSpec with Matchers:
       result.rows.find(_.target == "Inflation").flatMap(_.modelValue).map(_.toDouble) shouldBe Some(0.045)
       result.rows.find(_.target == "Inequality Gini").flatMap(_.modelValue).map(_.toDouble) shouldBe Some(0.31)
 
-      val snapshot = Files.readString(out.resolve("baseline-validation-snapshot.csv"), StandardCharsets.UTF_8)
+      val snapshot = Files.readString(out.resolve("baseline-validation-snapshot.tsv"), StandardCharsets.UTF_8)
       snapshot should include("PASS_BASELINE")
       snapshot should include("MISSING_DATA_BRIDGE")
       snapshot should include("MISSING_OUTPUT")
       snapshot should include("terminal_hh:Gini_Individual:mean")
       snapshot should include(
-        "Inflation;GUS;https://stat.gov.pl;CPI;2026-04;2026-04-30;monthly;ratio;annualized mean;test@test-commit, 2 seeds, 2m, run-id validation-baseline;timeseries:Inflation:terminal;0.05;0.045;0.01",
+        "Inflation\tGUS\thttps://stat.gov.pl\tCPI\t2026-04\t2026-04-30\tmonthly\tratio\tannualized mean\ttest@test-commit, 2 seeds, 2m, run-id validation-baseline\ttimeseries:Inflation:terminal\t0.05\t0.045\t0.01",
       )
       snapshot should include(
-        "Inequality Gini;GUS;https://stat.gov.pl;HBS;2025;2026-04-30;annual;ratio;terminal household distribution;test@test-commit, 2 seeds, 2m, run-id validation-baseline;terminal_hh:Gini_Individual:mean;;0.31",
+        "Inequality Gini\tGUS\thttps://stat.gov.pl\tHBS\t2025\t2026-04-30\tannual\tratio\tterminal household distribution\ttest@test-commit, 2 seeds, 2m, run-id validation-baseline\tterminal_hh:Gini_Individual:mean\t\t0.31",
       )
     } finally deleteRecursively(root)
   }
@@ -134,7 +134,7 @@ class EmpiricalValidationExportSpec extends AnyFlatSpec with Matchers:
     val root = Files.createTempDirectory(Path.of("target"), "empirical-validation-bad-ready-")
 
     try {
-      val sourceManifest = root.resolve("source-manifest.csv")
+      val sourceManifest = root.resolve("source-manifest.tsv")
       write(
         sourceManifest,
         """target;source_provider;source_url;dataset_code;vintage;accessed_at;license_or_reuse_note;frequency;unit;transformation;model_target;status;empirical_value;tolerance;criterion;notes
@@ -181,7 +181,7 @@ class EmpiricalValidationExportSpec extends AnyFlatSpec with Matchers:
           |""".stripMargin,
       )
 
-      val sourceManifest = root.resolve("source-manifest.csv")
+      val sourceManifest = root.resolve("source-manifest.tsv")
       write(
         sourceManifest,
         """target;source_provider;source_url;dataset_code;vintage;accessed_at;license_or_reuse_note;frequency;unit;transformation;model_target;status;empirical_value;tolerance;criterion;notes
@@ -222,7 +222,7 @@ class EmpiricalValidationExportSpec extends AnyFlatSpec with Matchers:
       val error = EmpiricalValidationExport
         .run(
           Config(
-            sourceManifest = Path.of("docs/empirical-validation-source-manifest.csv"),
+            sourceManifest = Path.of("docs/empirical-validation-source-manifest.tsv"),
             mcDir = mc,
             out = root.resolve("out"),
             runId = "missing",
@@ -239,7 +239,7 @@ class EmpiricalValidationExportSpec extends AnyFlatSpec with Matchers:
       error should include("Missing expected seed CSV files")
       error should include("validation-baseline_missing_120m_seed001.csv")
       error should include("validation-baseline_missing_120m_seed003.csv")
-      Files.exists(root.resolve("out").resolve("baseline-validation-snapshot.csv")) shouldBe false
+      Files.exists(root.resolve("out").resolve("baseline-validation-snapshot.tsv")) shouldBe false
     } finally deleteRecursively(root)
   }
 
@@ -266,7 +266,7 @@ class EmpiricalValidationExportSpec extends AnyFlatSpec with Matchers:
           |""".stripMargin,
       )
 
-      val sourceManifest = root.resolve("source-manifest.csv")
+      val sourceManifest = root.resolve("source-manifest.tsv")
       write(
         sourceManifest,
         """target;source_provider;source_url;dataset_code;vintage;accessed_at;license_or_reuse_note;frequency;unit;transformation;model_target;status;empirical_value;tolerance;criterion;notes
@@ -312,7 +312,7 @@ class EmpiricalValidationExportSpec extends AnyFlatSpec with Matchers:
           |""".stripMargin,
       )
 
-      val sourceManifest = root.resolve("source-manifest.csv")
+      val sourceManifest = root.resolve("source-manifest.tsv")
       write(
         sourceManifest,
         """target;source_provider;source_url;dataset_code;vintage;accessed_at;license_or_reuse_note;frequency;unit;transformation;model_target;status;empirical_value;tolerance;criterion;notes
@@ -366,7 +366,7 @@ class EmpiricalValidationExportSpec extends AnyFlatSpec with Matchers:
           |""".stripMargin,
       )
 
-      val sourceManifest = root.resolve("source-manifest.csv")
+      val sourceManifest = root.resolve("source-manifest.tsv")
       write(
         sourceManifest,
         """target;source_provider;source_url;dataset_code;vintage;accessed_at;license_or_reuse_note;frequency;unit;transformation;model_target;status;empirical_value;tolerance;criterion;notes
@@ -432,7 +432,7 @@ class EmpiricalValidationExportSpec extends AnyFlatSpec with Matchers:
       val result = EmpiricalValidationExport
         .run(
           Config(
-            sourceManifest = Path.of("docs/empirical-validation-source-manifest.csv"),
+            sourceManifest = Path.of("docs/empirical-validation-source-manifest.tsv"),
             mcDir = mc,
             out = out,
             runId = "real-economy",
@@ -461,13 +461,16 @@ class EmpiricalValidationExportSpec extends AnyFlatSpec with Matchers:
       statuses("Housing and mortgages - mortgage stock/GDP") shouldBe SnapshotStatus.PassBaseline
       statuses("Housing and mortgages - mortgage default bridge") shouldBe SnapshotStatus.Partial
 
-      Files.exists(out.resolve("baseline-validation-snapshot.csv")) shouldBe true
-      Files.exists(out.resolve("source-manifest.csv")) shouldBe true
+      Files.exists(out.resolve("baseline-validation-snapshot.tsv")) shouldBe true
+      Files.exists(out.resolve("source-manifest.tsv")) shouldBe true
     } finally deleteRecursively(root)
   }
 
   private def write(path: Path, contents: String): Unit =
-    Files.writeString(path, contents, StandardCharsets.UTF_8)
+    val rendered =
+      if path.getFileName.toString.endsWith(".tsv") then contents.replace(';', '\t')
+      else contents
+    Files.writeString(path, rendered, StandardCharsets.UTF_8)
 
   private def deleteRecursively(path: Path): Unit =
     if Files.exists(path) then

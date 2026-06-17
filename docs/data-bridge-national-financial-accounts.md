@@ -141,7 +141,7 @@ Every future empirical extract should carry at least:
 | `status` | `READY`, `PARTIAL`, `MISSING_OUTPUT`, `MISSING_DATA_BRIDGE`, `MISSING_SOURCE_DETAIL`, `BRIDGE_ASSUMPTION`. |
 
 The empirical validation source-manifest template lives at
-`docs/empirical-validation-source-manifest.csv`. It is consumed by
+`docs/empirical-validation-source-manifest.tsv`. It is consumed by
 `EmpiricalValidationExport`, which joins manifest rows with Monte Carlo
 timeseries and terminal summary CSVs to produce a baseline validation snapshot.
 

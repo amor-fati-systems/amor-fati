@@ -163,7 +163,7 @@ class CalibrationProvenanceSpec extends AnyFlatSpec with Matchers:
 
     val firmSize = baselineParameter("pop.firmSizeMicroShare").validationEvidence.getOrElse(fail("Expected firm-size validation evidence"))
     firmSize.mode shouldBe StylizedFactTarget
-    firmSize.evidencePath.getOrElse(fail("Expected firm-size evidence path")) shouldBe "docs/empirical-validation/baseline-validation-snapshot.csv"
+    firmSize.evidencePath.getOrElse(fail("Expected firm-size evidence path")) shouldBe "docs/empirical-validation/baseline-validation-snapshot.tsv"
     firmSize.artifactLabel shouldBe Some("Firm-size distribution - Micro")
     firmSize.evidenceTarget should include("Micro")
 

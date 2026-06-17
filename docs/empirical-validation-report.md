@@ -3,9 +3,9 @@
 This hand-maintained report defines how Amor Fati outputs should be compared
 with empirical macro, meso, and micro stylized facts. It is the workflow
 companion for the curated source manifest and generated baseline snapshot;
-readiness metadata lives in `docs/empirical-validation-source-manifest.csv`,
+readiness metadata lives in `docs/empirical-validation-source-manifest.tsv`,
 while pass/fail baseline results live in
-`docs/empirical-validation/baseline-validation-snapshot.csv`.
+`docs/empirical-validation/baseline-validation-snapshot.tsv`.
 
 The goal is to keep failed, missing, or weak validation targets visible. A row
 with `MISSING_OUTPUT`, `MISSING_DATA_BRIDGE`, `MISSING_SOURCE_DETAIL`, or
@@ -41,7 +41,7 @@ checks fail.
 | `BRIDGE_ASSUMPTION` | The target uses a documented empirical-to-model bridge assumption. |
 
 Live status counts and per-row statuses are not duplicated here; read them from
-the source manifest and generated snapshot CSVs.
+the source manifest and generated snapshot TSVs.
 
 ### Snapshot Run-Result Taxonomy
 
@@ -85,17 +85,17 @@ Runnable snapshot procedure after a baseline run:
 2. Generate the empirical validation snapshot:
 
    ```bash
-   sbt "empiricalValidation --source-manifest docs/empirical-validation-source-manifest.csv --mc-dir mc --run-id main-0f281ce3 --output-prefix validation-baseline --duration 60 --seeds 5 --commit 0f281ce3 --parameter-branch main --out docs/empirical-validation"
+   sbt "empiricalValidation --source-manifest docs/empirical-validation-source-manifest.tsv --mc-dir mc --run-id main-0f281ce3 --output-prefix validation-baseline --duration 60 --seeds 5 --commit 0f281ce3 --parameter-branch main --out docs/empirical-validation"
    ```
 
-3. Review `docs/empirical-validation/baseline-validation-snapshot.csv`.
+3. Review `docs/empirical-validation/baseline-validation-snapshot.tsv`.
 4. Keep rows with missing model output or missing empirical data in the table.
 
 The source manifest is intentionally metadata-first. It records source
 provider, URL, dataset code, vintage, access date, license/reuse note,
 frequency, unit, transformation, model target, empirical value, tolerance, and
 status without vendoring raw proprietary or large external datasets. The
-generator also writes an effective `model-run-manifest.csv` with run id,
+generator also writes an effective `model-run-manifest.tsv` with run id,
 output prefix, duration, seed count, commit, parameter branch, and output
 directory.
 
@@ -110,9 +110,9 @@ should not manually divide CSV values by `gdpRatio`.
 
 This table is an illustrative family-level model-output mapping. The
 authoritative per-row mapping lives in
-`docs/empirical-validation-source-manifest.csv`, column `model_target`;
+`docs/empirical-validation-source-manifest.tsv`, column `model_target`;
 readiness and pass/fail status live in the source manifest and generated
-snapshot CSVs.
+snapshot TSVs.
 
 | Validation target | Empirical comparator | Model output mapping | Suggested statistic |
 | --- | --- | --- | --- |
@@ -143,13 +143,13 @@ reference is `main@0f281ce3`.
 
 | Artifact | Path |
 | --- | --- |
-| Snapshot CSV | [`docs/empirical-validation/baseline-validation-snapshot.csv`](empirical-validation/baseline-validation-snapshot.csv) |
-| Model run manifest | [`docs/empirical-validation/model-run-manifest.csv`](empirical-validation/model-run-manifest.csv) |
-| Source manifest snapshot (generated copy) | [`docs/empirical-validation/source-manifest.csv`](empirical-validation/source-manifest.csv) |
+| Snapshot TSV | [`docs/empirical-validation/baseline-validation-snapshot.tsv`](empirical-validation/baseline-validation-snapshot.tsv) |
+| Model run manifest | [`docs/empirical-validation/model-run-manifest.tsv`](empirical-validation/model-run-manifest.tsv) |
+| Source manifest snapshot (generated copy) | [`docs/empirical-validation/source-manifest.tsv`](empirical-validation/source-manifest.tsv) |
 
 Run metadata for the current snapshot lives in
-[`docs/empirical-validation/model-run-manifest.csv`](empirical-validation/model-run-manifest.csv);
-use the snapshot CSV for current status counts and row-level baseline results.
+[`docs/empirical-validation/model-run-manifest.tsv`](empirical-validation/model-run-manifest.tsv);
+use the snapshot TSV for current status counts and row-level baseline results.
 `FAIL_BASELINE` rows are interpreted as calibration evidence, not accounting
 failures; the ledger and SFC validation surfaces remain separate from this
 empirical fit table.
@@ -429,7 +429,7 @@ of bank-side tightening.
 
 Empirical validation snapshots report Monte Carlo model values using the
 `seed_count`, horizon, commit, branch, and statistic recorded in
-`model-run-manifest.csv`. Paper-facing credit-supply claims must cite that
+`model-run-manifest.tsv`. Paper-facing credit-supply claims must cite that
 metadata explicitly.
 
 | Use | Minimum seed count | Interpretation |
