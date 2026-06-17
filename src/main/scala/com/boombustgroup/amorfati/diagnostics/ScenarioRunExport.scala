@@ -272,7 +272,7 @@ object ScenarioRunExport:
     if distinct.isEmpty then "n/a" else distinct.mkString(", ")
 
   private def tsv(value: String): String =
-    if value.exists(ch => ch == '\t' || ch == '"' || ch == '\n') then "\"" + value.replace("\"", "\"\"") + "\""
+    if value.exists(ch => ch == '\t' || ch == '"' || ch == '\n' || ch == '\r') then "\"" + value.replace("\"", "\"\"") + "\""
     else value
 
   private def fmt(value: MetricValue): String =

@@ -6,7 +6,7 @@ import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.ledger.LedgerFinancialState
 import com.boombustgroup.amorfati.engine.mechanisms.Macroprudential
 import com.boombustgroup.amorfati.init.{InitRandomness, WorldInit}
-import com.boombustgroup.amorfati.montecarlo.{McTsvFile, McTsvSchema}
+import com.boombustgroup.amorfati.montecarlo.{DelimitedTextFormat, McTsvFile, McTsvSchema}
 import com.boombustgroup.amorfati.types.*
 import zio.ZIO
 
@@ -607,21 +607,23 @@ object BankBalanceSheetBenchmarkExport:
         "Interpretation",
       ),
       render = row =>
-        Vector(
-          row.runId,
-          row.seed.toString,
-          row.target.id,
-          row.target.label,
-          renderValue(row.value),
-          row.target.unit,
-          row.target.guardrailClass.token,
-          row.target.vintage,
-          row.target.lower.map(renderDecimal).getOrElse(""),
-          row.target.upper.map(renderDecimal).getOrElse(""),
-          row.status.token,
-          row.target.sourceNote,
-          row.target.interpretation,
-        ).map(tsv).mkString("\t"),
+        DelimitedTextFormat.Tsv.join(
+          Vector(
+            row.runId,
+            row.seed.toString,
+            row.target.id,
+            row.target.label,
+            renderValue(row.value),
+            row.target.unit,
+            row.target.guardrailClass.token,
+            row.target.vintage,
+            row.target.lower.map(renderDecimal).getOrElse(""),
+            row.target.upper.map(renderDecimal).getOrElse(""),
+            row.status.token,
+            row.target.sourceNote,
+            row.target.interpretation,
+          ),
+        ),
     )
 
   private[diagnostics] val SummaryTsvSchema: McTsvSchema[SummaryMetric] =
@@ -644,40 +646,44 @@ object BankBalanceSheetBenchmarkExport:
         "Interpretation",
       ),
       render = row =>
-        Vector(
-          row.runId,
-          row.seeds.toString,
-          row.target.id,
-          row.target.label,
-          renderValue(row.mean),
-          row.min.map(renderDecimal).getOrElse(""),
-          row.max.map(renderDecimal).getOrElse(""),
-          row.target.unit,
-          row.target.guardrailClass.token,
-          row.target.vintage,
-          row.target.lower.map(renderDecimal).getOrElse(""),
-          row.target.upper.map(renderDecimal).getOrElse(""),
-          row.status.token,
-          row.target.sourceNote,
-          row.target.interpretation,
-        ).map(tsv).mkString("\t"),
+        DelimitedTextFormat.Tsv.join(
+          Vector(
+            row.runId,
+            row.seeds.toString,
+            row.target.id,
+            row.target.label,
+            renderValue(row.mean),
+            row.min.map(renderDecimal).getOrElse(""),
+            row.max.map(renderDecimal).getOrElse(""),
+            row.target.unit,
+            row.target.guardrailClass.token,
+            row.target.vintage,
+            row.target.lower.map(renderDecimal).getOrElse(""),
+            row.target.upper.map(renderDecimal).getOrElse(""),
+            row.status.token,
+            row.target.sourceNote,
+            row.target.interpretation,
+          ),
+        ),
     )
 
   private[diagnostics] val TargetsTsvSchema: McTsvSchema[TargetBand] =
     McTsvSchema(
       header = McTsvSchema.header("Metric", "Label", "Unit", "GuardrailClass", "Vintage", "Lower", "Upper", "SourceNote", "Interpretation"),
       render = target =>
-        Vector(
-          target.id,
-          target.label,
-          target.unit,
-          target.guardrailClass.token,
-          target.vintage,
-          target.lower.map(renderDecimal).getOrElse(""),
-          target.upper.map(renderDecimal).getOrElse(""),
-          target.sourceNote,
-          target.interpretation,
-        ).map(tsv).mkString("\t"),
+        DelimitedTextFormat.Tsv.join(
+          Vector(
+            target.id,
+            target.label,
+            target.unit,
+            target.guardrailClass.token,
+            target.vintage,
+            target.lower.map(renderDecimal).getOrElse(""),
+            target.upper.map(renderDecimal).getOrElse(""),
+            target.sourceNote,
+            target.interpretation,
+          ),
+        ),
     )
 
   private[diagnostics] val BankRowsTsvSchema: McTsvSchema[BankRow] =
@@ -705,28 +711,30 @@ object BankBalanceSheetBenchmarkExport:
         "AssetShare",
       ),
       render = row =>
-        Vector(
-          row.runId,
-          row.seed.toString,
-          row.bankId.toString,
-          row.bankName,
-          renderPln(row.capital),
-          renderPln(row.assets),
-          renderPln(row.deposits),
-          renderPln(row.totalCredit),
-          renderPln(row.govBondHoldings),
-          row.govBondShareOfAssets.format(6),
-          renderPln(row.polishBankLevyTaxableAssets),
-          row.polishBankLevyTaxableAssetsShare.format(6),
-          renderDecimal(row.capitalAdequacyRatio),
-          renderDecimal(row.effectiveMinCar),
-          renderDecimal(row.carBuffer),
-          renderDecimal(row.lcr),
-          renderDecimal(row.nsfr),
-          renderDecimal(row.creditShare),
-          renderDecimal(row.depositShare),
-          renderDecimal(row.assetShare),
-        ).map(tsv).mkString("\t"),
+        DelimitedTextFormat.Tsv.join(
+          Vector(
+            row.runId,
+            row.seed.toString,
+            row.bankId.toString,
+            row.bankName,
+            renderPln(row.capital),
+            renderPln(row.assets),
+            renderPln(row.deposits),
+            renderPln(row.totalCredit),
+            renderPln(row.govBondHoldings),
+            row.govBondShareOfAssets.format(6),
+            renderPln(row.polishBankLevyTaxableAssets),
+            row.polishBankLevyTaxableAssetsShare.format(6),
+            renderDecimal(row.capitalAdequacyRatio),
+            renderDecimal(row.effectiveMinCar),
+            renderDecimal(row.carBuffer),
+            renderDecimal(row.lcr),
+            renderDecimal(row.nsfr),
+            renderDecimal(row.creditShare),
+            renderDecimal(row.depositShare),
+            renderDecimal(row.assetShare),
+          ),
+        ),
     )
 
   private[diagnostics] def renderSeedMetricsTsv(rows: Vector[SeedMetric]): String =
@@ -875,11 +883,6 @@ object BankBalanceSheetBenchmarkExport:
 
   private def bound(value: Option[BigDecimal]): String =
     value.map(renderDecimal).getOrElse("n/a")
-
-  private def tsv(value: String): String =
-    val escaped = value.replace("\"", "\"\"")
-    if escaped.exists(ch => ch == '\t' || ch == '"' || ch == '\n' || ch == '\r') then s""""$escaped""""
-    else escaped
 
   private def markdownRow(values: Vector[String]): String =
     values.map(_.replace("|", "\\|")).mkString("| ", " | ", " |")

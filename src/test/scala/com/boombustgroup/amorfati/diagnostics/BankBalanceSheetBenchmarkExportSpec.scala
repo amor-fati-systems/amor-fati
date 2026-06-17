@@ -178,6 +178,62 @@ class BankBalanceSheetBenchmarkExportSpec extends AnyFlatSpec with Matchers:
     report should include("unsupported persisted diagnostic stock")
   }
 
+  it should "escape special characters in benchmark TSV payload cells" in {
+    val target    = TargetBand(
+      id = "Metric\t\"Id\"",
+      label = "Label\t\"quoted\"",
+      unit = "unit\nline",
+      guardrailClass = GuardrailClass.SoftCalibrationWarning,
+      vintage = "vintage\r2026",
+      lower = Some(BigDecimal("0.01")),
+      upper = None,
+      sourceNote = "source\nnote",
+      interpretation = "interpretation\rnote",
+    )
+    val seedTsv   = renderSeedMetricsTsv(Vector(SeedMetric("run\t\"id\"", 1L, target, ObservedValue.Finite(BigDecimal("0.02")), Status.Warn)))
+    val sumTsv    =
+      renderSummaryTsv(Vector(SummaryMetric("run\t\"id\"", 1, target, ObservedValue.Finite(BigDecimal("0.02")), Some(BigDecimal("0.01")), None, Status.Warn)))
+    val targetTsv = renderTargetsTsv(Vector(target))
+    val bankTsv   = renderBankRowsTsv(
+      Vector(
+        BankRow(
+          runId = "run\t\"id\"",
+          seed = 1L,
+          bankId = 0,
+          bankName = "Bank\t\"Name\"\nSA",
+          capital = PLN(10),
+          assets = PLN(100),
+          deposits = PLN(80),
+          totalCredit = PLN(50),
+          govBondHoldings = PLN(20),
+          govBondShareOfAssets = Share.decimal(20, 2),
+          polishBankLevyTaxableAssets = PLN(30),
+          polishBankLevyTaxableAssetsShare = Share.decimal(30, 2),
+          capitalAdequacyRatio = BigDecimal("0.20"),
+          effectiveMinCar = BigDecimal("0.125"),
+          carBuffer = BigDecimal("0.075"),
+          lcr = BigDecimal("1.20"),
+          nsfr = BigDecimal("1.10"),
+          creditShare = BigDecimal("0.25"),
+          depositShare = BigDecimal("0.30"),
+          assetShare = BigDecimal("0.20"),
+        ),
+      ),
+    )
+
+    Vector(seedTsv, sumTsv, targetTsv).foreach: rendered =>
+      rendered should include("\"Metric\t\"\"Id\"\"\"")
+      rendered should include("\"Label\t\"\"quoted\"\"\"")
+      rendered should include("\"unit\nline\"")
+      rendered should include("\"vintage\r2026\"")
+      rendered should include("\"source\nnote\"")
+      rendered should include("\"interpretation\rnote\"")
+    seedTsv should include("\"run\t\"\"id\"\"\"")
+    sumTsv should include("\"run\t\"\"id\"\"\"")
+    bankTsv should include("\"run\t\"\"id\"\"\"")
+    bankTsv should include("\"Bank\t\"\"Name\"\"\nSA\"")
+  }
+
   it should "source benchmark capital only from BankState.capital" in {
     given SimParams = SimParams.defaults
 

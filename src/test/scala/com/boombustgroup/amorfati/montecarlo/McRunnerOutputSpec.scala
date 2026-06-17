@@ -30,12 +30,12 @@ class McRunnerOutputSpec extends AnyFlatSpec with Matchers:
       firmSummary.head should include("FirmSize_Micro")
       firmSummary.head should include("FirmSize_LargeShare")
       firmSummary.tail should have size rc.nSeeds
-      firmSummary.tail.foreach(_.split("\t").length shouldBe firmSummary.head.split("\t").length)
+      firmSummary.tail.foreach(_.split("\t", -1).length shouldBe firmSummary.head.split("\t", -1).length)
       val householdSummary = Files.readAllLines(outputDir.resolve(s"${filePrefix(rc)}_hh.tsv"), UTF_8).asScala.toVector
       householdSummary.head should include("MeanMonthlyIncome")
       householdSummary.head should include("WageP90")
       householdSummary.tail should have size rc.nSeeds
-      householdSummary.tail.foreach(_.split("\t").length shouldBe householdSummary.head.split("\t").length)
+      householdSummary.tail.foreach(_.split("\t", -1).length shouldBe householdSummary.head.split("\t", -1).length)
 
   it should "write deterministic selected firm decision traces without changing baseline TSV outputs" in
     withTempDir: baselineDir =>
