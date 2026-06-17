@@ -7,6 +7,9 @@ import org.scalatest.{EitherValues, OptionValues}
 
 class LoanOriginationQualityExportSpec extends AnyFlatSpec with Matchers with EitherValues with OptionValues:
 
+  private def tsv(fields: String*): String =
+    fields.mkString("\t")
+
   "LoanOriginationQualityExport" should "parse CLI run controls" in {
     val parsed = LoanOriginationQualityExport.parseArgs(
       Vector(
@@ -46,7 +49,21 @@ class LoanOriginationQualityExportSpec extends AnyFlatSpec with Matchers with Ei
     LoanOriginationQualityExport.FirmHeader should include("DscrProxy")
     LoanOriginationQualityExport.FirmHeader should include("FutureBankruptWithinWindow")
     LoanOriginationQualityExport.SummaryHeader shouldBe
-      "RunId;BorrowerType;CohortType;CohortValue;Rows;ApprovedRows;RejectedRows;ApprovedPrincipal;FutureBadRows;FutureBadRate;MeanRiskRatio;MeanBankCar;Interpretation"
+      tsv(
+        "RunId",
+        "BorrowerType",
+        "CohortType",
+        "CohortValue",
+        "Rows",
+        "ApprovedRows",
+        "RejectedRows",
+        "ApprovedPrincipal",
+        "FutureBadRows",
+        "FutureBadRate",
+        "MeanRiskRatio",
+        "MeanBankCar",
+        "Interpretation",
+      )
   }
 
   it should "summarize future bad outcomes by borrower cohort" in {

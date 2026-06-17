@@ -1,7 +1,8 @@
 package com.boombustgroup.amorfati.montecarlo
 
-import com.boombustgroup.amorfati.agents.Firm
+import com.boombustgroup.amorfati.agents.Household
 import com.boombustgroup.amorfati.engine.SimulationMonth.ExecutionMonth
+import com.boombustgroup.amorfati.engine.flows.FlowSimulation
 import zio.stream.ZStream
 import zio.{Scope, ZIO}
 
@@ -9,31 +10,32 @@ import java.io.{BufferedWriter, File}
 import java.nio.file.Files
 import scala.util.Using
 
-private[montecarlo] object McFirmDecisionTraceCsv:
+private[montecarlo] object McHouseholdSnapshotTsv:
 
-  private val operation = "write firm decision trace CSV"
+  private val operation = "write household snapshot TSV"
 
-  def tapSeedTraces[A](
+  def tapSeedSnapshots[A](
       seed: Long,
       rc: McRunConfig,
       outputDir: File,
       rows: ZStream[Any, SimError, A],
   )(
       executionMonth: A => ExecutionMonth,
-      decisionTraces: A => Vector[Firm.DecisionTrace],
+      state: A => FlowSimulation.HouseholdSnapshotState,
+      monthlyFlows: A => Vector[Household.MonthlyFlow],
   ): ZStream[Any, SimError, A] =
-    if !rc.firmDecisionTraceSelection.enabled then rows
+    if !rc.householdSnapshotSchedule.enabled then rows
     else
       val partFile = seedPartFile(outputDir, seed, rc)
       ZStream.unwrapScoped:
         openWriter(partFile).map: writer =>
           rows.tap: row =>
-            writeTraceRows(writer, partFile, rc, seed, executionMonth(row), decisionTraces(row))
+            writeSnapshotRows(writer, partFile, rc, seed, executionMonth(row), state(row), monthlyFlows(row))
 
   def combineSeedFiles(rc: McRunConfig, outputDir: File): ZIO[Any, SimError, Unit] =
-    if !rc.firmDecisionTraceSelection.enabled then ZIO.unit
+    if !rc.householdSnapshotSchedule.enabled then ZIO.unit
     else
-      val outputFile = McOutputFiles.firmDecisionTraceFile(outputDir, rc)
+      val outputFile = McOutputFiles.householdSnapshotFile(outputDir, rc)
       val tempFile   = new File(s"${outputFile.getPath}.tmp")
       (for
         _ <- writeCombinedFile(tempFile, outputFile, rc, outputDir)
@@ -45,7 +47,7 @@ private[montecarlo] object McFirmDecisionTraceCsv:
     ZIO
       .attemptBlocking:
         Using.resource(Files.newBufferedWriter(tempFile.toPath)): writer =>
-          writer.write(McFirmDecisionTraceSchema.header)
+          writer.write(McHouseholdSnapshotSchema.header)
           writer.newLine()
           for seed <- 1L to rc.nSeeds.toLong do
             val partFile = seedPartFile(outputDir, seed, rc)
@@ -56,7 +58,7 @@ private[montecarlo] object McFirmDecisionTraceCsv:
                   writer.write(it.next())
                   writer.newLine()
       .unit
-      .mapError(outputFailure("combine firm decision trace CSV", outputFile))
+      .mapError(outputFailure("combine household snapshot TSV", outputFile))
 
   private def deleteSeedPartFiles(outputDir: File, rc: McRunConfig): ZIO[Any, SimError, Unit] =
     ZIO
@@ -66,26 +68,29 @@ private[montecarlo] object McFirmDecisionTraceCsv:
       .mapError(outputFailure(s"cleanup $operation seed part files", outputDir))
 
   private def finalizeFile(tempFile: File, outputFile: File): ZIO[Any, SimError, Unit] =
-    McCsvFile.finalizeFile(tempFile.toPath, outputFile.toPath, (operation, path, err) => outputFailure(operation, path.toFile)(err))
+    McTsvFile.finalizeFile(tempFile.toPath, outputFile.toPath, (operation, path, err) => outputFailure(operation, path.toFile)(err))
 
-  private def writeTraceRows(
+  private def writeSnapshotRows(
       writer: BufferedWriter,
       outputFile: File,
       rc: McRunConfig,
       seed: Long,
       month: ExecutionMonth,
-      traces: Vector[Firm.DecisionTrace],
+      state: FlowSimulation.HouseholdSnapshotState,
+      monthlyFlows: Vector[Household.MonthlyFlow],
   ): ZIO[Any, SimError, Unit] =
-    ZIO
-      .attemptBlocking:
-        val schema = McFirmDecisionTraceSchema.csvSchema
-        McFirmDecisionTraceSchema
-          .rows(rc.runId, seed, month.toInt, traces, rc.firmDecisionTraceSelection)
-          .foreach: row =>
-            writer.write(schema.render(row))
-            writer.newLine()
-      .unit
-      .mapError(outputFailure(operation, outputFile))
+    if !rc.householdSnapshotSchedule.includes(month, ExecutionMonth(rc.runDurationMonths)) then ZIO.unit
+    else
+      ZIO
+        .attemptBlocking:
+          val schema = McHouseholdSnapshotSchema.tsvSchema
+          McHouseholdSnapshotSchema
+            .rows(rc.runId, seed, month, state, monthlyFlows, rc.householdSnapshotSelection)
+            .foreach: row =>
+              writer.write(schema.render(row))
+              writer.newLine()
+        .unit
+        .mapError(outputFailure(operation, outputFile))
 
   private def openWriter(outputFile: File): ZIO[Scope, SimError, BufferedWriter] =
     ZIO.fromAutoCloseable(
@@ -95,7 +100,7 @@ private[montecarlo] object McFirmDecisionTraceCsv:
     )
 
   private def seedPartFile(outputDir: File, seed: Long, rc: McRunConfig): File =
-    new File(outputDir, f".${McOutputFiles.firmDecisionTraceFile(outputDir, rc).getName}.seed${seed}%03d.part")
+    new File(outputDir, f".${McOutputFiles.householdSnapshotFile(outputDir, rc).getName}.seed${seed}%03d.part")
 
   private def deleteIfExists(file: File): ZIO[Any, SimError, Unit] =
     ZIO

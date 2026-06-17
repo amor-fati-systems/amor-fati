@@ -166,7 +166,7 @@ class NightlyDiagnosticsProfileRunnerSpec extends AnyFlatSpec with Matchers:
     rendered should include(""""duration_seconds":1.5""")
     rendered should include(""""seed_months":12""")
     rendered should include(""""seed_months_per_second":8""")
-    rendered should include(""""csv_row_count":36""")
+    rendered should include(""""tsv_row_count":36""")
     rendered should include(""""heap_used_bytes":1000""")
     rendered should include(""""collection_count_delta":2""")
     rendered should include(""""collection_error":null""")
@@ -182,9 +182,9 @@ class NightlyDiagnosticsProfileRunnerSpec extends AnyFlatSpec with Matchers:
     NightlyDiagnosticsProfileRunner.renderCause("step-x", Cause.die(RuntimeException("boom"))) should include("step-x crashed")
   }
 
-  "NightlyHealthSummary" should "pass when baseline CSVs satisfy normal-path thresholds" in {
+  "NightlyHealthSummary" should "pass when baseline TSVs satisfy normal-path thresholds" in {
     val ctx = context("smoke", tempOut("health-pass"), runId = "health-pass")
-    writeBaselineSeedCsv(ctx, seed = 1, rows = healthyRows(months = 12))
+    writeBaselineSeedTsv(ctx, seed = 1, rows = healthyRows(months = 12))
 
     val result = DiagnosticIo.unsafeRun(NightlyHealthSummary.write(ctx, succeededSteps(ctx))).value
 
@@ -194,9 +194,9 @@ class NightlyDiagnosticsProfileRunnerSpec extends AnyFlatSpec with Matchers:
     Files.readString(result.markdownPath) should include("Nightly Health Summary")
   }
 
-  it should "fail on normal-path bank failures from baseline CSVs" in {
+  it should "fail on normal-path bank failures from baseline TSVs" in {
     val ctx = context("smoke", tempOut("health-bank-fail"), runId = "health-bank-fail")
-    writeBaselineSeedCsv(ctx, seed = 1, rows = healthyRows(months = 12).updated(5, healthyRow(month = 6, bankFailures = 1, newFailures = 1)))
+    writeBaselineSeedTsv(ctx, seed = 1, rows = healthyRows(months = 12).updated(5, healthyRow(month = 6, bankFailures = 1, newFailures = 1)))
 
     val result = DiagnosticIo.unsafeRun(NightlyHealthSummary.write(ctx, succeededSteps(ctx))).value
 
@@ -208,7 +208,7 @@ class NightlyDiagnosticsProfileRunnerSpec extends AnyFlatSpec with Matchers:
 
   it should "warn without hard-failing on household negative-deposit diagnostics" in {
     val ctx = context("smoke", tempOut("health-warning"), runId = "health-warning")
-    writeBaselineSeedCsv(
+    writeBaselineSeedTsv(
       ctx,
       seed = 1,
       rows = healthyRows(months = 12).updated(2, healthyRow(month = 3, negativeDepositCount = 2, negativeDepositShare = "0.004")),
@@ -273,8 +273,8 @@ class NightlyDiagnosticsProfileRunnerSpec extends AnyFlatSpec with Matchers:
       artifacts = NightlyDiagnosticsProfileRunner.ArtifactTelemetry(
         fileCount = 4L,
         bytes = 8192L,
-        csvFileCount = 3L,
-        csvRowCount = 36L,
+        tsvFileCount = 3L,
+        tsvRowCount = 36L,
       ),
       memoryBefore = NightlyDiagnosticsProfileRunner.MemoryTelemetry(
         heapUsedBytes = 1000L,
@@ -312,13 +312,13 @@ class NightlyDiagnosticsProfileRunnerSpec extends AnyFlatSpec with Matchers:
     Files.createDirectories(path)
     path
 
-  private def writeBaselineSeedCsv(ctx: NightlyDiagnosticsProfileRunner.RunContext, seed: Int, rows: Vector[String]): Path =
+  private def writeBaselineSeedTsv(ctx: NightlyDiagnosticsProfileRunner.RunContext, seed: Int, rows: Vector[String]): Path =
     val baselineStep = ctx.profile.steps(ctx).find(_.id == "baseline-monte-carlo").value
     val months       = baselineStep.months.value
     val dir          = baselineStep.outputDir(ctx)
     Files.createDirectories(dir)
-    val path         = dir.resolve(f"baseline_${ctx.runId}_${months}m_seed$seed%03d.csv")
-    Files.writeString(path, (HealthCsvHeader +: rows).mkString("\n") + "\n")
+    val path         = dir.resolve(f"baseline_${ctx.runId}_${months}m_seed$seed%03d.tsv")
+    Files.writeString(path, (HealthTsvHeader +: rows).mkString("\n") + "\n")
     path
 
   private def healthyRows(months: Int): Vector[String] =
@@ -350,9 +350,9 @@ class NightlyDiagnosticsProfileRunnerSpec extends AnyFlatSpec with Matchers:
       "0.05",
       negativeDepositCount.toString,
       negativeDepositShare,
-    ).mkString(";")
+    ).mkString("\t")
 
-  private val HealthCsvHeader: String =
+  private val HealthTsvHeader: String =
     Vector(
       "Month",
       "MonthlyGdpProxy",
@@ -372,4 +372,4 @@ class NightlyDiagnosticsProfileRunnerSpec extends AnyFlatSpec with Matchers:
       "ConsumerCredit_NplRatioGross",
       "HouseholdLiquidity_NegativeDepositCount",
       "HouseholdLiquidity_NegativeDepositShare",
-    ).mkString(";")
+    ).mkString("\t")

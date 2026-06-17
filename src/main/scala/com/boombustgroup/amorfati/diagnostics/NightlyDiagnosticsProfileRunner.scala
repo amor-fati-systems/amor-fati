@@ -96,8 +96,8 @@ object NightlyDiagnosticsProfileRunner:
   private[diagnostics] final case class ArtifactTelemetry(
       fileCount: Long,
       bytes: Long,
-      csvFileCount: Long,
-      csvRowCount: Long,
+      tsvFileCount: Long,
+      tsvRowCount: Long,
   )
 
   /** Lightweight per-step performance telemetry for the nightly manifest. */
@@ -459,7 +459,7 @@ object NightlyDiagnosticsProfileRunner:
     val artifactTelemetry    = collectArtifactTelemetry(artifactPaths)
     val (artifactStats, err) = artifactTelemetry match
       case Right(stats)  => stats                                                                              -> None
-      case Left(message) => ArtifactTelemetry(fileCount = 0L, bytes = 0L, csvFileCount = 0L, csvRowCount = 0L) -> Some(message)
+      case Left(message) => ArtifactTelemetry(fileCount = 0L, bytes = 0L, tsvFileCount = 0L, tsvRowCount = 0L) -> Some(message)
 
     StepTelemetry(
       durationMillis = durationMillis,
@@ -488,7 +488,7 @@ object NightlyDiagnosticsProfileRunner:
       durationMillis = durationMillis,
       seedMonths = seedMonths,
       seedMonthsPerSecond = throughputPerSecond(seedMonths, elapsedNanos),
-      artifacts = ArtifactTelemetry(fileCount = 0L, bytes = 0L, csvFileCount = 0L, csvRowCount = 0L),
+      artifacts = ArtifactTelemetry(fileCount = 0L, bytes = 0L, tsvFileCount = 0L, tsvRowCount = 0L),
       memoryBefore = before.memory,
       memoryAfter = after.memory,
       gc = gcDelta(before.gc, after.gc),
@@ -500,12 +500,12 @@ object NightlyDiagnosticsProfileRunner:
       val files    = paths
         .flatMap(filesForArtifact)
         .distinctBy(path => path.toAbsolutePath.normalize.toString)
-      val csvFiles = files.filter(path => path.getFileName.toString.toLowerCase(Locale.ROOT).endsWith(".csv"))
+      val tsvFiles = files.filter(path => path.getFileName.toString.toLowerCase(Locale.ROOT).endsWith(".tsv"))
       ArtifactTelemetry(
         fileCount = files.length.toLong,
         bytes = files.foldLeft(0L)((acc, path) => acc + Files.size(path)),
-        csvFileCount = csvFiles.length.toLong,
-        csvRowCount = csvFiles.foldLeft(0L)((acc, path) => acc + csvDataRows(path)),
+        tsvFileCount = tsvFiles.length.toLong,
+        tsvRowCount = tsvFiles.foldLeft(0L)((acc, path) => acc + tsvDataRows(path)),
       )
     .toEither.left.map(err => s"artifact telemetry unavailable: ${message(err)}")
 
@@ -516,7 +516,7 @@ object NightlyDiagnosticsProfileRunner:
         stream.iterator().asScala.filter(candidate => Files.isRegularFile(candidate)).toVector
     else Vector.empty
 
-  private def csvDataRows(path: Path): Long =
+  private def tsvDataRows(path: Path): Long =
     val lineCount = Using.resource(Files.lines(path, StandardCharsets.UTF_8))(_.count())
     math.max(0L, lineCount - 1L)
 
@@ -1085,8 +1085,8 @@ object NightlyDiagnosticsProfileRunner:
       Vector(
         "file_count"     -> telemetry.fileCount.toString,
         "bytes"          -> telemetry.bytes.toString,
-        "csv_file_count" -> telemetry.csvFileCount.toString,
-        "csv_row_count"  -> telemetry.csvRowCount.toString,
+        "tsv_file_count" -> telemetry.tsvFileCount.toString,
+        "tsv_row_count"  -> telemetry.tsvRowCount.toString,
       ),
     )
 

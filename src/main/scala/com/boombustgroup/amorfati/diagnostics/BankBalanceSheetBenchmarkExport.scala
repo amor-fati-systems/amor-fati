@@ -6,7 +6,7 @@ import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.ledger.LedgerFinancialState
 import com.boombustgroup.amorfati.engine.mechanisms.Macroprudential
 import com.boombustgroup.amorfati.init.{InitRandomness, WorldInit}
-import com.boombustgroup.amorfati.montecarlo.{McCsvFile, McCsvSchema}
+import com.boombustgroup.amorfati.montecarlo.{DelimitedTextFormat, McTsvFile, McTsvSchema}
 import com.boombustgroup.amorfati.types.*
 import zio.ZIO
 
@@ -576,122 +576,180 @@ object BankBalanceSheetBenchmarkExport:
       summary: Vector[SummaryMetric],
       bankRows: Vector[BankRow],
   ): ZIO[Any, String, Vector[Path]] =
-    val seedMetricsPath = config.runRoot.resolve("bank-balance-sheet-seed-metrics.csv")
-    val summaryCsvPath  = config.runRoot.resolve("bank-balance-sheet-summary.csv")
-    val targetCsvPath   = config.runRoot.resolve("bank-balance-sheet-targets.csv")
-    val bankRowsPath    = config.runRoot.resolve("bank-balance-sheet-bank-rows.csv")
+    val seedMetricsPath = config.runRoot.resolve("bank-balance-sheet-seed-metrics.tsv")
+    val summaryTsvPath  = config.runRoot.resolve("bank-balance-sheet-summary.tsv")
+    val targetTsvPath   = config.runRoot.resolve("bank-balance-sheet-targets.tsv")
+    val bankRowsPath    = config.runRoot.resolve("bank-balance-sheet-bank-rows.tsv")
     val reportMdPath    = config.runRoot.resolve("bank-balance-sheet-report.md")
     for
-      seedPath    <- McCsvFile.writeAll(seedMetricsPath, seedMetrics, SeedMetricsCsvSchema)(DiagnosticIo.outputFailure)
-      summaryPath <- McCsvFile.writeAll(summaryCsvPath, summary, SummaryCsvSchema)(DiagnosticIo.outputFailure)
-      targetPath  <- McCsvFile.writeAll(targetCsvPath, Targets, TargetsCsvSchema)(DiagnosticIo.outputFailure)
-      bankPath    <- McCsvFile.writeAll(bankRowsPath, bankRows, BankRowsCsvSchema)(DiagnosticIo.outputFailure)
+      seedPath    <- McTsvFile.writeAll(seedMetricsPath, seedMetrics, SeedMetricsTsvSchema)(DiagnosticIo.outputFailure)
+      summaryPath <- McTsvFile.writeAll(summaryTsvPath, summary, SummaryTsvSchema)(DiagnosticIo.outputFailure)
+      targetPath  <- McTsvFile.writeAll(targetTsvPath, Targets, TargetsTsvSchema)(DiagnosticIo.outputFailure)
+      bankPath    <- McTsvFile.writeAll(bankRowsPath, bankRows, BankRowsTsvSchema)(DiagnosticIo.outputFailure)
       reportPath  <- DiagnosticIo.writeText(reportMdPath, renderReport(config, summary))
     yield Vector(seedPath, summaryPath, targetPath, bankPath, reportPath)
 
-  private[diagnostics] val SeedMetricsCsvSchema: McCsvSchema[SeedMetric] =
-    McCsvSchema(
-      header = "RunId;Seed;Metric;Label;Value;Unit;GuardrailClass;Vintage;Lower;Upper;Status;SourceNote;Interpretation",
+  private[diagnostics] val SeedMetricsTsvSchema: McTsvSchema[SeedMetric] =
+    McTsvSchema(
+      header = McTsvSchema.header(
+        "RunId",
+        "Seed",
+        "Metric",
+        "Label",
+        "Value",
+        "Unit",
+        "GuardrailClass",
+        "Vintage",
+        "Lower",
+        "Upper",
+        "Status",
+        "SourceNote",
+        "Interpretation",
+      ),
       render = row =>
-        Vector(
-          row.runId,
-          row.seed.toString,
-          row.target.id,
-          row.target.label,
-          renderValue(row.value),
-          row.target.unit,
-          row.target.guardrailClass.token,
-          row.target.vintage,
-          row.target.lower.map(renderDecimal).getOrElse(""),
-          row.target.upper.map(renderDecimal).getOrElse(""),
-          row.status.token,
-          row.target.sourceNote,
-          row.target.interpretation,
-        ).map(csv).mkString(";"),
+        DelimitedTextFormat.Tsv.join(
+          Vector(
+            row.runId,
+            row.seed.toString,
+            row.target.id,
+            row.target.label,
+            renderValue(row.value),
+            row.target.unit,
+            row.target.guardrailClass.token,
+            row.target.vintage,
+            row.target.lower.map(renderDecimal).getOrElse(""),
+            row.target.upper.map(renderDecimal).getOrElse(""),
+            row.status.token,
+            row.target.sourceNote,
+            row.target.interpretation,
+          ),
+        ),
     )
 
-  private[diagnostics] val SummaryCsvSchema: McCsvSchema[SummaryMetric] =
-    McCsvSchema(
-      header = "RunId;Seeds;Metric;Label;Mean;Min;Max;Unit;GuardrailClass;Vintage;Lower;Upper;Status;SourceNote;Interpretation",
+  private[diagnostics] val SummaryTsvSchema: McTsvSchema[SummaryMetric] =
+    McTsvSchema(
+      header = McTsvSchema.header(
+        "RunId",
+        "Seeds",
+        "Metric",
+        "Label",
+        "Mean",
+        "Min",
+        "Max",
+        "Unit",
+        "GuardrailClass",
+        "Vintage",
+        "Lower",
+        "Upper",
+        "Status",
+        "SourceNote",
+        "Interpretation",
+      ),
       render = row =>
-        Vector(
-          row.runId,
-          row.seeds.toString,
-          row.target.id,
-          row.target.label,
-          renderValue(row.mean),
-          row.min.map(renderDecimal).getOrElse(""),
-          row.max.map(renderDecimal).getOrElse(""),
-          row.target.unit,
-          row.target.guardrailClass.token,
-          row.target.vintage,
-          row.target.lower.map(renderDecimal).getOrElse(""),
-          row.target.upper.map(renderDecimal).getOrElse(""),
-          row.status.token,
-          row.target.sourceNote,
-          row.target.interpretation,
-        ).map(csv).mkString(";"),
+        DelimitedTextFormat.Tsv.join(
+          Vector(
+            row.runId,
+            row.seeds.toString,
+            row.target.id,
+            row.target.label,
+            renderValue(row.mean),
+            row.min.map(renderDecimal).getOrElse(""),
+            row.max.map(renderDecimal).getOrElse(""),
+            row.target.unit,
+            row.target.guardrailClass.token,
+            row.target.vintage,
+            row.target.lower.map(renderDecimal).getOrElse(""),
+            row.target.upper.map(renderDecimal).getOrElse(""),
+            row.status.token,
+            row.target.sourceNote,
+            row.target.interpretation,
+          ),
+        ),
     )
 
-  private[diagnostics] val TargetsCsvSchema: McCsvSchema[TargetBand] =
-    McCsvSchema(
-      header = "Metric;Label;Unit;GuardrailClass;Vintage;Lower;Upper;SourceNote;Interpretation",
+  private[diagnostics] val TargetsTsvSchema: McTsvSchema[TargetBand] =
+    McTsvSchema(
+      header = McTsvSchema.header("Metric", "Label", "Unit", "GuardrailClass", "Vintage", "Lower", "Upper", "SourceNote", "Interpretation"),
       render = target =>
-        Vector(
-          target.id,
-          target.label,
-          target.unit,
-          target.guardrailClass.token,
-          target.vintage,
-          target.lower.map(renderDecimal).getOrElse(""),
-          target.upper.map(renderDecimal).getOrElse(""),
-          target.sourceNote,
-          target.interpretation,
-        ).map(csv).mkString(";"),
+        DelimitedTextFormat.Tsv.join(
+          Vector(
+            target.id,
+            target.label,
+            target.unit,
+            target.guardrailClass.token,
+            target.vintage,
+            target.lower.map(renderDecimal).getOrElse(""),
+            target.upper.map(renderDecimal).getOrElse(""),
+            target.sourceNote,
+            target.interpretation,
+          ),
+        ),
     )
 
-  private[diagnostics] val BankRowsCsvSchema: McCsvSchema[BankRow] =
-    McCsvSchema(
-      header =
-        "RunId;Seed;BankId;BankName;Capital;Assets;Deposits;TotalCredit;GovBondHoldings;GovBondShareOfAssets;PolishBankLevyTaxableAssets;PolishBankLevyTaxableAssetsShare;CapitalAdequacyRatio;EffectiveMinCar;CarBuffer;Lcr;Nsfr;CreditShare;DepositShare;AssetShare",
+  private[diagnostics] val BankRowsTsvSchema: McTsvSchema[BankRow] =
+    McTsvSchema(
+      header = McTsvSchema.header(
+        "RunId",
+        "Seed",
+        "BankId",
+        "BankName",
+        "Capital",
+        "Assets",
+        "Deposits",
+        "TotalCredit",
+        "GovBondHoldings",
+        "GovBondShareOfAssets",
+        "PolishBankLevyTaxableAssets",
+        "PolishBankLevyTaxableAssetsShare",
+        "CapitalAdequacyRatio",
+        "EffectiveMinCar",
+        "CarBuffer",
+        "Lcr",
+        "Nsfr",
+        "CreditShare",
+        "DepositShare",
+        "AssetShare",
+      ),
       render = row =>
-        Vector(
-          row.runId,
-          row.seed.toString,
-          row.bankId.toString,
-          row.bankName,
-          renderPln(row.capital),
-          renderPln(row.assets),
-          renderPln(row.deposits),
-          renderPln(row.totalCredit),
-          renderPln(row.govBondHoldings),
-          row.govBondShareOfAssets.format(6),
-          renderPln(row.polishBankLevyTaxableAssets),
-          row.polishBankLevyTaxableAssetsShare.format(6),
-          renderDecimal(row.capitalAdequacyRatio),
-          renderDecimal(row.effectiveMinCar),
-          renderDecimal(row.carBuffer),
-          renderDecimal(row.lcr),
-          renderDecimal(row.nsfr),
-          renderDecimal(row.creditShare),
-          renderDecimal(row.depositShare),
-          renderDecimal(row.assetShare),
-        ).map(csv).mkString(";"),
+        DelimitedTextFormat.Tsv.join(
+          Vector(
+            row.runId,
+            row.seed.toString,
+            row.bankId.toString,
+            row.bankName,
+            renderPln(row.capital),
+            renderPln(row.assets),
+            renderPln(row.deposits),
+            renderPln(row.totalCredit),
+            renderPln(row.govBondHoldings),
+            row.govBondShareOfAssets.format(6),
+            renderPln(row.polishBankLevyTaxableAssets),
+            row.polishBankLevyTaxableAssetsShare.format(6),
+            renderDecimal(row.capitalAdequacyRatio),
+            renderDecimal(row.effectiveMinCar),
+            renderDecimal(row.carBuffer),
+            renderDecimal(row.lcr),
+            renderDecimal(row.nsfr),
+            renderDecimal(row.creditShare),
+            renderDecimal(row.depositShare),
+            renderDecimal(row.assetShare),
+          ),
+        ),
     )
 
-  private[diagnostics] def renderSeedMetricsCsv(rows: Vector[SeedMetric]): String =
-    renderCsv(SeedMetricsCsvSchema, rows)
+  private[diagnostics] def renderSeedMetricsTsv(rows: Vector[SeedMetric]): String =
+    renderTsv(SeedMetricsTsvSchema, rows)
 
-  private[diagnostics] def renderSummaryCsv(rows: Vector[SummaryMetric]): String =
-    renderCsv(SummaryCsvSchema, rows)
+  private[diagnostics] def renderSummaryTsv(rows: Vector[SummaryMetric]): String =
+    renderTsv(SummaryTsvSchema, rows)
 
-  private[diagnostics] def renderTargetsCsv(targets: Vector[TargetBand]): String =
-    renderCsv(TargetsCsvSchema, targets)
+  private[diagnostics] def renderTargetsTsv(targets: Vector[TargetBand]): String =
+    renderTsv(TargetsTsvSchema, targets)
 
-  private[diagnostics] def renderBankRowsCsv(rows: Vector[BankRow]): String =
-    renderCsv(BankRowsCsvSchema, rows)
+  private[diagnostics] def renderBankRowsTsv(rows: Vector[BankRow]): String =
+    renderTsv(BankRowsTsvSchema, rows)
 
-  private def renderCsv[A](schema: McCsvSchema[A], rows: Vector[A]): String =
+  private def renderTsv[A](schema: McTsvSchema[A], rows: Vector[A]): String =
     (schema.header +: rows.map(schema.render)).mkString("\n") + "\n"
 
   private[diagnostics] def renderReport(config: Config, summary: Vector[SummaryMetric]): String =
@@ -825,11 +883,6 @@ object BankBalanceSheetBenchmarkExport:
 
   private def bound(value: Option[BigDecimal]): String =
     value.map(renderDecimal).getOrElse("n/a")
-
-  private def csv(value: String): String =
-    val escaped = value.replace("\"", "\"\"")
-    if escaped.exists(ch => ch == ';' || ch == '"' || ch == '\n' || ch == '\r') then s""""$escaped""""
-    else escaped
 
   private def markdownRow(values: Vector[String]): String =
     values.map(_.replace("|", "\\|")).mkString("| ", " | ", " |")

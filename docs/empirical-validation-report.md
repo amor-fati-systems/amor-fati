@@ -3,9 +3,9 @@
 This hand-maintained report defines how Amor Fati outputs should be compared
 with empirical macro, meso, and micro stylized facts. It is the workflow
 companion for the curated source manifest and generated baseline snapshot;
-readiness metadata lives in `docs/empirical-validation-source-manifest.csv`,
+readiness metadata lives in `docs/empirical-validation-source-manifest.tsv`,
 while pass/fail baseline results live in
-`docs/empirical-validation/baseline-validation-snapshot.csv`.
+`docs/empirical-validation/baseline-validation-snapshot.tsv`.
 
 The goal is to keep failed, missing, or weak validation targets visible. A row
 with `MISSING_OUTPUT`, `MISSING_DATA_BRIDGE`, `MISSING_SOURCE_DETAIL`, or
@@ -41,7 +41,7 @@ checks fail.
 | `BRIDGE_ASSUMPTION` | The target uses a documented empirical-to-model bridge assumption. |
 
 Live status counts and per-row statuses are not duplicated here; read them from
-the source manifest and generated snapshot CSVs.
+the source manifest and generated snapshot TSVs.
 
 ### Snapshot Run-Result Taxonomy
 
@@ -65,18 +65,18 @@ sbt "runMain com.boombustgroup.amorfati.Main 5 validation-baseline --duration 60
 Expected output files:
 
 ```text
-mc/validation-baseline_main-0f281ce3_60m_seed001.csv
-mc/validation-baseline_main-0f281ce3_60m_seed002.csv
-mc/validation-baseline_main-0f281ce3_60m_seed003.csv
-mc/validation-baseline_main-0f281ce3_60m_seed004.csv
-mc/validation-baseline_main-0f281ce3_60m_seed005.csv
-mc/validation-baseline_main-0f281ce3_60m_hh.csv
-mc/validation-baseline_main-0f281ce3_60m_banks.csv
-mc/validation-baseline_main-0f281ce3_60m_firms.csv
+mc/validation-baseline_main-0f281ce3_60m_seed001.tsv
+mc/validation-baseline_main-0f281ce3_60m_seed002.tsv
+mc/validation-baseline_main-0f281ce3_60m_seed003.tsv
+mc/validation-baseline_main-0f281ce3_60m_seed004.tsv
+mc/validation-baseline_main-0f281ce3_60m_seed005.tsv
+mc/validation-baseline_main-0f281ce3_60m_hh.tsv
+mc/validation-baseline_main-0f281ce3_60m_banks.tsv
+mc/validation-baseline_main-0f281ce3_60m_firms.tsv
 ```
 
-Use the per-seed CSV files for monthly macro, meso, financial, and mechanism
-paths. Use the `_hh.csv`, `_banks.csv`, and `_firms.csv` files for terminal
+Use the per-seed TSV files for monthly macro, meso, financial, and mechanism
+paths. Use the `_hh.tsv`, `_banks.tsv`, and `_firms.tsv` files for terminal
 household, bank, and firm cross-section summaries.
 
 Runnable snapshot procedure after a baseline run:
@@ -85,17 +85,17 @@ Runnable snapshot procedure after a baseline run:
 2. Generate the empirical validation snapshot:
 
    ```bash
-   sbt "empiricalValidation --source-manifest docs/empirical-validation-source-manifest.csv --mc-dir mc --run-id main-0f281ce3 --output-prefix validation-baseline --duration 60 --seeds 5 --commit 0f281ce3 --parameter-branch main --out docs/empirical-validation"
+   sbt "empiricalValidation --source-manifest docs/empirical-validation-source-manifest.tsv --mc-dir mc --run-id main-0f281ce3 --output-prefix validation-baseline --duration 60 --seeds 5 --commit 0f281ce3 --parameter-branch main --out docs/empirical-validation"
    ```
 
-3. Review `docs/empirical-validation/baseline-validation-snapshot.csv`.
+3. Review `docs/empirical-validation/baseline-validation-snapshot.tsv`.
 4. Keep rows with missing model output or missing empirical data in the table.
 
 The source manifest is intentionally metadata-first. It records source
 provider, URL, dataset code, vintage, access date, license/reuse note,
 frequency, unit, transformation, model target, empirical value, tolerance, and
 status without vendoring raw proprietary or large external datasets. The
-generator also writes an effective `model-run-manifest.csv` with run id,
+generator also writes an effective `model-run-manifest.tsv` with run id,
 output prefix, duration, seed count, commit, parameter branch, and output
 directory.
 
@@ -106,29 +106,29 @@ The primary numeric surface is
 Terminal cross-sections come from
 `src/main/scala/com/boombustgroup/amorfati/montecarlo/McTerminalSummarySchema.scala`.
 Time-series macro PLN aggregates are emitted in Poland scale. Validation work
-should not manually divide CSV values by `gdpRatio`.
+should not manually divide TSV values by `gdpRatio`.
 
 This table is an illustrative family-level model-output mapping. The
 authoritative per-row mapping lives in
-`docs/empirical-validation-source-manifest.csv`, column `model_target`;
+`docs/empirical-validation-source-manifest.tsv`, column `model_target`;
 readiness and pass/fail status live in the source manifest and generated
-snapshot CSVs.
+snapshot TSVs.
 
 | Validation target | Empirical comparator | Model output mapping | Suggested statistic |
 | --- | --- | --- | --- |
 | GDP growth | GUS national accounts real GDP growth | `MonthlyGdpProxy`, `AnnualizedGdpProxy` | Annual or quarterly growth of the emitted monthly GDP proxy, with real/nominal source convention stated by the validation manifest |
 | Inflation | GUS CPI / HICP, NBP inflation target | `Inflation`, `PriceLevel`, `ExpectedInflation`, `InflationForecastError` | Mean, volatility, target deviation, persistence |
 | Unemployment | GUS BAEL / registered unemployment | `Unemployment`, `Unemp_Central`, `Unemp_South`, `Unemp_East`, `Unemp_Northwest`, `Unemp_Southwest`, `Unemp_North` | Mean level, volatility, regional dispersion |
-| Wages | GUS average wage, sector wage indices | `MarketWage`, `MeanEmployedWage`, `MinWageLevel`; terminal `_hh.csv` fields `MeanMonthlyIncome`, `MeanEmployedWage`, `WageP10`, `WageP50`, `WageP90` | Mean wage level and growth; minimum/market wage ratio; terminal wage distribution |
-| Credit/GDP | NBP credit aggregates to GDP | `TotalCreditToGdp`, `TotalCreditStock`, `BankFirmLoans`, `BankFirmLoansToGdp`, `ConsumerLoans`, `ConsumerLoansToGdp`, `MortgageStock`, `MortgageToGdp`, `NbfiLoanStock`, `NbfiLoansToGdp`, `CreditToGdpGap`; terminal `_banks.csv` field `Loans` | Credit/GDP level, gap, household/firm/mortgage/NBFI split |
+| Wages | GUS average wage, sector wage indices | `MarketWage`, `MeanEmployedWage`, `MinWageLevel`; terminal `_hh.tsv` fields `MeanMonthlyIncome`, `MeanEmployedWage`, `WageP10`, `WageP50`, `WageP90` | Mean wage level and growth; minimum/market wage ratio; terminal wage distribution |
+| Credit/GDP | NBP credit aggregates to GDP | `TotalCreditToGdp`, `TotalCreditStock`, `BankFirmLoans`, `BankFirmLoansToGdp`, `ConsumerLoans`, `ConsumerLoansToGdp`, `MortgageStock`, `MortgageToGdp`, `NbfiLoanStock`, `NbfiLoansToGdp`, `CreditToGdpGap`; terminal `_banks.tsv` field `Loans` | Credit/GDP level, gap, household/firm/mortgage/NBFI split |
 | Credit-supply standards | NBP `Sytuacja na rynku kredytowym` senior loan officer survey | `FirmCredit_ApprovalRate`, `ConsumerCredit_ApprovedToDemand`, `MortgageOriginationSupplyConstrained`, and model-only rejection decomposition columns | Directional change in approval or supply-constraint proxies after the SLOOS bridge is extracted; never direct level comparison |
 | Credit demand | NBP `Sytuacja na rynku kredytowym` borrower-demand questions | `FirmCredit_CreditDemand`, `ConsumerCreditDemand`, and demand-normalized decomposition columns such as `ConsumerCredit_ApprovedToDemand` and `ConsumerCredit_RejectedToDemand` | Directional change in borrower-demand proxies after the SLOOS demand bridge is extracted; never evidence of bank-side tightening |
 | Public debt/GDP | MF public debt, ESA2010 general-government debt | `DebtToGdp`, `Esa2010DebtToGdp`, `GovDebt`, `QfBondsOutstanding`, `BondsOutstanding` | Terminal debt/GDP and path against thresholds |
 | Current account | NBP balance of payments | `CurrentAccount`, `CurrentAccountToGdp`, `CurrentAccountPrimaryIncome`, `CurrentAccountSecondaryIncome`, `CurrentAccountClosureResidual`, `TradeBalance_OE`, `TradeBalanceToGdp`, `Exports_OE`, `ExportsToGdp`, `TotalImports_OE`, `ImportsToGdp`, `ImportedIntermToImports`, `NetRemittances`, `NetTourismBalance`, `FDI` | Annualized current-account/GDP, component signs, and exported BoP closure |
-| Firm-size distribution | GUS/REGON firm-size distribution | Terminal `_firms.csv` fields `FirmSize_Micro`, `FirmSize_Small`, `FirmSize_Medium`, `FirmSize_Large` and share fields | Terminal firm-size distribution (living firms only) |
-| Bankruptcies and household distress | GUS / Ministry of Justice corporate insolvencies, consumer bankruptcy statistics, arrears/default comparators when available | `FirmDeaths`, `FirmBirths`, `NetEntry`, `HouseholdDistress_Bankruptcy`, `HouseholdDistress_*`, `HouseholdDistress_ActiveShare`, legacy status fields `HouseholdBankruptcies` and `HouseholdBankruptcyRate`, `BankFailures`; terminal `_hh.csv` fields `HH_Distress_*`, `HH_Distress_ActiveShare`, legacy `HH_Bankrupt`, `BankruptcyRate`, `MeanMonthsToRuin` | Firm exit rate, personal-insolvency/write-off state share, household distress-state shares, bank failures |
-| Bank capital and liquidity | KNF banking-sector CAR, LCR, NSFR, NPL | `AggregateBankCAR`, `AggregateBankCapital`, `AggregateBankRWA`, `AggregateBankRWA_*`, `AggregateBankExposure_*`, `MinBankCAR`, `MinBankLCR`, `MinBankNSFR`, `NPL`, `MaxBankNPL`; terminal `_banks.csv` fields `CAR`, `NPL`, `Capital`, `Deposits`, `Loans` | Sector total-capital-ratio comparator, numerator/denominator attribution, plus minimum and distributional stress indicators |
-| Inequality | GUS household surveys, EU-SILC, OECD income/wealth indicators | Terminal `_hh.csv` fields `Gini_Individual`, `Gini_Wealth`, `ConsumptionP10`, `ConsumptionP50`, `ConsumptionP90`, `PovertyRate_50pct`, `PovertyRate_30pct` | Terminal Gini, poverty rates, consumption percentile ratios |
+| Firm-size distribution | GUS/REGON firm-size distribution | Terminal `_firms.tsv` fields `FirmSize_Micro`, `FirmSize_Small`, `FirmSize_Medium`, `FirmSize_Large` and share fields | Terminal firm-size distribution (living firms only) |
+| Bankruptcies and household distress | GUS / Ministry of Justice corporate insolvencies, consumer bankruptcy statistics, arrears/default comparators when available | `FirmDeaths`, `FirmBirths`, `NetEntry`, `HouseholdDistress_Bankruptcy`, `HouseholdDistress_*`, `HouseholdDistress_ActiveShare`, legacy status fields `HouseholdBankruptcies` and `HouseholdBankruptcyRate`, `BankFailures`; terminal `_hh.tsv` fields `HH_Distress_*`, `HH_Distress_ActiveShare`, legacy `HH_Bankrupt`, `BankruptcyRate`, `MeanMonthsToRuin` | Firm exit rate, personal-insolvency/write-off state share, household distress-state shares, bank failures |
+| Bank capital and liquidity | KNF banking-sector CAR, LCR, NSFR, NPL | `AggregateBankCAR`, `AggregateBankCapital`, `AggregateBankRWA`, `AggregateBankRWA_*`, `AggregateBankExposure_*`, `MinBankCAR`, `MinBankLCR`, `MinBankNSFR`, `NPL`, `MaxBankNPL`; terminal `_banks.tsv` fields `CAR`, `NPL`, `Capital`, `Deposits`, `Loans` | Sector total-capital-ratio comparator, numerator/denominator attribution, plus minimum and distributional stress indicators |
+| Inequality | GUS household surveys, EU-SILC, OECD income/wealth indicators | Terminal `_hh.tsv` fields `Gini_Individual`, `Gini_Wealth`, `ConsumptionP10`, `ConsumptionP50`, `ConsumptionP90`, `PovertyRate_50pct`, `PovertyRate_30pct` | Terminal Gini, poverty rates, consumption percentile ratios |
 | Sectoral output | GUS national accounts by sector, supply-use tables | `BPO_Output`, `Manuf_Output`, `Retail_Output`, `Health_Output`, `Public_Output`, `Agri_Output` | Sector output shares and growth |
 | External prices and FX | NBP exchange rate, ECB/Eurostat external prices | `ExRate`, `ForeignPriceIndex`, `GvcImportCostIndex`, `CommodityPriceIndex`, `FxReserves`, `FxInterventionAmt` | FX level/volatility, reserve path, import-cost shocks |
 | Housing and mortgages | NBP housing prices, mortgage stock, KNF mortgage risk | `HousingPriceIndex`, `WawHpi`, `KrkHpi`, `WroHpi`, `GdnHpi`, `LdzHpi`, `PozHpi`, `RestHpi`, `MortgageStock`, `MortgageOrigination`, `MortgageOriginationSupplyConstrained`, `MortgageRepayment`, `MortgageDefault`, `MortgageNetStockFlow`, `MortgageToGdp`, `AvgMortgageRate` | HPI path, regional dispersion, mortgage/GDP, stock-flow runoff, secured-credit supply constraints, defaults |
@@ -143,13 +143,13 @@ reference is `main@0f281ce3`.
 
 | Artifact | Path |
 | --- | --- |
-| Snapshot CSV | [`docs/empirical-validation/baseline-validation-snapshot.csv`](empirical-validation/baseline-validation-snapshot.csv) |
-| Model run manifest | [`docs/empirical-validation/model-run-manifest.csv`](empirical-validation/model-run-manifest.csv) |
-| Source manifest snapshot (generated copy) | [`docs/empirical-validation/source-manifest.csv`](empirical-validation/source-manifest.csv) |
+| Snapshot TSV | [`docs/empirical-validation/baseline-validation-snapshot.tsv`](empirical-validation/baseline-validation-snapshot.tsv) |
+| Model run manifest | [`docs/empirical-validation/model-run-manifest.tsv`](empirical-validation/model-run-manifest.tsv) |
+| Source manifest snapshot (generated copy) | [`docs/empirical-validation/source-manifest.tsv`](empirical-validation/source-manifest.tsv) |
 
 Run metadata for the current snapshot lives in
-[`docs/empirical-validation/model-run-manifest.csv`](empirical-validation/model-run-manifest.csv);
-use the snapshot CSV for current status counts and row-level baseline results.
+[`docs/empirical-validation/model-run-manifest.tsv`](empirical-validation/model-run-manifest.tsv);
+use the snapshot TSV for current status counts and row-level baseline results.
 `FAIL_BASELINE` rows are interpreted as calibration evidence, not accounting
 failures; the ledger and SFC validation surfaces remain separate from this
 empirical fit table.
@@ -174,7 +174,7 @@ single total-credit-to-GDP series.
 
 Bank total-capital-ratio validation should use `AggregateBankCAR` from the
 timeseries surface. That column computes sector capital over the explicit
-regulatory RWA perimeter. Terminal `_banks.csv` `CAR` values remain useful for
+regulatory RWA perimeter. Terminal `_banks.tsv` `CAR` values remain useful for
 per-bank dispersion and stress diagnostics, but their arithmetic mean is not a
 KNF sector total-capital-ratio comparator and can overstate the sector ratio
 when low-exposure bank rows are present.
@@ -429,7 +429,7 @@ of bank-side tightening.
 
 Empirical validation snapshots report Monte Carlo model values using the
 `seed_count`, horizon, commit, branch, and statistic recorded in
-`model-run-manifest.csv`. Paper-facing credit-supply claims must cite that
+`model-run-manifest.tsv`. Paper-facing credit-supply claims must cite that
 metadata explicitly.
 
 | Use | Minimum seed count | Interpretation |
@@ -444,7 +444,7 @@ policy. Tolerances require a concrete source vintage, transformation, and
 reviewable comparator value.
 
 Firm-size distribution and sectoral output now have direct output surfaces.
-Use terminal `_firms.csv` fields for living-firm-only terminal size shares and
+Use terminal `_firms.tsv` fields for living-firm-only terminal size shares and
 per-seed `*_Output` columns for sector output shares or growth.
 
 Inequality validation is terminal-only for now. The household summary already

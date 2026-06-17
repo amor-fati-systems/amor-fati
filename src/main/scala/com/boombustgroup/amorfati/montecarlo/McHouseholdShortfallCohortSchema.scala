@@ -90,12 +90,12 @@ private[montecarlo] object McHouseholdShortfallCohortSchema:
   )
 
   val header: String =
-    columns.map(_._1).mkString(";")
+    columns.map(_._1).mkString("\t")
 
-  val csvSchema: McCsvSchema[Row] =
-    McCsvSchema(
+  val tsvSchema: McTsvSchema[Row] =
+    McTsvSchema(
       header = header,
-      render = row => columns.map(_._2(row)).mkString(";"),
+      render = row => columns.map(_._2(row)).mkString("\t"),
     )
 
   def rows(
@@ -110,7 +110,7 @@ private[montecarlo] object McHouseholdShortfallCohortSchema:
     val incomeDeciles  = incomeDecileByIndex(snapshotRows)
 
     // Cohort dimensions are diagnostic cuts over the full household snapshot,
-    // independent of the micro row selector used for the snapshot CSV.
+    // independent of the micro row selector used for the snapshot TSV.
     val dimensions: Vector[(String, (McHouseholdSnapshotSchema.Row, Int) => String)] = Vector(
       "All"                       -> ((_, _) => "All"),
       "Status"                    -> ((row, _) => status(row.household.status)),
@@ -233,4 +233,4 @@ private[montecarlo] object McHouseholdShortfallCohortSchema:
       case HhStatus.Bankrupt            => "Bankrupt"
 
   private def text(value: String): String =
-    value.replace(';', ',').replace('\n', ' ').replace('\r', ' ')
+    value.replace('\t', ' ').replace('\n', ' ').replace('\r', ' ')

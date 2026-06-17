@@ -298,7 +298,7 @@ JstDebtMetric_tau = JstDebtMetric_t + JstDeficit_tau
 
 In runtime flow evidence, `JstRevenue` denotes the own-revenue mechanism and
 `JstGovSubvention` denotes central-budget transfers. The public `JstRevenue`
-CSV column reports `JstTotalRevenue_tau` from `Jst.State.revenue`.
+TSV column reports `JstTotalRevenue_tau` from `Jst.State.revenue`.
 
 Social-fund cash balances and JST deposits are ledger-owned. ZUS, NFZ,
 earmarked-fund, PPK, and JST state objects are monthly flow and fiscal metric
@@ -817,7 +817,7 @@ standing-facility costs.
 | --- | --- |
 | Unit/config tests | Fiscal, monetary, social-fund, NBP, open-economy, insurance, NBFI, quasi-fiscal, calibration, and parameter-scaling specs. |
 | Flow tests | `GovBudgetFlows`, `ZusFlows`, `NfzFlows`, `PpkFlows`, `EarmarkedFlows`, `JstFlows`, `OpenEconFlows`, `InsuranceFlows`, `NbfiFlows`, `QuasiFiscalFlows`, `GovBondFlows`, and composite flow conservation specs. |
-| Integration/nightly | Monte Carlo CSV integration, nightly diagnostics, scenario runs, sensitivity/robustness profiles, generated SFC matrix artifacts, and generated-output guard. |
+| Integration/nightly | Monte Carlo TSV integration, nightly diagnostics, scenario runs, sensitivity/robustness profiles, generated SFC matrix artifacts, and generated-output guard. |
 | Accounting | Runtime ledger execution, SFC semantic projection, generated BSM/TFM artifacts, stock-flow reconciliation, and institutional row-to-flow identity checks. |
 
 ## Current Limitations

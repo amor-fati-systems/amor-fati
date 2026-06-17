@@ -1,6 +1,6 @@
 package com.boombustgroup.amorfati.montecarlo
 
-private[montecarlo] enum McFirmSizeClass(val csvValue: String):
+private[montecarlo] enum McFirmSizeClass(val tsvValue: String):
   case Micro  extends McFirmSizeClass("Micro")
   case Small  extends McFirmSizeClass("Small")
   case Medium extends McFirmSizeClass("Medium")

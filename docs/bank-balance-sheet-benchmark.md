@@ -19,11 +19,11 @@ sbt "bankBalanceSheetBenchmark --seeds 10 --out target/bank-balance-sheet-benchm
 
 The task writes:
 
-- `bank-balance-sheet-seed-metrics.csv`: one opening ratio per seed and metric.
-- `bank-balance-sheet-summary.csv`: mean/min/max across seeds, with status.
-- `bank-balance-sheet-targets.csv`: documented target bands, vintage, and
+- `bank-balance-sheet-seed-metrics.tsv`: one opening ratio per seed and metric.
+- `bank-balance-sheet-summary.tsv`: mean/min/max across seeds, with status.
+- `bank-balance-sheet-targets.tsv`: documented target bands, vintage, and
   semantics.
-- `bank-balance-sheet-bank-rows.csv`: per-bank capital, funding, credit,
+- `bank-balance-sheet-bank-rows.tsv`: per-bank capital, funding, credit,
   liquidity, sovereign-portfolio, Polish-bank-levy taxable-asset, and
   concentration rows.
 - `bank-balance-sheet-report.md`: human-readable summary.

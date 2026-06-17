@@ -44,7 +44,7 @@ as the operational entry point.
 | --- | --- | --- |
 | [docs/data-bridge-national-financial-accounts.md](data-bridge-national-financial-accounts.md) | Calibration or empirical evidence | Empirical source bridge from Polish, EU, and financial-account data to initialization, calibration, scenarios, and validation. |
 | [docs/empirical-validation-report.md](empirical-validation-report.md) | Calibration or empirical evidence | Empirical-validation workflow and interpretation for committed validation snapshots. |
-| [docs/empirical-validation-source-manifest.csv](empirical-validation-source-manifest.csv) | Calibration or empirical evidence | Editable source manifest used by empirical-validation export. |
+| [docs/empirical-validation-source-manifest.tsv](empirical-validation-source-manifest.tsv) | Calibration or empirical evidence | Editable source manifest used by empirical-validation export. |
 | [docs/external-sector-baseline-calibration.md](external-sector-baseline-calibration.md) | Calibration or empirical evidence | External-sector baseline calibration note and evidence from the related diagnostic ticket. |
 | [docs/household-credit-stress-calibration.md](household-credit-stress-calibration.md) | Calibration or empirical evidence | Household credit stress calibration note and diagnostic evidence. |
 | [docs/private-credit-renewal-calibration.md](private-credit-renewal-calibration.md) | Calibration or empirical evidence | Private-credit renewal calibration note and baseline diagnostic evidence. |
@@ -66,15 +66,15 @@ as the operational entry point.
 | [docs/hot-path-profiling.md](hot-path-profiling.md) | Diagnostics or profiling appendix | Profiling workflow for hot execution paths and performance evidence. |
 | [docs/loan-origination-quality-diagnostics.md](loan-origination-quality-diagnostics.md) | Diagnostics or profiling appendix | Loan-origination quality diagnostic methodology and interpretation. |
 | [docs/calibration-register.md](calibration-register.md) | Generated evidence | Generated parameter register from `calibrationRegister`; records parameters, units, owners, provenance, and gaps. |
-| [docs/empirical-validation/baseline-validation-snapshot.csv](empirical-validation/baseline-validation-snapshot.csv) | Generated evidence | Generated empirical-validation baseline snapshot. |
-| [docs/empirical-validation/model-run-manifest.csv](empirical-validation/model-run-manifest.csv) | Generated evidence | Generated model-run manifest for the empirical-validation snapshot. |
-| [docs/empirical-validation/source-manifest.csv](empirical-validation/source-manifest.csv) | Generated evidence | Generated copy of the empirical-validation source manifest captured with the snapshot. |
+| [docs/empirical-validation/baseline-validation-snapshot.tsv](empirical-validation/baseline-validation-snapshot.tsv) | Generated evidence | Generated empirical-validation baseline snapshot. |
+| [docs/empirical-validation/model-run-manifest.tsv](empirical-validation/model-run-manifest.tsv) | Generated evidence | Generated model-run manifest for the empirical-validation snapshot. |
+| [docs/empirical-validation/source-manifest.tsv](empirical-validation/source-manifest.tsv) | Generated evidence | Generated copy of the empirical-validation source manifest captured with the snapshot. |
 | [docs/sfc-matrix-artifacts/flow-mechanism-semantics.md](sfc-matrix-artifacts/flow-mechanism-semantics.md) | Generated evidence | Generated audit table for every runtime `FlowMechanism`, including topology, asset class, SFC impact, survivability, and coverage. |
 | [docs/sfc-matrix-artifacts/matrix-mapping.md](sfc-matrix-artifacts/matrix-mapping.md) | Generated evidence | Generated mapping from symbolic BSM/TFM rows to runtime assets, mechanisms, and coverage notes. |
 | [docs/sfc-matrix-artifacts/stock-flow-reconciliation.md](sfc-matrix-artifacts/stock-flow-reconciliation.md) | Generated evidence | Generated executed-run evidence for exact SFC identities and stock-flow reconciliation. |
 | [docs/sfc-matrix-artifacts/symbolic-bsm.md](sfc-matrix-artifacts/symbolic-bsm.md) | Generated evidence | Generated symbolic Balance Sheet Matrix snapshot. |
 | [docs/sfc-matrix-artifacts/symbolic-tfm.md](sfc-matrix-artifacts/symbolic-tfm.md) | Generated evidence | Generated symbolic Transactions Flow Matrix snapshot. |
-| [docs/empirical-validation/README.md](empirical-validation/README.md) | Hand-maintained companion to generated evidence | Explains the empirical-validation snapshot bundle and its generated CSVs. |
+| [docs/empirical-validation/README.md](empirical-validation/README.md) | Hand-maintained companion to generated evidence | Explains the empirical-validation snapshot bundle and its generated TSVs. |
 | [docs/model-equations-to-sfc-map.md](model-equations-to-sfc-map.md) | Hand-maintained companion to generated evidence | Human-maintained bridge from equation families to generated SFC rows, identities, mechanisms, and known accounting limits. |
 | [docs/sfc-matrix-evidence.md](sfc-matrix-evidence.md) | Hand-maintained companion to generated evidence | Workflow and source-contract document for ledger-derived SFC matrix artifacts and generated SFC evidence. |
 | [docs/nightly-baseline-comparison.md](nightly-baseline-comparison.md) | Operational appendix | Nightly diagnostic baseline comparison policy and report semantics. |

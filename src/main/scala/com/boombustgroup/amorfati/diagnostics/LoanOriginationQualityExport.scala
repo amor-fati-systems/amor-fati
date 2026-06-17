@@ -4,7 +4,7 @@ import com.boombustgroup.amorfati.agents.{Banking, BankruptReason, Firm, HhFinan
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.ledger.{CorporateBondOwnership, LedgerFinancialState}
 import com.boombustgroup.amorfati.fp.FixedPointBase
-import com.boombustgroup.amorfati.montecarlo.{McCsvFile, McCsvSchema, McDiagnosticRunner, McSeedMonth}
+import com.boombustgroup.amorfati.montecarlo.{McDiagnosticRunner, McSeedMonth, McTsvFile, McTsvSchema}
 import com.boombustgroup.amorfati.types.*
 import zio.ZIO
 import zio.stream.ZStream
@@ -423,7 +423,7 @@ object LoanOriginationQualityExport:
       "FirstFutureDefaultMonth",
       "ObservedFutureMonths",
       "FutureWriteOffAmount",
-    ).mkString(";")
+    ).mkString("\t")
 
   private[diagnostics] val FirmHeader: String =
     Vector(
@@ -462,10 +462,24 @@ object LoanOriginationQualityExport:
       "FirstFutureBankruptcyMonth",
       "ObservedFutureMonths",
       "BankruptcyReason",
-    ).mkString(";")
+    ).mkString("\t")
 
   private[diagnostics] val SummaryHeader: String =
-    "RunId;BorrowerType;CohortType;CohortValue;Rows;ApprovedRows;RejectedRows;ApprovedPrincipal;FutureBadRows;FutureBadRate;MeanRiskRatio;MeanBankCar;Interpretation"
+    McTsvSchema.header(
+      "RunId",
+      "BorrowerType",
+      "CohortType",
+      "CohortValue",
+      "Rows",
+      "ApprovedRows",
+      "RejectedRows",
+      "ApprovedPrincipal",
+      "FutureBadRows",
+      "FutureBadRate",
+      "MeanRiskRatio",
+      "MeanBankCar",
+      "Interpretation",
+    )
 
   private val HouseholdCohortTypes: Vector[String] =
     Vector("IncomeDecile", "OpeningDistress", "TotalDsrBand", "OpeningBankCarBand")
@@ -497,16 +511,16 @@ object LoanOriginationQualityExport:
     ZIO
       .fromEither(validate(config))
       .flatMap: validConfig =>
-        val hhCsvPath      = validConfig.runRoot.resolve("loan-origination-quality-households.csv")
-        val firmCsvPath    = validConfig.runRoot.resolve("loan-origination-quality-firms.csv")
-        val rowOutputPaths = Vector(hhCsvPath, firmCsvPath)
+        val hhTsvPath      = validConfig.runRoot.resolve("loan-origination-quality-households.tsv")
+        val firmTsvPath    = validConfig.runRoot.resolve("loan-origination-quality-firms.tsv")
+        val rowOutputPaths = Vector(hhTsvPath, firmTsvPath)
         for
-          summaryAccumulator <- McCsvFile.writeSplitFold(
-            hhCsvPath,
-            firmCsvPath,
+          summaryAccumulator <- McTsvFile.writeSplitFold(
+            hhTsvPath,
+            firmTsvPath,
             loanRows(validConfig),
-            HouseholdRowsCsvSchema,
-            FirmRowsCsvSchema,
+            HouseholdRowsTsvSchema,
+            FirmRowsTsvSchema,
             new LoanSummaryAccumulator,
           ) {
             case LoanRow.Household(row) => Left(row)
@@ -815,15 +829,15 @@ object LoanOriginationQualityExport:
       reportStats: ReportStats,
       summaryRows: Vector[SummaryRow],
   ): ZIO[Any, String, Vector[Path]] =
-    val summaryCsvPath = config.runRoot.resolve("loan-origination-quality-summary.csv")
+    val summaryTsvPath = config.runRoot.resolve("loan-origination-quality-summary.tsv")
     val reportMdPath   = config.runRoot.resolve("loan-origination-quality-report.md")
     for
-      summaryPath <- McCsvFile.writeAll(summaryCsvPath, summaryRows, SummaryRowsCsvSchema)(DiagnosticIo.outputFailure)
+      summaryPath <- McTsvFile.writeAll(summaryTsvPath, summaryRows, SummaryRowsTsvSchema)(DiagnosticIo.outputFailure)
       reportPath  <- DiagnosticIo.writeText(reportMdPath, renderReport(config, reportStats, summaryRows))
     yield rowOutputPaths ++ Vector(summaryPath, reportPath)
 
-  private[diagnostics] val HouseholdRowsCsvSchema: McCsvSchema[HhOriginationRow] =
-    McCsvSchema(
+  private[diagnostics] val HouseholdRowsTsvSchema: McTsvSchema[HhOriginationRow] =
+    McTsvSchema(
       header = HouseholdHeader,
       render = row =>
         Vector(
@@ -876,11 +890,11 @@ object LoanOriginationQualityExport:
           row.firstFutureDefaultMonth.fold("")(_.toString),
           row.observedFutureMonths.toString,
           row.futureWriteOffAmount.format(2),
-        ).mkString(";"),
+        ).mkString("\t"),
     )
 
-  private[diagnostics] val FirmRowsCsvSchema: McCsvSchema[FirmOriginationRow] =
-    McCsvSchema(
+  private[diagnostics] val FirmRowsTsvSchema: McTsvSchema[FirmOriginationRow] =
+    McTsvSchema(
       header = FirmHeader,
       render = row =>
         Vector(
@@ -919,11 +933,11 @@ object LoanOriginationQualityExport:
           row.firstFutureBankruptcyMonth.fold("")(_.toString),
           row.observedFutureMonths.toString,
           text(row.bankruptcyReason),
-        ).mkString(";"),
+        ).mkString("\t"),
     )
 
-  private[diagnostics] val SummaryRowsCsvSchema: McCsvSchema[SummaryRow] =
-    McCsvSchema(
+  private[diagnostics] val SummaryRowsTsvSchema: McTsvSchema[SummaryRow] =
+    McTsvSchema(
       header = SummaryHeader,
       render = row =>
         Vector(
@@ -940,19 +954,19 @@ object LoanOriginationQualityExport:
           row.meanRiskRatio.map(renderDecimal).getOrElse(""),
           row.meanBankCar.map(renderDecimal).getOrElse(""),
           text(row.interpretation),
-        ).mkString(";"),
+        ).mkString("\t"),
     )
 
   private[diagnostics] def renderHouseholdRows(rows: Vector[HhOriginationRow]): String =
-    renderCsv(HouseholdRowsCsvSchema, rows)
+    renderTsv(HouseholdRowsTsvSchema, rows)
 
   private[diagnostics] def renderFirmRows(rows: Vector[FirmOriginationRow]): String =
-    renderCsv(FirmRowsCsvSchema, rows)
+    renderTsv(FirmRowsTsvSchema, rows)
 
   private[diagnostics] def renderSummaryRows(rows: Vector[SummaryRow]): String =
-    renderCsv(SummaryRowsCsvSchema, rows)
+    renderTsv(SummaryRowsTsvSchema, rows)
 
-  private def renderCsv[A](schema: McCsvSchema[A], rows: Vector[A]): String =
+  private def renderTsv[A](schema: McTsvSchema[A], rows: Vector[A]): String =
     (schema.header +: rows.map(schema.render)).mkString("\n") + "\n"
 
   private def renderReport(
@@ -983,9 +997,9 @@ object LoanOriginationQualityExport:
       "",
       "## Outputs",
       "",
-      "- `loan-origination-quality-households.csv`: household consumer-credit demand/origination rows joined to later arrears/default/write-off outcomes.",
-      "- `loan-origination-quality-firms.csv`: firm credit-decision rows joined to later bankruptcy outcomes.",
-      "- `loan-origination-quality-summary.csv`: cohort-level default/bankruptcy rates.",
+      "- `loan-origination-quality-households.tsv`: household consumer-credit demand/origination rows joined to later arrears/default/write-off outcomes.",
+      "- `loan-origination-quality-firms.tsv`: firm credit-decision rows joined to later bankruptcy outcomes.",
+      "- `loan-origination-quality-summary.tsv`: cohort-level default/bankruptcy rates.",
       "- `loan-origination-quality-report.md`: this summary.",
       "",
       "## Quick Read",
@@ -1036,7 +1050,7 @@ object LoanOriginationQualityExport:
     else
       Some(
         FirmCreditLeg(
-          decisionType = trace.techCreditDecisionType.getOrElse(trace.decisionType).csvValue,
+          decisionType = trace.techCreditDecisionType.getOrElse(trace.decisionType).tsvValue,
           creditPurpose = techCreditPurpose(trace.techCreditDecisionType.getOrElse(trace.decisionType)),
           bankApproval = trace.selectedBankApproval,
           observedCreditNeed = need,
@@ -1051,7 +1065,7 @@ object LoanOriginationQualityExport:
     else
       Some(
         FirmCreditLeg(
-          decisionType = trace.decisionType.csvValue,
+          decisionType = trace.decisionType.tsvValue,
           creditPurpose = "physical-investment",
           bankApproval = trace.investmentBankApproval,
           observedCreditNeed = need.max(principal),
@@ -1141,7 +1155,7 @@ object LoanOriginationQualityExport:
     value.setScale(6, RoundingMode.HALF_UP).bigDecimal.stripTrailingZeros.toPlainString
 
   private def text(value: String): String =
-    value.replace(';', ',').replace('\n', ' ').replace('\r', ' ')
+    value.replace('\t', ' ').replace('\n', ' ').replace('\r', ' ')
 
   private def parseInt(value: String, flag: String): Either[String, Int] =
     Try(value.toInt).toOption.toRight(s"$flag must be an integer")

@@ -42,9 +42,9 @@ class McRunnerConsoleSpec extends AnyFlatSpec with Matchers:
   }
 
   it should "format saved file reporting consistently" in {
-    val savedFile = McRunnerConsole.Event.SavedFile("/tmp/output.csv")
+    val savedFile = McRunnerConsole.Event.SavedFile("/tmp/output.tsv")
 
-    McRunnerConsole.render(savedFile) shouldBe "Saved: /tmp/output.csv"
+    McRunnerConsole.render(savedFile) shouldBe "Saved: /tmp/output.tsv"
   }
 
   it should "format a blank separator consistently" in {

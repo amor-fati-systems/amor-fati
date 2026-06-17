@@ -2,7 +2,7 @@ package com.boombustgroup.amorfati.diagnostics
 
 import com.boombustgroup.amorfati.config.ScenarioRegistry
 import com.boombustgroup.amorfati.config.ScenarioRegistry.{DeltaProvenance, ParameterDelta, ScenarioSpec}
-import com.boombustgroup.amorfati.montecarlo.{McCsvFile, McCsvSchema, McDiagnosticRunner, McSeedMonth, McTimeseriesSchema, MetricValue}
+import com.boombustgroup.amorfati.montecarlo.{McDiagnosticRunner, McSeedMonth, McTimeseriesSchema, McTsvFile, McTsvSchema, MetricValue}
 import zio.ZIO
 
 import java.nio.file.Path
@@ -57,9 +57,9 @@ object ScenarioRunExport:
     for
       validConfig   <- ZIO.fromEither(validate(config))
       registryPath  <- DiagnosticIo.writeText(validConfig.runRoot.resolve("scenario-registry.md"), renderRegistry(validConfig.scenarios))
-      deltasPath     = validConfig.runRoot.resolve("scenario-deltas.csv")
+      deltasPath     = validConfig.runRoot.resolve("scenario-deltas.tsv")
       deltaRows      = validConfig.scenarios.flatMap(scenario => scenario.deltas.map(delta => ScenarioDeltaRow(scenario.id, delta)))
-      _             <- McCsvFile.writeAll(deltasPath, deltaRows, DeltasCsvSchema)(DiagnosticIo.outputFailure)
+      _             <- McTsvFile.writeAll(deltasPath, deltaRows, DeltasTsvSchema)(DiagnosticIo.outputFailure)
       metadataPaths <- ZIO.foreach(validConfig.scenarios): scenario =>
         DiagnosticIo.writeText(validConfig.runRoot.resolve(scenario.id).resolve("metadata.md"), renderScenarioMetadata(validConfig, scenario))
       outputs       <- McDiagnosticRunner
@@ -70,8 +70,8 @@ object ScenarioRunExport:
         .map(_.toVector)
       paths          = Vector(registryPath, deltasPath) ++ metadataPaths ++ outputs.flatMap(_.paths)
       metrics        = outputs.flatMap(_.metrics)
-      summaryPath    = validConfig.runRoot.resolve("run-summary.csv")
-      _             <- McCsvFile.writeAll(summaryPath, metrics, RunSummaryCsvSchema)(DiagnosticIo.outputFailure)
+      summaryPath    = validConfig.runRoot.resolve("run-summary.tsv")
+      _             <- McTsvFile.writeAll(summaryPath, metrics, RunSummaryTsvSchema)(DiagnosticIo.outputFailure)
     yield ExportResult(paths :+ summaryPath)
 
   def parseArgs(args: Vector[String]): Either[String, Config] =
@@ -116,17 +116,17 @@ object ScenarioRunExport:
       seed: Long,
       months: zio.stream.ZStream[Any, String, McSeedMonth],
   ): ZIO[Any, String, SeedRunOutput] =
-    val csvPath = config.runRoot.resolve(scenario.id).resolve(f"${config.runId}_${scenario.id}_${config.months}m_seed$seed%03d.csv")
-    McCsvFile
+    val tsvPath = config.runRoot.resolve(scenario.id).resolve(f"${config.runId}_${scenario.id}_${config.months}m_seed$seed%03d.tsv")
+    McTsvFile
       .writeStreaming(
-        csvPath,
+        tsvPath,
         months,
-        TimeSeriesCsvSchema,
+        TimeSeriesTsvSchema,
         s"Scenario ${scenario.id} seed $seed produced no monthly rows",
       )(DiagnosticIo.outputFailure)
       .map: terminal =>
         val metrics = Metrics.map(metric => TerminalMetric(scenario.id, seed, metric, terminal.row(metric.ordinal)))
-        SeedRunOutput(Vector(csvPath), metrics)
+        SeedRunOutput(Vector(tsvPath), metrics)
 
   private[diagnostics] def renderRegistry(scenarios: Vector[ScenarioSpec]): String =
     val rows = scenarios.map: scenario =>
@@ -157,7 +157,7 @@ object ScenarioRunExport:
 
   private[diagnostics] def renderDeltas(scenarios: Vector[ScenarioSpec]): String =
     val rows = scenarios.flatMap(scenario => scenario.deltas.map(delta => ScenarioDeltaRow(scenario.id, delta)))
-    renderCsv(DeltasCsvSchema, rows)
+    renderTsv(DeltasTsvSchema, rows)
 
   private[diagnostics] def renderScenarioMetadata(config: Config, scenario: ScenarioSpec): String =
     val channelRows = scenario.expectedChannels.map(channel => s"- `$channel`")
@@ -203,9 +203,19 @@ object ScenarioRunExport:
 
     lines.mkString("\n") + "\n"
 
-  private val DeltasCsvSchema: McCsvSchema[ScenarioDeltaRow] =
-    McCsvSchema(
-      header = "Scenario;Parameter;Baseline;ScenarioValue;Note;ProvenanceClassification;SourceProvider;Vintage;TransformationNotes",
+  private val DeltasTsvSchema: McTsvSchema[ScenarioDeltaRow] =
+    McTsvSchema(
+      header = McTsvSchema.header(
+        "Scenario",
+        "Parameter",
+        "Baseline",
+        "ScenarioValue",
+        "Note",
+        "ProvenanceClassification",
+        "SourceProvider",
+        "Vintage",
+        "TransformationNotes",
+      ),
       render = row =>
         val provenance = row.delta.provenance
         Vector(
@@ -218,19 +228,19 @@ object ScenarioRunExport:
           provenance.sourceProvider.getOrElse(""),
           provenance.vintage.getOrElse(""),
           provenance.transformationNotes.getOrElse(""),
-        ).map(csv).mkString(";"),
+        ).map(tsv).mkString("\t"),
     )
 
-  private val RunSummaryCsvSchema: McCsvSchema[TerminalMetric] =
-    McCsvSchema(
-      header = "Scenario;Seed;Metric;TerminalValue",
-      render = row => Vector(row.scenarioId, row.seed.toString, row.metric.id, fmt(row.value)).mkString(";"),
+  private val RunSummaryTsvSchema: McTsvSchema[TerminalMetric] =
+    McTsvSchema(
+      header = McTsvSchema.header("Scenario", "Seed", "Metric", "TerminalValue"),
+      render = row => Vector(row.scenarioId, row.seed.toString, row.metric.id, fmt(row.value)).mkString("\t"),
     )
 
-  private val TimeSeriesCsvSchema: McCsvSchema[McSeedMonth] =
-    McTimeseriesSchema.csvSchema.contramap(month => (month.executionMonth, month.row))
+  private val TimeSeriesTsvSchema: McTsvSchema[McSeedMonth] =
+    McTimeseriesSchema.tsvSchema.contramap(month => (month.executionMonth, month.row))
 
-  private def renderCsv[A](schema: McCsvSchema[A], rows: Vector[A]): String =
+  private def renderTsv[A](schema: McTsvSchema[A], rows: Vector[A]): String =
     (schema.header +: rows.map(schema.render)).mkString("\n") + "\n"
 
   private def knownFlag(flag: String): Boolean =
@@ -261,8 +271,8 @@ object ScenarioRunExport:
     val distinct = values.iterator.map(_.trim).filter(_.nonEmpty).toVector.distinct
     if distinct.isEmpty then "n/a" else distinct.mkString(", ")
 
-  private def csv(value: String): String =
-    if value.exists(ch => ch == ';' || ch == '"' || ch == '\n') then "\"" + value.replace("\"", "\"\"") + "\""
+  private def tsv(value: String): String =
+    if value.exists(ch => ch == '\t' || ch == '"' || ch == '\n' || ch == '\r') then "\"" + value.replace("\"", "\"\"") + "\""
     else value
 
   private def fmt(value: MetricValue): String =

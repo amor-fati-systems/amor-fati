@@ -43,9 +43,9 @@ JAR hash: `fe8e8e0d472a2488d44de95379d8b1db3de38c4b`.
 The run completed all 10 seeds and wrote:
 
 ```text
-mc/issue610-nbfi-final_20260525-610-final-nbfi_60m_seed001.csv
+mc/issue610-nbfi-final_20260525-610-final-nbfi_60m_seed001.tsv
 ...
-mc/issue610-nbfi-final_20260525-610-final-nbfi_60m_seed010.csv
+mc/issue610-nbfi-final_20260525-610-final-nbfi_60m_seed010.tsv
 ```
 
 Terminal `TotalCreditToGdp` improved from the #523 final baseline mean of

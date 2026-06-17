@@ -1,7 +1,7 @@
 package com.boombustgroup.amorfati.diagnostics
 
 import com.boombustgroup.amorfati.config.SimParams
-import com.boombustgroup.amorfati.montecarlo.{McCsvFile, McCsvSchema, McDiagnosticRunner, McSeedMonth, McTimeseriesSchema, MetricValue}
+import com.boombustgroup.amorfati.montecarlo.{McDiagnosticRunner, McSeedMonth, McTimeseriesSchema, McTsvFile, McTsvSchema, MetricValue}
 import com.boombustgroup.amorfati.montecarlo.MetricValue.*
 import com.boombustgroup.amorfati.types.*
 import zio.ZIO
@@ -434,13 +434,13 @@ object HouseholdCreditStressCalibrationExport:
   def runZIO(config: Config): ZIO[Any, String, ExportResult] =
     for
       validConfig <- ZIO.fromEither(validate(config))
-      seedMetrics <- McCsvFile
+      seedMetrics <- McTsvFile
         .writeFold(
-          validConfig.runRoot.resolve("household-credit-stress-seed-metrics.csv"),
+          validConfig.runRoot.resolve("household-credit-stress-seed-metrics.tsv"),
           McDiagnosticRunner
             .runSeeds(validConfig.seedRange, validConfig.months, SimParams.defaults)((seed, months) => computeSeedMetricsZIO(validConfig, seed, months))
             .flatMap(rows => ZStream.fromIterable(rows)),
-          SeedMetricsCsvSchema,
+          SeedMetricsTsvSchema,
           Vector.newBuilder[SeedMetric],
         )((builder, row) => builder += row)(DiagnosticIo.outputFailure)
         .map(_.result())
@@ -535,28 +535,43 @@ object HouseholdCreditStressCalibrationExport:
       )
 
   private def writeArtifactsZIO(config: Config, summary: Vector[SummaryMetric]): ZIO[Any, String, Vector[Path]] =
-    val seedMetricsPath = config.runRoot.resolve("household-credit-stress-seed-metrics.csv")
-    val summaryPath     = config.runRoot.resolve("household-credit-stress-summary.csv")
-    val targetPath      = config.runRoot.resolve("household-credit-stress-targets.csv")
+    val seedMetricsPath = config.runRoot.resolve("household-credit-stress-seed-metrics.tsv")
+    val summaryPath     = config.runRoot.resolve("household-credit-stress-summary.tsv")
+    val targetPath      = config.runRoot.resolve("household-credit-stress-targets.tsv")
     val reportPath      = config.runRoot.resolve("household-credit-stress-report.md")
     for
-      _ <- McCsvFile.writeAll(summaryPath, summary, SummaryCsvSchema)(DiagnosticIo.outputFailure)
-      _ <- McCsvFile.writeAll(targetPath, Targets, TargetsCsvSchema)(DiagnosticIo.outputFailure)
+      _ <- McTsvFile.writeAll(summaryPath, summary, SummaryTsvSchema)(DiagnosticIo.outputFailure)
+      _ <- McTsvFile.writeAll(targetPath, Targets, TargetsTsvSchema)(DiagnosticIo.outputFailure)
       _ <- DiagnosticIo.writeText(reportPath, renderReport(config, summary))
     yield Vector(seedMetricsPath, summaryPath, targetPath, reportPath)
 
-  private[diagnostics] def renderSeedMetricsCsv(rows: Vector[SeedMetric]): String =
-    renderCsv(SeedMetricsCsvSchema, rows)
+  private[diagnostics] def renderSeedMetricsTsv(rows: Vector[SeedMetric]): String =
+    renderTsv(SeedMetricsTsvSchema, rows)
 
-  private[diagnostics] def renderSummaryCsv(rows: Vector[SummaryMetric]): String =
-    renderCsv(SummaryCsvSchema, rows)
+  private[diagnostics] def renderSummaryTsv(rows: Vector[SummaryMetric]): String =
+    renderTsv(SummaryTsvSchema, rows)
 
-  private[diagnostics] def renderTargetsCsv(targets: Vector[TargetBand]): String =
-    renderCsv(TargetsCsvSchema, targets)
+  private[diagnostics] def renderTargetsTsv(targets: Vector[TargetBand]): String =
+    renderTsv(TargetsTsvSchema, targets)
 
-  private val SeedMetricsCsvSchema: McCsvSchema[SeedMetric] =
-    McCsvSchema(
-      header = "RunId;Seed;Months;Metric;Label;Value;Unit;GuardrailClass;Vintage;Lower;Upper;Status;SourceNote;Interpretation",
+  private val SeedMetricsTsvSchema: McTsvSchema[SeedMetric] =
+    McTsvSchema(
+      header = McTsvSchema.header(
+        "RunId",
+        "Seed",
+        "Months",
+        "Metric",
+        "Label",
+        "Value",
+        "Unit",
+        "GuardrailClass",
+        "Vintage",
+        "Lower",
+        "Upper",
+        "Status",
+        "SourceNote",
+        "Interpretation",
+      ),
       render = row =>
         Vector(
           row.runId,
@@ -573,12 +588,29 @@ object HouseholdCreditStressCalibrationExport:
           row.status.token,
           row.target.sourceNote,
           row.target.interpretation,
-        ).map(csv).mkString(";"),
+        ).map(tsv).mkString("\t"),
     )
 
-  private val SummaryCsvSchema: McCsvSchema[SummaryMetric] =
-    McCsvSchema(
-      header = "RunId;Months;Seeds;Metric;Label;Mean;Min;Max;Unit;GuardrailClass;Vintage;Lower;Upper;Status;SourceNote;Interpretation",
+  private val SummaryTsvSchema: McTsvSchema[SummaryMetric] =
+    McTsvSchema(
+      header = McTsvSchema.header(
+        "RunId",
+        "Months",
+        "Seeds",
+        "Metric",
+        "Label",
+        "Mean",
+        "Min",
+        "Max",
+        "Unit",
+        "GuardrailClass",
+        "Vintage",
+        "Lower",
+        "Upper",
+        "Status",
+        "SourceNote",
+        "Interpretation",
+      ),
       render = row =>
         Vector(
           row.runId,
@@ -597,12 +629,12 @@ object HouseholdCreditStressCalibrationExport:
           row.status.token,
           row.target.sourceNote,
           row.target.interpretation,
-        ).map(csv).mkString(";"),
+        ).map(tsv).mkString("\t"),
     )
 
-  private val TargetsCsvSchema: McCsvSchema[TargetBand] =
-    McCsvSchema(
-      header = "Metric;Label;Unit;GuardrailClass;Vintage;Lower;Upper;SourceNote;Interpretation",
+  private val TargetsTsvSchema: McTsvSchema[TargetBand] =
+    McTsvSchema(
+      header = McTsvSchema.header("Metric", "Label", "Unit", "GuardrailClass", "Vintage", "Lower", "Upper", "SourceNote", "Interpretation"),
       render = target =>
         Vector(
           target.id,
@@ -614,10 +646,10 @@ object HouseholdCreditStressCalibrationExport:
           target.upper.map(renderDecimal).getOrElse(""),
           target.sourceNote,
           target.interpretation,
-        ).map(csv).mkString(";"),
+        ).map(tsv).mkString("\t"),
     )
 
-  private def renderCsv[A](schema: McCsvSchema[A], rows: Vector[A]): String =
+  private def renderTsv[A](schema: McTsvSchema[A], rows: Vector[A]): String =
     (schema.header +: rows.map(schema.render)).mkString("\n") + "\n"
 
   private[diagnostics] def renderReport(config: Config, summary: Vector[SummaryMetric]): String =
@@ -703,9 +735,9 @@ object HouseholdCreditStressCalibrationExport:
   private def bound(value: Option[BigDecimal]): String =
     value.map(renderDecimal).getOrElse("n/a")
 
-  private def csv(value: String): String =
+  private def tsv(value: String): String =
     val escaped = value.replace("\"", "\"\"")
-    if escaped.exists(ch => ch == ';' || ch == '"' || ch == '\n' || ch == '\r') then s""""$escaped""""
+    if escaped.exists(ch => ch == '\t' || ch == '"' || ch == '\n' || ch == '\r') then s""""$escaped""""
     else escaped
 
   private def markdownRow(values: Vector[String]): String =

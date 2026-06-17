@@ -16,7 +16,7 @@ import zio.{Clock, ZIO}
 import java.io.File
 import java.util.concurrent.TimeUnit
 
-/** Monte Carlo runner: simulation loop, per-seed CSV output. */
+/** Monte Carlo runner: simulation loop, per-seed TSV output. */
 object McRunner:
 
   /** Single month snapshot emitted by [[seedStream]]. */
@@ -32,7 +32,7 @@ object McRunner:
   private case class SeedTerminalSnapshot(executionMonth: ExecutionMonth, lastMonthData: Array[MetricValue], terminalState: FlowSimulation.SimState)
 
   /** Run N seeds in parallel, each streaming months via [[seedStream]]. Writes
-    * per-seed CSV + aggregated HH/bank CSVs. Fails with [[SimError]].
+    * per-seed TSV + aggregated HH/bank TSVs. Fails with [[SimError]].
     */
   def runZIO(rc: McRunConfig)(using p: SimParams): ZIO[Any, SimError, Unit] =
     runZIO(rc, new File("mc"))
@@ -48,11 +48,11 @@ object McRunner:
         .mapZIOPar(parallelism): seed =>
           runSeed(seed, rc, outputDir)
         .runCollect
-      _         <- McTerminalSummaryCsv.writeAll(rc, outputDir, summaries)
-      _         <- McFirmSnapshotCsv.combineSeedFiles(rc, outputDir)
-      _         <- McHouseholdSnapshotCsv.combineSeedFiles(rc, outputDir)
-      _         <- McHouseholdShortfallCohortCsv.combineSeedFiles(rc, outputDir)
-      _         <- McFirmDecisionTraceCsv.combineSeedFiles(rc, outputDir)
+      _         <- McTerminalSummaryTsv.writeAll(rc, outputDir, summaries)
+      _         <- McFirmSnapshotTsv.combineSeedFiles(rc, outputDir)
+      _         <- McHouseholdSnapshotTsv.combineSeedFiles(rc, outputDir)
+      _         <- McHouseholdShortfallCohortTsv.combineSeedFiles(rc, outputDir)
+      _         <- McFirmDecisionTraceTsv.combineSeedFiles(rc, outputDir)
       _         <- McRunnerConsole.emit(Event.BlankLine)
       _         <- McRunnerConsole.emitAll(McOutputFiles.savedFiles(outputDir, rc).map(file => Event.SavedFile(file.getPath)))
       t1        <- Clock.currentTime(TimeUnit.MILLISECONDS)
@@ -70,7 +70,7 @@ object McRunner:
     ZStream.unwrap(ZIO.fromEither(initSeed(seed)).map(simulateMonths(seed, _, durationMonths, traceFirmDecisions)))
 
   /** Canonical monthly seed stream for diagnostics. This is the same runtime
-    * path used by [[runZIO]], without production-only CSV/snapshot taps.
+    * path used by [[runZIO]], without production-only TSV/snapshot taps.
     */
   private[amorfati] def seedMonths(seed: Long, durationMonths: Int, traceFirmDecisions: Boolean = false)(using SimParams): ZStream[Any, SimError, McSeedMonth] =
     seedStream(seed, durationMonths, traceFirmDecisions).map: snapshot =>
@@ -159,7 +159,7 @@ object McRunner:
 
     collect(steps, initState)
 
-  /** Stream a seed directly to its CSV and retain only the terminal summary
+  /** Stream a seed directly to its TSV and retain only the terminal summary
     * slice needed for aggregate outputs.
     */
   private def runSeed(seed: Long, rc: McRunConfig, outputDir: File)(using p: SimParams): ZIO[Any, SimError, McTerminalSummaryRows] =
@@ -169,7 +169,7 @@ object McRunner:
         seedStream(seed, rc.runDurationMonths, traceFirmDecisions = rc.firmDecisionTraceSelection.enabled)
           .tap(snapshot => McRunnerConsole.emit(monthProgressEvent(seed, rc.nSeeds, snapshot.executionMonth, rc.runDurationMonths)))
       tracedRows  =
-        McFirmDecisionTraceCsv.tapSeedTraces(
+        McFirmDecisionTraceTsv.tapSeedTraces(
           seed = seed,
           rc = rc,
           outputDir = outputDir,
@@ -179,7 +179,7 @@ object McRunner:
           decisionTraces = _.firmDecisionTraces,
         )
       snapshots   =
-        McFirmSnapshotCsv.tapSeedSnapshots(
+        McFirmSnapshotTsv.tapSeedSnapshots(
           seed = seed,
           rc = rc,
           outputDir = outputDir,
@@ -189,7 +189,7 @@ object McRunner:
           state = _.state,
         )
       hhSnapshots =
-        McHouseholdSnapshotCsv.tapSeedSnapshots(
+        McHouseholdSnapshotTsv.tapSeedSnapshots(
           seed = seed,
           rc = rc,
           outputDir = outputDir,
@@ -200,7 +200,7 @@ object McRunner:
           monthlyFlows = _.householdMonthlyFlows,
         )
       hhCohorts   =
-        McHouseholdShortfallCohortCsv.tapSeedCohorts(
+        McHouseholdShortfallCohortTsv.tapSeedCohorts(
           seed = seed,
           rc = rc,
           outputDir = outputDir,
@@ -210,11 +210,11 @@ object McRunner:
           state = _.householdSnapshotState,
           monthlyFlows = _.householdMonthlyFlows,
         )
-      terminal   <- McTimeseriesCsv.writeStreaming(
+      terminal   <- McTimeseriesTsv.writeStreaming(
         McOutputFiles.seedFile(outputDir, seed, rc),
         hhCohorts
           .map(snapshot => SeedTerminalSnapshot(snapshot.executionMonth, snapshot.monthData, snapshot.state)),
-        McTimeseriesSchema.csvSchema.contramap(snapshot => (snapshot.executionMonth, snapshot.lastMonthData)),
+        McTimeseriesSchema.tsvSchema.contramap(snapshot => (snapshot.executionMonth, snapshot.lastMonthData)),
         SimError.RuntimeFailure(
           "materialize seed",
           s"seed $seed produced no monthly snapshots for duration ${rc.runDurationMonths}",

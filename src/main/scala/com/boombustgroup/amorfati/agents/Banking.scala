@@ -41,7 +41,7 @@ object Banking:
 
   /** Primary reason for a bank newly entering failure/resolution state.
     *
-    * Codes are stable CSV diagnostics: 0 is reserved for "none".
+    * Codes are stable TSV diagnostics: 0 is reserved for "none".
     */
   enum BankFailureReason(val code: Int):
     case NegativeCapital    extends BankFailureReason(1)

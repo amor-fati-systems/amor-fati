@@ -43,7 +43,7 @@ object McTimeseriesSchema:
   /** Column definition: name paired with its computation. */
   private final case class ColumnDef private (name: String, compute: Ctx => MetricValue)
 
-  /** Named schema section. The flat CSV contract is the deterministic
+  /** Named schema section. The flat TSV contract is the deterministic
     * concatenation of these domain groups.
     */
   private final case class ColumnGroup(name: String, columns: Vector[ColumnDef])
@@ -1031,7 +1031,7 @@ object McTimeseriesSchema:
   //  Flat schema — deterministic composition of domain groups
   // -------------------------------------------------------------------------
 
-  // Group order is CSV order. Domain-prefixed subgroups preserve the historical
+  // Group order is TSV order. Domain-prefixed subgroups preserve the historical
   // column contract where conceptual domains are not contiguous.
   private val schemaGroups: Vector[ColumnGroup] = Vector(
     ColumnGroup("macro", macroGroup),
@@ -1354,13 +1354,13 @@ object McTimeseriesSchema:
   /** Number of columns — derived from schema. */
   val nCols: Int = schema.length
 
-  private[amorfati] val csvSchema: McCsvSchema[(ExecutionMonth, Array[MetricValue])] =
-    McCsvSchema(
-      header = colNames.mkString(";"),
+  private[amorfati] val tsvSchema: McTsvSchema[(ExecutionMonth, Array[MetricValue])] =
+    McTsvSchema(
+      header = colNames.mkString("\t"),
       render = (month, row) =>
         val sb = new StringBuilder
         sb.append(month.toInt)
-        for c <- 1 until nCols do sb.append(";").append(row(c).format(6))
+        for c <- 1 until nCols do sb.append("\t").append(row(c).format(6))
         sb.toString,
     )
 

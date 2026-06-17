@@ -260,7 +260,7 @@ Validation is layered:
 | Layer | Role |
 | --- | --- |
 | Unit/property tests | Local mechanism, algebraic, schema, parser, and invariant checks |
-| Integration tests | Short end-to-end engine health and deterministic CSV checks |
+| Integration tests | Short end-to-end engine health and deterministic TSV checks |
 | Generated-output guard | Ensures committed generated docs/resources match source generators |
 | Diagnostics profiles | Long validation and research diagnostics from assembled jar under Nix |
 | Nightly health summary | Compact thresholded verdict over existing diagnostics artifacts |
@@ -280,7 +280,7 @@ validation, diagnostics, profiling, scenario, and generated-output contracts.
 ## Observation Surfaces
 
 The primary numeric model output is the Monte Carlo time-series schema, backed
-by CSV outputs and diagnostics artifacts. Representative surfaces include:
+by TSV outputs and diagnostics artifacts. Representative surfaces include:
 
 - macro variables: GDP proxy, inflation, unemployment, wages, public debt,
   fiscal balance, current account, prices, monetary aggregates;

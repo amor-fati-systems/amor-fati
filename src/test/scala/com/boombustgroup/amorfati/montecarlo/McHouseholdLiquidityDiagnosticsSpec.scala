@@ -54,8 +54,8 @@ class McHouseholdLiquidityDiagnosticsSpec extends AnyFlatSpec with Matchers:
       .copy(ledgerFinancialState = init.ledgerFinancialState.copy(households = balances))
 
     val spec   = McTerminalSummarySchema.specs.find(_.id == McTerminalSummaryId.Household).getOrElse(fail("missing household summary spec"))
-    val header = spec.csvSchema.header.split(";").toVector
-    val row    = McTerminalSummarySchema.fromTerminalState(1L, state).rowsFor(McTerminalSummaryId.Household).head.split(";").toVector
+    val header = spec.tsvSchema.header.split("\t").toVector
+    val row    = McTerminalSummarySchema.fromTerminalState(1L, state).rowsFor(McTerminalSummaryId.Household).head.split("\t").toVector
 
     def field(name: String): String =
       val idx = header.indexOf(name)

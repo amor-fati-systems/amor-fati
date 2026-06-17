@@ -261,7 +261,7 @@ requires initialization, scenario, output, and diagnostic configuration.
 | --- | --- |
 | Unit tests | `InitRandomnessSpec` and `MonthRandomnessSpec` validate stable named stream derivation, distinct stream seeds, and changed-root behavior. |
 | Engine tests | Flow simulation, month lineage, SFC, and integration specs validate deterministic step behavior under explicit randomness contracts. |
-| Monte Carlo tests | Monte Carlo CSV integration validates deterministic per-seed and summary outputs on the production runner path. |
+| Monte Carlo tests | Monte Carlo TSV integration validates deterministic per-seed and summary outputs on the production runner path. |
 | Diagnostics | Scenario, robustness, lead-lag, loan-origination, nightly, and profiling workflows record seed/month settings and use fixed seed ranges. |
 | Generated artifacts | Generated SFC and documentation outputs are guarded so committed evidence remains reproducible from source. |
 

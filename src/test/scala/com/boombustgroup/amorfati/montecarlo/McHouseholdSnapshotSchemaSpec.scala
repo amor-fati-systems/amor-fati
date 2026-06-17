@@ -17,12 +17,119 @@ class McHouseholdSnapshotSchemaSpec extends AnyFlatSpec with Matchers:
 
   "McHouseholdSnapshotSchema" should "keep the household snapshot header stable" in {
     McHouseholdSnapshotSchema.header shouldBe
-      "RunId;Seed;Month;HouseholdId;Status;Region;ContractType;BankId;Wage;Rent;MPC;Skill;HealthPenalty;FinancialDistressMonths;FinancialDistressState;DemandDeposit;MortgageLoan;ConsumerLoan;Equity;PositiveDeposit;ImplicitOverdraft;NetLiquidPosition;NetFinancialPosition;OpeningDemandDeposit;OpeningConsumerLoan;MonthlyIncome;Consumption;UnmetBasicConsumption;DiscretionaryConsumptionCompression;RentPaid;MortgageDebtService;ConsumerApprovedOrigination;ConsumerCreditDemand;ConsumerRejectedOrigination;ConsumerBankRejectedOrigination;ConsumerBankApprovalProduct;ConsumerBankRejectionReason;ConsumerBankApprovalProbability;ConsumerBankApprovalRoll;ConsumerBankProjectedCAR;ConsumerBankMinCAR;ConsumerBankManagementCAR;ConsumerBankCapitalThrottle;ConsumerBankLCR;ConsumerBankNSFR;ConsumerBankPortfolioRiskAdjustedLoanReturn;ConsumerBankPortfolioRiskAdjustedBondReturn;ConsumerBankPortfolioWedge;ConsumerBankPortfolioExpectedLossComponent;ConsumerBankPortfolioCapitalComponent;ConsumerBankPortfolioLevyComponent;ConsumerBankPortfolioFundingComponent;ConsumerBankPortfolioPriceShare;ConsumerBankPortfolioPriceContribution;ConsumerBankPortfolioQuantityThrottle;LiquidityShortfallFinancing;ConsumptionShortfall;RentArrears;MortgageArrears;ConsumerDebtArrears;TemporaryOverdraft;ConsumerDebtService;ConsumerDefault;ConsumerLoanDefault;LiquidityBridgeChargeOff;ConsumerPrincipal;ClosingConsumerLoan"
+      McTsvSchema.header(
+        "RunId",
+        "Seed",
+        "Month",
+        "HouseholdId",
+        "Status",
+        "Region",
+        "ContractType",
+        "BankId",
+        "Wage",
+        "Rent",
+        "MPC",
+        "Skill",
+        "HealthPenalty",
+        "FinancialDistressMonths",
+        "FinancialDistressState",
+        "DemandDeposit",
+        "MortgageLoan",
+        "ConsumerLoan",
+        "Equity",
+        "PositiveDeposit",
+        "ImplicitOverdraft",
+        "NetLiquidPosition",
+        "NetFinancialPosition",
+        "OpeningDemandDeposit",
+        "OpeningConsumerLoan",
+        "MonthlyIncome",
+        "Consumption",
+        "UnmetBasicConsumption",
+        "DiscretionaryConsumptionCompression",
+        "RentPaid",
+        "MortgageDebtService",
+        "ConsumerApprovedOrigination",
+        "ConsumerCreditDemand",
+        "ConsumerRejectedOrigination",
+        "ConsumerBankRejectedOrigination",
+        "ConsumerBankApprovalProduct",
+        "ConsumerBankRejectionReason",
+        "ConsumerBankApprovalProbability",
+        "ConsumerBankApprovalRoll",
+        "ConsumerBankProjectedCAR",
+        "ConsumerBankMinCAR",
+        "ConsumerBankManagementCAR",
+        "ConsumerBankCapitalThrottle",
+        "ConsumerBankLCR",
+        "ConsumerBankNSFR",
+        "ConsumerBankPortfolioRiskAdjustedLoanReturn",
+        "ConsumerBankPortfolioRiskAdjustedBondReturn",
+        "ConsumerBankPortfolioWedge",
+        "ConsumerBankPortfolioExpectedLossComponent",
+        "ConsumerBankPortfolioCapitalComponent",
+        "ConsumerBankPortfolioLevyComponent",
+        "ConsumerBankPortfolioFundingComponent",
+        "ConsumerBankPortfolioPriceShare",
+        "ConsumerBankPortfolioPriceContribution",
+        "ConsumerBankPortfolioQuantityThrottle",
+        "LiquidityShortfallFinancing",
+        "ConsumptionShortfall",
+        "RentArrears",
+        "MortgageArrears",
+        "ConsumerDebtArrears",
+        "TemporaryOverdraft",
+        "ConsumerDebtService",
+        "ConsumerDefault",
+        "ConsumerLoanDefault",
+        "LiquidityBridgeChargeOff",
+        "ConsumerPrincipal",
+        "ClosingConsumerLoan",
+      )
   }
 
   "McHouseholdShortfallCohortSchema" should "keep the household shortfall cohort header stable" in {
     McHouseholdShortfallCohortSchema.header shouldBe
-      "RunId;Seed;Month;Dimension;Cohort;HouseholdCount;ShortfallHouseholdCount;ShortfallHouseholdShare;LiquidityShortfallFinancing;ShortfallShareOfMonth;ConsumptionShortfall;RentArrears;MortgageArrears;ConsumerDebtArrears;TemporaryOverdraft;ConsumerApprovedOrigination;ConsumerCreditDemand;ConsumerRejectedOrigination;ConsumerBankRejectedOrigination;ConsumerDebtService;ConsumerDefault;ConsumerLoanDefault;LiquidityBridgeChargeOff;ConsumerPrincipal;OpeningDemandDeposit;ClosingDemandDeposit;OpeningConsumerLoan;ClosingConsumerLoan;MonthlyIncome;Consumption;UnmetBasicConsumption;DiscretionaryConsumptionCompression;Rent;MortgageDebtService;RentToIncome;MortgageDebtServiceToIncome;ConsumerDebtServiceToIncome;ClosingConsumerLoanToIncome"
+      McTsvSchema.header(
+        "RunId",
+        "Seed",
+        "Month",
+        "Dimension",
+        "Cohort",
+        "HouseholdCount",
+        "ShortfallHouseholdCount",
+        "ShortfallHouseholdShare",
+        "LiquidityShortfallFinancing",
+        "ShortfallShareOfMonth",
+        "ConsumptionShortfall",
+        "RentArrears",
+        "MortgageArrears",
+        "ConsumerDebtArrears",
+        "TemporaryOverdraft",
+        "ConsumerApprovedOrigination",
+        "ConsumerCreditDemand",
+        "ConsumerRejectedOrigination",
+        "ConsumerBankRejectedOrigination",
+        "ConsumerDebtService",
+        "ConsumerDefault",
+        "ConsumerLoanDefault",
+        "LiquidityBridgeChargeOff",
+        "ConsumerPrincipal",
+        "OpeningDemandDeposit",
+        "ClosingDemandDeposit",
+        "OpeningConsumerLoan",
+        "ClosingConsumerLoan",
+        "MonthlyIncome",
+        "Consumption",
+        "UnmetBasicConsumption",
+        "DiscretionaryConsumptionCompression",
+        "Rent",
+        "MortgageDebtService",
+        "RentToIncome",
+        "MortgageDebtServiceToIncome",
+        "ConsumerDebtServiceToIncome",
+        "ClosingConsumerLoanToIncome",
+      )
   }
 
   it should "apply the liquidity-shortfall selector to rendered rows" in {
@@ -78,11 +185,11 @@ class McHouseholdSnapshotSchemaSpec extends AnyFlatSpec with Matchers:
 
     rows.map(_.household.id) shouldBe Vector(household.id)
     rows.head.monthlyFlow.liquidityShortfallFinancing shouldBe PLN(123)
-    McHouseholdSnapshotSchema.csvSchema.render(rows.head) should include(
-      "consumer-loan;car;0.750000;0.800000;0.110000;0.120000;0.150000;0.500000;1.300000;1.200000",
+    McHouseholdSnapshotSchema.tsvSchema.render(rows.head) should include(
+      Vector("consumer-loan", "car", "0.750000", "0.800000", "0.110000", "0.120000", "0.150000", "0.500000", "1.300000", "1.200000").mkString("\t"),
     )
-    McHouseholdSnapshotSchema.csvSchema.render(rows.head) should include(
-      "0.060000;0.070000;-0.010000;0.020000;0.030000;0.004000;0.000000;0.500000;0.005000;0.750000",
+    McHouseholdSnapshotSchema.tsvSchema.render(rows.head) should include(
+      Vector("0.060000", "0.070000", "-0.010000", "0.020000", "0.030000", "0.004000", "0.000000", "0.500000", "0.005000", "0.750000").mkString("\t"),
     )
   }
 

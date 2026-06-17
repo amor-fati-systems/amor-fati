@@ -16,28 +16,28 @@ private[montecarlo] object McOutputFiles:
       .mapError(outputFailure("prepare output directory", outputDir))
 
   def seedFile(outputDir: File, seed: Long, rc: McRunConfig): File =
-    new File(outputDir, f"${filePrefix(rc)}_seed${seed}%03d.csv")
+    new File(outputDir, f"${filePrefix(rc)}_seed${seed}%03d.tsv")
 
   def householdFile(outputDir: File, rc: McRunConfig): File =
-    new File(outputDir, s"${filePrefix(rc)}_hh.csv")
+    new File(outputDir, s"${filePrefix(rc)}_hh.tsv")
 
   def bankFile(outputDir: File, rc: McRunConfig): File =
-    new File(outputDir, s"${filePrefix(rc)}_banks.csv")
+    new File(outputDir, s"${filePrefix(rc)}_banks.tsv")
 
   def firmFile(outputDir: File, rc: McRunConfig): File =
-    new File(outputDir, s"${filePrefix(rc)}_firms.csv")
+    new File(outputDir, s"${filePrefix(rc)}_firms.tsv")
 
   def firmSnapshotFile(outputDir: File, rc: McRunConfig): File =
-    new File(outputDir, s"${filePrefix(rc)}_firm_snapshots.csv")
+    new File(outputDir, s"${filePrefix(rc)}_firm_snapshots.tsv")
 
   def householdSnapshotFile(outputDir: File, rc: McRunConfig): File =
-    new File(outputDir, s"${filePrefix(rc)}_household_snapshots.csv")
+    new File(outputDir, s"${filePrefix(rc)}_household_snapshots.tsv")
 
   def householdShortfallCohortFile(outputDir: File, rc: McRunConfig): File =
-    new File(outputDir, s"${filePrefix(rc)}_household_shortfall_cohorts.csv")
+    new File(outputDir, s"${filePrefix(rc)}_household_shortfall_cohorts.tsv")
 
   def firmDecisionTraceFile(outputDir: File, rc: McRunConfig): File =
-    new File(outputDir, s"${filePrefix(rc)}_firm_decision_trace.csv")
+    new File(outputDir, s"${filePrefix(rc)}_firm_decision_trace.tsv")
 
   def savedFiles(outputDir: File, rc: McRunConfig): Vector[File] =
     val baselineFiles          =
