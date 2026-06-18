@@ -17,6 +17,7 @@ back here instead of each maintaining a separate top-level operations map.
 | CI, generated-output guard, validation ownership, failure semantics | [Validation matrix](validation-matrix.md) | `docs/validation-matrix.md` |
 | Nightly diagnostics profiles, health summary, run manifests, artifact retention | [Nightly diagnostics](nightly-diagnostics.md) | `docs/nightly-diagnostics.md` |
 | Nightly baseline comparison and threshold promotion policy | [Nightly baseline comparison](nightly-baseline-comparison.md) | `docs/nightly-baseline-comparison.md` |
+| Empirical validation snapshot regeneration | [Empirical validation report](empirical-validation-report.md) | [Empirical Validation Snapshot](#empirical-validation-snapshot) |
 | Hot-path profiling, JFR artifacts, performance telemetry | [Hot-path profiling](hot-path-profiling.md) and [performance regression budgets](performance-regression-budgets.md) | `docs/hot-path-profiling.md`, `docs/performance-regression-budgets.md` |
 | Named scenario runs and robustness envelopes | [Scenario registry](scenario-registry.md) and [sensitivity robustness workflow](sensitivity-robustness-workflow.md) | `docs/scenario-registry.md`, `docs/sensitivity-robustness-workflow.md` |
 | Focused banking/household/credit diagnostics | [Household credit stress calibration](household-credit-stress-calibration.md), [bank balance-sheet benchmark](bank-balance-sheet-benchmark.md), [bank failure ablations](bank-failure-ablations.md), [HH-bank lead-lag diagnostics](hh-bank-lead-lag-diagnostics.md), [loan-origination quality diagnostics](loan-origination-quality-diagnostics.md) | Diagnostic-specific appendices |
@@ -294,6 +295,49 @@ evaluated.
 
 `mc/` is ignored by git. Keep committed research-facing artifacts under `docs/`
 only when the command explicitly targets a committed documentation path.
+
+## Empirical Validation Snapshot
+
+The interpretation contract for empirical validation lives in
+[empirical-validation-report.md](empirical-validation-report.md). This section
+records the commands for regenerating the committed snapshot bundle.
+
+Run the current baseline Monte Carlo batch:
+
+```bash
+sbt "runMain com.boombustgroup.amorfati.Main 5 validation-baseline --duration 60 --run-id main-0f281ce3"
+```
+
+Expected output files:
+
+```text
+mc/validation-baseline_main-0f281ce3_60m_seed001.tsv
+mc/validation-baseline_main-0f281ce3_60m_seed002.tsv
+mc/validation-baseline_main-0f281ce3_60m_seed003.tsv
+mc/validation-baseline_main-0f281ce3_60m_seed004.tsv
+mc/validation-baseline_main-0f281ce3_60m_seed005.tsv
+mc/validation-baseline_main-0f281ce3_60m_hh.tsv
+mc/validation-baseline_main-0f281ce3_60m_banks.tsv
+mc/validation-baseline_main-0f281ce3_60m_firms.tsv
+```
+
+Then regenerate the committed validation bundle:
+
+```bash
+sbt "empiricalValidation --source-manifest docs/empirical-validation-source-manifest.tsv --mc-dir mc --run-id main-0f281ce3 --output-prefix validation-baseline --duration 60 --seeds 5 --commit 0f281ce3 --parameter-branch main --out docs/empirical-validation"
+```
+
+The generator writes:
+
+```text
+docs/empirical-validation/baseline-validation-snapshot.tsv
+docs/empirical-validation/model-run-manifest.tsv
+docs/empirical-validation/source-manifest.tsv
+```
+
+Edit `docs/empirical-validation-source-manifest.tsv` for source, mapping,
+comparator, tolerance, and readiness metadata. Do not edit generated TSV files
+under `docs/empirical-validation/` by hand.
 
 ## Tests
 
