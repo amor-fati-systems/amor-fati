@@ -211,16 +211,16 @@ branch or opening a PR is optional and outside the assumed operating path.
 
 ## Run The Model
 
-The main runtime entrypoint is:
-
-```bash
-sbt "runMain com.boombustgroup.amorfati.Main <nSeeds> <prefix> [--duration <months>] [--run-id <id>] [--firm-snapshots <terminal|every:N|months:M1,M2,...>] [--firm-decision-trace <ids:I1,I2,...|first:N|all|none>]"
-```
-
-Example smoke run:
+Minimal local run:
 
 ```bash
 sbt "runMain com.boombustgroup.amorfati.Main 1 local-smoke --duration 12 --run-id smoke"
+```
+
+General form:
+
+```bash
+sbt "runMain com.boombustgroup.amorfati.Main <nSeeds> <prefix> [--duration <months>] [--run-id <id>]"
 ```
 
 The main runner writes generated TSV files under `mc/`:
@@ -232,69 +232,25 @@ mc/<prefix>_<run-id>_<months>m_banks.tsv
 mc/<prefix>_<run-id>_<months>m_firms.tsv
 ```
 
-Per-seed time-series TSV files emit macro PLN aggregates in Poland scale, ready
-for empirical analysis. The internal `gdpRatio` scaling factor is not emitted
-as a TSV column; it remains a model-computation boundary. Agent-level prices,
-wages, indexes, rates, shares, and counts remain in their native units.
+Optional exports are disabled by default:
 
-The seed time-series files also include always-on aggregate diagnostic blocks
-for household liquidity, firm automation/adoption, firm credit, mortgage credit,
-bank capital, and bank failure triggers. The `FirmCredit_*` columns reconcile
-firm-loan origination, principal repayment, default, NPL recovery/loss,
-investment credit demand, bank rejection, and cash-financed investment. The
-`Mortgage*` credit columns reconcile mortgage stock, origination, repayment,
-default, net stock flow, flow-to-stock rates, and the `MortgageToGdp`
-denominator via `AnnualizedGdpProxy`. The `Nbfi*` credit columns reconcile NBFI
-origination, repayment, defaults, net stock flow, bank tightness, and TFI
-deposit-drain pressure. The consumer-credit block uses `ConsumerCredit_*` columns to
-reconcile approved origination, principal repayment, default, bridge charge-off,
-NPL stock, and borrower-side versus bank-side rejection. The bank capital block
-uses `BankCapital_*` columns to
-reconcile opening capital, retained income, realized credit losses, provisions,
-valuation losses, interbank contagion losses, failure-related capital
-destruction, reconciliation residuals, and closing capital. The `BankEcl_*`
-block attributes IFRS 9 provision changes
-to opening/closing allowance, an all-Stage-1 baseline allowance, excess
-allowance, and S2/S3 migration shares. The `BankResolution_*` block reports
-active/failed bank counts, new failures, event-based bail-in entries, P&A
-resolved banks, bridge recapitalization, all-failed fallback, and the
-invalid-active-bank invariant flag. The `BankFailure_*` block identifies the
-monthly primary trigger for newly failed banks. The `BankCreditLoss_*` block
-reports realized loss/default/write-off rates by major exposure class and keeps
-them separate from `BankCapital_EclProvisionChange`. The
-`BankReconciliation_*` block identifies the bank row that absorbed the exactness
-patch, reports capital and CAR before/after that patch, and flags material
-residuals or residual-induced failure-threshold crossings.
+- `--firm-snapshots <terminal|every:N|months:M1,M2,...|none>` writes
+  `mc/<prefix>_<run-id>_<months>m_firm_snapshots.tsv`.
+- `--household-snapshots <terminal|every:N|months:M1,M2,...|none>` writes
+  `mc/<prefix>_<run-id>_<months>m_household_snapshots.tsv` and
+  `mc/<prefix>_<run-id>_<months>m_household_shortfall_cohorts.tsv`.
+- `--household-snapshot-selector <all|negative|shortfall|negative-or-shortfall>`
+  filters household snapshot rows.
+- `--firm-decision-trace <ids:I1,I2,...|first:N|all|none>` writes
+  `mc/<prefix>_<run-id>_<months>m_firm_decision_trace.tsv`.
 
-Firm-level micro snapshots are optional and off by default. Enable them with
-`--firm-snapshots terminal`, `--firm-snapshots every:12`, or
-`--firm-snapshots months:1,6,12`. When enabled, the runner also writes:
+Per-seed time-series TSV files emit macro PLN aggregates in Poland scale; do
+not divide them by `gdpRatio` during empirical analysis. Output schema and
+diagnostic-column semantics are owned by
+[montecarlo/README.md](../src/main/scala/com/boombustgroup/amorfati/montecarlo/README.md)
+and the schema definitions it indexes.
 
-```text
-mc/<prefix>_<run-id>_<months>m_firm_snapshots.tsv
-```
-
-Firm decision traces are optional and off by default. Enable them with an
-explicit firm-id selector such as `--firm-decision-trace ids:0,42,99`, with the
-documented deterministic low-id sample `--firm-decision-trace first:25`, or with
-`--firm-decision-trace all` for tiny/debug runs. The selector is evaluated by
-firm id and does not use the model RNG. When enabled, the runner also writes:
-
-```text
-mc/<prefix>_<run-id>_<months>m_firm_decision_trace.tsv
-```
-
-The trace records one selected-firm row per month with opening/closing tech
-state, decision type, bankruptcy reason, cash/debt/readiness/workers before and
-after, capex, new bank loan, down payment where applicable, relationship bank,
-lending rate, available approval/feasibility/probability flags, and separate
-adoption, implementation, upgrade-candidate bank approval, investment-credit
-bank approval, bank portfolio-choice/wedge audit components, digital-invest,
-upgrade-efficiency, and labor-adjustment residual rolls where those gates were
-evaluated.
-
-`mc/` is ignored by git. Keep committed research-facing artifacts under `docs/`
-only when the command explicitly targets a committed documentation path.
+Output ownership and commit policy are listed in [Output Locations](#output-locations).
 
 ## Empirical Validation Snapshot
 
@@ -395,7 +351,8 @@ sbt scalafmtAll
 ## Diagnostics
 
 Use diagnostics when a model change needs a narrow view into one mechanism or
-one reporting surface.
+one reporting surface. Detailed interpretation belongs to the linked diagnostic
+appendices.
 
 The scheduled and manual validation profile contract lives in
 [nightly-diagnostics.md](nightly-diagnostics.md). That document defines the
@@ -420,71 +377,37 @@ Labor demand probe:
 sbt "runMain com.boombustgroup.amorfati.diagnostics.runLaborDemandProbe 1 2"
 ```
 
-Household liquidity and credit-stress calibration:
+[Household liquidity and credit-stress calibration](household-credit-stress-calibration.md):
 
 ```bash
 sbt "householdCreditStressCalibration --seeds 5 --months 60 --out target/household-credit-stress --run-id household-credit-stress"
 ```
 
-This writes terminal household credit-stress ratios, target bands, and a
-summary report under `<out>/<run-id>/`. With the command above, the concrete
-output directory is
-`target/household-credit-stress/household-credit-stress/`. The semantics and
-Poland-relevant guardrail bands are documented in
-[household-credit-stress-calibration.md](household-credit-stress-calibration.md).
-
-Initial bank balance-sheet benchmark:
+[Initial bank balance-sheet benchmark](bank-balance-sheet-benchmark.md):
 
 ```bash
 sbt "bankBalanceSheetBenchmark --seeds 10 --out target/bank-balance-sheet-benchmark --run-id bank-balance-sheet-benchmark"
 ```
 
-This writes opening bank balance-sheet ratios, per-bank rows, target bands, and
-a summary report under `<out>/<run-id>/`. With the command above, the concrete
-output directory is
-`target/bank-balance-sheet-benchmark/bank-balance-sheet-benchmark/`. The
-semantics and Poland-relevant guardrail bands are documented in
-[bank-balance-sheet-benchmark.md](bank-balance-sheet-benchmark.md).
-
-Bank failure ablation diagnostics:
+[Bank failure ablation diagnostics](bank-failure-ablations.md):
 
 ```bash
 sbt "bankFailureAblations --seeds 2 --months 24 --out target/bank-failure-ablations --run-id bank-failure-ablations"
 ```
 
-This writes baseline-versus-ablation seed rows, scenario definitions, and a
-summary report under `<out>/<run-id>/`. With the command above, the concrete
-output directory is `target/bank-failure-ablations/bank-failure-ablations/`.
-The semantics and scenario set are documented in
-[bank-failure-ablations.md](bank-failure-ablations.md). Use larger
-`--seeds`/`--months` values for heavier research runs.
+Use larger `--seeds` and `--months` values for heavier research runs.
 
-HH-to-bank lead-lag diagnostics:
+[HH-to-bank lead-lag diagnostics](hh-bank-lead-lag-diagnostics.md):
 
 ```bash
 sbt "hhBankLeadLagDiagnostics --seeds 2 --months 24 --lag-max 6 --out target/hh-bank-lead-lag --run-id hh-bank-lead-lag"
 ```
 
-This writes per-bank/month household-stress routing rows, lead-lag correlation
-tables, consumer-credit counterfactual rows, and a summary report under
-`<out>/<run-id>/`. With the command above, the concrete output directory is
-`target/hh-bank-lead-lag/hh-bank-lead-lag/`. The export is documented in
-[hh-bank-lead-lag-diagnostics.md](hh-bank-lead-lag-diagnostics.md). It uses
-the shared Monte Carlo diagnostic runner, so scenario/seed jobs run with the
-same bounded parallelism model as `Main`.
-
-Loan-origination quality diagnostics:
+[Loan-origination quality diagnostics](loan-origination-quality-diagnostics.md):
 
 ```bash
 sbt "loanOriginationQuality --seeds 2 --months 24 --outcome-window 12 --out target/loan-origination-quality --run-id loan-origination-quality"
 ```
-
-This writes household and firm credit-decision rows, cohort summaries, and a
-summary report under `<out>/<run-id>/`. With the command above, the concrete
-output directory is
-`target/loan-origination-quality/loan-origination-quality/`. The export is
-documented in
-[loan-origination-quality-diagnostics.md](loan-origination-quality-diagnostics.md).
 
 For scratch and committed-snapshot SFC matrix exports, see
 [sfc-matrix-evidence.md](sfc-matrix-evidence.md).
@@ -541,7 +464,8 @@ parameters are the basis for reproducible comparisons.
 
 ## Output Locations
 
-Generated local outputs normally belong in ignored paths:
+Generated local outputs normally belong in ignored paths. Commit only the
+explicitly committed documentation artifacts:
 
 | Path | Producer | Commit? |
 | --- | --- | --- |
@@ -549,9 +473,7 @@ Generated local outputs normally belong in ignored paths:
 | `target/sfc-matrices/` | Scratch SFC matrix exports | No |
 | `target/scenarios/` | Scenario registry runs | No |
 | `target/robustness*` | Robustness reports | No |
-| `<out>/<run-id>/`, for example `target/household-credit-stress/household-credit-stress/` | Household credit-stress calibration | No |
-| `<out>/<run-id>/`, for example `target/bank-balance-sheet-benchmark/bank-balance-sheet-benchmark/` | Initial bank balance-sheet benchmark | No |
-| `<out>/<run-id>/`, for example `target/loan-origination-quality/loan-origination-quality/` | Loan-origination quality diagnostics | No |
+| `<out>/<run-id>/` | Focused diagnostics using explicit `--out` and `--run-id` arguments | No |
 | `docs/sfc-matrix-artifacts/` | Intentional committed matrix snapshots | Yes, only when refreshed intentionally |
 | `docs/empirical-validation/` | Empirical-validation snapshot bundle | Yes, only when refreshed intentionally |
 
