@@ -220,7 +220,7 @@ sbt "runMain com.boombustgroup.amorfati.Main 1 local-smoke --duration 12 --run-i
 General form:
 
 ```bash
-sbt "runMain com.boombustgroup.amorfati.Main <nSeeds> <prefix> [--duration <months>] [--run-id <id>]"
+sbt "runMain com.boombustgroup.amorfati.Main <nSeeds> <prefix> [--duration <months>] [--run-id <id>] [--firm-snapshots <terminal|every:N|months:M1,M2,...|none>] [--household-snapshots <terminal|every:N|months:M1,M2,...|none>] [--household-snapshot-selector <all|negative|shortfall|negative-or-shortfall>] [--firm-decision-trace <ids:I1,I2,...|first:N|all|none>]"
 ```
 
 The main runner writes generated TSV files under `mc/`:
