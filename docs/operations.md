@@ -14,12 +14,12 @@ back here instead of each maintaining a separate top-level operations map.
 | Need | Start here | Detail owner |
 | --- | --- | --- |
 | Local setup, test commands, Nix shell, heavy tests, integration tests, output paths | This document | Sections below |
-| CI, generated-output guard, validation ownership, failure semantics | [Validation matrix](validation-matrix.md) | `docs/validation-matrix.md` |
-| Nightly diagnostics profiles, health summary, run manifests, artifact retention | [Nightly diagnostics](nightly-diagnostics.md) | `docs/nightly-diagnostics.md` |
-| Nightly baseline comparison and threshold promotion policy | [Nightly baseline comparison](nightly-baseline-comparison.md) | `docs/nightly-baseline-comparison.md` |
+| CI, generated-output guard, validation ownership, failure semantics | [Validation matrix](validation-matrix.md) | [validation-matrix.md](validation-matrix.md) |
+| Nightly diagnostics profiles, health summary, run manifests, artifact retention | [Nightly diagnostics](nightly-diagnostics.md) | [nightly-diagnostics.md](nightly-diagnostics.md) |
+| Nightly baseline comparison and threshold promotion policy | [Nightly baseline comparison](nightly-baseline-comparison.md) | [nightly-baseline-comparison.md](nightly-baseline-comparison.md) |
 | Empirical validation snapshot regeneration | [Empirical validation report](empirical-validation-report.md) | [Empirical Validation Snapshot](#empirical-validation-snapshot) |
-| Hot-path profiling, JFR artifacts, performance telemetry | [Hot-path profiling](hot-path-profiling.md) and [performance regression budgets](performance-regression-budgets.md) | `docs/hot-path-profiling.md`, `docs/performance-regression-budgets.md` |
-| Named scenario runs and robustness envelopes | [Scenario registry](scenario-registry.md) and [sensitivity robustness workflow](sensitivity-robustness-workflow.md) | `docs/scenario-registry.md`, `docs/sensitivity-robustness-workflow.md` |
+| Hot-path profiling, JFR artifacts, performance telemetry | [Hot-path profiling](hot-path-profiling.md) and [performance regression budgets](performance-regression-budgets.md) | [hot-path-profiling.md](hot-path-profiling.md), [performance-regression-budgets.md](performance-regression-budgets.md) |
+| Named scenario runs and robustness envelopes | [Scenario registry](scenario-registry.md) and [sensitivity robustness workflow](sensitivity-robustness-workflow.md) | [scenario-registry.md](scenario-registry.md), [sensitivity-robustness-workflow.md](sensitivity-robustness-workflow.md) |
 | Focused banking/household/credit diagnostics | [Household credit stress calibration](household-credit-stress-calibration.md), [bank balance-sheet benchmark](bank-balance-sheet-benchmark.md), [bank failure ablations](bank-failure-ablations.md), [HH-bank lead-lag diagnostics](hh-bank-lead-lag-diagnostics.md), [loan-origination quality diagnostics](loan-origination-quality-diagnostics.md) | Diagnostic-specific appendices |
 
 ## Requirements
@@ -481,7 +481,7 @@ explicitly committed documentation artifacts:
 
 Pull-request CI also runs `scripts/check-docs.py` under the same Nix
 development shell. The documentation hygiene guard validates local Markdown
-links, local Markdown anchors, and the `docs/README.md`
+links, local Markdown anchors, and the [README.md](README.md)
 inventory coverage for every committed `docs/` artifact. It does not lint prose
 style or check external URLs.
 
@@ -495,7 +495,7 @@ nix develop --command python3 scripts/check-docs.py
 
 Pull-request CI runs `scripts/check-generated-outputs.sh` under the Nix
 development shell. The guard regenerates the fast committed artifacts
-`docs/calibration-register.md` and `docs/sfc-matrix-artifacts/`, then fails if
+[calibration-register.md](calibration-register.md) and `docs/sfc-matrix-artifacts/`, then fails if
 those paths have a tracked diff or new untracked files.
 
 Run the same check locally with:
