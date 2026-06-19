@@ -11,16 +11,16 @@ below to find the owning page for CI, generated outputs, diagnostics,
 profiling, scenarios, and local run artifacts. Detailed appendices should link
 back here instead of each maintaining a separate top-level operations map.
 
-| Need | Start here | Detail owner |
-| --- | --- | --- |
-| Local setup, test commands, Nix shell, heavy tests, integration tests, output paths | This document | Sections below |
-| CI, generated-output guard, validation ownership, failure semantics | [Validation matrix](validation-matrix.md) | [validation-matrix.md](validation-matrix.md) |
-| Nightly diagnostics profiles, health summary, run manifests, artifact retention | [Nightly diagnostics](nightly-diagnostics.md) | [nightly-diagnostics.md](nightly-diagnostics.md) |
-| Nightly baseline comparison and threshold promotion policy | [Nightly baseline comparison](nightly-baseline-comparison.md) | [nightly-baseline-comparison.md](nightly-baseline-comparison.md) |
-| Empirical validation snapshot regeneration | [Empirical validation report](empirical-validation-report.md) | [Empirical Validation Snapshot](#empirical-validation-snapshot) |
-| Hot-path profiling, JFR artifacts, performance telemetry | [Hot-path profiling](hot-path-profiling.md) and [performance regression budgets](performance-regression-budgets.md) | [hot-path-profiling.md](hot-path-profiling.md), [performance-regression-budgets.md](performance-regression-budgets.md) |
-| Named scenario runs and robustness envelopes | [Scenario registry](scenario-registry.md) and [sensitivity robustness workflow](sensitivity-robustness-workflow.md) | [scenario-registry.md](scenario-registry.md), [sensitivity-robustness-workflow.md](sensitivity-robustness-workflow.md) |
-| Focused banking/household/credit diagnostics | [Household credit stress calibration](household-credit-stress-calibration.md), [bank balance-sheet benchmark](bank-balance-sheet-benchmark.md), [bank failure ablations](bank-failure-ablations.md), [HH-bank lead-lag diagnostics](hh-bank-lead-lag-diagnostics.md), [loan-origination quality diagnostics](loan-origination-quality-diagnostics.md) | Diagnostic-specific appendices |
+| Need | Start here |
+| --- | --- |
+| Local setup, test commands, Nix shell, heavy tests, integration tests, output paths | This document |
+| CI, generated-output guard, validation ownership, failure semantics | [Validation matrix](validation-matrix.md) |
+| Nightly diagnostics profiles, health summary, run manifests, artifact retention | [Nightly diagnostics](nightly-diagnostics.md) |
+| Nightly baseline comparison and threshold promotion policy | [Nightly baseline comparison](nightly-baseline-comparison.md) |
+| Empirical validation snapshot regeneration | [Empirical Validation Snapshot](#empirical-validation-snapshot) |
+| Hot-path profiling, JFR artifacts, performance telemetry | [Hot-path profiling](hot-path-profiling.md) and [performance regression budgets](performance-regression-budgets.md) |
+| Named scenario runs and robustness envelopes | [Scenario registry](scenario-registry.md) and [sensitivity robustness workflow](sensitivity-robustness-workflow.md) |
+| Focused banking/household/credit diagnostics | [Household credit stress calibration](household-credit-stress-calibration.md), [bank balance-sheet benchmark](bank-balance-sheet-benchmark.md), [bank failure ablations](bank-failure-ablations.md), [HH-bank lead-lag diagnostics](hh-bank-lead-lag-diagnostics.md), [loan-origination quality diagnostics](loan-origination-quality-diagnostics.md) |
 
 ## Requirements
 
