@@ -43,7 +43,7 @@ as the operational entry point.
 | Artifact | Owner class | Purpose |
 | --- | --- | --- |
 | [docs/data-bridge-national-financial-accounts.md](data-bridge-national-financial-accounts.md) | Calibration or empirical evidence | Empirical source bridge from Polish, EU, and financial-account data to initialization, calibration, scenarios, and validation. |
-| [docs/empirical-validation-report.md](empirical-validation-report.md) | Calibration or empirical evidence | Empirical-validation workflow and interpretation for committed validation snapshots. |
+| [docs/empirical-validation-report.md](empirical-validation-report.md) | Calibration or empirical evidence | Interpretation contract for empirical-validation artifacts, status taxonomy, snapshot bundle, and source-manifest expectations. |
 | [docs/empirical-validation-source-manifest.tsv](empirical-validation-source-manifest.tsv) | Calibration or empirical evidence | Editable source manifest used by empirical-validation export. |
 | [docs/external-sector-baseline-calibration.md](external-sector-baseline-calibration.md) | Calibration or empirical evidence | External-sector baseline calibration note and evidence from the related diagnostic ticket. |
 | [docs/household-credit-stress-calibration.md](household-credit-stress-calibration.md) | Calibration or empirical evidence | Household credit stress calibration note and diagnostic evidence. |
@@ -74,12 +74,12 @@ as the operational entry point.
 | [docs/sfc-matrix-artifacts/stock-flow-reconciliation.md](sfc-matrix-artifacts/stock-flow-reconciliation.md) | Generated evidence | Generated executed-run evidence for exact SFC identities and stock-flow reconciliation. |
 | [docs/sfc-matrix-artifacts/symbolic-bsm.md](sfc-matrix-artifacts/symbolic-bsm.md) | Generated evidence | Generated symbolic Balance Sheet Matrix snapshot. |
 | [docs/sfc-matrix-artifacts/symbolic-tfm.md](sfc-matrix-artifacts/symbolic-tfm.md) | Generated evidence | Generated symbolic Transactions Flow Matrix snapshot. |
-| [docs/empirical-validation/README.md](empirical-validation/README.md) | Hand-maintained companion to generated evidence | Explains the empirical-validation snapshot bundle and its generated TSVs. |
+| [docs/empirical-validation/README.md](empirical-validation/README.md) | Hand-maintained companion to generated evidence | Source contract for the generated empirical-validation snapshot TSVs. |
 | [docs/model-equations-to-sfc-map.md](model-equations-to-sfc-map.md) | Hand-maintained companion to generated evidence | Human-maintained bridge from equation families to generated SFC rows, identities, mechanisms, and known accounting limits. |
 | [docs/sfc-matrix-evidence.md](sfc-matrix-evidence.md) | Hand-maintained companion to generated evidence | Workflow and source-contract document for ledger-derived SFC matrix artifacts and generated SFC evidence. |
 | [docs/nightly-baseline-comparison.md](nightly-baseline-comparison.md) | Operational appendix | Nightly diagnostic baseline comparison policy and report semantics. |
 | [docs/nightly-diagnostics.md](nightly-diagnostics.md) | Operational appendix | Diagnostic profile taxonomy, nightly/extended execution semantics, and manifest policy. |
-| [docs/operations.md](operations.md) | Operational appendix | Command-oriented runbook for tests, diagnostics, generated outputs, and operational workflows. |
+| [docs/operations.md](operations.md) | Operational appendix | Command-oriented guide for local setup, model runs, tests, diagnostics, scenario runs, output locations, and guards. |
 | [docs/performance-regression-budgets.md](performance-regression-budgets.md) | Operational appendix | Performance regression budget policy and promotion criteria for profiling/diagnostic telemetry. |
 | [docs/README.md](README.md) | Operational appendix | Documentation index and ownership inventory. |
 | [docs/scenario-registry.md](scenario-registry.md) | Operational appendix | Named policy and shock scenario registry with reproducible scenario-run metadata. |
