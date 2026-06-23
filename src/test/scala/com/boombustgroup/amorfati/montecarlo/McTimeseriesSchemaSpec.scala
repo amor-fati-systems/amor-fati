@@ -84,6 +84,12 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     "Health_Sigma",
     "Public_Sigma",
     "Agri_Sigma",
+    "BPO_OutputShare",
+    "Manuf_OutputShare",
+    "Retail_OutputShare",
+    "Health_OutputShare",
+    "Public_OutputShare",
+    "Agri_OutputShare",
     "MeanDegree",
     "IoFlows",
     "IoGdpRatio",
@@ -559,7 +565,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     MetricValue.fromRaw(Share.fraction(numerator, denominator).toLong)
 
   "McTimeseriesSchema" should "expose the stable schema contract" in {
-    McTimeseriesSchema.nCols shouldBe 497
+    McTimeseriesSchema.nCols shouldBe 503
     McTimeseriesSchema.colNames.toVector shouldBe expectedColNames
   }
 
@@ -622,6 +628,42 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     valueAt(row, "Health_Output") shouldBe polandScale(PLN(40))
     valueAt(row, "Public_Output") shouldBe polandScale(PLN(50))
     valueAt(row, "Agri_Output") shouldBe polandScale(PLN(60))
+
+    valueAt(row, "BPO_OutputShare") shouldBe shareMetric(10, 210)
+    valueAt(row, "Manuf_OutputShare") shouldBe shareMetric(20, 210)
+    valueAt(row, "Retail_OutputShare") shouldBe shareMetric(30, 210)
+    valueAt(row, "Health_OutputShare") shouldBe shareMetric(40, 210)
+    valueAt(row, "Public_OutputShare") shouldBe shareMetric(50, 210)
+    valueAt(row, "Agri_OutputShare") shouldBe shareMetric(60, 210)
+
+    val shareSum = Vector(
+      "BPO_OutputShare",
+      "Manuf_OutputShare",
+      "Retail_OutputShare",
+      "Health_OutputShare",
+      "Public_OutputShare",
+      "Agri_OutputShare",
+    ).map(valueAt(row, _)).foldLeft(MetricValue.Zero)(_ + _)
+    (shareSum - MetricValue.One).abs should be <= MetricValue.fromDecimalDigits(1, 6)
+  }
+
+  it should "emit zero sector output shares when total sector output is zero" in {
+    val world = init.world.copy(
+      flows = init.world.flows.copy(
+        sectorOutputs = Vector.fill(summon[SimParams].sectorDefs.length)(PLN.Zero),
+      ),
+    )
+    val row   = computeRow(world)
+
+    Vector(
+      "BPO_OutputShare",
+      "Manuf_OutputShare",
+      "Retail_OutputShare",
+      "Health_OutputShare",
+      "Public_OutputShare",
+      "Agri_OutputShare",
+    ).foreach: colName =>
+      valueAt(row, colName) shouldBe MetricValue.Zero
   }
 
   it should "emit generic automation financing and transition diagnostics" in {
