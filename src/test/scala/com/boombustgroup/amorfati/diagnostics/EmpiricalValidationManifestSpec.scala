@@ -205,18 +205,24 @@ class EmpiricalValidationManifestSpec extends AnyFlatSpec with Matchers:
   it should "carry fiscal ready comparators and documented bridge gaps" in {
     val rows = readManifest()
 
-    val domesticDebt = rowByTarget(rows, "Public debt/GDP - PDP forecast 2026")
-    domesticDebt.status shouldBe "READY"
+    val domesticDebt = rowByTarget(rows, "Public debt/GDP - PDP 2025 opening bridge")
+    domesticDebt.status shouldBe "BRIDGE_ASSUMPTION"
     domesticDebt.value("source_provider") shouldBe "MF"
-    domesticDebt.value("empirical_value") shouldBe "0.538"
+    domesticDebt.value("empirical_value") shouldBe "0.489"
     domesticDebt.value("tolerance") shouldBe "0.050"
-    domesticDebt.value("model_target") shouldBe "timeseries:DebtToGdp:terminal"
+    domesticDebt.value("model_target") shouldBe "timeseries:DebtToGdp:first"
+    domesticDebt.value("vintage") should include("2025-12-05")
+    domesticDebt.value("transformation") should include("before the 2026-04-30 model start")
+    domesticDebt.value("notes") should include("53.8% in 2026")
 
-    val esaDebt = rowByTarget(rows, "Public debt/GDP - ESA2010 debt 2025")
-    esaDebt.status shouldBe "READY"
+    val esaDebt = rowByTarget(rows, "Public debt/GDP - ESA2010 debt 2025 opening bridge")
+    esaDebt.status shouldBe "BRIDGE_ASSUMPTION"
     esaDebt.value("source_provider") shouldBe "Eurostat"
     esaDebt.value("empirical_value") shouldBe "0.597"
-    esaDebt.value("model_target") shouldBe "timeseries:Esa2010DebtToGdp:terminal"
+    esaDebt.value("vintage") should include("2026-04-22")
+    esaDebt.value("model_target") shouldBe "timeseries:Esa2010DebtToGdp:first"
+    esaDebt.value("transformation") should include("before the 2026-04-30 model start")
+    esaDebt.value("notes") should include("terminal debt validation needs a horizon-matched forecast comparator")
 
     val deficit = rowByTarget(rows, "Fiscal stance - general government deficit 2025")
     deficit.status shouldBe "READY"
