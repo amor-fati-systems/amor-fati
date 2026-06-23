@@ -80,7 +80,7 @@ a concrete diagnostic artifact path.
 | Validation mode | Count | Linked evidence paths | Missing evidence paths |
 | --- | ---: | ---: | ---: |
 | `HISTORICAL_FIT` | 33 | 5 | 28 |
-| `STYLIZED_FACT_TARGET` | 11 | 7 | 4 |
+| `STYLIZED_FACT_TARGET` | 11 | 8 | 3 |
 | `SENSITIVITY_RANGE` | 32 | 5 | 27 |
 | `MODEL_BEHAVIOR_CALIBRATION` | 14 | 0 | 14 |
 
@@ -94,9 +94,9 @@ a concrete diagnostic artifact path.
 | `pop.firmSizeMediumShare` | `STYLIZED_FACT_TARGET` | docs/empirical-validation/baseline-validation-snapshot.tsv | Firm-size distribution - Medium |  | Medium-enterprise share | EmpiricalValidationExport carries the GUS Q1 2026 medium-enterprise bridge for model-start validation; terminal firm-size values are diagnostics only. |
 | `pop.firmSizeLargeShare` | `STYLIZED_FACT_TARGET` | docs/empirical-validation/baseline-validation-snapshot.tsv | Firm-size distribution - Large |  | Large-enterprise share | EmpiricalValidationExport carries the GUS Q1 2026 large-enterprise bridge for model-start validation; terminal firm-size values are diagnostics only. |
 | `sectorDefs` | `STYLIZED_FACT_TARGET` | `MISSING_VALIDATION_EVIDENCE` |  |  | Polish sector composition | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
-| `sectorDefs.share` | `STYLIZED_FACT_TARGET` | docs/empirical-validation/baseline-validation-snapshot.tsv | Sectoral output |  | Six-sector output-share bridge | EmpiricalValidationExport carries six sector output-share peer rows from the GUS-primary / Eurostat-allocation GVA source bridge; rows remain bridge assumptions until output-vs-GVA and allocation assumptions are resolved. |
+| `sectorDefs.share` | `STYLIZED_FACT_TARGET` | docs/empirical-validation/baseline-validation-snapshot.tsv | Sector firm-population shares |  | Six-sector firm-population share bridge | EmpiricalValidationExport carries the Sector firm-population shares surface for sectorDefs.share; sector employment shares and output shares are separate diagnostics. |
 | `sectorDefs.sigma` | `STYLIZED_FACT_TARGET` | `MISSING_VALIDATION_EVIDENCE` |  |  | Sectoral substitutability ranking | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
-| `sectorDefs.wageMultiplier` | `STYLIZED_FACT_TARGET` | `MISSING_VALIDATION_EVIDENCE` |  |  | Relative sector wages | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `sectorDefs.wageMultiplier` | `STYLIZED_FACT_TARGET` | docs/empirical-validation/baseline-validation-snapshot.tsv | Sector wage ratios |  | Six-sector wage-ratio bridge | EmpiricalValidationExport carries the Sector wage ratios surface for wageMultiplier validation; source extraction remains a missing-data bridge until GUS/Eurostat wage-by-activity data are mapped. |
 | `household.mpc` | `SENSITIVITY_RANGE` | docs/sensitivity-robustness-workflow.md | sensitivity-summary.tsv | mpc-low, mpc-high | Consumption-led demand sensitivity | SensitivityRobustnessExport contains one-at-a-time household MPC scenarios for output, inflation, credit, and fiscal metrics. |
 | `household.mpcAlpha`, `mpcBeta` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` |  |  | Heterogeneous MPC distribution centered on stronger private-consumption channel | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
 | `household.laborSupplySteepness` | `HISTORICAL_FIT` | `MISSING_VALIDATION_EVIDENCE` |  |  | Labor-supply response steepness; calibrated so wage clearing supports strong 2026 growth without forcing persistent labor shedding | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
@@ -215,7 +215,7 @@ a concrete diagnostic artifact path.
 | `gdpRatio` | `computeGdpRatio(pop, firm.baseRevenue)` | scalar | Derived from agent flow scale and current-price GDP | Map agent flows to Polish macro scale | Derived | `SimParams` | `ASSUMED` |
 | `topology` | `Watts-Strogatz` | enum | Network modeling convention | Small-world interaction topology | Direct | `SimParams` | `ASSUMED` |
 | `sectorDefs` | `6 sectors` | vector | 2026-04-30 sector bridge | Polish sector composition | Direct | `SimParams` | `TUNED_NEEDS_VALIDATION` |
-| `sectorDefs.share` | `[0.03, 0.16, 0.45, 0.06, 0.22, 0.08]` | share by sector | 2026-04-30 sector bridge | Firm/employment sector weights | Direct | `SimParams` | `TUNED_NEEDS_VALIDATION` |
+| `sectorDefs.share` | `[0.03, 0.16, 0.45, 0.06, 0.22, 0.08]` | share by sector | 2026-04-30 sector bridge | Firm-population and entry-composition weights | Direct | `SimParams` | `TUNED_NEEDS_VALIDATION` |
 | `sectorDefs.sigma` | `[50, 10, 5, 2, 1, 3]` | CES elasticity | Structural automation/substitution assumption | Sectoral substitutability ranking | Direct | `SimParams` | `TUNED_NEEDS_VALIDATION` |
 | `sectorDefs.wageMultiplier` | `[1.35, 0.94, 0.79, 0.97, 0.91, 0.67]` | multiplier | 2026-04-30 sector bridge | Relative sector wages | Direct | `SimParams` | `TUNED_NEEDS_VALIDATION` |
 | `sectorDefs.revenueMultiplier` | `[1.50, 1.05, 0.91, 1.10, 1.08, 0.80]` | multiplier | Structural sector productivity prior | Relative sector revenue/productivity | Direct | `SimParams` | `ASSUMED` |

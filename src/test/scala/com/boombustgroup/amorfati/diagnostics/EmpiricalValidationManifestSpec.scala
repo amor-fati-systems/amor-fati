@@ -160,6 +160,37 @@ class EmpiricalValidationManifestSpec extends AnyFlatSpec with Matchers:
       }
   }
 
+  it should "separate sector firm-population, employment, and wage validation surfaces" in {
+    val rows = readManifest()
+
+    val firmShares = rowByTarget(rows, "Sector firm-population shares")
+    firmShares.status shouldBe "MISSING_DATA_BRIDGE"
+    firmShares.value("source_provider") shouldBe "GUS/Eurostat"
+    firmShares.value("dataset_code") should include("active enterprises")
+    firmShares.value("unit") shouldBe "share of active production firms"
+    firmShares.value("model_target") shouldBe "timeseries:BPO_FirmShare:first"
+    firmShares.value("transformation") should include("sectorDefs.share")
+    firmShares.value("transformation") should include("firm-population")
+    firmShares.value("transformation") should include("not output share or employment share")
+    firmShares.value("notes") should include("*_FirmShare")
+
+    val employmentShares = rowByTarget(rows, "Sector employment shares")
+    employmentShares.status shouldBe "MISSING_DATA_BRIDGE"
+    employmentShares.value("dataset_code") should include("employment by activity")
+    employmentShares.value("unit") shouldBe "share of employed persons"
+    employmentShares.value("model_target") shouldBe "timeseries:BPO_EmploymentShare:first"
+    employmentShares.value("transformation") should include("separate from sectorDefs.share")
+    employmentShares.value("notes") should include("*_EmploymentShare")
+
+    val wageRatios = rowByTarget(rows, "Sector wage ratios")
+    wageRatios.status shouldBe "MISSING_DATA_BRIDGE"
+    wageRatios.value("dataset_code") should include("compensation-per-employee")
+    wageRatios.value("unit") shouldBe "sector wage ratio"
+    wageRatios.value("model_target") shouldBe "timeseries:BPO_WageRatio:first"
+    wageRatios.value("transformation") should include("normalize to the included production-sector mean")
+    wageRatios.value("notes") should include("*_WageRatio")
+  }
+
   it should "carry NBP ready comparators and documented bridge gaps" in {
     val rows = readManifest()
 
