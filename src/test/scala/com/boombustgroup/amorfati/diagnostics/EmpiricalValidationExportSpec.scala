@@ -452,8 +452,8 @@ class EmpiricalValidationExportSpec extends AnyFlatSpec with Matchers:
       statuses("Firm-size distribution - Large") shouldBe SnapshotStatus.PassBaseline
       statuses("FX rate - EUR/PLN") shouldBe SnapshotStatus.PassBaseline
       statuses("NBP reference rate") shouldBe SnapshotStatus.PassBaseline
-      statuses("Public debt/GDP - PDP forecast 2026") shouldBe SnapshotStatus.PassBaseline
-      statuses("Public debt/GDP - ESA2010 debt 2025") shouldBe SnapshotStatus.PassBaseline
+      statuses("Public debt/GDP - PDP 2025 opening bridge") shouldBe SnapshotStatus.PassBaseline
+      statuses("Public debt/GDP - ESA2010 debt 2025 opening bridge") shouldBe SnapshotStatus.PassBaseline
       statuses("Fiscal stance - general government deficit 2025") shouldBe SnapshotStatus.PassBaseline
       statuses("Fiscal stance - state budget expenditure plan 2026") shouldBe SnapshotStatus.Partial
       statuses("Bank capital/liquidity - total capital ratio") shouldBe SnapshotStatus.PassBaseline
