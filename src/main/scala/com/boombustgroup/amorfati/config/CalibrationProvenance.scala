@@ -631,10 +631,10 @@ object CalibrationProvenance:
 | `fiscal.jstPitShare`, `jstCitShare` | `0.3846`, `0.0671` | share | Code note bridge: JST revenue act | Local-government tax shares | Direct | `FiscalConfig` | `EMPIRICAL` |
 | `fiscal.pitRate1`, `pitRate2`, `pitBracket1Annual` | `0.12`, `0.32`, `120000` | rate/PLN/year | Current PIT-law bridge prior | PIT brackets | Annualized monthly PIT | `FiscalConfig` | `EMPIRICAL` |
 | `fiscal.social800` | `800` | PLN/month/child | Code note bridge: legal act 2023 | 800+ benefit | Direct | `FiscalConfig` | `EMPIRICAL` |
-| `monetary.initialRate` | `0.0375` | annual rate | NBP MPC decision, April 2026 | NBP reference rate | Direct | `MonetaryConfig` | `EMPIRICAL` |
+| `monetary.initialRate` | `0.0375` | annual rate | NBP MPC decision 2026-03-04, in force at 2026-04-30 model start | NBP reference rate | Direct | `MonetaryConfig` | `EMPIRICAL` |
 | `monetary.initialInflation` | `0.030` | annual rate | GUS CPI, March 2026 | Starting CPI inflation stock | Direct | `MonetaryConfig`, `WorldInit` | `EMPIRICAL` |
 | `monetary.initialExpectedInflation` | `0.025` | annual rate | NBP target anchor | Starting expected inflation stock | Direct | `MonetaryConfig`, `Expectations` | `TUNED_NEEDS_VALIDATION` |
-| `monetary.initialExpectedRate` | `0.0375` | annual rate | NBP MPC decision, April 2026 | Starting expected policy-rate stock | Direct | `MonetaryConfig`, `Expectations` | `EMPIRICAL` |
+| `monetary.initialExpectedRate` | `0.0375` | annual rate | NBP MPC decision 2026-03-04, in force at 2026-04-30 model start | Starting expected policy-rate stock | Direct | `MonetaryConfig`, `Expectations` | `EMPIRICAL` |
 | `monetary.targetInfl` | `0.025` | annual rate | NBP inflation target | Inflation target | Direct | `MonetaryConfig` | `EMPIRICAL` |
 | `monetary.neutralRate` | `0.03` | annual rate | #461 calibration | Long-run neutral policy-rate anchor | Direct | `MonetaryConfig` | `TUNED_NEEDS_VALIDATION` |
 | `monetary.taylorAlpha`, `taylorBeta`, `taylorDelta` | `1.2`, `0.8`, `0.1` | coefficients | #461 calibration / Taylor-rule convention | Policy reaction coefficients | Direct | `MonetaryConfig` | `TUNED_NEEDS_VALIDATION` |
