@@ -103,7 +103,7 @@ class EmpiricalValidationManifestSpec extends AnyFlatSpec with Matchers:
       "Firm-size distribution - Medium",
       "Firm-size distribution - Large",
     )
-    val microFirmSize = rowByTarget(rows, "Firm-size distribution - Micro")
+    val microFirmSize   = rowByTarget(rows, "Firm-size distribution - Micro")
     microFirmSize.status shouldBe "PARTIAL"
     microFirmSize.value("source_url") should include("active-enterprises-in-the-first-quarter-of-2026")
     microFirmSize.value("dataset_code") should include("Table 1")
