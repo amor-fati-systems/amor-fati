@@ -119,6 +119,47 @@ class EmpiricalValidationManifestSpec extends AnyFlatSpec with Matchers:
     gdp.value("notes") should include("quarterly growth extraction")
   }
 
+  it should "carry six sector output-share bridge rows from the generated source extract" in {
+    val rows = readManifest()
+
+    val family = rowByTarget(rows, "Sectoral output")
+    family.status shouldBe "PARTIAL"
+    family.value("source_provider") shouldBe "GUS primary; Eurostat allocation bridge"
+    family.value("dataset_code") should include("GUS Q1 2026 preliminary estimate Table 3")
+    family.value("vintage") should include("GUS 2025 annual current-price")
+    family.value("accessed_at") shouldBe "2026-06-23"
+    family.value("model_target") shouldBe "timeseries:Manuf_OutputShare:first"
+    family.value("transformation") should include("production-sector-gva-shares.tsv")
+    family.value("notes") should include("family row is not a numeric comparator")
+
+    val expectedSectorRows = Vector(
+      ("Sectoral output - BPO/SSC", "BPO_OutputShare", "0.151020553", "J+M+N business-services proxy"),
+      ("Sectoral output - Manufacturing", "Manuf_OutputShare", "0.227278712", "maps directly"),
+      ("Sectoral output - Retail/Services", "Retail_OutputShare", "0.408615248", "R/S is allocated"),
+      ("Sectoral output - Healthcare", "Health_OutputShare", "0.061255967", "Q is allocated"),
+      ("Sectoral output - Public", "Public_OutputShare", "0.122723802", "O/P is allocated"),
+      ("Sectoral output - Agriculture", "Agri_OutputShare", "0.029105719", "A is allocated"),
+    )
+
+    rows.map(_.target).filter(_.startsWith("Sectoral output - ")).toSet shouldBe expectedSectorRows.map(_._1).toSet
+
+    expectedSectorRows.foreach: (target, outputShareColumn, empiricalValue, noteFragment) =>
+      withClue(target) {
+        val row = rowByTarget(rows, target)
+        row.status shouldBe "BRIDGE_ASSUMPTION"
+        row.value("source_provider") shouldBe "GUS primary; Eurostat allocation bridge"
+        row.value("dataset_code") should include("Eurostat nama_10_a64")
+        row.value("unit") shouldBe "share of included production-sector GVA"
+        row.value("model_target") shouldBe s"timeseries:$outputShareColumn:first"
+        row.value("empirical_value") shouldBe empiricalValue
+        row.value("tolerance") shouldBe ""
+        row.value("criterion") shouldBe ""
+        row.value("transformation") should include("opening structural bridge")
+        row.value("notes") should include("docs/empirical-source-extracts/production-sector-gva-shares.tsv")
+        row.value("notes") should include(noteFragment)
+      }
+  }
+
   it should "carry NBP ready comparators and documented bridge gaps" in {
     val rows = readManifest()
 

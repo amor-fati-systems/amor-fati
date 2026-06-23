@@ -331,8 +331,8 @@ object CalibrationProvenance:
         "sectorDefs.share"             -> linkedEvidence(
           CalibrationValidationMode.StylizedFactTarget,
           "docs/empirical-validation/baseline-validation-snapshot.tsv",
-          "Six-sector output and employment bridge",
-          "EmpiricalValidationExport carries the sectoral-output bridge as missing-data evidence until a full source crosswalk is available.",
+          "Six-sector output-share bridge",
+          "EmpiricalValidationExport carries six sector output-share peer rows from the GUS-primary / Eurostat-allocation GVA source bridge; rows remain bridge assumptions until output-vs-GVA and allocation assumptions are resolved.",
           artifactLabel = Some("Sectoral output"),
         ),
         "household.mpc"                -> linkedEvidence(

@@ -167,6 +167,15 @@ class CalibrationProvenanceSpec extends AnyFlatSpec with Matchers:
     firmSize.artifactLabel shouldBe Some("Firm-size distribution - Micro")
     firmSize.evidenceTarget should include("Micro")
 
+    val sectorShares = baselineParameter("sectorDefs.share").validationEvidence.getOrElse(fail("Expected sector-share validation evidence"))
+    sectorShares.mode shouldBe StylizedFactTarget
+    sectorShares.evidencePath.getOrElse(fail("Expected sector-share evidence path")) shouldBe
+      "docs/empirical-validation/baseline-validation-snapshot.tsv"
+    sectorShares.artifactLabel shouldBe Some("Sectoral output")
+    sectorShares.evidenceTarget should include("output-share")
+    sectorShares.notes should include("six sector output-share peer rows")
+    sectorShares.notes should not include "missing-data"
+
     val mpc = baselineParameter("household.mpc").validationEvidence.getOrElse(fail("Expected MPC validation evidence"))
     mpc.mode shouldBe SensitivityRange
     mpc.evidencePath.getOrElse(fail("Expected MPC evidence path")) shouldBe "docs/sensitivity-robustness-workflow.md"
