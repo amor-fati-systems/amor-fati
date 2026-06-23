@@ -245,7 +245,7 @@ object ProductionSectorGvaShareBridge:
       transformation: String,
       notes: String,
   ): Row =
-    val outputStem = ProductionSectorCrosswalk.mappingForSectorName(runtimeSector).map(_.runtimeSector.outputStem).getOrElse("")
+    val outputStem = outputStemFor(runtimeSector)
     Row(
       rowType = "production",
       runtimeSector = runtimeSector,
@@ -265,6 +265,12 @@ object ProductionSectorGvaShareBridge:
       reuseNote = ReuseNote,
       notes = notes,
     )
+
+  private[config] def outputStemFor(runtimeSector: String): String =
+    ProductionSectorCrosswalk
+      .mappingForSectorName(runtimeSector)
+      .map(_.runtimeSector.outputStem)
+      .getOrElse(sys.error(s"Missing crosswalk mapping for sector: $runtimeSector"))
 
   private def excludedRow(
       rowType: String,

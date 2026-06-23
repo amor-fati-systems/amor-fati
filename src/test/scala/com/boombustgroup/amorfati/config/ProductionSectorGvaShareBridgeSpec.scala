@@ -43,6 +43,13 @@ class ProductionSectorGvaShareBridgeSpec extends AnyFlatSpec with Matchers with 
     row("Manufacturing").sourceValueMPln.value shouldBe BigDecimal("743528.7")
   }
 
+  it should "fail fast when a production sector is missing from the crosswalk" in {
+    val err = intercept[RuntimeException]:
+      ProductionSectorGvaShareBridge.outputStemFor("Missing sector")
+
+    err.getMessage should include("Missing crosswalk mapping for sector: Missing sector")
+  }
+
   it should "reconstruct the GUS residual with Eurostat A64 allocation weights" in {
     Gus2025Annual.residualAandRtoU shouldBe BigDecimal("162067.5")
     val allocatedResidual =
