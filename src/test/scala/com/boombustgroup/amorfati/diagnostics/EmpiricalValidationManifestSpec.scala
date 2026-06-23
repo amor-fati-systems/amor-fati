@@ -111,7 +111,7 @@ class EmpiricalValidationManifestSpec extends AnyFlatSpec with Matchers:
     microFirmSize.value("model_target") shouldBe "terminal_firms:FirmSize_MicroShare:mean"
     microFirmSize.value("empirical_value") shouldBe "0.959251"
     microFirmSize.value("criterion") shouldBe ""
-    microFirmSize.value("notes") should include("horizon-matched comparator")
+    microFirmSize.value("notes") should include("diagnostics only")
     rowByTarget(rows, "Firm-size distribution - Large").value("empirical_value") shouldBe "0.001451"
 
     val gdp = rowByTarget(rows, "GDP growth")
