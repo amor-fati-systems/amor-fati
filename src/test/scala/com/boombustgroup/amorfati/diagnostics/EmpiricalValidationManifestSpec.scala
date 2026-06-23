@@ -127,9 +127,12 @@ class EmpiricalValidationManifestSpec extends AnyFlatSpec with Matchers:
     val referenceRate = rowByTarget(rows, "NBP reference rate")
     referenceRate.status shouldBe "READY"
     referenceRate.value("source_provider") shouldBe "NBP"
+    referenceRate.value("vintage") should include("2026-04-30 model start")
     referenceRate.value("empirical_value") shouldBe "0.0375"
     referenceRate.value("tolerance") shouldBe "0.0025"
-    referenceRate.value("model_target") shouldBe "timeseries:RefRate:mean"
+    referenceRate.value("model_target") shouldBe "timeseries:RefRate:first"
+    referenceRate.value("transformation") should include("first simulated RefRate")
+    referenceRate.value("notes") should include("endogenous Taylor-rule path evidence")
 
     val credit = rowByTarget(rows, "Credit/GDP")
     credit.status shouldBe "PARTIAL"
