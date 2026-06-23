@@ -98,14 +98,23 @@ transformation code or command, and target model field.
 
 ## Production-Sector Crosswalk
 
-| Runtime production sector | Candidate NACE Rev. 2 mapping | Bridge note |
-| --- | --- | --- |
-| BPO/SSC | J, M, N, selected K support services. | Requires explicit service-export and business-services bridge. |
-| Manufacturing | C. | Direct high-level mapping. |
-| Retail/Services | G, H, I, L, selected M/N/R/S. | Broad residual services bucket; document included sections per extraction. |
-| Healthcare | Q. | Public/private split should be recorded when used for fiscal or employment targets. |
-| Public | O and P, plus public components of other sections when data allow. | Public administration and education are direct; public health belongs to healthcare unless stated otherwise. |
-| Agriculture | A. | Direct high-level mapping. |
+The test-backed runtime contract lives in
+[`ProductionSectorCrosswalk.scala`](../src/main/scala/com/boombustgroup/amorfati/config/ProductionSectorCrosswalk.scala).
+Initial sector-output validation should use this table as a summary, not as a
+license to treat every row as a direct empirical match.
+
+| Runtime production sector | NACE Rev. 2 mapping | Initial validation treatment | Bridge note |
+| --- | --- | --- | --- |
+| BPO/SSC | J, M, N. | `BRIDGE_ASSUMPTION` | ICT, professional-services, and administrative-support sections proxy the business-services runtime sector until a finer service-export/BPO extraction exists. |
+| Manufacturing | C, with B, D, and E as industrial residuals. | `DIRECT` for C; `RESIDUAL` for B/D/E | The runtime schema has no separate mining, energy, utilities, water, or waste sector. |
+| Retail/Services | G, H, I, with F, L, R, and S as broad-service residuals. | `DIRECT` for G/H/I; `RESIDUAL` for F/L/R/S | Construction, real estate, arts, and other services are residuals inside the broad services bucket. |
+| Healthcare | Q. | `DIRECT` | Public/private split should be recorded when used for fiscal or employment targets. |
+| Public | O and P. | `DIRECT` | Public administration and education are direct; public health belongs to healthcare unless stated otherwise. |
+| Agriculture | A. | `DIRECT` | Direct high-level mapping. |
+
+NACE K is outside this production-sector validation perimeter because banks,
+insurance, funds, and non-bank finance are modeled as separate financial-sector
+agents. NACE T and U are also outside the runtime production-firm perimeter.
 
 ## Financial-Instrument Crosswalk
 
