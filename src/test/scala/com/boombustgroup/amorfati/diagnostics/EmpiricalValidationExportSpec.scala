@@ -448,8 +448,8 @@ class EmpiricalValidationExportSpec extends AnyFlatSpec with Matchers:
       val statuses = result.rows.map(row => row.target -> row.status).toMap
       statuses("Inflation") shouldBe SnapshotStatus.PassBaseline
       statuses("Unemployment") shouldBe SnapshotStatus.PassBaseline
-      statuses("Firm-size distribution - Micro") shouldBe SnapshotStatus.PassBaseline
-      statuses("Firm-size distribution - Large") shouldBe SnapshotStatus.PassBaseline
+      statuses("Firm-size distribution - Micro") shouldBe SnapshotStatus.Partial
+      statuses("Firm-size distribution - Large") shouldBe SnapshotStatus.Partial
       statuses("FX rate - EUR/PLN") shouldBe SnapshotStatus.PassBaseline
       statuses("NBP reference rate") shouldBe SnapshotStatus.PassBaseline
       statuses("Public debt/GDP - PDP 2025 opening bridge") shouldBe SnapshotStatus.PassBaseline

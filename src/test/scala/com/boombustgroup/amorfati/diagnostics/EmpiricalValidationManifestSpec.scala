@@ -103,8 +103,16 @@ class EmpiricalValidationManifestSpec extends AnyFlatSpec with Matchers:
       "Firm-size distribution - Medium",
       "Firm-size distribution - Large",
     )
-    rowByTarget(rows, "Firm-size distribution - Micro").value("model_target") shouldBe "terminal_firms:FirmSize_MicroShare:mean"
-    rowByTarget(rows, "Firm-size distribution - Large").value("empirical_value") shouldBe "0.001"
+    val microFirmSize   = rowByTarget(rows, "Firm-size distribution - Micro")
+    microFirmSize.status shouldBe "PARTIAL"
+    microFirmSize.value("source_url") should include("active-enterprises-in-the-first-quarter-of-2026")
+    microFirmSize.value("dataset_code") should include("Table 1")
+    microFirmSize.value("vintage") should include("2026 Q1")
+    microFirmSize.value("model_target") shouldBe "terminal_firms:FirmSize_MicroShare:mean"
+    microFirmSize.value("empirical_value") shouldBe "0.959251"
+    microFirmSize.value("criterion") shouldBe ""
+    microFirmSize.value("notes") should include("diagnostics only")
+    rowByTarget(rows, "Firm-size distribution - Large").value("empirical_value") shouldBe "0.001451"
 
     val gdp = rowByTarget(rows, "GDP growth")
     gdp.status shouldBe "PARTIAL"
