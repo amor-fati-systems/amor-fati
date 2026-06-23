@@ -66,6 +66,7 @@ as the operational entry point.
 | [docs/hot-path-profiling.md](hot-path-profiling.md) | Diagnostics or profiling appendix | Profiling workflow for hot execution paths and performance evidence. |
 | [docs/loan-origination-quality-diagnostics.md](loan-origination-quality-diagnostics.md) | Diagnostics or profiling appendix | Loan-origination quality diagnostic methodology and interpretation. |
 | [docs/calibration-register.md](calibration-register.md) | Generated evidence | Generated parameter register from `calibrationRegister`; records parameters, units, owners, provenance, and gaps. |
+| [docs/empirical-source-extracts/production-sector-gva-shares.tsv](empirical-source-extracts/production-sector-gva-shares.tsv) | Generated evidence | Generated GUS-primary and Eurostat-allocation source extract for six-sector production GVA shares. |
 | [docs/empirical-validation/baseline-validation-snapshot.tsv](empirical-validation/baseline-validation-snapshot.tsv) | Generated evidence | Generated empirical-validation baseline snapshot. |
 | [docs/empirical-validation/model-run-manifest.tsv](empirical-validation/model-run-manifest.tsv) | Generated evidence | Generated model-run manifest for the empirical-validation snapshot. |
 | [docs/empirical-validation/source-manifest.tsv](empirical-validation/source-manifest.tsv) | Generated evidence | Generated copy of the empirical-validation source manifest captured with the snapshot. |

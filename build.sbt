@@ -12,6 +12,7 @@ lazy val bankBalanceSheetBenchmark = inputKey[Unit]("Generate initial bank balan
 lazy val bankFailureAblations = inputKey[Unit]("Run controlled bank-failure ablation diagnostics")
 lazy val hhBankLeadLagDiagnostics = inputKey[Unit]("Run HH-to-bank lead-lag and causal attribution diagnostics")
 lazy val loanOriginationQuality = inputKey[Unit]("Run HH/Firm loan-origination quality diagnostics")
+lazy val productionSectorGvaShareBridge = inputKey[Unit]("Generate production-sector GVA share source bridge artifact")
 
 lazy val baseScalacOptions = Seq(
   "-Werror",
@@ -128,6 +129,13 @@ lazy val root = project
         val parsedArgs = spaceDelimited("<loan-origination quality args>").parsed
         (Compile / runMain)
           .toTask(" com.boombustgroup.amorfati.diagnostics.LoanOriginationQualityExport " + parsedArgs.mkString(" "))
+      }
+      .evaluated,
+    productionSectorGvaShareBridge := Def
+      .inputTaskDyn {
+        val parsedArgs = spaceDelimited("<production-sector GVA share bridge args>").parsed
+        (Compile / runMain)
+          .toTask(" com.boombustgroup.amorfati.diagnostics.ProductionSectorGvaShareBridgeExport " + parsedArgs.mkString(" "))
       }
       .evaluated,
     Test / testOptions ++= {
