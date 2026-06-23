@@ -1,7 +1,7 @@
 package com.boombustgroup.amorfati.montecarlo
 
 import com.boombustgroup.amorfati.FixedPointSpecSupport.*
-import com.boombustgroup.amorfati.agents.{Banking, EarmarkedFunds, EclStaging, Firm, Household, Nbfi, SocialSecurity, TechState}
+import com.boombustgroup.amorfati.agents.{Banking, EarmarkedFunds, EclStaging, Firm, HhStatus, Household, Nbfi, SocialSecurity, TechState}
 import com.boombustgroup.amorfati.config.{HousingConfig, SimParams}
 import com.boombustgroup.amorfati.engine.diagnostics.banking.{
   BankCapitalDiagnostics,
@@ -90,6 +90,24 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     "Health_OutputShare",
     "Public_OutputShare",
     "Agri_OutputShare",
+    "BPO_FirmShare",
+    "Manuf_FirmShare",
+    "Retail_FirmShare",
+    "Health_FirmShare",
+    "Public_FirmShare",
+    "Agri_FirmShare",
+    "BPO_EmploymentShare",
+    "Manuf_EmploymentShare",
+    "Retail_EmploymentShare",
+    "Health_EmploymentShare",
+    "Public_EmploymentShare",
+    "Agri_EmploymentShare",
+    "BPO_WageRatio",
+    "Manuf_WageRatio",
+    "Retail_WageRatio",
+    "Health_WageRatio",
+    "Public_WageRatio",
+    "Agri_WageRatio",
     "MeanDegree",
     "IoFlows",
     "IoGdpRatio",
@@ -536,6 +554,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
       world: World,
       ledgerFinancialState: LedgerFinancialState = initState.ledgerFinancialState,
       firms: Vector[Firm.State] = init.firms,
+      households: Vector[Household.State] = init.households,
       banks: Vector[Banking.BankState] = init.banks,
       householdAggregates: Household.Aggregates = init.householdAggregates,
       preserveSectorOutputs: Boolean = false,
@@ -547,7 +566,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
       executionMonth = ExecutionMonth.First,
       world = effectiveWorld,
       firms = firms,
-      households = init.households,
+      households = households,
       banks = banks,
       householdAggregates = householdAggregates,
       ledgerFinancialState = ledgerFinancialState,
@@ -564,8 +583,11 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
   private def shareMetric(numerator: Int, denominator: Int): MetricValue =
     MetricValue.fromRaw(Share.fraction(numerator, denominator).toLong)
 
+  private def ratioMetric(numerator: PLN, denominator: PLN): MetricValue =
+    MetricValue.fromRaw(numerator.ratioTo(denominator).toLong)
+
   "McTimeseriesSchema" should "expose the stable schema contract" in {
-    McTimeseriesSchema.nCols shouldBe 503
+    McTimeseriesSchema.nCols shouldBe 521
     McTimeseriesSchema.colNames.toVector shouldBe expectedColNames
   }
 
@@ -645,6 +667,58 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
       "Agri_OutputShare",
     ).map(valueAt(row, _)).foldLeft(MetricValue.Zero)(_ + _)
     (shareSum - MetricValue.One).abs should be <= MetricValue.fromDecimalDigits(1, 6)
+  }
+
+  it should "emit sector firm shares, employment shares, and wage ratios" in {
+    val baseFirm                                             = init.firms.head
+    def firm(id: Int, sector: Int, workers: Int): Firm.State =
+      baseFirm.copy(id = FirmId(id), sector = SectorIdx(sector), tech = TechState.Traditional(workers), initialSize = workers)
+
+    val baseHousehold                                                            = init.households.head
+    def household(id: Int, firmId: Int, sector: Int, wage: PLN): Household.State =
+      baseHousehold.copy(
+        id = HhId(id),
+        status = HhStatus.Employed(FirmId(firmId), SectorIdx(sector), wage),
+        lastSectorIdx = SectorIdx(sector),
+      )
+
+    val firms      = Vector(
+      firm(0, 0, 2),
+      firm(1, 0, 3),
+      firm(2, 1, 5),
+      firm(3, 2, 7),
+    )
+    val households = Vector(
+      household(0, 0, 0, PLN(1000)),
+      household(1, 1, 0, PLN(3000)),
+      household(2, 2, 1, PLN(2000)),
+      household(3, 2, 1, PLN(4000)),
+      household(4, 3, 2, PLN(6000)),
+    )
+
+    val row = computeRow(init.world, firms = firms, households = households)
+
+    valueAt(row, "BPO_FirmShare") shouldBe shareMetric(2, 4)
+    valueAt(row, "Manuf_FirmShare") shouldBe shareMetric(1, 4)
+    valueAt(row, "Retail_FirmShare") shouldBe shareMetric(1, 4)
+    valueAt(row, "Health_FirmShare") shouldBe MetricValue.Zero
+    valueAt(row, "Public_FirmShare") shouldBe MetricValue.Zero
+    valueAt(row, "Agri_FirmShare") shouldBe MetricValue.Zero
+
+    valueAt(row, "BPO_EmploymentShare") shouldBe shareMetric(2, 5)
+    valueAt(row, "Manuf_EmploymentShare") shouldBe shareMetric(2, 5)
+    valueAt(row, "Retail_EmploymentShare") shouldBe shareMetric(1, 5)
+    valueAt(row, "Health_EmploymentShare") shouldBe MetricValue.Zero
+    valueAt(row, "Public_EmploymentShare") shouldBe MetricValue.Zero
+    valueAt(row, "Agri_EmploymentShare") shouldBe MetricValue.Zero
+
+    val aggregateWage = PLN(3200)
+    valueAt(row, "BPO_WageRatio") shouldBe ratioMetric(PLN(2000), aggregateWage)
+    valueAt(row, "Manuf_WageRatio") shouldBe ratioMetric(PLN(3000), aggregateWage)
+    valueAt(row, "Retail_WageRatio") shouldBe ratioMetric(PLN(6000), aggregateWage)
+    valueAt(row, "Health_WageRatio") shouldBe MetricValue.Zero
+    valueAt(row, "Public_WageRatio") shouldBe MetricValue.Zero
+    valueAt(row, "Agri_WageRatio") shouldBe MetricValue.Zero
   }
 
   it should "emit zero sector output shares when total sector output is zero" in {

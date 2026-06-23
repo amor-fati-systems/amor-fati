@@ -19,10 +19,17 @@ import com.boombustgroup.amorfati.agents.Region
 object McTimeseriesSchema:
 
   private case class SectorColumns(expectedSectorName: String, columnStem: String):
-    def autoColName: String        = s"${columnStem}_Auto"
-    def outputColName: String      = s"${columnStem}_Output"
-    def sigmaColName: String       = s"${columnStem}_Sigma"
-    def outputShareColName: String = s"${columnStem}_OutputShare"
+    def autoColName: String            = s"${columnStem}_Auto"
+    def outputColName: String          = s"${columnStem}_Output"
+    def sigmaColName: String           = s"${columnStem}_Sigma"
+    def outputShareColName: String     = s"${columnStem}_OutputShare"
+    def firmShareColName: String       = s"${columnStem}_FirmShare"
+    def employmentShareColName: String = s"${columnStem}_EmploymentShare"
+    def wageRatioColName: String       = s"${columnStem}_WageRatio"
+
+  private case class SectorLaborStats(employed: Int, wageBill: PLN):
+    def averageWage: PLN =
+      if employed > 0 then wageBill.divideBy(employed) else PLN.Zero
 
   private val sectorSchemaPairs: Vector[(String, String)] =
     SimParams.SchemaSectors.map(schemaSector => schemaSector.name -> schemaSector.outputStem)
@@ -161,6 +168,33 @@ object McTimeseriesSchema:
     lazy val sectorOutputShares: Vector[Scalar]                                                     =
       if totalSectorOutput > PLN.Zero then sectorOutputs.map(_ / totalSectorOutput)
       else Vector.fill(sectorOutputs.length)(Scalar.Zero)
+    lazy val sectorFirmCounts: Vector[Int]                                                          =
+      sectorColumns.map(sector => living.count(_.sector.toInt == runtimeSectorIndex(sector.expectedSectorName)))
+    lazy val sectorFirmShares: Vector[Scalar]                                                       =
+      if nLiving > 0 then sectorFirmCounts.map(_.ratioTo(nLiving))
+      else Vector.fill(sectorColumns.length)(Scalar.Zero)
+    lazy val sectorLaborStats: Vector[SectorLaborStats]                                             =
+      val employedBySector = Array.fill(sectorColumns.length)(0)
+      val wagesBySector    = Array.fill(sectorColumns.length)(PLN.Zero)
+      households.foreach: household =>
+        household.status match
+          case HhStatus.Employed(_, sectorIdx, wage) =>
+            val idx = sectorIdx.toInt
+            if idx < 0 || idx >= sectorColumns.length then
+              throw IllegalArgumentException(s"McTimeseriesSchema encountered employed household with sector index $idx outside 0..${sectorColumns.length - 1}")
+            employedBySector(idx) += 1
+            wagesBySector(idx) = wagesBySector(idx) + wage
+          case _                                     => ()
+      sectorColumns.indices.map(idx => SectorLaborStats(employedBySector(idx), wagesBySector(idx))).toVector
+    lazy val totalSectorEmployment: Int                                                             = sectorLaborStats.map(_.employed).sum
+    lazy val aggregateSectorWage: PLN                                                               =
+      if totalSectorEmployment > 0 then sectorLaborStats.map(_.wageBill).sumPln.divideBy(totalSectorEmployment) else PLN.Zero
+    lazy val sectorEmploymentShares: Vector[Scalar]                                                 =
+      if totalSectorEmployment > 0 then sectorLaborStats.map(_.employed.ratioTo(totalSectorEmployment))
+      else Vector.fill(sectorColumns.length)(Scalar.Zero)
+    lazy val sectorWageRatios: Vector[Scalar]                                                       =
+      if aggregateSectorWage > PLN.Zero then sectorLaborStats.map(_.averageWage.ratioTo(aggregateSectorWage))
+      else Vector.fill(sectorColumns.length)(Scalar.Zero)
     lazy val sectorAuto: Vector[Share]                                                              = sectorColumns.map { sector =>
       val sectorIdx = sectorIndexByName(sector.expectedSectorName)
       val secFirms  = living.filter(_.sector.toInt == sectorIdx)
@@ -321,8 +355,14 @@ object McTimeseriesSchema:
       ColumnDef(sector.sigmaColName, ctx => ctx.sectorSigma(idx))
     val outputShareColumns = sectorColumns.map: sector =>
       ColumnDef(sector.outputShareColName, ctx => ctx.sectorOutputShares(ctx.runtimeSectorIndex(sector.expectedSectorName)))
+    val firmShareColumns   = sectorColumns.map: sector =>
+      ColumnDef(sector.firmShareColName, ctx => ctx.sectorFirmShares(ctx.runtimeSectorIndex(sector.expectedSectorName)))
+    val employmentColumns  = sectorColumns.map: sector =>
+      ColumnDef(sector.employmentShareColName, ctx => ctx.sectorEmploymentShares(ctx.runtimeSectorIndex(sector.expectedSectorName)))
+    val wageRatioColumns   = sectorColumns.map: sector =>
+      ColumnDef(sector.wageRatioColName, ctx => ctx.sectorWageRatios(ctx.runtimeSectorIndex(sector.expectedSectorName)))
 
-    (autoColumns ++ outputColumns ++ sigmaColumns ++ outputShareColumns ++ Vector(
+    (autoColumns ++ outputColumns ++ sigmaColumns ++ outputShareColumns ++ firmShareColumns ++ employmentColumns ++ wageRatioColumns ++ Vector(
       ColumnDef("MeanDegree", ctx => MetricValue.fraction(ctx.firms.map(_.neighbors.length).sum, ctx.firms.length)),
       ColumnDef.macroPln("IoFlows", ctx => ctx.world.flows.ioFlows),
       ColumnDef(
@@ -1161,6 +1201,24 @@ object McTimeseriesSchema:
     val HealthOutputShare: Col                         = lookup("Health_OutputShare")
     val PublicOutputShare: Col                         = lookup("Public_OutputShare")
     val AgriOutputShare: Col                           = lookup("Agri_OutputShare")
+    val BpoFirmShare: Col                              = lookup("BPO_FirmShare")
+    val ManufFirmShare: Col                            = lookup("Manuf_FirmShare")
+    val RetailFirmShare: Col                           = lookup("Retail_FirmShare")
+    val HealthFirmShare: Col                           = lookup("Health_FirmShare")
+    val PublicFirmShare: Col                           = lookup("Public_FirmShare")
+    val AgriFirmShare: Col                             = lookup("Agri_FirmShare")
+    val BpoEmploymentShare: Col                        = lookup("BPO_EmploymentShare")
+    val ManufEmploymentShare: Col                      = lookup("Manuf_EmploymentShare")
+    val RetailEmploymentShare: Col                     = lookup("Retail_EmploymentShare")
+    val HealthEmploymentShare: Col                     = lookup("Health_EmploymentShare")
+    val PublicEmploymentShare: Col                     = lookup("Public_EmploymentShare")
+    val AgriEmploymentShare: Col                       = lookup("Agri_EmploymentShare")
+    val BpoWageRatio: Col                              = lookup("BPO_WageRatio")
+    val ManufWageRatio: Col                            = lookup("Manuf_WageRatio")
+    val RetailWageRatio: Col                           = lookup("Retail_WageRatio")
+    val HealthWageRatio: Col                           = lookup("Health_WageRatio")
+    val PublicWageRatio: Col                           = lookup("Public_WageRatio")
+    val AgriWageRatio: Col                             = lookup("Agri_WageRatio")
     val MeanDegree: Col                                = lookup("MeanDegree")
     val IoFlows: Col                                   = lookup("IoFlows")
     val IoGdpRatio: Col                                = lookup("IoGdpRatio")
@@ -1346,6 +1404,9 @@ object McTimeseriesSchema:
     private val sectorOutputNames                      = sectorColumns.map(_.outputColName)
     private val sectorSigmaNames                       = sectorColumns.map(_.sigmaColName)
     private val sectorOutputShareNames                 = sectorColumns.map(_.outputShareColName)
+    private val sectorFirmShareNames                   = sectorColumns.map(_.firmShareColName)
+    private val sectorEmploymentShareNames             = sectorColumns.map(_.employmentShareColName)
+    private val sectorWageRatioNames                   = sectorColumns.map(_.wageRatioColName)
 
     private def sectorCol(names: Vector[String], sectorIndex: Int, kind: String): Col =
       names
@@ -1353,10 +1414,14 @@ object McTimeseriesSchema:
         .map(lookup)
         .getOrElse(throw new IndexOutOfBoundsException(s"$kind sector index must be between 0 and ${names.length - 1}, got $sectorIndex"))
 
-    def sectorAuto(s: Int): Col        = sectorCol(sectorAutoNames, s, "sectorAuto")
-    def sectorOutput(s: Int): Col      = sectorCol(sectorOutputNames, s, "sectorOutput")
-    def sectorSigma(s: Int): Col       = sectorCol(sectorSigmaNames, s, "sectorSigma")
-    def sectorOutputShare(s: Int): Col = sectorCol(sectorOutputShareNames, s, "sectorOutputShare")
+    def sectorAuto(s: Int): Col            = sectorCol(sectorAutoNames, s, "sectorAuto")
+    def sectorOutput(s: Int): Col          = sectorCol(sectorOutputNames, s, "sectorOutput")
+    def sectorSigma(s: Int): Col           = sectorCol(sectorSigmaNames, s, "sectorSigma")
+    def sectorOutputShare(s: Int): Col     = sectorCol(sectorOutputShareNames, s, "sectorOutputShare")
+    def sectorFirmShare(s: Int): Col       = sectorCol(sectorFirmShareNames, s, "sectorFirmShare")
+    def sectorEmploymentShare(s: Int): Col =
+      sectorCol(sectorEmploymentShareNames, s, "sectorEmploymentShare")
+    def sectorWageRatio(s: Int): Col       = sectorCol(sectorWageRatioNames, s, "sectorWageRatio")
 
   extension (c: Col) def ordinal: Int = c
 

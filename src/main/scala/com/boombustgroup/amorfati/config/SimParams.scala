@@ -120,10 +120,10 @@ object SimParams:
   /** Default 6-sector definitions for the 2026-04-30 Poland baseline: BPO/SSC,
     * Manufacturing, Retail/Services, Healthcare, Public, and Agriculture.
     *
-    * `SectorDef` fields are, in order: `share` (employment/firm-population
-    * share), `sigma` (CES substitution elasticity), `wageMultiplier` (sector
-    * wage vs national average), `revenueMultiplier` (sector
-    * revenue/productivity scale), `aiCapexMultiplier` and
+    * `SectorDef` fields are, in order: `share` (firm-population and
+    * entry-composition weight), `sigma` (CES substitution elasticity),
+    * `wageMultiplier` (sector wage vs national average), `revenueMultiplier`
+    * (sector revenue/productivity scale), `aiCapexMultiplier` and
     * `hybridCapexMultiplier` (automation CAPEX scaling), `baseDigitalReadiness`
     * (baseline digital-readiness central tendency), and `hybridRetainFrac`
     * (worker fraction retained by hybrid firms).

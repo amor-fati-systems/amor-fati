@@ -171,10 +171,19 @@ class CalibrationProvenanceSpec extends AnyFlatSpec with Matchers:
     sectorShares.mode shouldBe StylizedFactTarget
     sectorShares.evidencePath.getOrElse(fail("Expected sector-share evidence path")) shouldBe
       "docs/empirical-validation/baseline-validation-snapshot.tsv"
-    sectorShares.artifactLabel shouldBe Some("Sectoral output")
-    sectorShares.evidenceTarget should include("output-share")
-    sectorShares.notes should include("six sector output-share peer rows")
-    sectorShares.notes should not include "missing-data"
+    sectorShares.artifactLabel shouldBe Some("Sector firm-population shares")
+    sectorShares.evidenceTarget should include("firm-population")
+    sectorShares.notes should include("sectorDefs.share")
+    sectorShares.notes should include("separate diagnostics")
+
+    val sectorWages = baselineParameter("sectorDefs.wageMultiplier").validationEvidence.getOrElse(fail("Expected sector-wage validation evidence"))
+    sectorWages.mode shouldBe StylizedFactTarget
+    sectorWages.evidencePath.getOrElse(fail("Expected sector-wage evidence path")) shouldBe
+      "docs/empirical-validation/baseline-validation-snapshot.tsv"
+    sectorWages.artifactLabel shouldBe Some("Sector wage ratios")
+    sectorWages.evidenceTarget should include("wage-ratio")
+    sectorWages.notes should include("wageMultiplier validation")
+    sectorWages.notes should include("missing-data bridge")
 
     val mpc = baselineParameter("household.mpc").validationEvidence.getOrElse(fail("Expected MPC validation evidence"))
     mpc.mode shouldBe SensitivityRange

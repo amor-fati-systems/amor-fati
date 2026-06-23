@@ -331,9 +331,16 @@ object CalibrationProvenance:
         "sectorDefs.share"             -> linkedEvidence(
           CalibrationValidationMode.StylizedFactTarget,
           "docs/empirical-validation/baseline-validation-snapshot.tsv",
-          "Six-sector output-share bridge",
-          "EmpiricalValidationExport carries six sector output-share peer rows from the GUS-primary / Eurostat-allocation GVA source bridge; rows remain bridge assumptions until output-vs-GVA and allocation assumptions are resolved.",
-          artifactLabel = Some("Sectoral output"),
+          "Six-sector firm-population share bridge",
+          "EmpiricalValidationExport carries the Sector firm-population shares surface for sectorDefs.share; sector employment shares and output shares are separate diagnostics.",
+          artifactLabel = Some("Sector firm-population shares"),
+        ),
+        "sectorDefs.wageMultiplier"    -> linkedEvidence(
+          CalibrationValidationMode.StylizedFactTarget,
+          "docs/empirical-validation/baseline-validation-snapshot.tsv",
+          "Six-sector wage-ratio bridge",
+          "EmpiricalValidationExport carries the Sector wage ratios surface for wageMultiplier validation; source extraction remains a missing-data bridge until GUS/Eurostat wage-by-activity data are mapped.",
+          artifactLabel = Some("Sector wage ratios"),
         ),
         "household.mpc"                -> linkedEvidence(
           CalibrationValidationMode.SensitivityRange,
@@ -525,7 +532,7 @@ object CalibrationProvenance:
 | `gdpRatio` | `computeGdpRatio(pop, firm.baseRevenue)` | scalar | Derived from agent flow scale and current-price GDP | Map agent flows to Polish macro scale | Derived | `SimParams` | `ASSUMED` |
 | `topology` | `Watts-Strogatz` | enum | Network modeling convention | Small-world interaction topology | Direct | `SimParams` | `ASSUMED` |
 | `sectorDefs` | 6 sectors | vector | 2026-04-30 sector bridge | Polish sector composition | Direct | `SimParams` | `TUNED_NEEDS_VALIDATION` |
-| `sectorDefs.share` | `[0.03, 0.16, 0.45, 0.06, 0.22, 0.08]` | share by sector | 2026-04-30 sector bridge | Firm/employment sector weights | Direct | `SimParams` | `TUNED_NEEDS_VALIDATION` |
+| `sectorDefs.share` | `[0.03, 0.16, 0.45, 0.06, 0.22, 0.08]` | share by sector | 2026-04-30 sector bridge | Firm-population and entry-composition weights | Direct | `SimParams` | `TUNED_NEEDS_VALIDATION` |
 | `sectorDefs.sigma` | `[50, 10, 5, 2, 1, 3]` | CES elasticity | Structural automation/substitution assumption | Sectoral substitutability ranking | Direct | `SimParams` | `TUNED_NEEDS_VALIDATION` |
 | `sectorDefs.wageMultiplier` | `[1.35, 0.94, 0.79, 0.97, 0.91, 0.67]` | multiplier | 2026-04-30 sector bridge | Relative sector wages | Direct | `SimParams` | `TUNED_NEEDS_VALIDATION` |
 | `sectorDefs.revenueMultiplier` | `[1.50, 1.05, 0.91, 1.10, 1.08, 0.80]` | multiplier | Structural sector productivity prior | Relative sector revenue/productivity | Direct | `SimParams` | `ASSUMED` |
