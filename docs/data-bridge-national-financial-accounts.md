@@ -83,7 +83,12 @@ transformation code or command, and target model field.
 | Financial markets and non-bank finance | NBP/ECB rates, KNF capital-market and pension-fund statistics, GPW or official market data where available. | Corporate bonds, funds, insurance, pension funds, equity market, stress channels. | `BondYield`, `CorpBondYield`, `CorpBondSpread`, `GpwIndex`, `GpwMarketCap`, fund/insurance holdings and flows. | Market prices month-end or monthly average depending state/flow semantics; fund and insurance stocks mapped to ESA S.128/S.129. | Official GPW data and non-bank holder splits need a stable open-source path. Priority: medium. |
 | Scenario-specific shocks | EU ETS/energy data, tourism statistics, EU funds absorption, policy announcements, official projections. | Named scenarios and sensitivity inputs. | `climate.*`, `tourism.*`, `fiscal.eu*`, `scenarioRun` deltas. | Baseline calibration stays empirical; scenario magnitudes must state whether they are external analogues, official projections, policy counterfactuals, or explicit assumptions. | Executable provenance is recorded per `ScenarioRegistry` delta and exported by `ScenarioRunExport`; source-extraction manifests for externally backed shocks remain future work. Priority: medium. |
 
-## Sector Crosswalk
+## Institutional-Sector Crosswalk
+
+This crosswalk maps ESA/institutional accounting sectors for balance sheets,
+financial accounts, and SFC ownership. It is separate from the production-sector
+crosswalk below, which maps NACE activities to the six runtime production
+sectors used by firms and sector-output validation.
 
 | Runtime sector | Primary ESA / institutional mapping | Bridge note |
 | --- | --- | --- |
