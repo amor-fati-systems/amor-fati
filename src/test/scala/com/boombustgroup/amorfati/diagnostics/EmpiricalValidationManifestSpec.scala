@@ -266,10 +266,12 @@ class EmpiricalValidationManifestSpec extends AnyFlatSpec with Matchers:
     consumerNplTrajectory.value("notes") should include("product-level KNF/NBP NPL series")
 
     val mortgageStock = rowByTarget(rows, "Housing and mortgages - mortgage stock/GDP")
-    mortgageStock.status shouldBe "READY"
+    mortgageStock.status shouldBe "BRIDGE_ASSUMPTION"
     mortgageStock.value("source_provider") shouldBe "KNF"
     mortgageStock.value("empirical_value") shouldBe "0.1217"
-    mortgageStock.value("model_target") shouldBe "timeseries:MortgageToGdp:terminal"
+    mortgageStock.value("model_target") shouldBe "timeseries:MortgageToGdp:first"
+    mortgageStock.value("transformation") should include("first simulated MortgageToGdp")
+    mortgageStock.value("notes") should include("horizon-matched comparator")
 
     val mortgageDefault = rowByTarget(rows, "Housing and mortgages - mortgage default bridge")
     mortgageDefault.status shouldBe "PARTIAL"
