@@ -1,7 +1,23 @@
 package com.boombustgroup.amorfati.config
 
+/** Maps source-data industry classifications into AMOR-FATI's runtime
+  * production sectors.
+  *
+  * This is the industry/output axis of the model, not the ESA/SFC
+  * institutional-sector axis used for balance sheets and ownership. For
+  * example, a manufacturing firm is institutionally a firm, but its production
+  * sector is Manufacturing.
+  */
 object ProductionSectorCrosswalk:
 
+  /** Marks how strong each NACE-to-runtime-sector bridge is.
+    *
+    * Direct rows can be used as high-level empirical matches. Bridge
+    * assumptions are explicit proxies for runtime concepts that have no
+    * one-to-one NACE section. Residual rows keep source-data coverage complete
+    * without pretending to be direct matches. Excluded rows are intentionally
+    * outside the production-firm perimeter.
+    */
   enum AssignmentKind(val token: String):
     case Direct           extends AssignmentKind("DIRECT")
     case BridgeAssumption extends AssignmentKind("BRIDGE_ASSUMPTION")
@@ -34,6 +50,11 @@ object ProductionSectorCrosswalk:
   val RuntimeSectors: Vector[RuntimeSector] =
     SimParams.SchemaSectors.map(sector => RuntimeSector(sector.name, sector.outputStem))
 
+  /** NACE Rev. 2 sections A-U.
+    *
+    * Keeping the complete source taxonomy here makes missing or duplicated
+    * sections fail fast when assignments are edited.
+    */
   val NaceSections: Vector[NaceSection] = Vector(
     NaceSection("A", "Agriculture, forestry and fishing"),
     NaceSection("B", "Mining and quarrying"),
@@ -58,6 +79,16 @@ object ProductionSectorCrosswalk:
     NaceSection("U", "Activities of extraterritorial organisations and bodies"),
   )
 
+  /** Production-sector bridge from NACE Rev. 2 sections to the six runtime
+    * sectors.
+    *
+    * The runtime schema is intentionally coarser than NACE. K is excluded
+    * because financial and insurance institutions are represented by dedicated
+    * financial agents. T and U are excluded because they are not Poland
+    * production-firm sectors. BPO/SSC is a model concept, so J/M/N are recorded
+    * as bridge assumptions until a finer empirical service-export or
+    * shared-services extraction exists.
+    */
   val Assignments: Vector[NaceAssignment] = Vector(
     assign("A", "Agriculture", AssignmentKind.Direct, "Direct high-level agriculture bridge."),
     assign("B", "Manufacturing", AssignmentKind.Residual, "Industrial residual; no separate mining sector exists in the runtime schema."),
