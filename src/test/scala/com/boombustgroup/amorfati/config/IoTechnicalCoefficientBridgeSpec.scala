@@ -16,22 +16,23 @@ class IoTechnicalCoefficientBridgeSpec extends AnyFlatSpec with Matchers:
     RuntimeSectors.map(_.runtimeSector) shouldBe SimParams.SchemaSectorNames
     Rows.take(6).map(_.supplierSector).distinct shouldBe Vector("BPO/SSC")
     Rows.take(6).map(_.usingSector) shouldBe SimParams.SchemaSectorNames
+    Rows.foreach(_.sourceProvider shouldBe "GUS")
     Rows.map(_.modelCoefficient) should contain(BigDecimal("0.35"))
-    Rows.foreach(_.notes should include("does not change IoConfig.DefaultMatrix"))
+    Rows.foreach(_.notes should include("remains the 2026-04-30 baseline assumption"))
     Rows.foreach(_.notes should include("validate io.crossSectorSpillover"))
   }
 
   it should "reconstruct technical coefficients from source flow divided by using-sector output" in {
     val agricultureToManufacturing = row("Agriculture", "Manufacturing")
-    agricultureToManufacturing.sourceFlowMEur shouldBe BigDecimal("14637.02")
-    agricultureToManufacturing.usingOutputMEur shouldBe BigDecimal("374314.25")
-    assertClose(agricultureToManufacturing.sourceCoefficient, BigDecimal("0.039103561"))
+    agricultureToManufacturing.sourceFlowThousandPln shouldBe BigDecimal("65032271")
+    agricultureToManufacturing.usingOutputThousandPln shouldBe BigDecimal("1663078187")
+    assertClose(agricultureToManufacturing.sourceCoefficient, BigDecimal("0.039103556"))
     agricultureToManufacturing.modelCoefficient shouldBe BigDecimal("0.08")
 
     val manufacturingToAgriculture = row("Manufacturing", "Agriculture")
-    manufacturingToAgriculture.sourceFlowMEur shouldBe BigDecimal("6175.03")
-    manufacturingToAgriculture.usingOutputMEur shouldBe BigDecimal("32979.19")
-    assertClose(manufacturingToAgriculture.sourceCoefficient, BigDecimal("0.187240196"))
+    manufacturingToAgriculture.sourceFlowThousandPln shouldBe BigDecimal("27435636")
+    manufacturingToAgriculture.usingOutputThousandPln shouldBe BigDecimal("146526547")
+    assertClose(manufacturingToAgriculture.sourceCoefficient, BigDecimal("0.187240036"))
     manufacturingToAgriculture.modelCoefficient shouldBe BigDecimal("0.18")
   }
 
@@ -40,8 +41,8 @@ class IoTechnicalCoefficientBridgeSpec extends AnyFlatSpec with Matchers:
     val transposedPair             = row("Retail/Services", "BPO/SSC")
 
     supplierInputToUsingSector.orientation should include("supplier sector i used by sector j")
-    supplierInputToUsingSector.sourceFlowMEur shouldBe BigDecimal("22426.31")
-    transposedPair.sourceFlowMEur shouldBe BigDecimal("8922.41")
+    supplierInputToUsingSector.sourceFlowThousandPln shouldBe BigDecimal("106972170")
+    transposedPair.sourceFlowThousandPln shouldBe BigDecimal("46379004")
     supplierInputToUsingSector.sourceCoefficient should not equal transposedPair.sourceCoefficient
   }
 
