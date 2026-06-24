@@ -174,6 +174,7 @@ class CalibrationProvenanceSpec extends AnyFlatSpec with Matchers:
     sectorShares.artifactLabel shouldBe Some("Sector firm-population shares")
     sectorShares.evidenceTarget should include("firm-population")
     sectorShares.notes should include("sectorDefs.share")
+    sectorShares.notes should include("bridge assumptions")
     sectorShares.notes should include("separate diagnostics")
 
     val sectorWages = baselineParameter("sectorDefs.wageMultiplier").validationEvidence.getOrElse(fail("Expected sector-wage validation evidence"))
@@ -183,7 +184,7 @@ class CalibrationProvenanceSpec extends AnyFlatSpec with Matchers:
     sectorWages.artifactLabel shouldBe Some("Sector wage ratios")
     sectorWages.evidenceTarget should include("wage-ratio")
     sectorWages.notes should include("wageMultiplier validation")
-    sectorWages.notes should include("missing-data bridge")
+    sectorWages.notes should include("compensation-per-employee bridge assumptions")
 
     val mpc = baselineParameter("household.mpc").validationEvidence.getOrElse(fail("Expected MPC validation evidence"))
     mpc.mode shouldBe SensitivityRange
