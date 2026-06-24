@@ -79,9 +79,9 @@ a concrete diagnostic artifact path.
 
 | Validation mode | Count | Linked evidence paths | Missing evidence paths |
 | --- | ---: | ---: | ---: |
-| `HISTORICAL_FIT` | 33 | 5 | 28 |
-| `STYLIZED_FACT_TARGET` | 10 | 8 | 2 |
-| `SENSITIVITY_RANGE` | 32 | 5 | 27 |
+| `HISTORICAL_FIT` | 32 | 5 | 27 |
+| `STYLIZED_FACT_TARGET` | 10 | 9 | 1 |
+| `SENSITIVITY_RANGE` | 33 | 5 | 28 |
 | `MODEL_BEHAVIOR_CALIBRATION` | 14 | 0 | 14 |
 
 ### Evidence Paths
@@ -136,7 +136,7 @@ a concrete diagnostic artifact path.
 | `climate.greenBudgetShare` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` |  |  | Green investment budget share | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
 | `fiscal.govWageIndexShare` | `HISTORICAL_FIT` | `MISSING_VALIDATION_EVIDENCE` |  |  | Labor-cost indexation of government purchases | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
 | `fiscal.fofConsWeights`, `fofGovWeights` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` |  |  | Flow-of-funds allocation of household consumption and government purchases | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
-| `io.crossSectorSpillover` | `HISTORICAL_FIT` | `MISSING_VALIDATION_EVIDENCE` |  |  | Substitutable share of unmet sector demand | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `io.crossSectorSpillover` | `SENSITIVITY_RANGE` | `MISSING_VALIDATION_EVIDENCE` |  |  | Demand-spillover sensitivity | Supply-use and I-O evidence can support the sector compatibility matrix, but it does not validate the behavioral share of unmet demand that may spill to slack sectors. |
 | `fiscal.govInitCapital` | `HISTORICAL_FIT` | docs/empirical-validation/baseline-validation-snapshot.tsv | Fiscal stance - state budget expenditure plan 2026 |  | Public investment and fiscal stance bridge | EmpiricalValidationExport keeps the current fiscal coverage bridge visible while public-capital stock validation remains partial. |
 | `fiscal.euFundsTotalEur`, `euFundsAlpha`, `euFundsBeta` | `HISTORICAL_FIT` | `MISSING_VALIDATION_EVIDENCE` |  |  | EU cohesion plus KPO-style investment absorption window | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
 | `fiscal.govFiscalRiskBeta`, `fiscalRiskBeta55`, `fiscalRiskBeta60` | `HISTORICAL_FIT` | `MISSING_VALIDATION_EVIDENCE` |  |  | Bond-yield sensitivity to public-debt pressure without a 60% debt cliff | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
@@ -170,7 +170,7 @@ a concrete diagnostic artifact path.
 | `housing.originationRate`, `defaultBase`, `defaultUnempSens` | `HISTORICAL_FIT` | docs/empirical-validation/baseline-validation-snapshot.tsv | Housing and mortgages - mortgage default bridge |  | Mortgage origination/default bridge | EmpiricalValidationExport carries mortgage stock and default-flow validation rows for the housing credit channel. |
 | `regional.housingBarrierThreshold` | `MODEL_BEHAVIOR_CALIBRATION` | `MISSING_VALIDATION_EVIDENCE` |  |  | Housing-cost migration barrier | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
 | `pricing.demandSensitivity`, `costPassthrough` | `SENSITIVITY_RANGE` | docs/sensitivity-robustness-workflow.md | sensitivity-summary.tsv | markup-high | Price-level and markup sensitivity | SensitivityRobustnessExport varies cost pass-through in the markup-high scenario and reports inflation and wage-path metrics. |
-| `io.matrix` | `STYLIZED_FACT_TARGET` | `MISSING_VALIDATION_EVIDENCE` |  |  | Inter-sector intermediate demand | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
+| `io.matrix` | `STYLIZED_FACT_TARGET` | docs/empirical-source-extracts/io-technical-coefficients.tsv | io-technical-coefficients.tsv |  | Six-sector I-O technical-coefficient bridge | IoTechnicalCoefficientBridge compares IoConfig.DefaultMatrix to Eurostat 2020 PL domestic product-by-product SIOT coefficients without changing defaults; row orientation is supplier/input sector i used by sector j. |
 | `informal.citEvasion`, `vatEvasion`, `pitEvasion`, `exciseEvasion` | `MODEL_BEHAVIOR_CALIBRATION` | `MISSING_VALIDATION_EVIDENCE` |  |  | Tax evasion rates by tax channel | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
 | `informal.unempThreshold`, `cyclicalSens`, `smoothing` | `MODEL_BEHAVIOR_CALIBRATION` | `MISSING_VALIDATION_EVIDENCE` |  |  | Counter-cyclical informal-sector response | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
 | `soe.dividendFiscalThreshold`, `dividendFiscalSensitivity` | `MODEL_BEHAVIOR_CALIBRATION` | `MISSING_VALIDATION_EVIDENCE` |  |  | Fiscal-pressure dividend response | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
@@ -314,7 +314,7 @@ a concrete diagnostic artifact path.
 | `fiscal.govBaseSpending` | `76.575e9` | raw PLN/month | MF 2026 budget spending plan (918.9e9 / 12) | Government base spending | Scaled by gdpRatio | `FiscalConfig`, `SimParams` | `EMPIRICAL_TRANSFORMED` |
 | `fiscal.govWageIndexShare` | `0.75` | share | #461 GDP-growth calibration | Labor-cost indexation of government purchases | CPI/wage blended cost index in DemandEconomics.computeGovPurchases | `FiscalConfig`, `DemandEconomics` | `TUNED_NEEDS_VALIDATION` |
 | `fiscal.fofConsWeights`, `fofGovWeights` | `[0.02, 0.18, 0.59, 0.06, 0.07, 0.08], [0.04, 0.08, 0.08, 0.20, 0.58, 0.02]` | sector shares | #461 demand-allocation calibration | Flow-of-funds allocation of household consumption and government purchases | Direct sector allocation | `FiscalConfig`, `DemandEconomics` | `TUNED_NEEDS_VALIDATION` |
-| `io.crossSectorSpillover` | `0.65` | share | #461 GDP-growth calibration | Substitutable share of unmet sector demand | I-O-weighted partial spillover inside DemandEconomics.applySpillover | `DemandEconomics`, `IoConfig` | `TUNED_NEEDS_VALIDATION` |
+| `io.crossSectorSpillover` | `0.65` | share | Behavioral demand-spillover calibration | Substitutable share of unmet sector demand | Sensitivity parameter inside DemandEconomics.applySpillover; io.matrix supplies compatibility weights but does not validate this share | `DemandEconomics`, `IoConfig` | `TUNED_NEEDS_VALIDATION` |
 | `fiscal.govInvestShare` | `0.20` | share | Code note bridge: MF bridge prior | Capital share of government spending | Direct | `FiscalConfig` | `CODE_NOTE_EMPIRICAL` |
 | `fiscal.govCapitalMultiplier`, `govCurrentMultiplier` | `1.5, 0.8` | multiplier | Code note bridge: Ilzetzki, Mendoza and Vegh 2013 | Fiscal multipliers | Direct | `FiscalConfig` | `CODE_NOTE_EMPIRICAL` |
 | `fiscal.govInitCapital` | `2332e9` | raw PLN | #461 fiscal-investment/GDP calibration | Initial public capital stock | Scaled by gdpRatio in SimParams.defaults; seeded into WorldInit public capital stock | `FiscalConfig`, `SimParams`, `WorldInit` | `TUNED_NEEDS_VALIDATION` |
@@ -446,7 +446,7 @@ a concrete diagnostic artifact path.
 | `pricing.baseMarkup` | `1.15` | multiplier | Code note bridge: Polish microdata approximation | Steady-state markup over marginal cost | Direct | `PricingConfig` | `CODE_NOTE_EMPIRICAL` |
 | `pricing.demandSensitivity`, `costPassthrough` | `0.10, 0.4` | coefficients | #461 calibration | Markup response to demand and cost shocks | Direct | `PricingConfig` | `TUNED_NEEDS_VALIDATION` |
 | `pricing.minMarkup`, `maxMarkup` | `0.95, 1.50` | multiplier | Structural bounds | Markup floor and ceiling | Direct | `PricingConfig` | `ASSUMED` |
-| `io.matrix` | `6x6 matrix` | technical coefficients | 2026-04-30 six-sector IO bridge prior | Inter-sector intermediate demand | Direct | `IoConfig` | `TUNED_NEEDS_VALIDATION` |
+| `io.matrix` | `6x6 matrix` | technical coefficients | Eurostat 2020 domestic SIOT comparison bridge | Domestic intermediate demand coefficients | Comparison artifact only; current IoConfig.DefaultMatrix remains a six-sector prior until a replacement decision is ticketed | `IoConfig` | `TUNED_NEEDS_VALIDATION` |
 | `io.scale` | `1.0` | multiplier | Sensitivity switch | Full-strength I-O flows by default | Direct | `IoConfig` | `POLICY_SCENARIO` |
 | `informal.sectorShares` | `[0.05, 0.15, 0.30, 0.20, 0.02, 0.35]` | share by sector | Code note bridge: Schneider 2023 | Shadow-economy sector shares | Direct | `InformalConfig` | `CODE_NOTE_EMPIRICAL` |
 | `informal.citEvasion`, `vatEvasion`, `pitEvasion`, `exciseEvasion` | `0.50, 0.30, 0.40, 0.30` | share | #461 calibration | Tax evasion rates by tax channel | Direct | `InformalConfig` | `TUNED_NEEDS_VALIDATION` |

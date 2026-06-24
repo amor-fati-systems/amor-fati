@@ -342,6 +342,20 @@ object CalibrationProvenance:
           "EmpiricalValidationExport carries the Sector wage ratios surface for wageMultiplier validation; source rows are Eurostat compensation-per-employee bridge assumptions.",
           artifactLabel = Some("Sector wage ratios"),
         ),
+        "io.matrix"                    -> linkedEvidence(
+          CalibrationValidationMode.StylizedFactTarget,
+          "docs/empirical-source-extracts/io-technical-coefficients.tsv",
+          "Six-sector I-O technical-coefficient bridge",
+          "IoTechnicalCoefficientBridge compares IoConfig.DefaultMatrix to Eurostat 2020 PL domestic product-by-product SIOT coefficients without changing defaults; row orientation is supplier/input sector i used by sector j.",
+          artifactLabel = Some("io-technical-coefficients.tsv"),
+        ),
+        "io.crossSectorSpillover"      -> CalibrationValidationEvidence(
+          mode = CalibrationValidationMode.SensitivityRange,
+          evidencePath = None,
+          evidenceTarget = "Demand-spillover sensitivity",
+          notes =
+            "Supply-use and I-O evidence can support the sector compatibility matrix, but it does not validate the behavioral share of unmet demand that may spill to slack sectors.",
+        ),
         "household.mpc"                -> linkedEvidence(
           CalibrationValidationMode.SensitivityRange,
           "docs/sensitivity-robustness-workflow.md",
@@ -617,7 +631,7 @@ object CalibrationProvenance:
 | `fiscal.govBaseSpending` | `76.575e9` | raw PLN/month | MF 2026 budget spending plan (918.9e9 / 12) | Government base spending | Scaled by `gdpRatio` | `FiscalConfig`, `SimParams` | `EMPIRICAL_TRANSFORMED` |
 | `fiscal.govWageIndexShare` | `0.75` | share | #461 GDP-growth calibration | Labor-cost indexation of government purchases | CPI/wage blended cost index in `DemandEconomics.computeGovPurchases` | `FiscalConfig`, `DemandEconomics` | `TUNED_NEEDS_VALIDATION` |
 | `fiscal.fofConsWeights`, `fofGovWeights` | `[0.02, 0.18, 0.59, 0.06, 0.07, 0.08]`, `[0.04, 0.08, 0.08, 0.20, 0.58, 0.02]` | sector shares | #461 demand-allocation calibration | Flow-of-funds allocation of household consumption and government purchases | Direct sector allocation | `FiscalConfig`, `DemandEconomics` | `TUNED_NEEDS_VALIDATION` |
-| `io.crossSectorSpillover` | `0.65` | share | #461 GDP-growth calibration | Substitutable share of unmet sector demand | I-O-weighted partial spillover inside `DemandEconomics.applySpillover` | `DemandEconomics`, `IoConfig` | `TUNED_NEEDS_VALIDATION` |
+| `io.crossSectorSpillover` | `0.65` | share | Behavioral demand-spillover calibration | Substitutable share of unmet sector demand | Sensitivity parameter inside `DemandEconomics.applySpillover`; `io.matrix` supplies compatibility weights but does not validate this share | `DemandEconomics`, `IoConfig` | `TUNED_NEEDS_VALIDATION` |
 | `fiscal.govInvestShare` | `0.20` | share | Code note bridge: MF bridge prior | Capital share of government spending | Direct | `FiscalConfig` | `CODE_NOTE_EMPIRICAL` |
 | `fiscal.govCapitalMultiplier`, `govCurrentMultiplier` | `1.5`, `0.8` | multiplier | Code note bridge: Ilzetzki, Mendoza and Vegh 2013 | Fiscal multipliers | Direct | `FiscalConfig` | `CODE_NOTE_EMPIRICAL` |
 | `fiscal.govInitCapital` | `2332e9` | raw PLN | #461 fiscal-investment/GDP calibration | Initial public capital stock | Scaled by `gdpRatio` in `SimParams.defaults`; seeded into `WorldInit` public capital stock | `FiscalConfig`, `SimParams`, `WorldInit` | `TUNED_NEEDS_VALIDATION` |
@@ -739,7 +753,7 @@ object CalibrationProvenance:
 | `pricing.baseMarkup` | `1.15` | multiplier | Code note bridge: Polish microdata approximation | Steady-state markup over marginal cost | Direct | `PricingConfig` | `CODE_NOTE_EMPIRICAL` |
 | `pricing.demandSensitivity`, `costPassthrough` | `0.10`, `0.4` | coefficients | #461 calibration | Markup response to demand and cost shocks | Direct | `PricingConfig` | `TUNED_NEEDS_VALIDATION` |
 | `pricing.minMarkup`, `maxMarkup` | `0.95`, `1.50` | multiplier | Structural bounds | Markup floor and ceiling | Direct | `PricingConfig` | `ASSUMED` |
-| `io.matrix` | 6x6 matrix | technical coefficients | 2026-04-30 six-sector IO bridge prior | Inter-sector intermediate demand | Direct | `IoConfig` | `TUNED_NEEDS_VALIDATION` |
+| `io.matrix` | 6x6 matrix | technical coefficients | Eurostat 2020 domestic SIOT comparison bridge | Domestic intermediate demand coefficients | Comparison artifact only; current `IoConfig.DefaultMatrix` remains a six-sector prior until a replacement decision is ticketed | `IoConfig` | `TUNED_NEEDS_VALIDATION` |
 | `io.scale` | `1.0` | multiplier | Sensitivity switch | Full-strength I-O flows by default | Direct | `IoConfig` | `POLICY_SCENARIO` |
 | `informal.sectorShares` | `[0.05, 0.15, 0.30, 0.20, 0.02, 0.35]` | share by sector | Code note bridge: Schneider 2023 | Shadow-economy sector shares | Direct | `InformalConfig` | `CODE_NOTE_EMPIRICAL` |
 | `informal.citEvasion`, `vatEvasion`, `pitEvasion`, `exciseEvasion` | `0.50`, `0.30`, `0.40`, `0.30` | share | #461 calibration | Tax evasion rates by tax channel | Direct | `InformalConfig` | `TUNED_NEEDS_VALIDATION` |
