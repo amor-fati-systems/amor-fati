@@ -43,10 +43,10 @@ class CalibrationProvenanceSpec extends AnyFlatSpec with Matchers:
     CalibrationProvenance.Baseline.statusCounts should contain(Empirical -> 37)
     CalibrationProvenance.Baseline.statusCounts should contain(EmpiricalTransformed -> 18)
     CalibrationProvenance.Baseline.statusCounts should contain(CodeNoteEmpirical -> 62)
-    CalibrationProvenance.Baseline.statusCounts should contain(TunedNeedsValidation -> 90)
+    CalibrationProvenance.Baseline.statusCounts should contain(TunedNeedsValidation -> 89)
     CalibrationProvenance.Baseline.statusCounts.getOrElse(UnknownSource, 0) shouldBe 0
     CalibrationProvenance.Baseline.statusCounts should contain(Placeholder -> 1)
-    CalibrationProvenance.Baseline.statusCounts should contain(Assumed -> 33)
+    CalibrationProvenance.Baseline.statusCounts should contain(Assumed -> 34)
     CalibrationProvenance.Baseline.statusCounts should contain(PolicyScenario -> 7)
   }
 
@@ -145,12 +145,26 @@ class CalibrationProvenanceSpec extends AnyFlatSpec with Matchers:
     mpc.needsValidationEvidence shouldBe true
   }
 
+  it should "classify sector sigma as a structural automation-substitution assumption" in {
+    val sectorSigma = baselineParameter("sectorDefs.sigma")
+
+    sectorSigma.status shouldBe Assumed
+    sectorSigma.effectiveExemption shouldBe Some(StructuralAssumption)
+    sectorSigma.validationEvidence shouldBe None
+    sectorSigma.provenance shouldBe "Structural automation/substitution ranking"
+    sectorSigma.empiricalTarget should include("BPO/SSC stylized high")
+    sectorSigma.empiricalTarget should include("Public stylized very low")
+    sectorSigma.transformation should include("sector output")
+    sectorSigma.transformation should include("do not validate it")
+    sectorSigma.transformation should include("sigma scenario envelope")
+  }
+
   it should "classify tuned parameters by validation mode and preserve missing evidence paths" in {
     val tuned      = CalibrationProvenance.Baseline.rowsWithStatus(TunedNeedsValidation)
     val pathCounts = CalibrationProvenance.Baseline.tunedValidationEvidencePathCounts
 
     CalibrationProvenance.Baseline.tunedValidationEvidenceErrors shouldBe empty
-    tuned should have size 90
+    tuned should have size 89
     tuned.flatMap(_.validationEvidence) should have size tuned.size
     CalibrationProvenance.Baseline.tunedValidationModeCounts.values.sum shouldBe tuned.size
     CalibrationValidationMode.values.foreach: mode =>
