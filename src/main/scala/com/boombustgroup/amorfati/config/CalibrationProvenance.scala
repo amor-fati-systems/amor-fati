@@ -332,14 +332,14 @@ object CalibrationProvenance:
           CalibrationValidationMode.StylizedFactTarget,
           "docs/empirical-validation/baseline-validation-snapshot.tsv",
           "Six-sector firm-population share bridge",
-          "EmpiricalValidationExport carries the Sector firm-population shares surface for sectorDefs.share; sector employment shares and output shares are separate diagnostics.",
+          "EmpiricalValidationExport carries the Sector firm-population shares surface for sectorDefs.share; source rows are bridge assumptions and sector employment shares and output shares are separate diagnostics.",
           artifactLabel = Some("Sector firm-population shares"),
         ),
         "sectorDefs.wageMultiplier"    -> linkedEvidence(
           CalibrationValidationMode.StylizedFactTarget,
           "docs/empirical-validation/baseline-validation-snapshot.tsv",
           "Six-sector wage-ratio bridge",
-          "EmpiricalValidationExport carries the Sector wage ratios surface for wageMultiplier validation; source extraction remains a missing-data bridge until GUS/Eurostat wage-by-activity data are mapped.",
+          "EmpiricalValidationExport carries the Sector wage ratios surface for wageMultiplier validation; source rows are Eurostat compensation-per-employee bridge assumptions.",
           artifactLabel = Some("Sector wage ratios"),
         ),
         "household.mpc"                -> linkedEvidence(

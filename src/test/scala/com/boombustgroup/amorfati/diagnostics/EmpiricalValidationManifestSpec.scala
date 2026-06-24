@@ -164,31 +164,71 @@ class EmpiricalValidationManifestSpec extends AnyFlatSpec with Matchers:
     val rows = readManifest()
 
     val firmShares = rowByTarget(rows, "Sector firm-population shares")
-    firmShares.status shouldBe "MISSING_DATA_BRIDGE"
-    firmShares.value("source_provider") shouldBe "GUS/Eurostat"
-    firmShares.value("dataset_code") should include("active enterprises")
-    firmShares.value("unit") shouldBe "share of active production firms"
+    firmShares.status shouldBe "PARTIAL"
+    firmShares.value("source_provider") shouldBe "GUS"
+    firmShares.value("dataset_code") shouldBe "GUS Active enterprises in Q1 2026 Table 2"
+    firmShares.value("accessed_at") shouldBe "2026-06-24"
+    firmShares.value("unit") shouldBe "share of active production enterprises"
     firmShares.value("model_target") shouldBe "timeseries:BPO_FirmShare:first"
+    firmShares.value("transformation") should include("production-sector-labor-bridges.tsv")
     firmShares.value("transformation") should include("sectorDefs.share")
     firmShares.value("transformation") should include("firm-population")
-    firmShares.value("transformation") should include("not output share or employment share")
-    firmShares.value("notes") should include("*_FirmShare")
+    firmShares.value("notes") should include("family row is not a numeric comparator")
 
     val employmentShares = rowByTarget(rows, "Sector employment shares")
-    employmentShares.status shouldBe "MISSING_DATA_BRIDGE"
-    employmentShares.value("dataset_code") should include("employment by activity")
+    employmentShares.status shouldBe "PARTIAL"
+    employmentShares.value("source_provider") shouldBe "Eurostat"
+    employmentShares.value("dataset_code") shouldBe "Eurostat nama_10_a64_e EMP_DC THS_PER PL 2024"
+    employmentShares.value("accessed_at") shouldBe "2026-06-24"
     employmentShares.value("unit") shouldBe "share of employed persons"
     employmentShares.value("model_target") shouldBe "timeseries:BPO_EmploymentShare:first"
+    employmentShares.value("transformation") should include("production-sector-labor-bridges.tsv")
     employmentShares.value("transformation") should include("separate from sectorDefs.share")
-    employmentShares.value("notes") should include("*_EmploymentShare")
+    employmentShares.value("notes") should include("family row is not a numeric comparator")
 
     val wageRatios = rowByTarget(rows, "Sector wage ratios")
-    wageRatios.status shouldBe "MISSING_DATA_BRIDGE"
-    wageRatios.value("dataset_code") should include("compensation-per-employee")
-    wageRatios.value("unit") shouldBe "sector wage ratio"
+    wageRatios.status shouldBe "PARTIAL"
+    wageRatios.value("source_provider") shouldBe "Eurostat"
+    wageRatios.value("dataset_code") should include("D1 CP_MEUR")
+    wageRatios.value("accessed_at") shouldBe "2026-06-24"
+    wageRatios.value("unit") shouldBe "sector compensation-per-employee ratio"
     wageRatios.value("model_target") shouldBe "timeseries:BPO_WageRatio:first"
-    wageRatios.value("transformation") should include("normalize to the included production-sector mean")
-    wageRatios.value("notes") should include("*_WageRatio")
+    wageRatios.value("transformation") should include("production-sector-labor-bridges.tsv")
+    wageRatios.value("transformation") should include("included production-sector mean")
+    wageRatios.value("notes") should include("family row is not a numeric comparator")
+
+    val expectedSectorRows = Vector(
+      ("Sector firm-population shares", "BPO/SSC", "BPO_FirmShare", "0.273479618", "J+M+N"),
+      ("Sector firm-population shares", "Manufacturing", "Manuf_FirmShare", "0.090584987", "B+C+D+E"),
+      ("Sector firm-population shares", "Retail/Services", "Retail_FirmShare", "0.504744227", "F+G+H+I+L+R+S"),
+      ("Sector firm-population shares", "Healthcare", "Health_FirmShare", "0.090770457", "Q"),
+      ("Sector firm-population shares", "Public", "Public_FirmShare", "0.031633986", "P"),
+      ("Sector firm-population shares", "Agriculture", "Agri_FirmShare", "0.008786725", "A"),
+      ("Sector employment shares", "BPO/SSC", "BPO_EmploymentShare", "0.120539311", "J+M+N"),
+      ("Sector employment shares", "Manufacturing", "Manuf_EmploymentShare", "0.230172741", "B+C+D+E"),
+      ("Sector employment shares", "Retail/Services", "Retail_EmploymentShare", "0.352204872", "F+G+H+I+L+R+S"),
+      ("Sector employment shares", "Healthcare", "Health_EmploymentShare", "0.070067769", "Q"),
+      ("Sector employment shares", "Public", "Public_EmploymentShare", "0.155638358", "O+P"),
+      ("Sector employment shares", "Agriculture", "Agri_EmploymentShare", "0.071376949", "A"),
+      ("Sector wage ratios", "BPO/SSC", "BPO_WageRatio", "1.233856038", "J+M+N"),
+      ("Sector wage ratios", "Manufacturing", "Manuf_WageRatio", "0.945580499", "B+C+D+E"),
+      ("Sector wage ratios", "Retail/Services", "Retail_WageRatio", "0.868392229", "F+G+H+I+L+R+S"),
+      ("Sector wage ratios", "Healthcare", "Health_WageRatio", "0.958306040", "Q"),
+      ("Sector wage ratios", "Public", "Public_WageRatio", "1.181048625", "O+P"),
+      ("Sector wage ratios", "Agriculture", "Agri_WageRatio", "1.437362138", "A"),
+    )
+
+    expectedSectorRows.foreach: (family, sector, column, empiricalValue, naceSections) =>
+      withClue(s"$family - $sector") {
+        val row = rowByTarget(rows, s"$family - $sector")
+        row.status shouldBe "BRIDGE_ASSUMPTION"
+        row.value("model_target") shouldBe s"timeseries:$column:first"
+        row.value("empirical_value") shouldBe empiricalValue
+        row.value("tolerance") shouldBe ""
+        row.value("criterion") shouldBe ""
+        row.value("notes") should include("docs/empirical-source-extracts/production-sector-labor-bridges.tsv")
+        row.value("notes") should include(s"NACE sections $naceSections")
+      }
   }
 
   it should "carry NBP ready comparators and documented bridge gaps" in {
