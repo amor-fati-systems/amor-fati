@@ -112,6 +112,9 @@ object ProductionSectorLaborSourceBridge:
   object Eurostat2024A64:
     final case class Section(employmentThousandPersons: BigDecimal, employeesThousandPersons: BigDecimal, compensationMEur: BigDecimal)
 
+    private val SectionCodes: Vector[String] =
+      ('A' to 'U').map(_.toString).toVector
+
     val sections: Map[String, Section] = Map(
       "A" -> Section(BigDecimal("1204.9"), BigDecimal("125.0"), BigDecimal("4376.4")),
       "B" -> Section(BigDecimal("187.9"), BigDecimal("186.3"), BigDecimal("6329.4")),
@@ -138,6 +141,46 @@ object ProductionSectorLaborSourceBridge:
 
     def section(code: String): Section =
       sections.getOrElse(code, throw new IllegalArgumentException(s"Unknown Eurostat A64 section: $code"))
+
+    private val PublishedTotal: Section =
+      Section(
+        employmentThousandPersons = BigDecimal("17420.0"),
+        employeesThousandPersons = BigDecimal("14064.3"),
+        compensationMEur = BigDecimal("344051.5"),
+      )
+
+    private val SectionTotal: Section =
+      SectionCodes
+        .map(section)
+        .foldLeft(Section(BigDecimal(0), BigDecimal(0), BigDecimal(0))):
+          case (total, value) =>
+            Section(
+              employmentThousandPersons = total.employmentThousandPersons + value.employmentThousandPersons,
+              employeesThousandPersons = total.employeesThousandPersons + value.employeesThousandPersons,
+              compensationMEur = total.compensationMEur + value.compensationMEur,
+            )
+
+    private def requireTotal(label: String, actual: BigDecimal, expected: BigDecimal): Unit =
+      require(
+        (actual - expected).abs <= BigDecimal("0.1"),
+        s"Eurostat 2024 A64 $label section values must reconstruct published TOTAL row: $actual vs $expected",
+      )
+
+    requireTotal(
+      "EMP_DC",
+      SectionTotal.employmentThousandPersons,
+      PublishedTotal.employmentThousandPersons,
+    )
+    requireTotal(
+      "SAL_DC",
+      SectionTotal.employeesThousandPersons,
+      PublishedTotal.employeesThousandPersons,
+    )
+    requireTotal(
+      "D1",
+      SectionTotal.compensationMEur,
+      PublishedTotal.compensationMEur,
+    )
 
   private final case class RuntimeBridge(
       runtimeSector: String,
@@ -228,7 +271,7 @@ object ProductionSectorLaborSourceBridge:
     RuntimeRows.flatMap(row => Vector(firmShareRow(row), employmentShareRow(row), wageRatioRow(row)))
 
   def tsvLines: Vector[String] =
-    Header.mkString("\t") +: Rows.map(row => DelimitedTextFormat.Tsv.join(cells(row)))
+    DelimitedTextFormat.Tsv.join(Header) +: Rows.map(row => DelimitedTextFormat.Tsv.join(cells(row)))
 
   private def firmShareRow(row: RuntimeBridge): Row =
     val numerator = firmValue(row.firmSections)
