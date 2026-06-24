@@ -4,19 +4,19 @@ import com.boombustgroup.amorfati.types.*
 
 /** Input-Output matrix for inter-sectoral intermediate demand.
   *
-  * Implements the 6x6 technical coefficients matrix A (Leontief, 1936) where
-  * `matrix(i)(j)` is sector i's share of intermediate purchases from sector j.
-  * Inter-sector purchases are deposit transfers within the same bank (zero-sum
-  * for total deposits), so they do not break existing SFC identities. Column
-  * sums are pre-computed for efficiency.
+  * Implements the 6x6 technical coefficients matrix A (Leontief, 1936). Entry
+  * `matrix(i)(j)` is the share of using sector j's output purchased from
+  * supplier/input sector i. Inter-sector purchases are deposit transfers within
+  * the same bank (zero-sum for total deposits), so they do not break existing
+  * SFC identities. Column sums are pre-computed for efficiency.
   *
   * Default matrix is the 6-sector technical-coefficients prior used by the
   * 2026-04-30 Poland baseline. It is a model bridge to the runtime sector set,
   * not a directly observed 2026 input-output table.
   *
   * @param matrix
-  *   6x6 technical coefficients matrix A[i][j] = sector i's input share from
-  *   sector j
+  *   6x6 technical coefficients matrix A[i][j] = input from supplier sector i
+  *   used by sector j
   * @param scale
   *   scaling factor for I-O flows (1.0 = full strength, for sensitivity
   *   analysis)

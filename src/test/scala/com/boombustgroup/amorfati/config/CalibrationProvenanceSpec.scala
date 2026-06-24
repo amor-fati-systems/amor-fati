@@ -200,6 +200,19 @@ class CalibrationProvenanceSpec extends AnyFlatSpec with Matchers:
     sectorWages.notes should include("wageMultiplier validation")
     sectorWages.notes should include("compensation-per-employee bridge assumptions")
 
+    val ioMatrix = baselineParameter("io.matrix").validationEvidence.getOrElse(fail("Expected I-O matrix validation evidence"))
+    ioMatrix.mode shouldBe StylizedFactTarget
+    ioMatrix.evidencePath.getOrElse(fail("Expected I-O matrix evidence path")) shouldBe
+      "docs/empirical-source-extracts/io-technical-coefficients.tsv"
+    ioMatrix.artifactLabel shouldBe Some("io-technical-coefficients.tsv")
+    ioMatrix.evidenceTarget should include("technical-coefficient")
+    ioMatrix.notes should include("supplier/input sector i used by sector j")
+
+    val ioSpillover = baselineParameter("io.crossSectorSpillover").validationEvidence.getOrElse(fail("Expected spillover validation mode"))
+    ioSpillover.mode shouldBe SensitivityRange
+    ioSpillover.evidencePath shouldBe None
+    ioSpillover.notes should include("does not validate the behavioral share")
+
     val mpc = baselineParameter("household.mpc").validationEvidence.getOrElse(fail("Expected MPC validation evidence"))
     mpc.mode shouldBe SensitivityRange
     mpc.evidencePath.getOrElse(fail("Expected MPC evidence path")) shouldBe "docs/sensitivity-robustness-workflow.md"
