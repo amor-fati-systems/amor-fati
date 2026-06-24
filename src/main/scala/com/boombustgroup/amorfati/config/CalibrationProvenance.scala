@@ -346,7 +346,7 @@ object CalibrationProvenance:
           CalibrationValidationMode.StylizedFactTarget,
           "docs/empirical-source-extracts/io-technical-coefficients.tsv",
           "Six-sector I-O technical-coefficient bridge",
-          "IoTechnicalCoefficientBridge compares IoConfig.DefaultMatrix to Eurostat 2020 PL domestic product-by-product SIOT coefficients without changing defaults; row orientation is supplier/input sector i used by sector j.",
+          "IoTechnicalCoefficientBridge compares IoConfig.DefaultMatrix to GUS 2020 domestic product-by-product input-output coefficients; runtime defaults remain the 2026-04-30 baseline assumption, and row orientation is supplier/input sector i used by sector j.",
           artifactLabel = Some("io-technical-coefficients.tsv"),
         ),
         "io.crossSectorSpillover"      -> CalibrationValidationEvidence(
@@ -354,7 +354,7 @@ object CalibrationProvenance:
           evidencePath = None,
           evidenceTarget = "Demand-spillover sensitivity",
           notes =
-            "Supply-use and I-O evidence can support the sector compatibility matrix, but it does not validate the behavioral share of unmet demand that may spill to slack sectors.",
+            "Supply-use and I-O tables show which sectors are economically connected, but they do not estimate the share of unmet demand that moves to slack sectors.",
         ),
         "household.mpc"                -> linkedEvidence(
           CalibrationValidationMode.SensitivityRange,
@@ -753,7 +753,7 @@ object CalibrationProvenance:
 | `pricing.baseMarkup` | `1.15` | multiplier | Code note bridge: Polish microdata approximation | Steady-state markup over marginal cost | Direct | `PricingConfig` | `CODE_NOTE_EMPIRICAL` |
 | `pricing.demandSensitivity`, `costPassthrough` | `0.10`, `0.4` | coefficients | #461 calibration | Markup response to demand and cost shocks | Direct | `PricingConfig` | `TUNED_NEEDS_VALIDATION` |
 | `pricing.minMarkup`, `maxMarkup` | `0.95`, `1.50` | multiplier | Structural bounds | Markup floor and ceiling | Direct | `PricingConfig` | `ASSUMED` |
-| `io.matrix` | 6x6 matrix | technical coefficients | Eurostat 2020 domestic SIOT comparison bridge | Domestic intermediate demand coefficients | Comparison artifact only; current `IoConfig.DefaultMatrix` remains a six-sector prior until a replacement decision is ticketed | `IoConfig` | `TUNED_NEEDS_VALIDATION` |
+| `io.matrix` | 6x6 matrix | technical coefficients | GUS 2020 domestic input-output comparison bridge | Domestic intermediate demand coefficients | Comparison artifact retained for review; current `IoConfig.DefaultMatrix` remains the 2026-04-30 six-sector baseline assumption because the source is 2020/domestic/product-by-product and includes bridge assumptions | `IoConfig` | `TUNED_NEEDS_VALIDATION` |
 | `io.scale` | `1.0` | multiplier | Sensitivity switch | Full-strength I-O flows by default | Direct | `IoConfig` | `POLICY_SCENARIO` |
 | `informal.sectorShares` | `[0.05, 0.15, 0.30, 0.20, 0.02, 0.35]` | share by sector | Code note bridge: Schneider 2023 | Shadow-economy sector shares | Direct | `InformalConfig` | `CODE_NOTE_EMPIRICAL` |
 | `informal.citEvasion`, `vatEvasion`, `pitEvasion`, `exciseEvasion` | `0.50`, `0.30`, `0.40`, `0.30` | share | #461 calibration | Tax evasion rates by tax channel | Direct | `InformalConfig` | `TUNED_NEEDS_VALIDATION` |

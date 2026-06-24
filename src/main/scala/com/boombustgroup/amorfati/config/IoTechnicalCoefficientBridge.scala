@@ -22,8 +22,8 @@ object IoTechnicalCoefficientBridge:
       supplierBridgeStatus: String,
       usingBridgeStatus: String,
       orientation: String,
-      sourceFlowMEur: BigDecimal,
-      usingOutputMEur: BigDecimal,
+      sourceFlowThousandPln: BigDecimal,
+      usingOutputThousandPln: BigDecimal,
       sourceCoefficient: BigDecimal,
       modelCoefficient: BigDecimal,
       absoluteDelta: BigDecimal,
@@ -48,8 +48,8 @@ object IoTechnicalCoefficientBridge:
     require(supplierBridgeStatus.trim.nonEmpty, "supplierBridgeStatus must be non-empty")
     require(usingBridgeStatus.trim.nonEmpty, "usingBridgeStatus must be non-empty")
     require(orientation.trim.nonEmpty, "orientation must be non-empty")
-    require(sourceFlowMEur >= 0, "sourceFlowMEur must be non-negative")
-    require(usingOutputMEur > 0, "usingOutputMEur must be positive")
+    require(sourceFlowThousandPln >= 0, "sourceFlowThousandPln must be non-negative")
+    require(usingOutputThousandPln > 0, "usingOutputThousandPln must be positive")
     require(sourceCoefficient >= 0, "sourceCoefficient must be non-negative")
     require(modelCoefficient >= 0, "modelCoefficient must be non-negative")
     require(absoluteDelta >= 0, "absoluteDelta must be non-negative")
@@ -75,8 +75,8 @@ object IoTechnicalCoefficientBridge:
     "supplier_bridge_status",
     "using_bridge_status",
     "orientation",
-    "source_flow_m_eur",
-    "using_output_m_eur",
+    "source_flow_thousand_pln",
+    "using_output_thousand_pln",
     "source_coefficient",
     "model_coefficient",
     "absolute_delta",
@@ -95,113 +95,128 @@ object IoTechnicalCoefficientBridge:
     val outputStem: String              = outputStemFor(runtimeSector)
     val productCodeList: String         = productCodes.mkString("+")
     val normalizedCodes: Vector[String] =
-      productCodes.map(_.stripPrefix("CPA_"))
+      productCodes.map(_.stripPrefix("PKWIU_"))
 
-  private val SourceProvider = "Eurostat"
-  private val SourceUrl      =
-    "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/naio_10_cp1700?freq=A&unit=MIO_EUR&geo=PL&time=2020&lang=en"
-  private val DatasetCode    = "Eurostat naio_10_cp1700 symmetric input-output table at basic prices, product-by-product, PL 2020"
-  private val Vintage        =
-    "Eurostat 2020 PL product-by-product SIOT; data updated 2026-06-10T23:00:00+0200; latest PL P1 total observation found through the API on 2026-06-24 was 2020"
-  private val AccessedAt     = "2026-06-24"
-  private val Frequency      = "annual"
-  private val Unit           = "million euro domestic intermediate product flow divided by using-sector total output"
-  private val ReuseNote      = "Eurostat public statistics; cite provider, dataset code, vintage, and access date."
-  private val Orientation    =
+  private val SourceProvider         = "GUS"
+  private val SourceUrl              =
+    "https://stat.gov.pl/download/gfx/portalinformacyjny/pl/defaultaktualnosci/5481/7/4/1/bilans_przeplywow_miedzygaleziowych_w_biezacych_cenach_bazowych_w_2020_r.xlsx"
+  private val DatasetCode            = "GUS input-output table at basic prices for domestic output 2020, Table 3"
+  private val Vintage                =
+    "GUS Bilans przeplywow miedzygaleziowych w biezacych cenach bazowych w 2020 roku; publication 2024-06-27; accessed 2026-06-24"
+  private val AccessedAt             = "2026-06-24"
+  private val Frequency              = "annual"
+  private val Unit                   = "thousand PLN domestic intermediate product flow divided by using-product total output"
+  private val ReuseNote              = "Statistics Poland public statistics; cite provider, release, table, vintage, and access date."
+  private val Orientation            =
     "source row/supplier product -> source column/using product; runtime matrix(i)(j) is input from supplier sector i used by sector j"
+  private val BaselineAssumptionNote =
+    "IoConfig.DefaultMatrix remains the 2026-04-30 baseline assumption after GUS input-output comparison; this bridge is the comparison surface for future retuning."
 
   val RuntimeSectors: Vector[RuntimeSectorSource] = Vector(
     RuntimeSectorSource(
       "BPO/SSC",
       Vector(
-        "CPA_J58",
-        "CPA_J59_60",
-        "CPA_J61",
-        "CPA_J62_63",
-        "CPA_M69_70",
-        "CPA_M71",
-        "CPA_M72",
-        "CPA_M73",
-        "CPA_M74_75",
-        "CPA_N77",
-        "CPA_N78",
-        "CPA_N79",
-        "CPA_N80-82",
+        "PKWIU_58",
+        "PKWIU_59",
+        "PKWIU_60",
+        "PKWIU_61",
+        "PKWIU_62",
+        "PKWIU_63",
+        "PKWIU_69",
+        "PKWIU_70",
+        "PKWIU_71",
+        "PKWIU_72",
+        "PKWIU_73",
+        "PKWIU_74",
+        "PKWIU_75",
+        "PKWIU_77",
+        "PKWIU_78",
+        "PKWIU_79",
+        "PKWIU_80",
+        "PKWIU_81",
+        "PKWIU_82",
       ),
       "BRIDGE_ASSUMPTION",
-      "J/M/N products are the business-services proxy for the BPO/SSC runtime sector.",
+      "PKWiU 58-63, 69-75, and 77-82 are the business-services proxy for the BPO/SSC runtime sector.",
     ),
     RuntimeSectorSource(
       "Manufacturing",
       Vector(
-        "CPA_B",
-        "CPA_C10-12",
-        "CPA_C13-15",
-        "CPA_C16",
-        "CPA_C17",
-        "CPA_C18",
-        "CPA_C19",
-        "CPA_C20",
-        "CPA_C21",
-        "CPA_C22",
-        "CPA_C23",
-        "CPA_C24",
-        "CPA_C25",
-        "CPA_C26",
-        "CPA_C27",
-        "CPA_C28",
-        "CPA_C29",
-        "CPA_C30",
-        "CPA_C31_32",
-        "CPA_C33",
-        "CPA_D",
-        "CPA_E36",
-        "CPA_E37-39",
+        "PKWIU_05",
+        "PKWIU_06-09",
+        "PKWIU_10",
+        "PKWIU_11",
+        "PKWIU_12",
+        "PKWIU_13",
+        "PKWIU_14",
+        "PKWIU_15",
+        "PKWIU_16",
+        "PKWIU_17",
+        "PKWIU_18",
+        "PKWIU_19",
+        "PKWIU_20",
+        "PKWIU_21",
+        "PKWIU_22",
+        "PKWIU_23",
+        "PKWIU_24",
+        "PKWIU_25",
+        "PKWIU_26",
+        "PKWIU_27",
+        "PKWIU_28",
+        "PKWIU_29",
+        "PKWIU_30",
+        "PKWIU_31",
+        "PKWIU_32",
+        "PKWIU_33",
+        "PKWIU_35",
+        "PKWIU_36",
+        "PKWIU_38",
+        "PKWIU_37,39",
       ),
       "DIRECT_WITH_RESIDUALS",
-      "B/C/D/E products are retained with C because the runtime schema has one industrial production bucket.",
+      "PKWiU 05-39 products are retained in one industrial production bucket.",
     ),
     RuntimeSectorSource(
       "Retail/Services",
       Vector(
-        "CPA_F",
-        "CPA_G45",
-        "CPA_G46",
-        "CPA_G47",
-        "CPA_H49",
-        "CPA_H50",
-        "CPA_H51",
-        "CPA_H52",
-        "CPA_H53",
-        "CPA_I",
-        "CPA_L68A",
-        "CPA_L68B",
-        "CPA_R90-92",
-        "CPA_R93",
-        "CPA_S94",
-        "CPA_S95",
-        "CPA_S96",
+        "PKWIU_41-43",
+        "PKWIU_45",
+        "PKWIU_46",
+        "PKWIU_47",
+        "PKWIU_49",
+        "PKWIU_50-51",
+        "PKWIU_52-53",
+        "PKWIU_55",
+        "PKWIU_56",
+        "PKWIU_68",
+        "PKWIU_90",
+        "PKWIU_91",
+        "PKWIU_92",
+        "PKWIU_93",
+        "PKWIU_94",
+        "PKWIU_95",
+        "PKWIU_96",
       ),
       "DIRECT_WITH_RESIDUALS",
-      "Broad market services include construction, trade, transport, accommodation, real estate, arts, and other services.",
+      "Broad market services include construction, trade, transport, accommodation, real estate, arts, and personal services.",
     ),
     RuntimeSectorSource(
       "Healthcare",
-      Vector("CPA_Q86", "CPA_Q87_88"),
+      Vector("PKWIU_86", "PKWIU_87-88"),
       "DIRECT",
-      "Q86/Q87_88 products map directly to the runtime Healthcare sector.",
+      "PKWiU 86 and 87-88 products map directly to the runtime Healthcare sector.",
     ),
     RuntimeSectorSource(
       "Public",
-      Vector("CPA_O", "CPA_P"),
+      Vector("PKWIU_84", "PKWIU_85"),
       "BRIDGE_ASSUMPTION",
-      "O/P products map public administration and education to the runtime Public sector; health remains in Healthcare.",
+      "PKWiU 84 and 85 map public administration and education to the runtime Public sector; health remains in Healthcare.",
     ),
     RuntimeSectorSource(
       "Agriculture",
-      Vector("CPA_A01", "CPA_A02", "CPA_A03"),
+      Vector("PKWIU_01", "PKWIU_02", "PKWIU_03"),
       "BRIDGE_ASSUMPTION",
-      "A01/A02/A03 products map agriculture, forestry, fishing, and aquaculture to the runtime Agriculture sector.",
+      "PKWiU 01, 02, and 03 map agriculture, forestry, fishing, and aquaculture to the runtime Agriculture sector.",
     ),
   )
 
@@ -212,30 +227,30 @@ object IoTechnicalCoefficientBridge:
     "IoConfig.DefaultMatrix rows must match runtime sector count",
   )
 
-  val UsingOutputMEur: Vector[BigDecimal] =
-    Vector("128149.27", "374314.25", "345011.14", "37950.79", "62944.02", "32979.19").map(BigDecimal(_))
+  val UsingOutputThousandPln: Vector[BigDecimal] =
+    Vector("569367264", "1663078187", "1685624131", "168615375", "279660267", "146526547").map(BigDecimal(_))
 
-  val SourceFlowMEur: Vector[Vector[BigDecimal]] =
+  val SourceFlowThousandPln: Vector[Vector[BigDecimal]] =
     Vector(
-      Vector("29258.42", "16909.35", "22426.31", "1185.08", "1450.97", "772.93"),
-      Vector("5284.26", "85486.89", "41713.46", "1644.05", "2383.02", "6175.03"),
-      Vector("8922.41", "45300.26", "66835.31", "3294.73", "4194.84", "2899.05"),
-      Vector("148.13", "154.96", "173.19", "4789.83", "97.67", "10.05"),
-      Vector("1011.48", "788.71", "841.46", "68.70", "1235.12", "38.70"),
-      Vector("165.18", "14637.02", "605.79", "39.80", "35.37", "5696.79"),
+      Vector("129994670", "75128250", "106972170", "5265365", "6446611", "3434210"),
+      Vector("23478124", "379818489", "191337602", "7304686", "10587755", "27435636"),
+      Vector("46379004", "211559620", "397969204", "14904984", "18905691", "13176966"),
+      Vector("658176", "688505", "870193", "21281197", "433941", "44702"),
+      Vector("4494000", "3504282", "4012200", "305259", "5487649", "171994"),
+      Vector("734018", "65032271", "2699820", "176861", "157198", "25310835"),
     ).map(_.map(BigDecimal(_)))
 
-  require(UsingOutputMEur.length == RuntimeSectors.length, "I-O bridge output vector must match runtime sector count")
-  require(SourceFlowMEur.length == RuntimeSectors.length, "I-O bridge source flow matrix must match runtime sector count")
+  require(UsingOutputThousandPln.length == RuntimeSectors.length, "I-O bridge output vector must match runtime sector count")
+  require(SourceFlowThousandPln.length == RuntimeSectors.length, "I-O bridge source flow matrix must match runtime sector count")
   require(
-    SourceFlowMEur.forall(_.length == RuntimeSectors.length),
+    SourceFlowThousandPln.forall(_.length == RuntimeSectors.length),
     "I-O bridge source flow rows must match runtime sector count",
   )
 
   val SourceCoefficientMatrix: Vector[Vector[BigDecimal]] =
-    SourceFlowMEur.map: supplierRow =>
+    SourceFlowThousandPln.map: supplierRow =>
       supplierRow
-        .zip(UsingOutputMEur)
+        .zip(UsingOutputThousandPln)
         .map: (flow, output) =>
           flow / output
 
@@ -253,8 +268,8 @@ object IoTechnicalCoefficientBridge:
   private def row(supplierIndex: Int, usingIndex: Int): Row =
     val supplier         = RuntimeSectors(supplierIndex)
     val using            = RuntimeSectors(usingIndex)
-    val sourceFlow       = SourceFlowMEur(supplierIndex)(usingIndex)
-    val output           = UsingOutputMEur(usingIndex)
+    val sourceFlow       = SourceFlowThousandPln(supplierIndex)(usingIndex)
+    val output           = UsingOutputThousandPln(usingIndex)
     val sourceCoeff      = SourceCoefficientMatrix(supplierIndex)(usingIndex)
     val modelCoeff       = ModelCoefficientMatrix(supplierIndex)(usingIndex)
     val delta            = (modelCoeff - sourceCoeff).abs
@@ -283,16 +298,16 @@ object IoTechnicalCoefficientBridge:
       supplierBridgeStatus = supplier.bridgeStatus,
       usingBridgeStatus = using.bridgeStatus,
       orientation = Orientation,
-      sourceFlowMEur = sourceFlow,
-      usingOutputMEur = output,
+      sourceFlowThousandPln = sourceFlow,
+      usingOutputThousandPln = output,
       sourceCoefficient = sourceCoeff,
       modelCoefficient = modelCoeff,
       absoluteDelta = delta,
       comparisonStatus = comparisonStatus,
       transformation =
-        "Sum Eurostat DOM product-by-product intermediate flows from supplier CPA products to using CPA products, then divide by P1 total output for the using runtime sector. K/T/U and final-use columns stay outside the six-sector production-firm perimeter.",
+        "Sum GUS Table 3 domestic-output product-by-product intermediate flows from supplier PKWiU products to using PKWiU products, then divide by total output at basic prices for the using runtime sector. Financial services K64-66 and household services T97-98 stay outside the six-sector production-firm perimeter.",
       reuseNote = ReuseNote,
-      notes = s"$sectorNotes This comparison artifact does not change IoConfig.DefaultMatrix or validate io.crossSectorSpillover.",
+      notes = s"$sectorNotes $BaselineAssumptionNote It does not validate io.crossSectorSpillover.",
     )
 
   private def shareToBigDecimal(value: Share): BigDecimal =
@@ -321,8 +336,8 @@ object IoTechnicalCoefficientBridge:
     row.supplierBridgeStatus,
     row.usingBridgeStatus,
     row.orientation,
-    formatDecimal(row.sourceFlowMEur),
-    formatDecimal(row.usingOutputMEur),
+    formatDecimal(row.sourceFlowThousandPln),
+    formatDecimal(row.usingOutputThousandPln),
     formatShare(row.sourceCoefficient),
     formatShare(row.modelCoefficient),
     formatShare(row.absoluteDelta),

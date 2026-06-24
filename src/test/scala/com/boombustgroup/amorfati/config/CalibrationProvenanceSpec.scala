@@ -206,12 +206,13 @@ class CalibrationProvenanceSpec extends AnyFlatSpec with Matchers:
       "docs/empirical-source-extracts/io-technical-coefficients.tsv"
     ioMatrix.artifactLabel shouldBe Some("io-technical-coefficients.tsv")
     ioMatrix.evidenceTarget should include("technical-coefficient")
+    ioMatrix.notes should include("runtime defaults remain")
     ioMatrix.notes should include("supplier/input sector i used by sector j")
 
     val ioSpillover = baselineParameter("io.crossSectorSpillover").validationEvidence.getOrElse(fail("Expected spillover validation mode"))
     ioSpillover.mode shouldBe SensitivityRange
     ioSpillover.evidencePath shouldBe None
-    ioSpillover.notes should include("does not validate the behavioral share")
+    ioSpillover.notes should include("do not estimate the share of unmet demand")
 
     val mpc = baselineParameter("household.mpc").validationEvidence.getOrElse(fail("Expected MPC validation evidence"))
     mpc.mode shouldBe SensitivityRange

@@ -10,9 +10,10 @@ import com.boombustgroup.amorfati.types.*
   * the same bank (zero-sum for total deposits), so they do not break existing
   * SFC identities. Column sums are pre-computed for efficiency.
   *
-  * Default matrix is the 6-sector technical-coefficients prior used by the
-  * 2026-04-30 Poland baseline. It is a model bridge to the runtime sector set,
-  * not a directly observed 2026 input-output table.
+  * Default matrix is the 6-sector technical-coefficients assumption for the
+  * 2026-04-30 Poland baseline. The GUS 2020 domestic input-output bridge is the
+  * comparison surface for later retuning, not a silent overwrite of the runtime
+  * defaults.
   *
   * @param matrix
   *   6x6 technical coefficients matrix A[i][j] = input from supplier sector i
@@ -48,7 +49,7 @@ case class IoConfig(
   require(columnSums.forall(_ < Share.One), "IoConfig matrix column sums must be < 1.0")
 
 object IoConfig:
-  /** Default 6x6 I-O technical coefficients matrix for the 2026-04-30 Poland
+  /** Reviewed default 6x6 I-O technical coefficients for the 2026-04-30 Poland
     * baseline bridge.
     *
     * Rows/columns: BPO/SSC, Manufacturing, Retail/Services, Healthcare, Public,
