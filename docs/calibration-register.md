@@ -37,10 +37,10 @@ These counts are rendered from `CalibrationProvenance.Baseline` at generation ti
 | Status | Count |
 | --- | --- |
 | `EMPIRICAL` | 37 |
-| `EMPIRICAL_TRANSFORMED` | 18 |
+| `EMPIRICAL_TRANSFORMED` | 19 |
 | `CODE_NOTE_EMPIRICAL` | 62 |
 | `ASSUMED` | 34 |
-| `TUNED_NEEDS_VALIDATION` | 89 |
+| `TUNED_NEEDS_VALIDATION` | 88 |
 | `POLICY_SCENARIO` | 7 |
 | `PLACEHOLDER` | 1 |
 | `UNKNOWN_SOURCE` | 0 |
@@ -68,6 +68,7 @@ Rows below have been migrated from informal code-note provenance to typed source
 | `forex.importPropensity` | External sector | `GUS/NBP import-to-GDP bridge` | 2026-04-30 model-start bridge | docs/empirical-validation-source-manifest.tsv target: Current account | Aggregate imports are normalized to GDP and used as the import-propensity coefficient. |
 | `equity.peMean`, `divYield` | Financial markets and non-bank finance | `policy-rates-market-yields-and-gpw` | 2026-04-30 model-start bridge | docs/empirical-validation-source-manifest.tsv target: Monetary and financial market conditions | GPW valuation notes are reduced to long-run P/E and annual dividend-yield anchors. |
 | `housing.mortgageSpread` | Housing and mortgages | `NBP MIR housing-loan rate spread` | 2026-04-30 model-start bridge | https://nbp.pl/en/statistic-and-financial-reporting/monetary-and-financial-statistics/mir-statistics/ | Mortgage lending-rate spread over the policy-rate anchor is used directly. |
+| `io.matrix` | Input-output accounts | `GUS 2020 domestic input-output table, Table 3` | published 2024-06-27; accessed 2026-06-24 | docs/empirical-source-extracts/io-technical-coefficients.tsv | GUS product-by-product domestic intermediate flows are aggregated to six runtime sectors and rounded to percentage-point technical coefficients. |
 
 ## Tuned Validation Evidence
 
@@ -80,7 +81,7 @@ a concrete diagnostic artifact path.
 | Validation mode | Count | Linked evidence paths | Missing evidence paths |
 | --- | ---: | ---: | ---: |
 | `HISTORICAL_FIT` | 32 | 5 | 27 |
-| `STYLIZED_FACT_TARGET` | 10 | 9 | 1 |
+| `STYLIZED_FACT_TARGET` | 9 | 8 | 1 |
 | `SENSITIVITY_RANGE` | 33 | 5 | 28 |
 | `MODEL_BEHAVIOR_CALIBRATION` | 14 | 0 | 14 |
 
@@ -170,7 +171,6 @@ a concrete diagnostic artifact path.
 | `housing.originationRate`, `defaultBase`, `defaultUnempSens` | `HISTORICAL_FIT` | docs/empirical-validation/baseline-validation-snapshot.tsv | Housing and mortgages - mortgage default bridge |  | Mortgage origination/default bridge | EmpiricalValidationExport carries mortgage stock and default-flow validation rows for the housing credit channel. |
 | `regional.housingBarrierThreshold` | `MODEL_BEHAVIOR_CALIBRATION` | `MISSING_VALIDATION_EVIDENCE` |  |  | Housing-cost migration barrier | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
 | `pricing.demandSensitivity`, `costPassthrough` | `SENSITIVITY_RANGE` | docs/sensitivity-robustness-workflow.md | sensitivity-summary.tsv | markup-high | Price-level and markup sensitivity | SensitivityRobustnessExport varies cost pass-through in the markup-high scenario and reports inflation and wage-path metrics. |
-| `io.matrix` | `STYLIZED_FACT_TARGET` | docs/empirical-source-extracts/io-technical-coefficients.tsv | io-technical-coefficients.tsv |  | Six-sector I-O technical-coefficient bridge | IoTechnicalCoefficientBridge compares IoConfig.DefaultMatrix to GUS 2020 domestic product-by-product input-output coefficients; runtime defaults remain the 2026-04-30 baseline assumption, and row orientation is supplier/input sector i used by sector j. |
 | `informal.citEvasion`, `vatEvasion`, `pitEvasion`, `exciseEvasion` | `MODEL_BEHAVIOR_CALIBRATION` | `MISSING_VALIDATION_EVIDENCE` |  |  | Tax evasion rates by tax channel | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
 | `informal.unempThreshold`, `cyclicalSens`, `smoothing` | `MODEL_BEHAVIOR_CALIBRATION` | `MISSING_VALIDATION_EVIDENCE` |  |  | Counter-cyclical informal-sector response | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
 | `soe.dividendFiscalThreshold`, `dividendFiscalSensitivity` | `MODEL_BEHAVIOR_CALIBRATION` | `MISSING_VALIDATION_EVIDENCE` |  |  | Fiscal-pressure dividend response | Expected validation mode is classified, but no concrete validation artifact is linked yet. |
@@ -446,7 +446,7 @@ a concrete diagnostic artifact path.
 | `pricing.baseMarkup` | `1.15` | multiplier | Code note bridge: Polish microdata approximation | Steady-state markup over marginal cost | Direct | `PricingConfig` | `CODE_NOTE_EMPIRICAL` |
 | `pricing.demandSensitivity`, `costPassthrough` | `0.10, 0.4` | coefficients | #461 calibration | Markup response to demand and cost shocks | Direct | `PricingConfig` | `TUNED_NEEDS_VALIDATION` |
 | `pricing.minMarkup`, `maxMarkup` | `0.95, 1.50` | multiplier | Structural bounds | Markup floor and ceiling | Direct | `PricingConfig` | `ASSUMED` |
-| `io.matrix` | `6x6 matrix` | technical coefficients | GUS 2020 domestic input-output comparison bridge | Domestic intermediate demand coefficients | Comparison artifact retained for review; current IoConfig.DefaultMatrix remains the 2026-04-30 six-sector baseline assumption because the source is 2020/domestic/product-by-product and includes bridge assumptions | `IoConfig` | `TUNED_NEEDS_VALIDATION` |
+| `io.matrix` | `6x6 matrix` | technical coefficients | GUS 2020 domestic input-output rounded coefficient bridge | Domestic intermediate demand coefficients | Aggregated to six runtime sectors, rounded to percentage-point coefficients, and compared in docs/empirical-source-extracts/io-technical-coefficients.tsv; orientation is supplier/input sector i used by sector j | `IoConfig` | `EMPIRICAL_TRANSFORMED` |
 | `io.scale` | `1.0` | multiplier | Sensitivity switch | Full-strength I-O flows by default | Direct | `IoConfig` | `POLICY_SCENARIO` |
 | `informal.sectorShares` | `[0.05, 0.15, 0.30, 0.20, 0.02, 0.35]` | share by sector | Code note bridge: Schneider 2023 | Shadow-economy sector shares | Direct | `InformalConfig` | `CODE_NOTE_EMPIRICAL` |
 | `informal.citEvasion`, `vatEvasion`, `pitEvasion`, `exciseEvasion` | `0.50, 0.30, 0.40, 0.30` | share | #461 calibration | Tax evasion rates by tax channel | Direct | `InformalConfig` | `TUNED_NEEDS_VALIDATION` |

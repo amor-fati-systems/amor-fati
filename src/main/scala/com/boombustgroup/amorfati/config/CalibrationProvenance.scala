@@ -289,6 +289,14 @@ object CalibrationProvenance:
           sourceReference = "https://nbp.pl/en/statistic-and-financial-reporting/monetary-and-financial-statistics/mir-statistics/",
           transformationNotes = "Mortgage lending-rate spread over the policy-rate anchor is used directly.",
         ),
+        "io.matrix"                         -> SourceMetadata(
+          sourceFamily = "Input-output accounts",
+          sourceTableOrCode = "GUS 2020 domestic input-output table, Table 3",
+          vintage = "published 2024-06-27; accessed 2026-06-24",
+          sourceReference = "docs/empirical-source-extracts/io-technical-coefficients.tsv",
+          transformationNotes =
+            "GUS product-by-product domestic intermediate flows are aggregated to six runtime sectors and rounded to percentage-point technical coefficients.",
+        ),
       ).toMap
 
     private val validationEvidenceById: Map[String, CalibrationValidationEvidence] =
@@ -341,13 +349,6 @@ object CalibrationProvenance:
           "Six-sector wage-ratio bridge",
           "EmpiricalValidationExport carries the Sector wage ratios surface for wageMultiplier validation; source rows are Eurostat compensation-per-employee bridge assumptions.",
           artifactLabel = Some("Sector wage ratios"),
-        ),
-        "io.matrix"                    -> linkedEvidence(
-          CalibrationValidationMode.StylizedFactTarget,
-          "docs/empirical-source-extracts/io-technical-coefficients.tsv",
-          "Six-sector I-O technical-coefficient bridge",
-          "IoTechnicalCoefficientBridge compares IoConfig.DefaultMatrix to GUS 2020 domestic product-by-product input-output coefficients; runtime defaults remain the 2026-04-30 baseline assumption, and row orientation is supplier/input sector i used by sector j.",
-          artifactLabel = Some("io-technical-coefficients.tsv"),
         ),
         "io.crossSectorSpillover"      -> CalibrationValidationEvidence(
           mode = CalibrationValidationMode.SensitivityRange,
@@ -753,7 +754,7 @@ object CalibrationProvenance:
 | `pricing.baseMarkup` | `1.15` | multiplier | Code note bridge: Polish microdata approximation | Steady-state markup over marginal cost | Direct | `PricingConfig` | `CODE_NOTE_EMPIRICAL` |
 | `pricing.demandSensitivity`, `costPassthrough` | `0.10`, `0.4` | coefficients | #461 calibration | Markup response to demand and cost shocks | Direct | `PricingConfig` | `TUNED_NEEDS_VALIDATION` |
 | `pricing.minMarkup`, `maxMarkup` | `0.95`, `1.50` | multiplier | Structural bounds | Markup floor and ceiling | Direct | `PricingConfig` | `ASSUMED` |
-| `io.matrix` | 6x6 matrix | technical coefficients | GUS 2020 domestic input-output comparison bridge | Domestic intermediate demand coefficients | Comparison artifact retained for review; current `IoConfig.DefaultMatrix` remains the 2026-04-30 six-sector baseline assumption because the source is 2020/domestic/product-by-product and includes bridge assumptions | `IoConfig` | `TUNED_NEEDS_VALIDATION` |
+| `io.matrix` | 6x6 matrix | technical coefficients | GUS 2020 domestic input-output rounded coefficient bridge | Domestic intermediate demand coefficients | Aggregated to six runtime sectors, rounded to percentage-point coefficients, and compared in docs/empirical-source-extracts/io-technical-coefficients.tsv; orientation is supplier/input sector i used by sector j | `IoConfig` | `EMPIRICAL_TRANSFORMED` |
 | `io.scale` | `1.0` | multiplier | Sensitivity switch | Full-strength I-O flows by default | Direct | `IoConfig` | `POLICY_SCENARIO` |
 | `informal.sectorShares` | `[0.05, 0.15, 0.30, 0.20, 0.02, 0.35]` | share by sector | Code note bridge: Schneider 2023 | Shadow-economy sector shares | Direct | `InformalConfig` | `CODE_NOTE_EMPIRICAL` |
 | `informal.citEvasion`, `vatEvasion`, `pitEvasion`, `exciseEvasion` | `0.50`, `0.30`, `0.40`, `0.30` | share | #461 calibration | Tax evasion rates by tax channel | Direct | `InformalConfig` | `TUNED_NEEDS_VALIDATION` |

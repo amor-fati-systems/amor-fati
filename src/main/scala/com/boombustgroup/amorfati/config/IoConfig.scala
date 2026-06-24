@@ -10,10 +10,8 @@ import com.boombustgroup.amorfati.types.*
   * the same bank (zero-sum for total deposits), so they do not break existing
   * SFC identities. Column sums are pre-computed for efficiency.
   *
-  * Default matrix is the 6-sector technical-coefficients assumption for the
-  * 2026-04-30 Poland baseline. The GUS 2020 domestic input-output bridge is the
-  * comparison surface for later retuning, not a silent overwrite of the runtime
-  * defaults.
+  * Default matrix is the six-sector GUS 2020 domestic input-output bridge,
+  * rounded to percentage-point coefficients for the 2026-04-30 Poland baseline.
   *
   * @param matrix
   *   6x6 technical coefficients matrix A[i][j] = input from supplier sector i
@@ -49,17 +47,17 @@ case class IoConfig(
   require(columnSums.forall(_ < Share.One), "IoConfig matrix column sums must be < 1.0")
 
 object IoConfig:
-  /** Reviewed default 6x6 I-O technical coefficients for the 2026-04-30 Poland
-    * baseline bridge.
+  /** Default 6x6 I-O technical coefficients transformed from the GUS 2020
+    * domestic input-output bridge and rounded to two decimal places.
     *
     * Rows/columns: BPO/SSC, Manufacturing, Retail/Services, Healthcare, Public,
     * Agriculture.
     */
   val DefaultMatrix: Vector[Vector[Share]] = Vector(
-    Vector(Share.decimal(5, 2), Share.decimal(3, 2), Share.decimal(4, 2), Share.decimal(2, 2), Share.decimal(3, 2), Share.decimal(1, 2)),
-    Vector(Share.decimal(4, 2), Share.decimal(35, 2), Share.decimal(12, 2), Share.decimal(15, 2), Share.decimal(5, 2), Share.decimal(18, 2)),
-    Vector(Share.decimal(15, 2), Share.decimal(10, 2), Share.decimal(12, 2), Share.decimal(8, 2), Share.decimal(7, 2), Share.decimal(8, 2)),
-    Vector(Share.decimal(1, 2), Share.Zero, Share.decimal(1, 2), Share.decimal(5, 2), Share.decimal(2, 2), Share.decimal(1, 2)),
-    Vector(Share.decimal(1, 2), Share.decimal(1, 2), Share.decimal(1, 2), Share.decimal(1, 2), Share.decimal(3, 2), Share.decimal(1, 2)),
-    Vector(Share.Zero, Share.decimal(8, 2), Share.decimal(5, 2), Share.decimal(1, 2), Share.decimal(1, 2), Share.decimal(12, 2)),
+    Vector(Share.decimal(23, 2), Share.decimal(5, 2), Share.decimal(6, 2), Share.decimal(3, 2), Share.decimal(2, 2), Share.decimal(2, 2)),
+    Vector(Share.decimal(4, 2), Share.decimal(23, 2), Share.decimal(11, 2), Share.decimal(4, 2), Share.decimal(4, 2), Share.decimal(19, 2)),
+    Vector(Share.decimal(8, 2), Share.decimal(13, 2), Share.decimal(24, 2), Share.decimal(9, 2), Share.decimal(7, 2), Share.decimal(9, 2)),
+    Vector(Share.Zero, Share.Zero, Share.Zero, Share.decimal(13, 2), Share.Zero, Share.Zero),
+    Vector(Share.decimal(1, 2), Share.Zero, Share.Zero, Share.Zero, Share.decimal(2, 2), Share.Zero),
+    Vector(Share.Zero, Share.decimal(4, 2), Share.Zero, Share.Zero, Share.Zero, Share.decimal(17, 2)),
   )

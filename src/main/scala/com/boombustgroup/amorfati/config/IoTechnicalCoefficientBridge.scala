@@ -97,20 +97,20 @@ object IoTechnicalCoefficientBridge:
     val normalizedCodes: Vector[String] =
       productCodes.map(_.stripPrefix("PKWIU_"))
 
-  private val SourceProvider         = "GUS"
-  private val SourceUrl              =
+  private val SourceProvider    = "GUS"
+  private val SourceUrl         =
     "https://stat.gov.pl/download/gfx/portalinformacyjny/pl/defaultaktualnosci/5481/7/4/1/bilans_przeplywow_miedzygaleziowych_w_biezacych_cenach_bazowych_w_2020_r.xlsx"
-  private val DatasetCode            = "GUS input-output table at basic prices for domestic output 2020, Table 3"
-  private val Vintage                =
+  private val DatasetCode       = "GUS input-output table at basic prices for domestic output 2020, Table 3"
+  private val Vintage           =
     "GUS Bilans przeplywow miedzygaleziowych w biezacych cenach bazowych w 2020 roku; publication 2024-06-27; accessed 2026-06-24"
-  private val AccessedAt             = "2026-06-24"
-  private val Frequency              = "annual"
-  private val Unit                   = "thousand PLN domestic intermediate product flow divided by using-product total output"
-  private val ReuseNote              = "Statistics Poland public statistics; cite provider, release, table, vintage, and access date."
-  private val Orientation            =
+  private val AccessedAt        = "2026-06-24"
+  private val Frequency         = "annual"
+  private val Unit              = "thousand PLN domestic intermediate product flow divided by using-product total output"
+  private val ReuseNote         = "Statistics Poland public statistics; cite provider, release, table, vintage, and access date."
+  private val Orientation       =
     "source row/supplier product -> source column/using product; runtime matrix(i)(j) is input from supplier sector i used by sector j"
-  private val BaselineAssumptionNote =
-    "IoConfig.DefaultMatrix remains the 2026-04-30 baseline assumption after GUS input-output comparison; this bridge is the comparison surface for future retuning."
+  private val RetunedMatrixNote =
+    "IoConfig.DefaultMatrix is retuned to the rounded GUS input-output coefficients for the 2026-04-30 baseline; this bridge remains the comparison surface."
 
   val RuntimeSectors: Vector[RuntimeSectorSource] = Vector(
     RuntimeSectorSource(
@@ -307,7 +307,7 @@ object IoTechnicalCoefficientBridge:
       transformation =
         "Sum GUS Table 3 domestic-output product-by-product intermediate flows from supplier PKWiU products to using PKWiU products, then divide by total output at basic prices for the using runtime sector. Financial services K64-66 and household services T97-98 stay outside the six-sector production-firm perimeter.",
       reuseNote = ReuseNote,
-      notes = s"$sectorNotes $BaselineAssumptionNote It does not validate io.crossSectorSpillover.",
+      notes = s"$sectorNotes $RetunedMatrixNote It does not validate io.crossSectorSpillover.",
     )
 
   private def shareToBigDecimal(value: Share): BigDecimal =
