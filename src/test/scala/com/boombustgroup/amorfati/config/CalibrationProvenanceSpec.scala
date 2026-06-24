@@ -41,9 +41,9 @@ class CalibrationProvenanceSpec extends AnyFlatSpec with Matchers:
     CalibrationProvenance.Baseline.parseErrors shouldBe empty
     CalibrationProvenance.Baseline.parameters should have size 248
     CalibrationProvenance.Baseline.statusCounts should contain(Empirical -> 37)
-    CalibrationProvenance.Baseline.statusCounts should contain(EmpiricalTransformed -> 18)
+    CalibrationProvenance.Baseline.statusCounts should contain(EmpiricalTransformed -> 19)
     CalibrationProvenance.Baseline.statusCounts should contain(CodeNoteEmpirical -> 62)
-    CalibrationProvenance.Baseline.statusCounts should contain(TunedNeedsValidation -> 89)
+    CalibrationProvenance.Baseline.statusCounts should contain(TunedNeedsValidation -> 88)
     CalibrationProvenance.Baseline.statusCounts.getOrElse(UnknownSource, 0) shouldBe 0
     CalibrationProvenance.Baseline.statusCounts should contain(Placeholder -> 1)
     CalibrationProvenance.Baseline.statusCounts should contain(Assumed -> 34)
@@ -109,6 +109,14 @@ class CalibrationProvenanceSpec extends AnyFlatSpec with Matchers:
         "P/E",
       ),
       ("housing.mortgageSpread", "Housing and mortgages", "NBP MIR housing-loan rate spread", "2026-04-30", "mir-statistics", "spread over the policy-rate"),
+      (
+        "io.matrix",
+        "Input-output accounts",
+        "GUS 2020 domestic input-output table, Table 3",
+        "published 2024-06-27",
+        "io-technical-coefficients.tsv",
+        "rounded to percentage-point technical coefficients",
+      ),
     )
 
     expectedSources.foreach: (id, family, tableOrCode, vintage, referenceFragment, transformFragment) =>
@@ -164,7 +172,7 @@ class CalibrationProvenanceSpec extends AnyFlatSpec with Matchers:
     val pathCounts = CalibrationProvenance.Baseline.tunedValidationEvidencePathCounts
 
     CalibrationProvenance.Baseline.tunedValidationEvidenceErrors shouldBe empty
-    tuned should have size 89
+    tuned should have size 88
     tuned.flatMap(_.validationEvidence) should have size tuned.size
     CalibrationProvenance.Baseline.tunedValidationModeCounts.values.sum shouldBe tuned.size
     CalibrationValidationMode.values.foreach: mode =>
@@ -200,14 +208,11 @@ class CalibrationProvenanceSpec extends AnyFlatSpec with Matchers:
     sectorWages.notes should include("wageMultiplier validation")
     sectorWages.notes should include("compensation-per-employee bridge assumptions")
 
-    val ioMatrix = baselineParameter("io.matrix").validationEvidence.getOrElse(fail("Expected I-O matrix validation evidence"))
-    ioMatrix.mode shouldBe StylizedFactTarget
-    ioMatrix.evidencePath.getOrElse(fail("Expected I-O matrix evidence path")) shouldBe
-      "docs/empirical-source-extracts/io-technical-coefficients.tsv"
-    ioMatrix.artifactLabel shouldBe Some("io-technical-coefficients.tsv")
-    ioMatrix.evidenceTarget should include("technical-coefficient")
-    ioMatrix.notes should include("runtime defaults remain")
-    ioMatrix.notes should include("supplier/input sector i used by sector j")
+    val ioMatrix = baselineParameter("io.matrix")
+    ioMatrix.status shouldBe EmpiricalTransformed
+    ioMatrix.validationEvidence shouldBe None
+    ioMatrix.transformation should include("rounded to percentage-point coefficients")
+    ioMatrix.transformation should include("supplier/input sector i used by sector j")
 
     val ioSpillover = baselineParameter("io.crossSectorSpillover").validationEvidence.getOrElse(fail("Expected spillover validation mode"))
     ioSpillover.mode shouldBe SensitivityRange

@@ -17,8 +17,8 @@ class IoTechnicalCoefficientBridgeSpec extends AnyFlatSpec with Matchers:
     Rows.take(6).map(_.supplierSector).distinct shouldBe Vector("BPO/SSC")
     Rows.take(6).map(_.usingSector) shouldBe SimParams.SchemaSectorNames
     Rows.foreach(_.sourceProvider shouldBe "GUS")
-    Rows.map(_.modelCoefficient) should contain(BigDecimal("0.35"))
-    Rows.foreach(_.notes should include("remains the 2026-04-30 baseline assumption"))
+    Rows.map(_.modelCoefficient) should contain(BigDecimal("0.23"))
+    Rows.foreach(_.notes should include("is retuned to the rounded GUS input-output coefficients"))
     Rows.foreach(_.notes should include("validate io.crossSectorSpillover"))
   }
 
@@ -27,14 +27,21 @@ class IoTechnicalCoefficientBridgeSpec extends AnyFlatSpec with Matchers:
     agricultureToManufacturing.sourceFlowThousandPln shouldBe BigDecimal("65032271")
     agricultureToManufacturing.usingOutputThousandPln shouldBe BigDecimal("1663078187")
     assertClose(agricultureToManufacturing.sourceCoefficient, BigDecimal("0.039103556"))
-    agricultureToManufacturing.modelCoefficient shouldBe BigDecimal("0.08")
+    agricultureToManufacturing.modelCoefficient shouldBe BigDecimal("0.04")
 
     val manufacturingToAgriculture = row("Manufacturing", "Agriculture")
     manufacturingToAgriculture.sourceFlowThousandPln shouldBe BigDecimal("27435636")
     manufacturingToAgriculture.usingOutputThousandPln shouldBe BigDecimal("146526547")
     assertClose(manufacturingToAgriculture.sourceCoefficient, BigDecimal("0.187240036"))
-    manufacturingToAgriculture.modelCoefficient shouldBe BigDecimal("0.18")
+    manufacturingToAgriculture.modelCoefficient shouldBe BigDecimal("0.19")
   }
+
+  it should "keep the retuned runtime matrix close to the GUS source coefficients" in
+    Rows.foreach: row =>
+      withClue(s"${row.supplierSector} -> ${row.usingSector}") {
+        row.absoluteDelta should be <= BigDecimal("0.005")
+        row.comparisonStatus shouldBe "CLOSE"
+      }
 
   it should "make matrix orientation explicit and non-transposed" in {
     val supplierInputToUsingSector = row("BPO/SSC", "Retail/Services")
