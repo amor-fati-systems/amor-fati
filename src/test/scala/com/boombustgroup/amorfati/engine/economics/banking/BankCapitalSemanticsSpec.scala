@@ -95,7 +95,7 @@ class BankCapitalSemanticsSpec extends AnyFlatSpec with Matchers:
 
   private def isCandidateCapitalWriter(line: String): Boolean =
     line.contains("copy(capital =") ||
-      line.contains("capital = totalCapital * cfg.openingCapitalWeight") ||
+      line.contains("capital = capitalResult.capital") ||
       line.contains("capital = capitalPnl.newCapital") ||
       line.contains("capital = PLN.Zero") ||
       line.contains("CapitalPnlOutput(newCapital =")

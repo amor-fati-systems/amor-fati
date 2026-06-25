@@ -193,6 +193,34 @@ object Banking:
   /** Pair of operational bank state and ledger-owned bank financial stocks. */
   case class BankStockState(banks: Vector[BankState], financialStocks: Vector[BankFinancialStocks])
 
+  /** Source profile for opening regulatory capital.
+    *
+    * `ownFunds` is an explicit opening capital amount. When it is absent,
+    * capital is computed as opening RWA times `totalCapitalRatio`, falling back
+    * to the sector ratio derived by the initializer.
+    */
+  case class OpeningCapitalProfile(
+      bankId: BankId,
+      ownFunds: Option[PLN] = None,
+      totalCapitalRatio: Option[Multiplier] = None,
+  ):
+    require(
+      ownFunds.forall(_ >= PLN.Zero),
+      s"OpeningCapitalProfile requires non-negative ownFunds for bank $bankId",
+    )
+    require(
+      totalCapitalRatio.forall(_ >= Multiplier.Zero),
+      s"OpeningCapitalProfile requires non-negative totalCapitalRatio for bank $bankId",
+    )
+
+  /** Auditable opening-capital computation result. */
+  case class OpeningCapitalResult(
+      bankId: BankId,
+      riskWeightedAssets: PLN,
+      capital: PLN,
+      totalCapitalRatio: Multiplier,
+  )
+
   /** Single newly failed bank with its primary trigger reason. */
   case class FailureEvent(bankId: BankId, month: ExecutionMonth, reason: BankFailureReason)
 
@@ -305,7 +333,6 @@ object Banking:
       name: String,                 // human-readable label (KNF registry)
       relationshipWeight: Share,    // borrower relationship sampling weight
       openingBalanceWeight: Share,  // temporary model-start balance-sheet allocation weight
-      openingCapitalWeight: Share,  // temporary model-start regulatory-capital allocation weight
       lendingSpread: Rate,          // bank-specific spread over base lending rate
       sectorAffinity: Vector[Share], // relative lending preference per sector
   )
@@ -372,6 +399,33 @@ object Banking:
   def car(bank: BankState, stocks: BankFinancialStocks, corpBondHoldings: PLN)(using SimParams): Multiplier =
     BankRegulatoryMetrics.car(bank, stocks, corpBondHoldings)
 
+  def riskWeightedAssets(stocks: BankFinancialStocks, corpBondHoldings: PLN)(using SimParams): PLN =
+    BankRiskWeightedAssets.total(BankRiskWeightedAssets.exposure(stocks, corpBondHoldings))
+
+  def capitalAdequacyRatio(capital: PLN, stocks: BankFinancialStocks, corpBondHoldings: PLN)(using SimParams): Multiplier =
+    BankRiskWeightedAssets.capitalAdequacyRatio(capital, BankRiskWeightedAssets.exposure(stocks, corpBondHoldings))
+
+  def openingCapitalFromProfile(
+      profile: OpeningCapitalProfile,
+      stocks: BankFinancialStocks,
+      corpBondHoldings: PLN,
+      fallbackTotalCapitalRatio: Multiplier,
+  )(using p: SimParams): OpeningCapitalResult =
+    require(
+      fallbackTotalCapitalRatio >= Multiplier.Zero,
+      s"openingCapitalFromProfile requires non-negative fallbackTotalCapitalRatio, got $fallbackTotalCapitalRatio",
+    )
+    val rwa     = riskWeightedAssets(stocks, corpBondHoldings)
+    val capital = profile.ownFunds.getOrElse(rwa * profile.totalCapitalRatio.getOrElse(fallbackTotalCapitalRatio))
+    require(
+      capital >= PLN.Zero,
+      s"openingCapitalFromProfile produced negative capital for bank ${profile.bankId}: $capital",
+    )
+    val ratio   =
+      if rwa > BankRiskWeightedAssets.MinBalanceThreshold then capital.ratioTo(rwa).toMultiplier
+      else BankRiskWeightedAssets.SafeRatioFloor
+    OpeningCapitalResult(profile.bankId, rwa, capital, ratio)
+
   def hqla(stocks: BankFinancialStocks): PLN =
     BankRegulatoryMetrics.hqla(stocks)
 
@@ -405,6 +459,9 @@ object Banking:
   // ---------------------------------------------------------------------------
 
   val DefaultConfigs: Vector[Config] = BankDefaultConfigs.defaultConfigs
+
+  val DefaultOpeningCapitalProfiles: Vector[OpeningCapitalProfile] =
+    DefaultConfigs.map(config => OpeningCapitalProfile(config.id))
 
   // ---------------------------------------------------------------------------
   // Bank assignment

@@ -58,10 +58,11 @@ object BankCapitalSemantics:
       categories = Set(Category.OpeningCalibration),
       source = SourceAnchor(
         "src/main/scala/com/boombustgroup/amorfati/init/BankInit.scala",
-        "capital = totalCapital * cfg.openingCapitalWeight",
+        "capital = capitalResult.capital",
       ),
-      sfcTreatment = "Opening regulatory/accounting stock. It seeds BankState.capital and is not a monthly SFC delta.",
-      absorber = "No monthly absorber; source is model-start bank calibration.",
+      sfcTreatment =
+        "Opening regulatory/accounting stock computed from model-start RWA and total regulatory-capital ratio. It seeds BankState.capital and is not a monthly SFC delta.",
+      absorber = "No monthly absorber; source is model-start bank RWA and sector capital calibration.",
       diagnostics = "Opening value appears in BankBalanceSheetBenchmarkExport and BankCapital_Opening.",
     ),
     WriteSite(

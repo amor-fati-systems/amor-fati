@@ -43,7 +43,6 @@ object WorldInit:
     val initDomesticCons = initConsumption * (Share.One - p.openEcon.importContent.max)
     val initImportCons   = initConsumption - initDomesticCons
 
-    val initBankingSector = BankInit.create(firms, firmStocks, households, householdStocks)
     val initBankCorpBonds =
       com.boombustgroup.ledger.Distribute
         .distribute(
@@ -52,6 +51,7 @@ object WorldInit:
         )
         .map(PLN.fromRaw)
         .toVector
+    val initBankingSector = BankInit.create(firms, firmStocks, households, householdStocks, bankCorpBondHoldings = initBankCorpBonds)
     val initBankBalances  =
       initBankingSector.banks
         .zip(initBankingSector.financialStocks)
