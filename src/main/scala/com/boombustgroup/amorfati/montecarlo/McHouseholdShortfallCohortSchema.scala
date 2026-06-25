@@ -105,7 +105,7 @@ private[montecarlo] object McHouseholdShortfallCohortSchema:
       state: FlowSimulation.HouseholdSnapshotState,
       monthlyFlows: Vector[Household.MonthlyFlow],
   ): Vector[Row] =
-    val snapshotRows   = McHouseholdSnapshotSchema.rows(runId, seed, month, state, monthlyFlows, McHouseholdSnapshotSelection.All)
+    val snapshotRows   = fullSnapshotRows(runId, seed, month, state, monthlyFlows)
     val monthShortfall = snapshotRows.map(_.monthlyFlow.liquidityShortfallFinancing).sumPln
     val incomeDeciles  = incomeDecileByIndex(snapshotRows)
 
@@ -130,6 +130,17 @@ private[montecarlo] object McHouseholdShortfallCohortSchema:
         .toVector
         .sortBy(_._1)
         .map((cohort, rows) => aggregate(runId, seed, month, dimension, cohort, rows.map(_._1), monthShortfall))
+
+  private def fullSnapshotRows(
+      runId: String,
+      seed: Long,
+      month: ExecutionMonth,
+      state: FlowSimulation.HouseholdSnapshotState,
+      monthlyFlows: Vector[Household.MonthlyFlow],
+  ): Vector[McHouseholdSnapshotSchema.Row] =
+    val builder = Vector.newBuilder[McHouseholdSnapshotSchema.Row]
+    McHouseholdSnapshotSchema.foreachRow(runId, seed, month, state, monthlyFlows, McHouseholdSnapshotSelection.All)(builder += _)
+    builder.result()
 
   private def aggregate(
       runId: String,
