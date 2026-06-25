@@ -53,21 +53,23 @@ private[montecarlo] object McFirmSnapshotSchema:
       render = row => columns.map(_._2(row)).mkString("\t"),
     )
 
-  def rows(runId: String, seed: Long, month: ExecutionMonth, state: FlowSimulation.SimState)(using SimParams): Vector[Row] =
-    state.firms.map: firm =>
+  def foreachRow(runId: String, seed: Long, month: ExecutionMonth, state: FlowSimulation.SimState)(consume: Row => Unit)(using SimParams): Unit =
+    state.firms.foreach: firm =>
       val workers = Firm.workerCount(firm)
-      Row(
-        runId = runId,
-        seed = seed,
-        month = month,
-        firm = firm,
-        sectorName = sectorName(firm),
-        workers = workers,
-        sizeClass = McFirmSizeClass.fromWorkerCount(workers),
-        balances = state.ledgerFinancialState.firms
-          .lift(firm.id.toInt)
-          .getOrElse:
-            throw IllegalStateException(s"Missing ledger financial balances for firm ${firm.id.toInt}"),
+      consume(
+        Row(
+          runId = runId,
+          seed = seed,
+          month = month,
+          firm = firm,
+          sectorName = sectorName(firm),
+          workers = workers,
+          sizeClass = McFirmSizeClass.fromWorkerCount(workers),
+          balances = state.ledgerFinancialState.firms
+            .lift(firm.id.toInt)
+            .getOrElse:
+              throw IllegalStateException(s"Missing ledger financial balances for firm ${firm.id.toInt}"),
+        ),
       )
 
   private def sectorName(firm: Firm.State)(using p: SimParams): String =

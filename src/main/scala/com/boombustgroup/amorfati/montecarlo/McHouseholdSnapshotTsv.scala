@@ -85,8 +85,7 @@ private[montecarlo] object McHouseholdSnapshotTsv:
         .attemptBlocking:
           val schema = McHouseholdSnapshotSchema.tsvSchema
           McHouseholdSnapshotSchema
-            .rows(rc.runId, seed, month, state, monthlyFlows, rc.householdSnapshotSelection)
-            .foreach: row =>
+            .foreachRow(rc.runId, seed, month, state, monthlyFlows, rc.householdSnapshotSelection): row =>
               writer.write(schema.render(row))
               writer.newLine()
         .unit

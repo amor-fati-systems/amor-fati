@@ -83,8 +83,7 @@ private[montecarlo] object McFirmSnapshotTsv:
         .attemptBlocking:
           val schema = McFirmSnapshotSchema.tsvSchema
           McFirmSnapshotSchema
-            .rows(rc.runId, seed, month, state)
-            .foreach: row =>
+            .foreachRow(rc.runId, seed, month, state): row =>
               writer.write(schema.render(row))
               writer.newLine()
         .unit

@@ -174,7 +174,7 @@ class McHouseholdSnapshotSchemaSpec extends AnyFlatSpec with Matchers:
             )
           else flow
 
-    val rows = McHouseholdSnapshotSchema.rows(
+    val rows = snapshotRows(
       runId = "run",
       seed = 1L,
       month = ExecutionMonth.First,
@@ -253,3 +253,15 @@ class McHouseholdSnapshotSchemaSpec extends AnyFlatSpec with Matchers:
     rentBurden.rentArrears shouldBe PLN(123)
     rentBurden.rentToIncome shouldBe Scalar.decimal(5, 1)
   }
+
+  private def snapshotRows(
+      runId: String,
+      seed: Long,
+      month: ExecutionMonth,
+      state: FlowSimulation.HouseholdSnapshotState,
+      monthlyFlows: Vector[Household.MonthlyFlow],
+      selection: McHouseholdSnapshotSelection,
+  ): Vector[McHouseholdSnapshotSchema.Row] =
+    val builder = Vector.newBuilder[McHouseholdSnapshotSchema.Row]
+    McHouseholdSnapshotSchema.foreachRow(runId, seed, month, state, monthlyFlows, selection)(builder += _)
+    builder.result()

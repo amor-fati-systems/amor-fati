@@ -97,14 +97,14 @@ private[montecarlo] object McHouseholdSnapshotSchema:
       render = row => columns.map(_._2(row)).mkString("\t"),
     )
 
-  def rows(
+  def foreachRow(
       runId: String,
       seed: Long,
       month: ExecutionMonth,
       state: FlowSimulation.HouseholdSnapshotState,
       monthlyFlows: Vector[Household.MonthlyFlow],
       selection: McHouseholdSnapshotSelection,
-  ): Vector[Row] =
+  )(consume: Row => Unit): Unit =
     require(
       state.households.length == state.ledgerFinancialState.households.length,
       s"Household snapshot export requires aligned households and ledger balances, got ${state.households.length} households and ${state.ledgerFinancialState.households.length} balance rows",
@@ -113,15 +113,17 @@ private[montecarlo] object McHouseholdSnapshotSchema:
       state.households.length == monthlyFlows.length,
       s"Household snapshot export requires aligned households and monthly flow rows, got ${state.households.length} households and ${monthlyFlows.length} flow rows",
     )
-    state.households
-      .zip(state.ledgerFinancialState.households)
-      .zip(monthlyFlows)
-      .map: pair =>
-        val ((household, balances), monthlyFlow) = pair
-        require(
-          household.id == monthlyFlow.householdId,
-          s"Household snapshot export requires positional household-flow alignment, got household ${household.id.toInt} and flow ${monthlyFlow.householdId.toInt}",
-        )
+
+    var index = 0
+    while index < state.households.length do
+      val household   = state.households(index)
+      val balances    = state.ledgerFinancialState.households(index)
+      val monthlyFlow = monthlyFlows(index)
+      require(
+        household.id == monthlyFlow.householdId,
+        s"Household snapshot export requires positional household-flow alignment, got household ${household.id.toInt} and flow ${monthlyFlow.householdId.toInt}",
+      )
+      val row         =
         Row(
           runId = runId,
           seed = seed,
@@ -130,7 +132,8 @@ private[montecarlo] object McHouseholdSnapshotSchema:
           balances = balances,
           monthlyFlow = monthlyFlow,
         )
-      .filter(row => selection.includes(row.balances.demandDeposit, row.monthlyFlow.liquidityShortfallFinancing))
+      if selection.includes(row.balances.demandDeposit, row.monthlyFlow.liquidityShortfallFinancing) then consume(row)
+      index += 1
 
   private def status(status: HhStatus): String =
     status match
