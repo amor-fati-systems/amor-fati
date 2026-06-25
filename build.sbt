@@ -16,6 +16,8 @@ lazy val productionSectorGvaShareBridge = inputKey[Unit]("Generate production-se
 lazy val productionSectorLaborSourceBridge = inputKey[Unit]("Generate production-sector firm, employment, and wage source bridge artifact")
 lazy val ioTechnicalCoefficientBridge =
   inputKey[Unit]("Generate I-O technical-coefficient source comparison artifact")
+lazy val openingBankBalanceProfileBridge =
+  inputKey[Unit]("Generate opening bank balance profile source bridge artifact")
 
 lazy val baseScalacOptions = Seq(
   "-Werror",
@@ -153,6 +155,13 @@ lazy val root = project
         val parsedArgs = spaceDelimited("<I-O technical-coefficient bridge args>").parsed
         (Compile / runMain)
           .toTask(" com.boombustgroup.amorfati.diagnostics.IoTechnicalCoefficientBridgeExport " + parsedArgs.mkString(" "))
+      }
+      .evaluated,
+    openingBankBalanceProfileBridge := Def
+      .inputTaskDyn {
+        val parsedArgs = spaceDelimited("<opening bank balance profile bridge args>").parsed
+        (Compile / runMain)
+          .toTask(" com.boombustgroup.amorfati.diagnostics.OpeningBankBalanceProfileBridgeExport " + parsedArgs.mkString(" "))
       }
       .evaluated,
     Test / testOptions ++= {
