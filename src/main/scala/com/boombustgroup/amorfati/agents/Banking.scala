@@ -402,9 +402,6 @@ object Banking:
   def riskWeightedAssets(stocks: BankFinancialStocks, corpBondHoldings: PLN)(using SimParams): PLN =
     BankRiskWeightedAssets.total(BankRiskWeightedAssets.exposure(stocks, corpBondHoldings))
 
-  def capitalAdequacyRatio(capital: PLN, stocks: BankFinancialStocks, corpBondHoldings: PLN)(using SimParams): Multiplier =
-    BankRiskWeightedAssets.capitalAdequacyRatio(capital, BankRiskWeightedAssets.exposure(stocks, corpBondHoldings))
-
   def openingCapitalFromProfile(
       profile: OpeningCapitalProfile,
       stocks: BankFinancialStocks,

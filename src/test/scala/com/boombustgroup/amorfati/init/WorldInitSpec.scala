@@ -89,11 +89,16 @@ class WorldInitSpec extends AnyFlatSpec with Matchers:
   }
 
   it should "compute opening bank capital from opening RWA and preserve the sector capital target" in {
-    val init             = WorldInit.initialize(InitRandomness.Contract.fromSeed(42L))
-    val aggregateCapital = init.banks.map(_.capital).sumPln
+    val init                 = WorldInit.initialize(InitRandomness.Contract.fromSeed(42L))
+    val aggregateCapital     = init.banks.map(_.capital).sumPln
+    val bankRows             = init.banks.zip(init.ledgerFinancialState.banks)
+    val totalOpeningRwa      = bankRows.map { case (_, balances) =>
+      Banking.riskWeightedAssets(LedgerFinancialState.projectBankFinancialStocks(balances), balances.corpBond)
+    }.sumPln
+    val expectedCapitalRatio = p.banking.initCapital.ratioTo(totalOpeningRwa).toMultiplier
 
     decimal(aggregateCapital) shouldBe decimal(p.banking.initCapital) +- (decimal(p.banking.initCapital) * BigDecimal("0.001"))
-    init.banks.zip(init.ledgerFinancialState.banks).foreach { case (bank, balances) =>
+    bankRows.foreach { case (bank, balances) =>
       val stocks = LedgerFinancialState.projectBankFinancialStocks(balances)
       val rwa    = Banking.riskWeightedAssets(stocks, balances.corpBond)
       val car    = Banking.car(bank, stocks, balances.corpBond)
@@ -101,6 +106,7 @@ class WorldInitSpec extends AnyFlatSpec with Matchers:
 
       rwa should be > PLN.Zero
       car should be >= minCar
+      decimal(car) shouldBe decimal(expectedCapitalRatio) +- BigDecimal("0.0001")
     }
   }
 

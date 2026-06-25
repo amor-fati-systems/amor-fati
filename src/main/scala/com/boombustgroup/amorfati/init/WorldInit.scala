@@ -56,7 +56,11 @@ object WorldInit:
       initBankingSector.banks
         .zip(initBankingSector.financialStocks)
         .map: (bank, stocks) =>
-          LedgerFinancialState.bankBalances(stocks, corpBond = initBankCorpBonds.lift(bank.id.toInt).getOrElse(PLN.Zero))
+          LedgerFinancialState.bankBalances(
+            stocks,
+            corpBond = initBankCorpBonds.lift(bank.id.toInt).getOrElse(PLN.Zero),
+            mortgageLoan = stocks.mortgageLoan,
+          )
 
     // --- Sub-state initializers ---
     val initDemographics      = DemographicsInit.create(totalPop)

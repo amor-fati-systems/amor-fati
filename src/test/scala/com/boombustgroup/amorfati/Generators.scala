@@ -41,7 +41,14 @@ object Generators:
       )
       (cfg, stocks)
     val totalRwa          = stockRows.map((_, stocks) => Banking.riskWeightedAssets(stocks, PLN.Zero)).sumPln
-    val totalCapitalRatio = if totalRwa > PLN.Zero then totalCapital.ratioTo(totalRwa).toMultiplier else Multiplier.Zero
+    val totalCapitalRatio =
+      if totalRwa > PLN.Zero then totalCapital.ratioTo(totalRwa).toMultiplier
+      else
+        require(
+          totalCapital <= PLN.Zero,
+          s"Generators.testBankingSector requires positive RWA when totalCapital is positive, got totalCapital=$totalCapital totalRwa=$totalRwa",
+        )
+        Multiplier.Zero
     val rows              = stockRows.map: (cfg, stocks) =>
       val capital = Banking
         .openingCapitalFromProfile(
