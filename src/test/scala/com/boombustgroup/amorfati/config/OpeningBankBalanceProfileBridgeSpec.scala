@@ -20,8 +20,7 @@ class OpeningBankBalanceProfileBridgeSpec extends AnyFlatSpec with Matchers with
     profileRows should have size Banking.DefaultConfigs.size
     profileRows.map(_.bankId.toInt) shouldBe Banking.DefaultConfigs.map(_.id.toInt)
     profileRows.map(_.runtimeBankName) shouldBe Banking.DefaultConfigs.map(_.name)
-    profileRows.map(_.relationshipWeightPrior.value) shouldBe Banking.DefaultConfigs.map(cfg => fixedPointDecimal(cfg.initMarketShare.toLong))
-    profileRows.map(_.capitalRatioPrior.value) shouldBe Banking.DefaultConfigs.map(cfg => fixedPointDecimal(cfg.initCet1.toLong))
+    profileRows.map(_.relationshipWeightPrior.value) shouldBe Banking.DefaultConfigs.map(cfg => fixedPointDecimal(cfg.relationshipWeight.toLong))
   }
 
   it should "anchor aggregate opening banking stocks without allocating them to named banks" in {
@@ -48,7 +47,10 @@ class OpeningBankBalanceProfileBridgeSpec extends AnyFlatSpec with Matchers with
     namedRows.foreach: row =>
       row.depositsMPln shouldBe None
       row.rwaMPln shouldBe None
-      row.notes should include("not treated as empirical balance-sheet values")
+      row.cet1Ratio shouldBe None
+      row.tier1Ratio shouldBe None
+      row.totalCapitalRatio shouldBe None
+      row.notes should include("bank capital ratios must come from the explicit ratio columns")
 
     residual.runtimeBankName shouldBe "Other banks"
     residual.bridgeStatus shouldBe "RESIDUAL_PENDING_NAMED_COVERAGE"
@@ -63,7 +65,6 @@ class OpeningBankBalanceProfileBridgeSpec extends AnyFlatSpec with Matchers with
     priorSum shouldBe BigDecimal(1)
     profileRows.foreach: row =>
       row.relationshipWeightPrior.value should be > BigDecimal(0)
-      row.capitalRatioPrior.value should be > BigDecimal(0)
   }
 
   it should "render the committed TSV extract from the typed bridge" in {

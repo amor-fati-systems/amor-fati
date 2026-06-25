@@ -18,7 +18,6 @@ object OpeningBankBalanceProfileBridge:
       unit: String,
       bridgeStatus: String,
       relationshipWeightPrior: Option[BigDecimal],
-      capitalRatioPrior: Option[BigDecimal],
       depositsMPln: Option[BigDecimal],
       firmLoansMPln: Option[BigDecimal],
       consumerLoansMPln: Option[BigDecimal],
@@ -57,7 +56,6 @@ object OpeningBankBalanceProfileBridge:
 
     Vector(
       relationshipWeightPrior,
-      capitalRatioPrior,
       depositsMPln,
       firmLoansMPln,
       consumerLoansMPln,
@@ -93,7 +91,6 @@ object OpeningBankBalanceProfileBridge:
     "unit",
     "bridge_status",
     "relationship_weight_prior",
-    "capital_ratio_prior",
     "deposits_m_pln",
     "firm_loans_m_pln",
     "consumer_loans_m_pln",
@@ -141,7 +138,6 @@ object OpeningBankBalanceProfileBridge:
       runtimeBankName: String,
       sourceUrl: String,
       relationshipWeightPrior: BigDecimal,
-      capitalRatioPrior: BigDecimal,
   )
 
   val RuntimeBankPriors: Vector[RuntimeBankPrior] = Vector(
@@ -150,70 +146,60 @@ object OpeningBankBalanceProfileBridge:
       "PKO BP",
       "https://www.pkobp.pl/grupa-pko-banku-polskiego/relacje-inwestorskie/",
       BigDecimal("0.175"),
-      BigDecimal("0.185"),
     ),
     RuntimeBankPrior(
       "1",
       "Pekao",
       "https://www.pekao.com.pl/relacje-inwestorskie/",
       BigDecimal("0.120"),
-      BigDecimal("0.178"),
     ),
     RuntimeBankPrior(
       "2",
       "mBank",
       "https://www.mbank.pl/relacje-inwestorskie/",
       BigDecimal("0.085"),
-      BigDecimal("0.169"),
     ),
     RuntimeBankPrior(
       "3",
       "ING BSK",
       "https://www.ing.pl/relacje-inwestorskie",
       BigDecimal("0.075"),
-      BigDecimal("0.172"),
     ),
     RuntimeBankPrior(
       "4",
       "Santander",
       "https://www.santander.pl/relacje-inwestorskie",
       BigDecimal("0.070"),
-      BigDecimal("0.170"),
     ),
     RuntimeBankPrior(
       "5",
       "BPS/Coop",
       "https://www.bankbps.pl/relacje-inwestorskie",
       BigDecimal("0.050"),
-      BigDecimal("0.150"),
     ),
     RuntimeBankPrior(
       "6",
       "BNP Paribas",
       "https://www.bnpparibas.pl/relacje-inwestorskie",
       BigDecimal("0.085"),
-      BigDecimal("0.165"),
     ),
     RuntimeBankPrior(
       "7",
       "Millennium",
       "https://www.bankmillennium.pl/o-banku/relacje-inwestorskie",
       BigDecimal("0.070"),
-      BigDecimal("0.160"),
     ),
     RuntimeBankPrior(
       "8",
       "Alior",
       "https://www.aliorbank.pl/dodatkowe-informacje/relacje-inwestorskie.html",
       BigDecimal("0.055"),
-      BigDecimal("0.150"),
     ),
     RuntimeBankPrior(
       "9",
       "Other banks",
       KnfUrl,
       BigDecimal("0.215"),
-      BigDecimal("0.165"),
     ),
   )
 
@@ -232,7 +218,6 @@ object OpeningBankBalanceProfileBridge:
       unit = Unit,
       bridgeStatus = "EMPIRICAL_SECTOR_TOTAL",
       relationshipWeightPrior = None,
-      capitalRatioPrior = None,
       depositsMPln = Some(SectorTotals.depositsMPln),
       firmLoansMPln = Some(SectorTotals.firmLoansMPln),
       consumerLoansMPln = Some(SectorTotals.consumerLoansMPln),
@@ -274,7 +259,6 @@ object OpeningBankBalanceProfileBridge:
           unit = Unit,
           bridgeStatus = "PENDING_PUBLIC_REPORT_EXTRACTION",
           relationshipWeightPrior = Some(prior.relationshipWeightPrior),
-          capitalRatioPrior = Some(prior.capitalRatioPrior),
           depositsMPln = None,
           firmLoansMPln = None,
           consumerLoansMPln = None,
@@ -295,7 +279,8 @@ object OpeningBankBalanceProfileBridge:
           rwaShare = None,
           transformation =
             "Extract bank-level stocks and capital metrics from public filings, map them to the runtime bank row, then compute metric-specific shares against the sector total.",
-          notes = "The two populated prior columns expose current runtime calibration only; they are not treated as empirical balance-sheet values.",
+          notes =
+            "relationship_weight_prior mirrors current runtime relationship routing only; bank capital ratios must come from the explicit ratio columns once public filings are extracted.",
         )
 
   private val OtherBankResidualRow: Row =
@@ -318,7 +303,6 @@ object OpeningBankBalanceProfileBridge:
       unit = Unit,
       bridgeStatus = "RESIDUAL_PENDING_NAMED_COVERAGE",
       relationshipWeightPrior = Some(prior.relationshipWeightPrior),
-      capitalRatioPrior = Some(prior.capitalRatioPrior),
       depositsMPln = None,
       firmLoansMPln = None,
       consumerLoansMPln = None,
@@ -339,7 +323,7 @@ object OpeningBankBalanceProfileBridge:
       rwaShare = None,
       transformation =
         "For each stock or ratio numerator, compute sector total minus all named-bank values with direct source coverage; leave blank while named coverage is incomplete.",
-      notes = "This row is intentionally not a plug from initMarketShare. Current runtime priors remain visible only to audit the replacement path.",
+      notes = "This row is intentionally not a plug from relationshipWeight. Runtime routing and opening balance-sheet evidence remain separate.",
     )
 
   val Rows: Vector[Row] =
@@ -362,7 +346,6 @@ object OpeningBankBalanceProfileBridge:
     row.unit,
     row.bridgeStatus,
     cell(row.relationshipWeightPrior),
-    cell(row.capitalRatioPrior),
     cell(row.depositsMPln),
     cell(row.firmLoansMPln),
     cell(row.consumerLoansMPln),

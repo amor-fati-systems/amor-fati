@@ -42,7 +42,7 @@ object BankInit:
     val totalGovBonds = p.banking.initGovBonds
     val bondAlloc     = com.boombustgroup.ledger.Distribute.distribute(
       totalGovBonds.toLong,
-      Banking.DefaultConfigs.map(_.initMarketShare.toLong).toArray,
+      Banking.DefaultConfigs.map(_.openingBalanceWeight.toLong).toArray,
     )
 
     val rows = Banking.DefaultConfigs
@@ -61,7 +61,7 @@ object BankInit:
         (
           Banking.BankState(
             id = cfg.id,
-            capital = totalCapital * cfg.initMarketShare,
+            capital = totalCapital * cfg.openingCapitalWeight,
             nplAmount = PLN.Zero,
             htmBookYield = p.banking.initHtmBookYield,
             status = Banking.BankStatus.Active(0),

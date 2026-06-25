@@ -303,8 +303,9 @@ object Banking:
   case class Config(
       id: BankId,                   // unique bank identifier (index into DefaultConfigs)
       name: String,                 // human-readable label (KNF registry)
-      initMarketShare: Share,       // deposit-weighted share at t = 0
-      initCet1: Share,              // archetype CET1 prior
+      relationshipWeight: Share,    // borrower relationship sampling weight
+      openingBalanceWeight: Share,  // temporary model-start balance-sheet allocation weight
+      openingCapitalWeight: Share,  // temporary model-start regulatory-capital allocation weight
       lendingSpread: Rate,          // bank-specific spread over base lending rate
       sectorAffinity: Vector[Share], // relative lending preference per sector
   )
