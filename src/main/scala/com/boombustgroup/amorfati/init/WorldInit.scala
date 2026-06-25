@@ -48,7 +48,7 @@ object WorldInit:
       com.boombustgroup.ledger.Distribute
         .distribute(
           initCorporateBondStocks.bankHoldings.toLong,
-          Banking.DefaultConfigs.map(_.initMarketShare.toLong).toArray,
+          Banking.DefaultConfigs.map(_.openingBalanceWeight.toLong).toArray,
         )
         .map(PLN.fromRaw)
         .toVector

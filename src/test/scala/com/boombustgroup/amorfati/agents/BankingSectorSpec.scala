@@ -113,10 +113,22 @@ class BankingSectorSpec extends AnyFlatSpec with Matchers:
       rng,
     )
 
-  "Banking.DefaultConfigs" should "split opening credit concentration across default rows" in {
+  "Banking.Config" should "name relationship and opening allocation weights separately" in {
+    val fieldNames = configs.head.productElementNames.toSet
+
+    fieldNames should contain("relationshipWeight")
+    fieldNames should contain("openingBalanceWeight")
+    fieldNames should contain("openingCapitalWeight")
+    fieldNames should not contain "initMarketShare"
+    fieldNames.exists(_.toLowerCase.contains("cet1")) shouldBe false
+  }
+
+  "Banking.DefaultConfigs" should "split relationship and opening allocation weights across default rows" in {
     configs.map(_.id.toInt) shouldBe configs.indices.toVector
-    configs.map(_.initMarketShare).sumShare shouldBe Share.One
-    configs.map(_.initMarketShare).max should be <= summon[SimParams].banking.concentrationLimit
+    configs.map(_.relationshipWeight).sumShare shouldBe Share.One
+    configs.map(_.openingBalanceWeight).sumShare shouldBe Share.One
+    configs.map(_.openingCapitalWeight).sumShare shouldBe Share.One
+    configs.map(_.relationshipWeight).max should be <= summon[SimParams].banking.concentrationLimit
   }
 
   "Generators.testBankingSector" should "create default bank rows with explicit financial stocks preserving totals" in {

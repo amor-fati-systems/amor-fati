@@ -32,11 +32,11 @@ private[agents] object BankCreditApproval:
     else if gap >= p.banking.creditManagementCarBuffer then Share.One
     else gap.ratioTo(p.banking.creditManagementCarBuffer).clampToShare
 
-  /** Chooses the bank relationship for a firm using sector affinity and opening
-    * market-share weights.
+  /** Chooses the bank relationship for a firm using sector affinity and
+    * relationship weights.
     */
   def assignBank(firmSector: SectorIdx, configs: Vector[Config], rng: RandomStream): BankId =
-    val weights = configs.map(c => c.sectorAffinity(firmSector.toInt) * c.initMarketShare)
+    val weights = configs.map(c => c.sectorAffinity(firmSector.toInt) * c.relationshipWeight)
     val total   = weights.map(_.toLong).sum
     if total <= 0L then BankId(0)
     else
