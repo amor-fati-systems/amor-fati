@@ -109,6 +109,8 @@ object McTimeseriesSchema:
     lazy val householdLiquidity: McHouseholdLiquidityDiagnostics.Summary                            =
       McHouseholdLiquidityDiagnostics.fromBalances(ledgerFinancialState.households)
     lazy val bankFirmLoans: PLN                                                                     = bankAgg.totalLoans
+    lazy val bankFirmGrossDefault: PLN                                                              =
+      grossDefaultFromLoss(bankCapital.firmNplLoss + bankCapital.firmNplAllowanceDraw, p.banking.loanRecovery)
     lazy val firmDefaultRecovery: PLN                                                               = world.flows.firmGrossDefault * p.banking.loanRecovery
     lazy val firmCreditDemand: PLN                                                                  = world.flows.firmInvestmentCreditDemand + world.flows.firmTechCreditDemand
     lazy val firmCreditApproved: PLN                                                                = world.flows.firmInvestmentCreditApproved + world.flows.firmTechCreditApproved
@@ -836,7 +838,7 @@ object McTimeseriesSchema:
     ColumnDef("BankCreditLoss_RealizedToOpeningCapital", ctx => ctx.flowToStockRate(ctx.bankCapital.realizedCreditLoss, ctx.bankCapital.openingCapital)),
     ColumnDef(
       "BankCreditLoss_FirmDefaultRate",
-      ctx => ctx.flowToStockRate(ctx.world.flows.firmGrossDefault, ctx.bankFirmLoans),
+      ctx => ctx.flowToStockRate(ctx.bankFirmGrossDefault, ctx.bankFirmLoans),
     ),
     ColumnDef("BankCreditLoss_FirmLossRate", ctx => ctx.flowToStockRate(ctx.bankCapital.firmNplLoss, ctx.bankFirmLoans)),
     ColumnDef("BankCreditLoss_MortgageDefaultRate", ctx => ctx.flowToStockRate(ctx.world.real.housing.lastDefault, ctx.ledgerHouseholdMortgageStock)),

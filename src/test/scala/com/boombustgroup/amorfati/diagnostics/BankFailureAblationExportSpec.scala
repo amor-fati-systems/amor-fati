@@ -37,8 +37,8 @@ class BankFailureAblationExportSpec extends AnyFlatSpec with Matchers:
   it should "summarize first failure timing only over failed seeds" in {
     val config = BankFailureAblationExport.Config(seeds = 2, months = 12, runId = "test")
     val rows   = Vector(
-      seed("baseline", "Baseline", 1L, Some(3), terminalFailures = 2, peakFailures = 3),
-      seed("baseline", "Baseline", 2L, None, terminalFailures = 0, peakFailures = 0),
+      seed("baseline", "Baseline", 1L, Some(3), terminalFailures = Some(2), peakFailures = 3),
+      seed("baseline", "Baseline", 2L, None, terminalFailures = Some(0), peakFailures = 0),
     )
 
     val summary = BankFailureAblationExport.summarize(config, rows).find(_.scenarioId == "baseline").get
@@ -47,6 +47,33 @@ class BankFailureAblationExportSpec extends AnyFlatSpec with Matchers:
     summary.firstFailureMonthMean shouldBe Some(BigDecimal(3))
     summary.terminalFailuresMean shouldBe BigDecimal(1)
     summary.peakFailuresMean shouldBe BigDecimal("1.5")
+  }
+
+  it should "summarize terminal and cumulative metrics only over completed seeds" in {
+    val config = BankFailureAblationExport.Config(seeds = 2, months = 12, runId = "test")
+    val rows   = Vector(
+      seed("baseline", "Baseline", 1L, Some(3), terminalFailures = Some(2), peakFailures = 3, cumulativeRealizedCreditLoss = BigDecimal(10)),
+      seed(
+        "baseline",
+        "Baseline",
+        2L,
+        Some(4),
+        terminalFailures = None,
+        peakFailures = 99,
+        observedMonths = 4,
+        crashed = 1,
+        crashReason = "synthetic crash",
+        cumulativeRealizedCreditLoss = BigDecimal(999),
+      ),
+    )
+
+    val summary = BankFailureAblationExport.summarize(config, rows).find(_.scenarioId == "baseline").get
+
+    summary.crashedSeeds shouldBe 1
+    summary.failedSeeds shouldBe 2
+    summary.terminalFailuresMean shouldBe BigDecimal(2)
+    summary.peakFailuresMean shouldBe BigDecimal(3)
+    summary.cumulativeRealizedCreditLossMean shouldBe BigDecimal(10)
   }
 
   it should "validate run controls and required schema columns" in {
@@ -80,6 +107,7 @@ class BankFailureAblationExportSpec extends AnyFlatSpec with Matchers:
     seed.observedMonths shouldBe 0
     seed.crashed shouldBe 1
     seed.crashReason should include("synthetic crash")
+    seed.terminalFailures shouldBe None
   }
 
   private def seed(
@@ -87,8 +115,12 @@ class BankFailureAblationExportSpec extends AnyFlatSpec with Matchers:
       scenarioLabel: String,
       seed: Long,
       firstFailureMonth: Option[Int],
-      terminalFailures: Int,
+      terminalFailures: Option[Int],
       peakFailures: Int,
+      observedMonths: Int = 12,
+      crashed: Int = 0,
+      crashReason: String = "",
+      cumulativeRealizedCreditLoss: BigDecimal = BigDecimal(10),
   ): BankFailureAblationExport.SeedResult =
     BankFailureAblationExport.SeedResult(
       runId = "test",
@@ -96,16 +128,16 @@ class BankFailureAblationExportSpec extends AnyFlatSpec with Matchers:
       scenarioLabel = scenarioLabel,
       seed = seed,
       months = 12,
-      observedMonths = 12,
-      crashed = 0,
-      crashReason = "",
+      observedMonths = observedMonths,
+      crashed = crashed,
+      crashReason = crashReason,
       firstFailureMonth = firstFailureMonth,
       firstFailureReasonCode = firstFailureMonth.fold(0)(_ => 1),
       firstFailureBankId = firstFailureMonth.fold(-1)(_ => 0),
       terminalFailures = terminalFailures,
       peakFailures = peakFailures,
-      cumulativeNewFailures = BigDecimal(terminalFailures),
-      cumulativeRealizedCreditLoss = BigDecimal(10),
+      cumulativeNewFailures = terminalFailures.map(BigDecimal(_)).getOrElse(BigDecimal(0)),
+      cumulativeRealizedCreditLoss = cumulativeRealizedCreditLoss,
       cumulativeInterbankContagionLoss = BigDecimal("0.5"),
       cumulativeEclProvisionChange = BigDecimal(2),
       cumulativeBailInLoss = BigDecimal(1),
@@ -120,8 +152,8 @@ class BankFailureAblationExportSpec extends AnyFlatSpec with Matchers:
       firstFailureInterbankContagionLoss = BigDecimal(0),
       firstFailureReconciliationResidual = BigDecimal(0),
       firstFailureDepositBailInLoss = BigDecimal(0),
-      terminalTotalCreditToGdp = BigDecimal("0.2"),
-      terminalUnemployment = BigDecimal("0.05"),
-      terminalInflation = BigDecimal("0.03"),
+      terminalTotalCreditToGdp = terminalFailures.map(_ => BigDecimal("0.2")),
+      terminalUnemployment = terminalFailures.map(_ => BigDecimal("0.05")),
+      terminalInflation = terminalFailures.map(_ => BigDecimal("0.03")),
       interpretation = "test",
     )

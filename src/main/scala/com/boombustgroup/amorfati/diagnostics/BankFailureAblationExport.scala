@@ -45,7 +45,7 @@ object BankFailureAblationExport:
       firstFailureMonth: Option[Int],
       firstFailureReasonCode: Int,
       firstFailureBankId: Int,
-      terminalFailures: Int,
+      terminalFailures: Option[Int],
       peakFailures: Int,
       cumulativeNewFailures: BigDecimal,
       cumulativeRealizedCreditLoss: BigDecimal,
@@ -63,9 +63,9 @@ object BankFailureAblationExport:
       firstFailureInterbankContagionLoss: BigDecimal,
       firstFailureReconciliationResidual: BigDecimal,
       firstFailureDepositBailInLoss: BigDecimal,
-      terminalTotalCreditToGdp: BigDecimal,
-      terminalUnemployment: BigDecimal,
-      terminalInflation: BigDecimal,
+      terminalTotalCreditToGdp: Option[BigDecimal],
+      terminalUnemployment: Option[BigDecimal],
+      terminalInflation: Option[BigDecimal],
       interpretation: String,
   )
 
@@ -266,12 +266,13 @@ object BankFailureAblationExport:
 
     def toSeedResult(config: Config, scenario: BankFailureAblationScenarios.Spec, seed: Long, crashReason: Option[String]): Either[String, SeedResult] =
       for
-        _       <- Either.cond(
+        _        <- Either.cond(
           crashReason.nonEmpty || observedMonths == config.months,
           (),
           s"bank-failure ablation expected ${config.months} monthly rows for scenario ${scenario.id} seed $seed, observed $observedMonths",
         )
-        terminal = terminalRow
+        completed = crashReason.isEmpty && observedMonths == config.months
+        terminal  = terminalRow.filter(_ => completed)
       yield SeedResult(
         runId = config.runId,
         scenarioId = scenario.id,
@@ -284,7 +285,7 @@ object BankFailureAblationExport:
         firstFailureMonth = firstFailure.map(_.month),
         firstFailureReasonCode = firstFailure.map(_.reasonCode).getOrElse(0),
         firstFailureBankId = firstFailure.map(_.bankId).getOrElse(-1),
-        terminalFailures = terminal.map(row => colInt(row, "BankFailures")).getOrElse(0),
+        terminalFailures = terminal.map(row => colInt(row, "BankFailures")),
         peakFailures = peakFailures,
         cumulativeNewFailures = cumulativeNewFailures,
         cumulativeRealizedCreditLoss = cumulativeRealizedCreditLoss,
@@ -302,9 +303,9 @@ object BankFailureAblationExport:
         firstFailureInterbankContagionLoss = firstFailure.map(_.interbankContagionLoss).getOrElse(BigDecimal(0)),
         firstFailureReconciliationResidual = firstFailure.map(_.reconciliationResidual).getOrElse(BigDecimal(0)),
         firstFailureDepositBailInLoss = firstFailure.map(_.depositBailInLoss).getOrElse(BigDecimal(0)),
-        terminalTotalCreditToGdp = terminal.map(row => col(row, "TotalCreditToGdp")).getOrElse(BigDecimal(0)),
-        terminalUnemployment = terminal.map(row => col(row, "Unemployment")).getOrElse(BigDecimal(0)),
-        terminalInflation = terminal.map(row => col(row, "Inflation")).getOrElse(BigDecimal(0)),
+        terminalTotalCreditToGdp = terminal.map(row => col(row, "TotalCreditToGdp")),
+        terminalUnemployment = terminal.map(row => col(row, "Unemployment")),
+        terminalInflation = terminal.map(row => col(row, "Inflation")),
         interpretation = scenario.interpretation,
       )
 
@@ -343,6 +344,7 @@ object BankFailureAblationExport:
   private[diagnostics] def summarize(config: Config, rows: Vector[SeedResult]): Vector[SummaryResult] =
     Scenarios.map: scenario =>
       val scenarioRows  = rows.filter(_.scenarioId == scenario.id)
+      val completedRows = scenarioRows.filter(row => row.crashed == 0 && row.observedMonths == config.months)
       val failureMonths = scenarioRows.flatMap(_.firstFailureMonth)
       SummaryResult(
         runId = config.runId,
@@ -355,15 +357,15 @@ object BankFailureAblationExport:
         firstFailureMonthMean = meanOption(failureMonths.map(month => BigDecimal(month))),
         firstFailureMonthMin = failureMonths.minOption,
         firstFailureMonthMax = failureMonths.maxOption,
-        terminalFailuresMean = mean(scenarioRows.map(row => BigDecimal(row.terminalFailures))),
-        peakFailuresMean = mean(scenarioRows.map(row => BigDecimal(row.peakFailures))),
-        cumulativeNewFailuresMean = mean(scenarioRows.map(_.cumulativeNewFailures)),
-        cumulativeRealizedCreditLossMean = mean(scenarioRows.map(_.cumulativeRealizedCreditLoss)),
-        cumulativeInterbankContagionLossMean = mean(scenarioRows.map(_.cumulativeInterbankContagionLoss)),
-        cumulativeEclProvisionChangeMean = mean(scenarioRows.map(_.cumulativeEclProvisionChange)),
-        cumulativeBailInLossMean = mean(scenarioRows.map(_.cumulativeBailInLoss)),
-        cumulativeCapitalDestructionMean = mean(scenarioRows.map(_.cumulativeCapitalDestruction)),
-        cumulativeReconciliationResidualAbsMean = mean(scenarioRows.map(_.cumulativeReconciliationResidualAbs)),
+        terminalFailuresMean = mean(completedRows.flatMap(row => row.terminalFailures.map(BigDecimal(_)))),
+        peakFailuresMean = mean(completedRows.map(row => BigDecimal(row.peakFailures))),
+        cumulativeNewFailuresMean = mean(completedRows.map(_.cumulativeNewFailures)),
+        cumulativeRealizedCreditLossMean = mean(completedRows.map(_.cumulativeRealizedCreditLoss)),
+        cumulativeInterbankContagionLossMean = mean(completedRows.map(_.cumulativeInterbankContagionLoss)),
+        cumulativeEclProvisionChangeMean = mean(completedRows.map(_.cumulativeEclProvisionChange)),
+        cumulativeBailInLossMean = mean(completedRows.map(_.cumulativeBailInLoss)),
+        cumulativeCapitalDestructionMean = mean(completedRows.map(_.cumulativeCapitalDestruction)),
+        cumulativeReconciliationResidualAbsMean = mean(completedRows.map(_.cumulativeReconciliationResidualAbs)),
         firstFailureRealizedCreditLossMean = meanFailedOnly(scenarioRows)(_.firstFailureRealizedCreditLoss),
         firstFailureEclProvisionChangeMean = meanFailedOnly(scenarioRows)(_.firstFailureEclProvisionChange),
         firstFailureConsumerNplLossMean = meanFailedOnly(scenarioRows)(_.firstFailureConsumerNplLoss),
@@ -371,9 +373,9 @@ object BankFailureAblationExport:
         firstFailureMortgageNplLossMean = meanFailedOnly(scenarioRows)(_.firstFailureMortgageNplLoss),
         firstFailureCorpBondDefaultLossMean = meanFailedOnly(scenarioRows)(_.firstFailureCorpBondDefaultLoss),
         firstFailureInterbankContagionLossMean = meanFailedOnly(scenarioRows)(_.firstFailureInterbankContagionLoss),
-        terminalTotalCreditToGdpMean = mean(scenarioRows.map(_.terminalTotalCreditToGdp)),
-        terminalUnemploymentMean = mean(scenarioRows.map(_.terminalUnemployment)),
-        terminalInflationMean = mean(scenarioRows.map(_.terminalInflation)),
+        terminalTotalCreditToGdpMean = mean(completedRows.flatMap(_.terminalTotalCreditToGdp)),
+        terminalUnemploymentMean = mean(completedRows.flatMap(_.terminalUnemployment)),
+        terminalInflationMean = mean(completedRows.flatMap(_.terminalInflation)),
         interpretation = scenario.interpretation,
       )
 
@@ -489,7 +491,7 @@ object BankFailureAblationExport:
       row.firstFailureMonth.map(_.toString).getOrElse(""),
       row.firstFailureReasonCode.toString,
       row.firstFailureBankId.toString,
-      row.terminalFailures.toString,
+      row.terminalFailures.map(_.toString).getOrElse(""),
       row.peakFailures.toString,
       renderDecimal(row.cumulativeNewFailures),
       renderDecimal(row.cumulativeRealizedCreditLoss),
@@ -507,9 +509,9 @@ object BankFailureAblationExport:
       renderDecimal(row.firstFailureInterbankContagionLoss),
       renderDecimal(row.firstFailureReconciliationResidual),
       renderDecimal(row.firstFailureDepositBailInLoss),
-      renderDecimal(row.terminalTotalCreditToGdp),
-      renderDecimal(row.terminalUnemployment),
-      renderDecimal(row.terminalInflation),
+      row.terminalTotalCreditToGdp.map(renderDecimal).getOrElse(""),
+      row.terminalUnemployment.map(renderDecimal).getOrElse(""),
+      row.terminalInflation.map(renderDecimal).getOrElse(""),
       row.interpretation,
     ).map(tsv).mkString("\t")
 

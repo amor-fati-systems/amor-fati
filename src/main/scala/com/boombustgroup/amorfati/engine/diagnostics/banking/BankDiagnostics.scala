@@ -16,12 +16,12 @@ case class BankCapitalDiagnostics(
     closingCapital: PLN = PLN.Zero,           // aggregate bank capital after monthly banking settlement
     retainedIncome: PLN = PLN.Zero,           // retained ordinary bank income after profit-retention rule
     firmNplLoss: PLN = PLN.Zero,              // realized firm-loan capital loss net of recovery and ECL allowance draw
-    mortgageNplLoss: PLN = PLN.Zero,          // realized mortgage capital loss net of recovery and ECL allowance draw
-    consumerNplLoss: PLN = PLN.Zero,          // realized consumer-loan capital loss net of recovery and ECL allowance draw
+    mortgageNplLoss: PLN = PLN.Zero,          // realized mortgage capital loss net of recovery; product-level ECL draw is not modeled yet
+    consumerNplLoss: PLN = PLN.Zero,          // realized consumer-loan capital loss net of recovery; product-level ECL draw is not modeled yet
     corpBondDefaultLoss: PLN = PLN.Zero,      // bank-held corporate-bond default loss
     firmNplAllowanceDraw: PLN = PLN.Zero,     // firm-loan default loss covered by existing/new ECL allowance instead of capital loss
-    mortgageNplAllowanceDraw: PLN = PLN.Zero, // mortgage default loss covered by allowance instead of capital loss
-    consumerNplAllowanceDraw: PLN = PLN.Zero, // consumer default loss covered by allowance instead of capital loss
+    mortgageNplAllowanceDraw: PLN = PLN.Zero, // currently zero until mortgage product-level ECL staging is modeled
+    consumerNplAllowanceDraw: PLN = PLN.Zero, // currently zero until consumer product-level ECL staging is modeled
     bfgLevy: PLN = PLN.Zero,                  // monthly BFG levy paid by active banks
     polishBankLevyTax: PLN = PLN.Zero,        // monthly Polish bank tax paid by active banks
     unrealizedBondLoss: PLN = PLN.Zero,       // AFS government-bond mark-to-market capital hit

@@ -713,8 +713,8 @@ object Banking:
   case class CapitalPnlInput(
       prevCapital: PLN,            // previous period capital
       nplLoss: PLN,                // corporate NPL capital loss net of recovery and allowance draw
-      mortgageNplLoss: PLN,        // mortgage capital loss net of recovery and allowance draw
-      consumerNplLoss: PLN,        // consumer-loan capital loss net of recovery and allowance draw
+      mortgageNplLoss: PLN,        // mortgage capital loss net of recovery; no product-level ECL draw is modeled yet
+      consumerNplLoss: PLN,        // consumer-loan capital loss net of recovery; no product-level ECL draw is modeled yet
       corpBondDefaultLoss: PLN,    // corporate bond default loss (bank share)
       bfgLevy: PLN,                // BFG resolution fund levy
       polishBankLevyTax: PLN,      // Polish tax on selected financial institutions

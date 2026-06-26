@@ -355,7 +355,9 @@ private[banking] object BankMultiBankStage:
     val bankMortgageIntIncome     = hhFlows.mortgageInterest
     val mortgageLoss              = BankCreditLossAccounting.mortgage(mortgageFlows.defaultAmount * workerShare)
     val bankMortgageNplLoss       = mortgageLoss.netCapitalLoss
-    val consumerLoss              = BankCreditLossAccounting.consumer(hhFlows.ccLoanDefault)
+    val consumerBridgeChargeOff   = hhFlows.ccDefault - hhFlows.ccLoanDefault
+    require(consumerBridgeChargeOff >= PLN.Zero, s"Consumer default ${hhFlows.ccDefault} must cover consumer-loan default ${hhFlows.ccLoanDefault}")
+    val consumerLoss              = BankCreditLossAccounting.consumer(hhFlows.ccLoanDefault + consumerBridgeChargeOff)
     val bankCcNplLoss             = consumerLoss.netCapitalLoss
     val bankCcStockReduction: PLN = in.householdIncome.perBankHhFlowsOpt match
       case Some(pbf) => pbf(bId).consumerPrincipal
