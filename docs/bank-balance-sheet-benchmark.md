@@ -25,7 +25,8 @@ The task writes:
   semantics.
 - `bank-balance-sheet-bank-rows.tsv`: per-bank capital, funding, credit,
   liquidity, sovereign-portfolio, Polish-bank-levy taxable-asset, and
-  concentration rows.
+  concentration rows, plus source-profile target, target-share, and delta
+  columns where opening bank-profile evidence exists.
 - `bank-balance-sheet-report.md`: human-readable summary.
 
 ## Bank Capital Semantics
