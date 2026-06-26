@@ -171,11 +171,15 @@ object BankBalanceSheetBenchmarkExport:
     private def compare(target: Option[PLN], targetShare: Option[BigDecimal], realized: PLN): ProfileStockComparison =
       ProfileStockComparison(target = target, targetShare = target.flatMap(_ => targetShare), delta = target.map(realized - _))
 
-  private final case class SeedContext(seed: Long, init: WorldInit.InitResult)(using p: SimParams):
+  private final case class SeedContext(
+      seed: Long,
+      init: WorldInit.InitResult,
+      openingBankProfileRows: Vector[OpeningBankBalanceProfileBridge.Row],
+  )(using p: SimParams):
     val params: SimParams                                         = p
     val bankBalances: Vector[LedgerFinancialState.BankBalances]   = init.ledgerFinancialState.banks
     val bankStocks: Vector[Banking.BankFinancialStocks]           = bankBalances.map(LedgerFinancialState.projectBankFinancialStocks)
-    val profileRowsByBankId: Map[Int, RuntimeBankProfileEvidence] = runtimeProfileRowsByBankId()
+    val profileRowsByBankId: Map[Int, RuntimeBankProfileEvidence] = runtimeProfileRowsByBankId(openingBankProfileRows)
     val corpBondHoldings: Banking.BankCorpBondHoldings            =
       Banking.bankCorpBondHoldingsFromVector(bankBalances.map(_.corpBond))
     val aggregate: Banking.Aggregate                              =
@@ -591,8 +595,9 @@ object BankBalanceSheetBenchmarkExport:
           results    <- ZIO.foreach(validConfig.seedRange): seed =>
             ZIO
               .attempt:
-                val init = WorldInit.initialize(InitRandomness.Contract.fromSeed(seed))
-                computeSeed(validConfig, seed, init)
+                val openingBankProfileRows = OpeningBankBalanceProfileBridge.Rows
+                val init                   = WorldInit.initialize(InitRandomness.Contract.fromSeed(seed), openingBankProfileRows = openingBankProfileRows)
+                computeSeed(validConfig, seed, init, openingBankProfileRows)
               .mapError(ex => s"Seed $seed crashed during initialization or benchmark computation: ${ex.getMessage}")
           seedMetrics = results.flatMap(_._1)
           bankRows    = results.flatMap(_._2)
@@ -674,8 +679,13 @@ object BankBalanceSheetBenchmarkExport:
         status = status,
       )
 
-  private[diagnostics] def computeSeed(config: Config, seed: Long, init: WorldInit.InitResult)(using SimParams): (Vector[SeedMetric], Vector[BankRow]) =
-    val context = SeedContext(seed, init)
+  private[diagnostics] def computeSeed(
+      config: Config,
+      seed: Long,
+      init: WorldInit.InitResult,
+      openingBankProfileRows: Vector[OpeningBankBalanceProfileBridge.Row] = OpeningBankBalanceProfileBridge.Rows,
+  )(using SimParams): (Vector[SeedMetric], Vector[BankRow]) =
+    val context = SeedContext(seed, init, openingBankProfileRows)
     val metrics = Metrics.map: metric =>
       val value = metric.compute(context)
       SeedMetric(config.runId, seed, metric.target, value, evaluate(value, metric.target))
@@ -1020,8 +1030,8 @@ object BankBalanceSheetBenchmarkExport:
   private def singleBankAssets(row: LedgerFinancialState.BankBalances): PLN =
     row.firmLoan + row.consumerLoan + row.mortgageLoan + row.govBondAfs + row.govBondHtm + row.corpBond + row.reserve + row.interbankLoan.max(PLN.Zero)
 
-  private def runtimeProfileRowsByBankId()(using p: SimParams): Map[Int, RuntimeBankProfileEvidence] =
-    val runtimeRows = OpeningBankBalanceProfileBridge.Rows.filterNot(_.rowType == "sector_total")
+  private def runtimeProfileRowsByBankId(rows: Vector[OpeningBankBalanceProfileBridge.Row])(using p: SimParams): Map[Int, RuntimeBankProfileEvidence] =
+    val runtimeRows = rows.filterNot(_.rowType == "sector_total")
     require(
       runtimeRows.length == Banking.DefaultConfigs.length,
       s"Bank balance-sheet benchmark requires ${Banking.DefaultConfigs.length} opening bank profile rows, got ${runtimeRows.length}",

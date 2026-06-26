@@ -1,7 +1,7 @@
 package com.boombustgroup.amorfati.diagnostics
 
 import com.boombustgroup.amorfati.agents.Banking
-import com.boombustgroup.amorfati.config.SimParams
+import com.boombustgroup.amorfati.config.{OpeningBankBalanceProfileBridge, SimParams}
 import com.boombustgroup.amorfati.engine.ledger.LedgerFinancialState
 import com.boombustgroup.amorfati.fp.FixedPointBase
 import com.boombustgroup.amorfati.init.{InitRandomness, WorldInit}
@@ -268,6 +268,26 @@ class BankBalanceSheetBenchmarkExportSpec extends AnyFlatSpec with Matchers:
     pekao.profileDepositsDelta shouldBe pekao.profileDepositsTarget.map(pekao.deposits - _)
     bpsCoop.profileConsumerLoansTarget shouldBe None
     bpsCoop.profileConsumerLoansDelta shouldBe None
+  }
+
+  it should "use the opening profile rows supplied with the initialized world" in {
+    given SimParams = SimParams.defaults
+
+    val customRows = OpeningBankBalanceProfileBridge.Rows.map:
+      case row if row.runtimeBankName == "Pekao" =>
+        row.copy(
+          bridgeStatus = "CUSTOM_PROFILE_EVIDENCE",
+          depositsMPln = Some(BigDecimal("1")),
+          depositShare = Some(BigDecimal("0.000001")),
+        )
+      case row                                   => row
+    val init       = WorldInit.initialize(InitRandomness.Contract.fromSeed(1L), openingBankProfileRows = customRows)
+    val (_, rows)  = computeSeed(Config(runId = "bank-spec", seeds = 1), 1L, init, customRows)
+    val pekao      = rows.find(_.bankName == "Pekao").getOrElse(fail("Missing Pekao benchmark row"))
+
+    pekao.profileBridgeStatus shouldBe "CUSTOM_PROFILE_EVIDENCE"
+    pekao.profileDepositsTargetShare shouldBe Some(BigDecimal("0.000001"))
+    pekao.profileDepositsDelta shouldBe pekao.profileDepositsTarget.map(pekao.deposits - _)
   }
 
   private def sampleBankRow(runId: String = "bank-spec", seed: Long = 1L, bankId: Int = 0, bankName: String = "PKO BP"): BankRow =
