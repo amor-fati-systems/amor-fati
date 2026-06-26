@@ -93,7 +93,7 @@ object DepositMobility:
       bankFinancialStocks: Vector[Banking.BankFinancialStocks],
       anyBankFailed: Boolean,
       rng: RandomStream,
-      bankCorpBondHoldings: Banking.BankCorpBondHoldings = Banking.noBankCorpBondHoldings,
+      bankCorpBondHoldings: Banking.BankCorpBondHoldings,
   )(using p: SimParams): Result =
     validateHouseholdBankIds(households, banks)
     val healthiest = Banking.healthiestBankId(banks, bankFinancialStocks, bankCorpBondHoldings)

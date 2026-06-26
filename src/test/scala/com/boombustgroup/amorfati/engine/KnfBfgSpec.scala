@@ -262,7 +262,7 @@ class KnfBfgSpec extends AnyFlatSpec with Matchers:
       mkBankRow(id = 2, deposits = PLN(200000), loans = PLN(60000), capital = PLN(-15000), status = BankStatus.Failed(ExecutionMonth(3))),
     )
     val ex   = intercept[IllegalStateException]:
-      Banking.healthiestBankId(banks(rows), stocks(rows))
+      Banking.healthiestBankId(banks(rows), stocks(rows), Banking.noBankCorpBondHoldings)
 
     ex.getMessage should include("every bank is failed")
     ex.getMessage should include("recapitalization")

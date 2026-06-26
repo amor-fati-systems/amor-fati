@@ -151,7 +151,7 @@ object Banking:
   def aggregateFromBankStocks(
       banks: Vector[BankState],
       financialStocks: Vector[BankFinancialStocks],
-      bankCorpBondHoldings: BankCorpBondHoldings = noBankCorpBondHoldings,
+      bankCorpBondHoldings: BankCorpBondHoldings,
   ): Aggregate =
     BankRegulatoryMetrics.aggregateFromBankStocks(banks, financialStocks, bankCorpBondHoldings)
 
@@ -542,7 +542,7 @@ object Banking:
       bank: BankState,
       financialStocks: BankFinancialStocks,
       ccyb: Multiplier,
-      bankCorpBondHoldings: BankCorpBondHoldings = noBankCorpBondHoldings,
+      bankCorpBondHoldings: BankCorpBondHoldings,
   )(using p: SimParams): Option[BankFailureReason] =
     BankFailureResolution.failureReason(bank, financialStocks, ccyb, bankCorpBondHoldings)
 
@@ -552,7 +552,7 @@ object Banking:
       month: ExecutionMonth, // execution month (recorded in BankStatus.Failed)
       enabled: Boolean,      // whether failure mechanism is active
       ccyb: Multiplier,      // countercyclical capital buffer
-      bankCorpBondHoldings: BankCorpBondHoldings = noBankCorpBondHoldings,
+      bankCorpBondHoldings: BankCorpBondHoldings,
   )(using p: SimParams): FailureCheckResult =
     BankFailureResolution.checkFailures(banks, financialStocks, month, enabled, ccyb, bankCorpBondHoldings)
 
@@ -630,7 +630,7 @@ object Banking:
   def healthiestBankId(
       banks: Vector[BankState],
       financialStocks: Vector[BankFinancialStocks],
-      bankCorpBondHoldings: BankCorpBondHoldings = noBankCorpBondHoldings,
+      bankCorpBondHoldings: BankCorpBondHoldings,
   )(using p: SimParams): BankId =
     BankFailureResolution.healthiestBankId(banks, financialStocks, bankCorpBondHoldings)
 
@@ -641,7 +641,7 @@ object Banking:
       currentBankId: BankId,
       banks: Vector[BankState],
       financialStocks: Vector[BankFinancialStocks],
-      bankCorpBondHoldings: BankCorpBondHoldings = noBankCorpBondHoldings,
+      bankCorpBondHoldings: BankCorpBondHoldings,
   )(using p: SimParams): BankId =
     BankFailureResolution.reassignBankId(currentBankId, banks, financialStocks, bankCorpBondHoldings)
 
