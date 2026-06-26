@@ -146,7 +146,7 @@ class InterbankContagionSpec extends AnyFlatSpec with Matchers:
     val result       = InterbankContagion.applyContagionLosses(banks(failedRows), matrix)
     val afterLosses  = result.banks
     val cleanStocks  = stocks(exposureRows).map(_.copy(demandDeposit = PLN.Zero, termDeposit = PLN.Zero))
-    val checked      = Banking.checkFailures(afterLosses, cleanStocks, ExecutionMonth(30), enabled = true, Multiplier.Zero)
+    val checked      = Banking.checkFailures(afterLosses, cleanStocks, ExecutionMonth(30), enabled = true, Multiplier.Zero, Banking.noBankCorpBondHoldings)
 
     afterLosses(0).capital should be < PLN.Zero
     result.totalLoss should be > PLN.Zero

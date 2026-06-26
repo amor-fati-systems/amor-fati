@@ -33,10 +33,10 @@ object BankInit:
       firmFinancialStocks: Vector[Firm.FinancialStocks],
       households: Vector[Household.State],
       householdFinancialStocks: Vector[Household.FinancialStocks],
-      bankGovBondHoldings: Vector[PLN] = Vector.empty,
-      bankReserveHoldings: Vector[PLN] = Vector.empty,
-      bankCorpBondHoldings: Vector[PLN] = Vector.empty,
-      openingCapitalProfiles: Vector[Banking.OpeningCapitalProfile] = Banking.DefaultOpeningCapitalProfiles,
+      bankGovBondHoldings: Vector[PLN],
+      bankReserveHoldings: Vector[PLN],
+      bankCorpBondHoldings: Vector[PLN],
+      openingCapitalProfiles: Vector[Banking.OpeningCapitalProfile],
   )(using p: SimParams): Result =
     require(
       firms.length == firmFinancialStocks.length,
@@ -54,29 +54,25 @@ object BankInit:
     val perBankMortgages  = householdRows.groupMapReduce(_._1.bankId.toInt)(_._2.mortgageLoan)(_ + _)
     val perBankHhDeposits = householdRows.groupMapReduce(_._1.bankId.toInt)(_._2.demandDeposit)(_ + _)
 
-    val govBondHoldings         =
-      if bankGovBondHoldings.isEmpty then
-        com.boombustgroup.ledger.Distribute
-          .distribute(
-            p.banking.initGovBonds.toLong,
-            Banking.DefaultConfigs.map(_.openingBalanceWeight.toLong).toArray,
-          )
-          .map(PLN.fromRaw)
-          .toVector
-      else requireBankVectorTotal("government-bond", bankGovBondHoldings, p.banking.initGovBonds)
-    val reserveHoldings         =
-      if bankReserveHoldings.isEmpty then Vector.empty
-      else requireBankVectorTotal("reserve", bankReserveHoldings, p.banking.initDeposits * p.banking.reserveReq)
-    val corpBondHoldings        =
-      if bankCorpBondHoldings.isEmpty then Vector.fill(Banking.DefaultConfigs.length)(PLN.Zero)
-      else requireBankVectorTotal("corporate-bond", bankCorpBondHoldings, p.corpBond.initStock * p.corpBond.bankShare)
+    val govBondHoldings         = requireBankVectorTotal("government-bond", bankGovBondHoldings, p.banking.initGovBonds)
+    val reserveHoldings         = requireBankVectorTotal("reserve", bankReserveHoldings, p.banking.initDeposits * p.banking.reserveReq)
+    val corpBondHoldings        = requireBankVectorTotal("corporate-bond", bankCorpBondHoldings, p.corpBond.initStock * p.corpBond.bankShare)
     val capitalProfilesByBankId = openingCapitalProfiles.map(profile => profile.bankId -> profile).toMap
+    val expectedBankIds         = Banking.DefaultConfigs.map(_.id).toSet
     require(
       capitalProfilesByBankId.size == openingCapitalProfiles.size,
       "BankInit.create requires at most one opening capital profile per bank",
     )
+    require(
+      capitalProfilesByBankId.keySet == expectedBankIds,
+      s"BankInit.create requires one opening capital profile for every default bank; expected=${expectedBankIds
+          .map(_.toInt)
+          .toVector
+          .sorted
+          .mkString(",")} actual=${capitalProfilesByBankId.keySet.map(_.toInt).toVector.sorted.mkString(",")}",
+    )
 
-    val openingRows             = Banking.DefaultConfigs
+    val openingRows     = Banking.DefaultConfigs
       .zip(govBondHoldings)
       .zip(corpBondHoldings)
       .map { case ((cfg, bankBonds), bankCorpBonds) =>
@@ -89,9 +85,7 @@ object BankInit:
         val deposits        = firmDeposits + hhDeposits
         val termDeposits    = deposits * p.banking.termDepositFrac
         val demandDeposits  = deposits - termDeposits
-        val reserve         =
-          if reserveHoldings.isEmpty then deposits * p.banking.reserveReq
-          else bankVectorValue("reserve", reserveHoldings, bId)
+        val reserve         = bankVectorValue("reserve", reserveHoldings, bId)
         val eclCoveredLoans = corpLoans + consLoans
         OpeningRow(
           config = cfg,
@@ -111,20 +105,18 @@ object BankInit:
           corpBondHoldings = bankCorpBonds,
         )
       }
-    val totalOpeningRwa         = openingRows.map(row => Banking.riskWeightedAssets(row.financialStocks, row.corpBondHoldings)).sumPln
+    val totalOpeningRwa = openingRows.map(row => Banking.riskWeightedAssets(row.financialStocks, row.corpBondHoldings)).sumPln
     require(
       totalOpeningRwa > PLN.Zero,
-      "BankInit.create requires positive opening RWA to derive sector opening capital ratio",
+      "BankInit.create requires positive opening RWA",
     )
-    val sectorTotalCapitalRatio = p.banking.initCapital.ratioTo(totalOpeningRwa).toMultiplier
 
     val rows = openingRows.map: row =>
-      val profile       = capitalProfilesByBankId.getOrElse(row.config.id, Banking.OpeningCapitalProfile(row.config.id))
+      val profile       = capitalProfilesByBankId(row.config.id)
       val capitalResult = Banking.openingCapitalFromProfile(
         profile,
         row.financialStocks,
         row.corpBondHoldings,
-        sectorTotalCapitalRatio,
       )
       val bank          = Banking.BankState(
         id = row.config.id,

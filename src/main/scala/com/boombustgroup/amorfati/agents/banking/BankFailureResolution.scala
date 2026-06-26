@@ -135,7 +135,15 @@ private[agents] object BankFailureResolution:
       bankCorpBondHoldings: Vector[PLN],
   )(using p: SimParams): ResolutionResult =
     val rows           = BankRows.from(banks, financialStocks, "Banking.resolveFailures")
-    val holderBalances = Vector.tabulate(rows.length)(index => bankCorpBondHoldings.lift(index).getOrElse(PLN.Zero))
+    require(
+      bankCorpBondHoldings.length == rows.length,
+      s"Banking.resolveFailures requires ${rows.length} bank corporate-bond rows, got ${bankCorpBondHoldings.length}",
+    )
+    require(
+      bankCorpBondHoldings.forall(_ >= PLN.Zero),
+      "Banking.resolveFailures requires non-negative bank corporate-bond rows",
+    )
+    val holderBalances = bankCorpBondHoldings
     val newlyFailed    = rows.filter((b, stocks) => b.failed && stocks.totalDeposits > PLN.Zero)
     if newlyFailed.isEmpty then ResolutionResult(banks, financialStocks, BankId.NoBank, holderBalances)
     else

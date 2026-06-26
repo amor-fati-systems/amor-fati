@@ -113,20 +113,19 @@ class BankingSectorSpec extends AnyFlatSpec with Matchers:
       rng,
     )
 
-  "Banking.Config" should "name relationship routing and opening balance weights separately" in {
+  "Banking.Config" should "keep relationship routing separate from opening balance targets" in {
     val fieldNames = configs.head.productElementNames.toSet
 
     fieldNames should contain("relationshipWeight")
-    fieldNames should contain("openingBalanceWeight")
+    fieldNames should not contain "openingBalanceWeight"
     fieldNames should not contain "initMarketShare"
     fieldNames should not contain "openingCapitalWeight"
     fieldNames.exists(_.toLowerCase.contains("cet1")) shouldBe false
   }
 
-  "Banking.DefaultConfigs" should "split relationship and opening balance weights across default rows" in {
+  "Banking.DefaultConfigs" should "normalize relationship weights across default rows" in {
     configs.map(_.id.toInt) shouldBe configs.indices.toVector
     configs.map(_.relationshipWeight).sumShare shouldBe Share.One
-    configs.map(_.openingBalanceWeight).sumShare shouldBe Share.One
     configs.map(_.relationshipWeight).max should be <= summon[SimParams].banking.concentrationLimit
   }
 
@@ -141,7 +140,7 @@ class BankingSectorSpec extends AnyFlatSpec with Matchers:
     bs.banks.forall(!_.failed) shouldBe true
   }
 
-  "Banking.openingCapitalFromProfile" should "derive bank opening capital from RWA and total capital ratio" in {
+  "Banking.openingCapitalFromProfile" should "use explicit bank opening own funds" in {
     val stocks = Banking.BankFinancialStocks(
       totalDeposits = PLN(1000000),
       firmLoan = PLN(600000),
@@ -155,20 +154,20 @@ class BankingSectorSpec extends AnyFlatSpec with Matchers:
       mortgageLoan = PLN(300000),
     )
     val low    = Banking.openingCapitalFromProfile(
-      Banking.OpeningCapitalProfile(BankId(0), totalCapitalRatio = Some(Multiplier.decimal(10, 2))),
+      Banking.OpeningCapitalProfile(BankId(0), ownFunds = PLN(100000)),
       stocks,
       corpBondHoldings = PLN(50000),
-      fallbackTotalCapitalRatio = Multiplier.decimal(20, 2),
     )
     val high   = Banking.openingCapitalFromProfile(
-      Banking.OpeningCapitalProfile(BankId(0), totalCapitalRatio = Some(Multiplier.decimal(20, 2))),
+      Banking.OpeningCapitalProfile(BankId(0), ownFunds = PLN(200000)),
       stocks,
       corpBondHoldings = PLN(50000),
-      fallbackTotalCapitalRatio = Multiplier.decimal(20, 2),
     )
 
     low.riskWeightedAssets should be > PLN.Zero
     high.riskWeightedAssets shouldBe low.riskWeightedAssets
+    low.capital shouldBe PLN(100000)
+    high.capital shouldBe PLN(200000)
     high.capital should be > low.capital
   }
 
@@ -480,12 +479,20 @@ class BankingSectorSpec extends AnyFlatSpec with Matchers:
 
   "Banking.checkFailures" should "respect disabled mode, trigger failures, and reset recovered counters" in {
     val weak     = mkBankRow(capital = PLN(1000), status = BankStatus.Active(5))
-    val disabled = Banking.checkFailures(Vector(weak.bank), Vector(weak.stocks), ExecutionMonth(30), enabled = false, Multiplier.Zero)
+    val disabled =
+      Banking.checkFailures(Vector(weak.bank), Vector(weak.stocks), ExecutionMonth(30), enabled = false, Multiplier.Zero, Banking.noBankCorpBondHoldings)
     disabled.anyFailed shouldBe false
     disabled.banks.head.failed shouldBe false
 
     val preFailed = mkBankRow(capital = PLN(1000), status = BankStatus.Active(2))
-    val failed    = Banking.checkFailures(Vector(preFailed.bank), Vector(preFailed.stocks), ExecutionMonth(30), enabled = true, Multiplier.Zero)
+    val failed    = Banking.checkFailures(
+      Vector(preFailed.bank),
+      Vector(preFailed.stocks),
+      ExecutionMonth(30),
+      enabled = true,
+      Multiplier.Zero,
+      Banking.noBankCorpBondHoldings,
+    )
     failed.anyFailed shouldBe true
     failed.banks.head.failed shouldBe true
     failed.banks.head.capital shouldBe PLN.Zero
@@ -493,7 +500,7 @@ class BankingSectorSpec extends AnyFlatSpec with Matchers:
 
     val recovered = mkBankRow(status = BankStatus.Active(2))
     Banking
-      .checkFailures(Vector(recovered.bank), Vector(recovered.stocks), ExecutionMonth(30), enabled = true, Multiplier.Zero)
+      .checkFailures(Vector(recovered.bank), Vector(recovered.stocks), ExecutionMonth(30), enabled = true, Multiplier.Zero, Banking.noBankCorpBondHoldings)
       .banks
       .head
       .consecutiveLowCar shouldBe 0
@@ -528,7 +535,14 @@ class BankingSectorSpec extends AnyFlatSpec with Matchers:
 
   it should "fail negative-capital banks immediately" in {
     val insolvent = mkBankRow(capital = PLN(-1))
-    val result    = Banking.checkFailures(Vector(insolvent.bank), Vector(insolvent.stocks), ExecutionMonth(30), enabled = true, Multiplier.Zero)
+    val result    = Banking.checkFailures(
+      Vector(insolvent.bank),
+      Vector(insolvent.stocks),
+      ExecutionMonth(30),
+      enabled = true,
+      Multiplier.Zero,
+      Banking.noBankCorpBondHoldings,
+    )
 
     result.anyFailed shouldBe true
     result.banks.head.failed shouldBe true
@@ -540,13 +554,14 @@ class BankingSectorSpec extends AnyFlatSpec with Matchers:
     val insolvent = mkBankRow(capital = PLN(-1))
     val original  = insolvent.bank
 
-    Banking.failureReason(insolvent.bank, insolvent.stocks, Multiplier.Zero) shouldBe Some(BankFailureReason.NegativeCapital)
+    Banking.failureReason(insolvent.bank, insolvent.stocks, Multiplier.Zero, Banking.noBankCorpBondHoldings) shouldBe Some(BankFailureReason.NegativeCapital)
     insolvent.bank shouldBe original
   }
 
   it should "report LCR breaches as liquidity failure reasons" in {
     val illiquid = mkBankRow(capital = PLN(500000), demandDeposits = PLN(1000000), reservesAtNbp = PLN.Zero, govBondHoldings = PLN.Zero)
-    val result   = Banking.checkFailures(Vector(illiquid.bank), Vector(illiquid.stocks), ExecutionMonth(30), enabled = true, Multiplier.Zero)
+    val result   =
+      Banking.checkFailures(Vector(illiquid.bank), Vector(illiquid.stocks), ExecutionMonth(30), enabled = true, Multiplier.Zero, Banking.noBankCorpBondHoldings)
 
     result.anyFailed shouldBe true
     result.events.map(_.reason) shouldBe Vector(BankFailureReason.LiquidityBreach)
@@ -652,13 +667,13 @@ class BankingSectorSpec extends AnyFlatSpec with Matchers:
       mkBankRow(id = 1, capital = PLN(100000), status = BankStatus.Failed(ExecutionMonth(30))),
     )
 
-    Banking.reassignBankId(BankId(0), banks(rows), stocks(rows)) shouldBe BankId(0)
-    Banking.reassignBankId(BankId(1), banks(rows), stocks(rows)) shouldBe BankId(0)
+    Banking.reassignBankId(BankId(0), banks(rows), stocks(rows), Banking.noBankCorpBondHoldings) shouldBe BankId(0)
+    Banking.reassignBankId(BankId(1), banks(rows), stocks(rows), Banking.noBankCorpBondHoldings) shouldBe BankId(0)
   }
 
   "Banking.aggregateFromBankStocks" should "sum operational state and explicit financial stocks" in {
     val bs  = Generators.testBankingSector(totalDeposits = PLN(1000000), totalCapital = PLN(100000), totalLoans = PLN(500000), configs = configs)
-    val agg = Banking.aggregateFromBankStocks(bs.banks, bs.financialStocks)
+    val agg = Banking.aggregateFromBankStocks(bs.banks, bs.financialStocks, Banking.noBankCorpBondHoldings)
 
     agg.deposits shouldBe PLN(1000000)
     agg.capital shouldBe PLN(100000)

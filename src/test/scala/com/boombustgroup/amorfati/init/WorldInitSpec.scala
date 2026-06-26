@@ -2,7 +2,7 @@ package com.boombustgroup.amorfati.init
 
 import com.boombustgroup.amorfati.FixedPointSpecSupport.*
 import com.boombustgroup.amorfati.agents.{Banking, EclStaging}
-import com.boombustgroup.amorfati.config.SimParams
+import com.boombustgroup.amorfati.config.{OpeningBankBalanceProfileBridge, SimParams}
 import com.boombustgroup.amorfati.engine.ledger.LedgerFinancialState
 import com.boombustgroup.amorfati.engine.mechanisms.Macroprudential
 import com.boombustgroup.amorfati.fp.FixedPointBase
@@ -88,14 +88,15 @@ class WorldInitSpec extends AnyFlatSpec with Matchers:
     init.world.real.housing.mortgageStock shouldBe p.housing.initMortgage
   }
 
-  it should "compute opening bank capital from opening RWA and preserve the sector capital target" in {
-    val init                 = WorldInit.initialize(InitRandomness.Contract.fromSeed(42L))
-    val aggregateCapital     = init.banks.map(_.capital).sumPln
-    val bankRows             = init.banks.zip(init.ledgerFinancialState.banks)
-    val totalOpeningRwa      = bankRows.map { case (_, balances) =>
-      Banking.riskWeightedAssets(LedgerFinancialState.projectBankFinancialStocks(balances), balances.corpBond)
-    }.sumPln
-    val expectedCapitalRatio = p.banking.initCapital.ratioTo(totalOpeningRwa).toMultiplier
+  it should "load opening bank capital from profile own funds and preserve the sector capital target" in {
+    val init                = WorldInit.initialize(InitRandomness.Contract.fromSeed(42L))
+    val aggregateCapital    = init.banks.map(_.capital).sumPln
+    val bankRows            = init.banks.zip(init.ledgerFinancialState.banks)
+    val productionTargets   = OpeningBankProfileTargets.fromBridgeRows(OpeningBankBalanceProfileBridge.Rows)
+    val expectedCapitalById = productionTargets.openingCapitalProfiles
+      .map: profile =>
+        profile.bankId -> profile.ownFunds
+      .toMap
 
     decimal(aggregateCapital) shouldBe decimal(p.banking.initCapital) +- (decimal(p.banking.initCapital) * BigDecimal("0.001"))
     bankRows.foreach { case (bank, balances) =>
@@ -104,9 +105,9 @@ class WorldInitSpec extends AnyFlatSpec with Matchers:
       val car    = Banking.car(bank, stocks, balances.corpBond)
       val minCar = Macroprudential.effectiveMinCar(bank.id.toInt, p.banking.initialCcyb)
 
+      bank.capital shouldBe expectedCapitalById(bank.id)
       rwa should be > PLN.Zero
       car should be >= minCar
-      decimal(car) shouldBe decimal(expectedCapitalRatio) +- BigDecimal("0.0001")
     }
   }
 
@@ -143,9 +144,7 @@ class WorldInitSpec extends AnyFlatSpec with Matchers:
 
   it should "reconcile opening bank books to complete explicit bank profile targets" in {
     val rows    = OpeningBankProfileTestFixtures.completeRows
-    val targets = OpeningBankProfileTargets.fromBridgeRows(rows) match
-      case OpeningBankProfileTargets.Resolution.Complete(targets) => targets
-      case other                                                  => fail(s"Expected complete opening bank targets, got $other")
+    val targets = OpeningBankProfileTargets.fromBridgeRows(rows)
     val init    = WorldInit.initialize(InitRandomness.Contract.fromSeed(42L), openingBankProfileRows = rows)
 
     val bankBalances = init.ledgerFinancialState.banks
@@ -153,8 +152,8 @@ class WorldInitSpec extends AnyFlatSpec with Matchers:
     bankBalances.map(_.firmLoan) shouldBe targets.firmLoans
     bankBalances.map(_.consumerLoan) shouldBe targets.consumerLoans
     bankBalances.map(_.mortgageLoan) shouldBe targets.mortgageLoans
-    bankBalances.map(_.reserve) shouldBe targets.reserves.getOrElse(fail("Expected reserve targets in complete fixture"))
-    bankBalances.map(_.corpBond) shouldBe targets.corpBonds.getOrElse(fail("Expected corporate-bond targets in complete fixture"))
+    bankBalances.map(_.reserve) shouldBe targets.reserves
+    bankBalances.map(_.corpBond) shouldBe targets.corpBonds
     bankBalances.map(bank => bank.govBondAfs + bank.govBondHtm).zip(targets.govBonds).foreach { case (actual, expected) =>
       (actual - expected).abs should be <= PLN(1)
     }
@@ -175,11 +174,28 @@ class WorldInitSpec extends AnyFlatSpec with Matchers:
     }
   }
 
-  it should "reject explicit bank holding vectors whose totals do not match opening sector stocks" in {
+  it should "use production opening bank profile targets by default" in {
+    val targets = OpeningBankProfileTargets.fromBridgeRows(OpeningBankBalanceProfileBridge.Rows)
+    val init    = WorldInit.initialize(InitRandomness.Contract.fromSeed(42L))
+
+    val bankBalances = init.ledgerFinancialState.banks
+    bankBalances.map(_.totalDeposits) shouldBe targets.deposits
+    bankBalances.map(_.firmLoan) shouldBe targets.firmLoans
+    bankBalances.map(_.consumerLoan) shouldBe targets.consumerLoans
+    bankBalances.map(_.mortgageLoan) shouldBe targets.mortgageLoans
+    bankBalances.map(_.reserve) shouldBe targets.reserves
+    bankBalances.map(_.corpBond) shouldBe targets.corpBonds
+    bankBalances.map(bank => bank.govBondAfs + bank.govBondHtm).zip(targets.govBonds).foreach { case (actual, expected) =>
+      (actual - expected).abs should be <= PLN(1)
+    }
+  }
+
+  it should "reject bank holding vectors whose totals do not match opening sector stocks" in {
     val init            = WorldInit.initialize(InitRandomness.Contract.fromSeed(42L))
     val firmStocks      = init.ledgerFinancialState.firms.map(LedgerFinancialState.projectFirmFinancialStocks)
     val householdStocks = init.ledgerFinancialState.households.map(LedgerFinancialState.projectHouseholdFinancialStocks)
     val zeroBankRows    = Vector.fill(Banking.DefaultConfigs.length)(PLN.Zero)
+    val targets         = OpeningBankProfileTargets.fromBridgeRows(OpeningBankBalanceProfileBridge.Rows)
 
     intercept[IllegalArgumentException]:
       BankInit.create(
@@ -188,6 +204,9 @@ class WorldInitSpec extends AnyFlatSpec with Matchers:
         init.households,
         householdStocks,
         bankGovBondHoldings = zeroBankRows,
+        bankReserveHoldings = targets.reserves,
+        bankCorpBondHoldings = targets.corpBonds,
+        openingCapitalProfiles = targets.openingCapitalProfiles,
       )
 
     intercept[IllegalArgumentException]:
@@ -196,7 +215,10 @@ class WorldInitSpec extends AnyFlatSpec with Matchers:
         firmStocks,
         init.households,
         householdStocks,
+        bankGovBondHoldings = targets.govBonds,
         bankReserveHoldings = zeroBankRows,
+        bankCorpBondHoldings = targets.corpBonds,
+        openingCapitalProfiles = targets.openingCapitalProfiles,
       )
 
     intercept[IllegalArgumentException]:
@@ -205,6 +227,9 @@ class WorldInitSpec extends AnyFlatSpec with Matchers:
         firmStocks,
         init.households,
         householdStocks,
+        bankGovBondHoldings = targets.govBonds,
+        bankReserveHoldings = targets.reserves,
         bankCorpBondHoldings = zeroBankRows,
+        openingCapitalProfiles = targets.openingCapitalProfiles,
       )
   }

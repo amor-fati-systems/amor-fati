@@ -263,11 +263,12 @@ class BankBalanceSheetBenchmarkExportSpec extends AnyFlatSpec with Matchers:
       row.mortgageLoanShare shouldBe BigDecimal(row.mortgageLoans.toLong) / BigDecimal(totalMortgages.toLong)
       row.govBondSectorShare shouldBe BigDecimal(row.govBondHoldings.toLong) / BigDecimal(totalGovBonds.toLong)
 
-    pekao.profileBridgeStatus shouldBe "SOURCE_BACKED_PARTIAL_EVIDENCE"
+    pekao.profileBridgeStatus shouldBe "EMPIRICAL_PROXY_RUNTIME_TARGET"
     pekao.profileDepositsTarget.get should be > PLN.Zero
     pekao.profileDepositsDelta shouldBe pekao.profileDepositsTarget.map(pekao.deposits - _)
-    bpsCoop.profileConsumerLoansTarget shouldBe None
-    bpsCoop.profileConsumerLoansDelta shouldBe None
+    bpsCoop.profileBridgeStatus shouldBe "EMPIRICAL_PROXY_RUNTIME_TARGET"
+    bpsCoop.profileConsumerLoansTarget.get should be > PLN.Zero
+    bpsCoop.profileConsumerLoansDelta shouldBe bpsCoop.profileConsumerLoansTarget.map(bpsCoop.consumerLoans - _)
   }
 
   it should "use the opening profile rows supplied with the initialized world" in {
@@ -276,8 +277,7 @@ class BankBalanceSheetBenchmarkExportSpec extends AnyFlatSpec with Matchers:
     val customRows = OpeningBankBalanceProfileBridge.Rows.map:
       case row if row.runtimeBankName == "Pekao" =>
         row.copy(
-          bridgeStatus = "CUSTOM_PROFILE_EVIDENCE",
-          depositsMPln = Some(BigDecimal("1")),
+          bridgeStatus = "TEST_COMPLETE_RUNTIME_PROFILE",
           depositShare = Some(BigDecimal("0.000001")),
         )
       case row                                   => row
@@ -285,7 +285,7 @@ class BankBalanceSheetBenchmarkExportSpec extends AnyFlatSpec with Matchers:
     val (_, rows)  = computeSeed(Config(runId = "bank-spec", seeds = 1), 1L, init, customRows)
     val pekao      = rows.find(_.bankName == "Pekao").getOrElse(fail("Missing Pekao benchmark row"))
 
-    pekao.profileBridgeStatus shouldBe "CUSTOM_PROFILE_EVIDENCE"
+    pekao.profileBridgeStatus shouldBe "TEST_COMPLETE_RUNTIME_PROFILE"
     pekao.profileDepositsTargetShare shouldBe Some(BigDecimal("0.000001"))
     pekao.profileDepositsDelta shouldBe pekao.profileDepositsTarget.map(pekao.deposits - _)
   }
@@ -319,7 +319,7 @@ class BankBalanceSheetBenchmarkExportSpec extends AnyFlatSpec with Matchers:
       consumerLoanShare = BigDecimal("0.15"),
       mortgageLoanShare = BigDecimal("0.20"),
       govBondSectorShare = BigDecimal("0.25"),
-      profileBridgeStatus = "SOURCE_BACKED_PARTIAL_EVIDENCE",
+      profileBridgeStatus = "EMPIRICAL_PROXY_RUNTIME_TARGET",
       relationshipWeightPrior = Some(BigDecimal("0.175")),
       profileDepositsTarget = Some(PLN(75)),
       profileDepositsTargetShare = Some(BigDecimal("0.29")),

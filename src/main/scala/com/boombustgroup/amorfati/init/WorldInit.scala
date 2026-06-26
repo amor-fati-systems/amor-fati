@@ -33,28 +33,16 @@ object WorldInit:
     // Household deposits absorb the residual after the firm split, preserving holder-side assets.
     val householdStocksRaw = normalizeHouseholdOpeningDeposits(householdPop.financialStocks, firmStocks0)
 
-    val openingBankTargets =
-      OpeningBankProfileTargets.fromBridgeRows(openingBankProfileRows) match
-        case OpeningBankProfileTargets.Resolution.Complete(targets) => Some(targets)
-        case OpeningBankProfileTargets.Resolution.Pending(_)        => None
+    val openingBankTargets = OpeningBankProfileTargets.fromBridgeRows(openingBankProfileRows)
 
     val openingBooks =
-      openingBankTargets match
-        case Some(targets) =>
-          OpeningBankRoutingReconciler.reconcile(
-            firms = firms0,
-            firmFinancialStocks = firmStocks0,
-            households = householdsRaw,
-            householdFinancialStocks = householdStocksRaw,
-            targets = targets,
-          )
-        case None          =>
-          OpeningBankRoutingReconciler.Result(
-            firms = firms0,
-            firmFinancialStocks = firmStocks0,
-            households = householdsRaw,
-            householdFinancialStocks = householdStocksRaw,
-          )
+      OpeningBankRoutingReconciler.reconcile(
+        firms = firms0,
+        firmFinancialStocks = firmStocks0,
+        households = householdsRaw,
+        householdFinancialStocks = householdStocksRaw,
+        targets = openingBankTargets,
+      )
 
     val firms            = openingBooks.firms
     val firmStocks       = openingBooks.firmFinancialStocks
@@ -74,26 +62,16 @@ object WorldInit:
     val initDomesticCons = initConsumption * (Share.One - p.openEcon.importContent.max)
     val initImportCons   = initConsumption - initDomesticCons
 
-    val initBankCorpBonds =
-      openingBankTargets
-        .flatMap(_.corpBonds)
-        .getOrElse:
-          com.boombustgroup.ledger.Distribute
-            .distribute(
-              initCorporateBondStocks.bankHoldings.toLong,
-              Banking.DefaultConfigs.map(_.openingBalanceWeight.toLong).toArray,
-            )
-            .map(PLN.fromRaw)
-            .toVector
+    val initBankCorpBonds = openingBankTargets.corpBonds
     val initBankingSector = BankInit.create(
       firms,
       firmStocks,
       households,
       householdStocks,
-      bankGovBondHoldings = openingBankTargets.map(_.govBonds).getOrElse(Vector.empty),
-      bankReserveHoldings = openingBankTargets.flatMap(_.reserves).getOrElse(Vector.empty),
+      bankGovBondHoldings = openingBankTargets.govBonds,
+      bankReserveHoldings = openingBankTargets.reserves,
       bankCorpBondHoldings = initBankCorpBonds,
-      openingCapitalProfiles = openingBankTargets.map(_.openingCapitalProfiles).getOrElse(Banking.DefaultOpeningCapitalProfiles),
+      openingCapitalProfiles = openingBankTargets.openingCapitalProfiles,
     )
     val initBankBalances  =
       initBankingSector.banks

@@ -4,7 +4,7 @@ import com.boombustgroup.amorfati.agents.Banking
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.SimulationMonth.ExecutionMonth
 import com.boombustgroup.amorfati.engine.World
-import com.boombustgroup.amorfati.engine.ledger.LedgerFinancialState
+import com.boombustgroup.amorfati.engine.ledger.{CorporateBondOwnership, LedgerFinancialState}
 import com.boombustgroup.amorfati.engine.mechanisms.YieldCurve
 import com.boombustgroup.amorfati.types.*
 
@@ -33,7 +33,11 @@ object FiscalConstraintEconomics:
   type Output = StepOutput
 
   def compute(w: World, banks: Vector[Banking.BankState], ledgerFinancialState: LedgerFinancialState, month: ExecutionMonth)(using p: SimParams): StepOutput =
-    val bankAgg = Banking.aggregateFromBankStocks(banks, ledgerFinancialState.banks.map(LedgerFinancialState.projectBankFinancialStocks))
+    val bankAgg = Banking.aggregateFromBankStocks(
+      banks,
+      ledgerFinancialState.banks.map(LedgerFinancialState.projectBankFinancialStocks),
+      bankId => CorporateBondOwnership.bankHolderFor(ledgerFinancialState, bankId),
+    )
 
     val (baseMinWage, updatedMinWagePriceLevel) =
       val isAdjustMonth = month.toInt % p.fiscal.minWageAdjustMonths == 0

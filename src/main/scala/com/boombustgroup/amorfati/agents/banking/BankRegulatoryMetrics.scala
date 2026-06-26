@@ -34,7 +34,13 @@ private[agents] object BankRegulatoryMetrics:
     * calculations.
     */
   def bankCorpBondHoldingsFromVector(holdings: Vector[PLN]): BankCorpBondHoldings =
-    bankId => holdings.lift(bankId.toInt).getOrElse(PLN.Zero)
+    bankId =>
+      val index = bankId.toInt
+      require(
+        index >= 0 && index < holdings.length,
+        s"Bank corporate-bond holdings missing BankId $index; rows=${holdings.length}",
+      )
+      holdings(index)
 
   /** Computes the non-performing-loan ratio with a safe zero-loan floor. */
   def nplRatio(totalLoans: PLN, nplAmount: PLN): Share =

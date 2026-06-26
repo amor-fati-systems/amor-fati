@@ -61,8 +61,8 @@ object BankCapitalSemantics:
         "capital = capitalResult.capital",
       ),
       sfcTreatment =
-        "Opening regulatory/accounting stock computed from model-start RWA and total regulatory-capital ratio. It seeds BankState.capital and is not a monthly SFC delta.",
-      absorber = "No monthly absorber; source is model-start bank RWA and sector capital calibration.",
+        "Opening regulatory/accounting stock loaded from the resolved own-funds row in the opening bank profile. It seeds BankState.capital and is not a monthly SFC delta.",
+      absorber = "No monthly absorber; source is the model-start opening bank profile.",
       diagnostics = "Opening value appears in BankBalanceSheetBenchmarkExport and BankCapital_Opening.",
     ),
     WriteSite(

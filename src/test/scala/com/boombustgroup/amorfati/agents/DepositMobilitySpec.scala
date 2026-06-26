@@ -97,14 +97,14 @@ class DepositMobilitySpec extends AnyFlatSpec with Matchers:
   "DepositMobility" should "not move deposits when all banks are healthy" in {
     val rows   = Vector(mkBankRow(0, BigDecimal("0.15")), mkBankRow(1, BigDecimal("0.14")))
     val hhs    = Vector(mkHh(0), mkHh(1))
-    val result = DepositMobility(hhs, banks(rows), stocks(rows), anyBankFailed = false, RandomStream.seeded(42))
+    val result = DepositMobility(hhs, banks(rows), stocks(rows), anyBankFailed = false, RandomStream.seeded(42), Banking.noBankCorpBondHoldings)
     result.households.map(_.bankId) shouldBe hhs.map(_.bankId)
   }
 
   it should "trigger flight from weak bank (low CAR)" in {
     val rows     = Vector(mkBankRow(0, BigDecimal("0.04")), mkBankRow(1, BigDecimal("0.15"))) // bank 0 below threshold
     val hhs      = (0 until 100).map(_ => mkHh(0)).toVector
-    val result   = DepositMobility(hhs, banks(rows), stocks(rows), anyBankFailed = false, RandomStream.seeded(42))
+    val result   = DepositMobility(hhs, banks(rows), stocks(rows), anyBankFailed = false, RandomStream.seeded(42), Banking.noBankCorpBondHoldings)
     val switched = result.households.count(_.bankId == BankId(1))
     switched should be > 0
   }
@@ -113,7 +113,7 @@ class DepositMobilitySpec extends AnyFlatSpec with Matchers:
     // HH at bank 2, bank 1 fails, healthiest is bank 0 → some HH panic-switch to bank 0
     val rows     = Vector(mkBankRow(0, BigDecimal("0.15")), mkBankRow(1, BigDecimal("0.15"), failed = true), mkBankRow(2, BigDecimal("0.12")))
     val hhs      = (0 until 100).map(_ => mkHh(2)).toVector
-    val result   = DepositMobility(hhs, banks(rows), stocks(rows), anyBankFailed = true, RandomStream.seeded(42))
+    val result   = DepositMobility(hhs, banks(rows), stocks(rows), anyBankFailed = true, RandomStream.seeded(42), Banking.noBankCorpBondHoldings)
     val switched = result.households.count(_.bankId == BankId(0))
     // With panicRate = 3%, expect ~3 of 100 to switch
     switched should be > 0
@@ -122,14 +122,14 @@ class DepositMobilitySpec extends AnyFlatSpec with Matchers:
   it should "preserve total number of households" in {
     val rows   = Vector(mkBankRow(0, BigDecimal("0.04")), mkBankRow(1, BigDecimal("0.15")))
     val hhs    = (0 until 50).map(i => mkHh(i % 2)).toVector
-    val result = DepositMobility(hhs, banks(rows), stocks(rows), anyBankFailed = true, RandomStream.seeded(42))
+    val result = DepositMobility(hhs, banks(rows), stocks(rows), anyBankFailed = true, RandomStream.seeded(42), Banking.noBankCorpBondHoldings)
     result.households.length shouldBe hhs.length
   }
 
   it should "move deposits toward healthiest bank" in {
     val rows    = Vector(mkBankRow(0, BigDecimal("0.04")), mkBankRow(1, BigDecimal("0.20")), mkBankRow(2, BigDecimal("0.12")))
     val hhs     = (0 until 100).map(_ => mkHh(0)).toVector
-    val result  = DepositMobility(hhs, banks(rows), stocks(rows), anyBankFailed = false, RandomStream.seeded(42))
+    val result  = DepositMobility(hhs, banks(rows), stocks(rows), anyBankFailed = false, RandomStream.seeded(42), Banking.noBankCorpBondHoldings)
     // Bank 1 is healthiest (CAR 20%) — switchers should go there
     val atBank1 = result.households.count(_.bankId == BankId(1))
     val atBank2 = result.households.count(_.bankId == BankId(2))
@@ -139,10 +139,10 @@ class DepositMobilitySpec extends AnyFlatSpec with Matchers:
   it should "not select a tiny-RWA CAR-floor bank as the flight-to-safety target" in {
     val rows     = Vector(mkBankRow(0, BigDecimal("0.04")), mkTinyRwaBankRow(1), mkBankRow(2, BigDecimal("0.15")))
     val hhs      = (0 until 100).map(id => mkHh(0).copy(id = HhId(id))).toVector
-    val result   = DepositMobility(hhs, banks(rows), stocks(rows), anyBankFailed = false, RandomStream.seeded(42))
+    val result   = DepositMobility(hhs, banks(rows), stocks(rows), anyBankFailed = false, RandomStream.seeded(42), Banking.noBankCorpBondHoldings)
     val switched = result.households.filter(_.bankId != BankId(0))
 
-    Banking.healthiestBankId(banks(rows), stocks(rows)) shouldBe BankId(2)
+    Banking.healthiestBankId(banks(rows), stocks(rows), Banking.noBankCorpBondHoldings) shouldBe BankId(2)
     switched.map(_.bankId).distinct shouldBe Vector(BankId(2))
     switched should not be empty
   }
@@ -150,7 +150,7 @@ class DepositMobilitySpec extends AnyFlatSpec with Matchers:
   it should "fail fast for an unknown household bankId" in {
     val rows = Vector(mkBankRow(0, BigDecimal("0.15")), mkBankRow(1, BigDecimal("0.14")))
     val ex   = intercept[IllegalArgumentException]:
-      DepositMobility(Vector(mkHh(99)), banks(rows), stocks(rows), anyBankFailed = false, RandomStream.seeded(42))
+      DepositMobility(Vector(mkHh(99)), banks(rows), stocks(rows), anyBankFailed = false, RandomStream.seeded(42), Banking.noBankCorpBondHoldings)
 
     ex.getMessage should include("known bankId")
     ex.getMessage should include("99")
@@ -159,7 +159,7 @@ class DepositMobilitySpec extends AnyFlatSpec with Matchers:
   it should "fail fast when a household still points at a failed bank" in {
     val rows = Vector(mkBankRow(0, BigDecimal("0.15")), mkBankRow(1, BigDecimal("0.04"), failed = true))
     val ex   = intercept[IllegalArgumentException]:
-      DepositMobility(Vector(mkHh(1)), banks(rows), stocks(rows), anyBankFailed = true, RandomStream.seeded(42))
+      DepositMobility(Vector(mkHh(1)), banks(rows), stocks(rows), anyBankFailed = true, RandomStream.seeded(42), Banking.noBankCorpBondHoldings)
 
     ex.getMessage should include("failed bank 1")
     ex.getMessage should include("before mobility runs")
@@ -168,15 +168,15 @@ class DepositMobilitySpec extends AnyFlatSpec with Matchers:
   it should "be deterministic with same seed" in {
     val rows = Vector(mkBankRow(0, BigDecimal("0.04")), mkBankRow(1, BigDecimal("0.15")))
     val hhs  = (0 until 100).map(_ => mkHh(0)).toVector
-    val r1   = DepositMobility(hhs, banks(rows), stocks(rows), anyBankFailed = true, RandomStream.seeded(42))
-    val r2   = DepositMobility(hhs, banks(rows), stocks(rows), anyBankFailed = true, RandomStream.seeded(42))
+    val r1   = DepositMobility(hhs, banks(rows), stocks(rows), anyBankFailed = true, RandomStream.seeded(42), Banking.noBankCorpBondHoldings)
+    val r2   = DepositMobility(hhs, banks(rows), stocks(rows), anyBankFailed = true, RandomStream.seeded(42), Banking.noBankCorpBondHoldings)
     r1.households.map(_.bankId) shouldBe r2.households.map(_.bankId)
   }
 
   it should "return only delayed boundary bankId updates, not a same-month transfer plan" in {
     val rows     = Vector(mkBankRow(0, BigDecimal("0.04")), mkBankRow(1, BigDecimal("0.20")))
     val original = (0 until 100).map(id => mkHh(0).copy(id = HhId(id))).toVector
-    val result   = DepositMobility(original, banks(rows), stocks(rows), anyBankFailed = false, RandomStream.seeded(42))
+    val result   = DepositMobility(original, banks(rows), stocks(rows), anyBankFailed = false, RandomStream.seeded(42), Banking.noBankCorpBondHoldings)
 
     result.productArity shouldBe 1
     result.productElementName(0) shouldBe "households"
@@ -191,7 +191,7 @@ class DepositMobilitySpec extends AnyFlatSpec with Matchers:
     val rows       = Vector(mkBankRow(0, BigDecimal("0.04")), mkBankRow(1, BigDecimal("0.20")))
     val original   = (0 until 100).map(id => mkHh(0, savings = BigDecimal("120000.0")).copy(id = HhId(id))).toVector
     val reassigned =
-      DepositMobility(original, banks(rows), stocks(rows), anyBankFailed = false, RandomStream.seeded(42)).households
+      DepositMobility(original, banks(rows), stocks(rows), anyBankFailed = false, RandomStream.seeded(42), Banking.noBankCorpBondHoldings).households
         .find(_.bankId == BankId(1))
         .getOrElse(fail("expected at least one household to switch to the healthiest bank"))
 

@@ -138,14 +138,14 @@ class BankingSectorPropertySpec extends AnyFlatSpec with Matchers with ScalaChec
 
   "aggregate" should "have deposits equal to sum of individual deposits" in
     forAll(genBanking.Sector) { bs =>
-      val agg         = Banking.aggregateFromBankStocks(bs.banks, bs.financialStocks)
+      val agg         = Banking.aggregateFromBankStocks(bs.banks, bs.financialStocks, Banking.noBankCorpBondHoldings)
       val expectedDep = bs.financialStocks.map(stocks => decimal(stocks.totalDeposits)).sum
       decimal(agg.deposits) shouldBe expectedDep +- BigDecimal("1.0")
     }
 
   it should "have capital equal to sum of individual capital" in
     forAll(genBanking.Sector) { bs =>
-      val agg         = Banking.aggregateFromBankStocks(bs.banks, bs.financialStocks)
+      val agg         = Banking.aggregateFromBankStocks(bs.banks, bs.financialStocks, Banking.noBankCorpBondHoldings)
       val expectedCap = bs.banks.map(b => decimal(b.capital)).sum
       decimal(agg.capital) shouldBe expectedCap +- BigDecimal("1.0")
     }
@@ -155,7 +155,7 @@ class BankingSectorPropertySpec extends AnyFlatSpec with Matchers with ScalaChec
   "checkFailures" should "never un-fail a bank" in
     forAll(genBanking.Sector) { bs =>
       val failedBefore = bs.banks.filter(_.failed).map(_.id).toSet
-      val afterCheck   = Banking.checkFailures(bs.banks, bs.financialStocks, ExecutionMonth(50), enabled = true, Multiplier.Zero)
+      val afterCheck   = Banking.checkFailures(bs.banks, bs.financialStocks, ExecutionMonth(50), enabled = true, Multiplier.Zero, Banking.noBankCorpBondHoldings)
       val failedAfter  = afterCheck.banks.filter(_.failed).map(_.id).toSet
       failedBefore.subsetOf(failedAfter) shouldBe true
     }

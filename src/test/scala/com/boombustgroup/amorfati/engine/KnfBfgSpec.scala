@@ -196,7 +196,7 @@ class KnfBfgSpec extends AnyFlatSpec with Matchers:
       ),
       mkBankRow(id = 1, deposits = PLN(2000000), loans = PLN(200000), capital = PLN(200000), govBondHoldings = PLN(5000000000L), interbankNet = PLN(-1000)),
     )
-    val result = Banking.resolveFailures(banks(rows), stocks(rows))
+    val result = Banking.resolveFailures(banks(rows), stocks(rows), Vector.fill(rows.length)(PLN.Zero))
 
     result.financialStocks(0).totalDeposits shouldBe PLN.Zero
     result.financialStocks(0).firmLoan shouldBe PLN.Zero
@@ -205,6 +205,17 @@ class KnfBfgSpec extends AnyFlatSpec with Matchers:
     decimal(Banking.govBondHoldings(result.financialStocks(1))) shouldBe BigDecimal("15e9") +- BigDecimal("1.0")
     decimal(result.financialStocks.map(_.interbankLoan).sumPln) shouldBe BigDecimal("0.0") +- BigDecimal("1e-6")
     result.resolvedBankCount shouldBe 1
+  }
+
+  it should "fail fast when corporate-bond holding rows are not aligned with banks" in {
+    val rows = Vector(
+      mkBankRow(id = 0, deposits = PLN(500000), loans = PLN(100000), capital = PLN.Zero, status = BankStatus.Failed(ExecutionMonth(3))),
+      mkBankRow(id = 1, deposits = PLN(2000000), loans = PLN(200000), capital = PLN(200000)),
+    )
+    val ex   = intercept[IllegalArgumentException]:
+      Banking.resolveFailures(banks(rows), stocks(rows), Vector(PLN.Zero))
+
+    ex.getMessage should include("requires 2 bank corporate-bond rows")
   }
 
   it should "fail fast when all banks fail instead of creating an implicit bridge bank" in {
@@ -238,7 +249,7 @@ class KnfBfgSpec extends AnyFlatSpec with Matchers:
       ),
     )
     val ex   = intercept[IllegalStateException]:
-      Banking.resolveFailures(banks(rows), stocks(rows))
+      Banking.resolveFailures(banks(rows), stocks(rows), Vector.fill(rows.length)(PLN.Zero))
 
     ex.getMessage should include("all-failed banking sector")
     ex.getMessage should include("refusing to resurrect a failed bank")
@@ -251,7 +262,7 @@ class KnfBfgSpec extends AnyFlatSpec with Matchers:
       mkBankRow(id = 2, deposits = PLN(200000), loans = PLN(60000), capital = PLN(-15000), status = BankStatus.Failed(ExecutionMonth(3))),
     )
     val ex   = intercept[IllegalStateException]:
-      Banking.healthiestBankId(banks(rows), stocks(rows))
+      Banking.healthiestBankId(banks(rows), stocks(rows), Banking.noBankCorpBondHoldings)
 
     ex.getMessage should include("every bank is failed")
     ex.getMessage should include("recapitalization")
