@@ -140,3 +140,71 @@ class WorldInitSpec extends AnyFlatSpec with Matchers:
     }
     init.ledgerFinancialState.nbp.reserveLiability shouldBe reserves
   }
+
+  it should "reconcile opening bank books to complete explicit bank profile targets" in {
+    val rows    = OpeningBankProfileTestFixtures.completeRows
+    val targets = OpeningBankProfileTargets.fromBridgeRows(rows) match
+      case OpeningBankProfileTargets.Resolution.Complete(targets) => targets
+      case other                                                  => fail(s"Expected complete opening bank targets, got $other")
+    val init    = WorldInit.initialize(InitRandomness.Contract.fromSeed(42L), openingBankProfileRows = rows)
+
+    val bankBalances = init.ledgerFinancialState.banks
+    bankBalances.map(_.totalDeposits) shouldBe targets.deposits
+    bankBalances.map(_.firmLoan) shouldBe targets.firmLoans
+    bankBalances.map(_.consumerLoan) shouldBe targets.consumerLoans
+    bankBalances.map(_.mortgageLoan) shouldBe targets.mortgageLoans
+    bankBalances.map(_.reserve) shouldBe targets.reserves.getOrElse(fail("Expected reserve targets in complete fixture"))
+    bankBalances.map(_.corpBond) shouldBe targets.corpBonds.getOrElse(fail("Expected corporate-bond targets in complete fixture"))
+    bankBalances.map(bank => bank.govBondAfs + bank.govBondHtm).zip(targets.govBonds).foreach { case (actual, expected) =>
+      (actual - expected).abs should be <= PLN(1)
+    }
+
+    val firmRows         = init.firms.zip(init.ledgerFinancialState.firms)
+    val householdRows    = init.households.zip(init.ledgerFinancialState.households)
+    val firmCashByBank   = firmRows.groupMapReduce(_._1.bankId.toInt)(_._2.cash)(_ + _)
+    val firmDebtByBank   = firmRows.groupMapReduce(_._1.bankId.toInt)(_._2.firmLoan)(_ + _)
+    val hhSavingsByBank  = householdRows.groupMapReduce(_._1.bankId.toInt)(_._2.demandDeposit)(_ + _)
+    val hhConsDebtByBank = householdRows.groupMapReduce(_._1.bankId.toInt)(_._2.consumerLoan)(_ + _)
+    val hhMortgageByBank = householdRows.groupMapReduce(_._1.bankId.toInt)(_._2.mortgageLoan)(_ + _)
+
+    bankBalances.zipWithIndex.foreach { case (bank, bankId) =>
+      firmCashByBank.getOrElse(bankId, PLN.Zero) + hhSavingsByBank.getOrElse(bankId, PLN.Zero) shouldBe bank.totalDeposits
+      firmDebtByBank.getOrElse(bankId, PLN.Zero) shouldBe bank.firmLoan
+      hhConsDebtByBank.getOrElse(bankId, PLN.Zero) shouldBe bank.consumerLoan
+      hhMortgageByBank.getOrElse(bankId, PLN.Zero) shouldBe bank.mortgageLoan
+    }
+  }
+
+  it should "reject explicit bank holding vectors whose totals do not match opening sector stocks" in {
+    val init            = WorldInit.initialize(InitRandomness.Contract.fromSeed(42L))
+    val firmStocks      = init.ledgerFinancialState.firms.map(LedgerFinancialState.projectFirmFinancialStocks)
+    val householdStocks = init.ledgerFinancialState.households.map(LedgerFinancialState.projectHouseholdFinancialStocks)
+    val zeroBankRows    = Vector.fill(Banking.DefaultConfigs.length)(PLN.Zero)
+
+    intercept[IllegalArgumentException]:
+      BankInit.create(
+        init.firms,
+        firmStocks,
+        init.households,
+        householdStocks,
+        bankGovBondHoldings = zeroBankRows,
+      )
+
+    intercept[IllegalArgumentException]:
+      BankInit.create(
+        init.firms,
+        firmStocks,
+        init.households,
+        householdStocks,
+        bankReserveHoldings = zeroBankRows,
+      )
+
+    intercept[IllegalArgumentException]:
+      BankInit.create(
+        init.firms,
+        firmStocks,
+        init.households,
+        householdStocks,
+        bankCorpBondHoldings = zeroBankRows,
+      )
+  }

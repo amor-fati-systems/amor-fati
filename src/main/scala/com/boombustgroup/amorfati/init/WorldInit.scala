@@ -14,25 +14,56 @@ object WorldInit:
   /** Initialize a complete simulation world from an explicit randomness
     * contract.
     */
-  def initialize(randomness: InitRandomness.Contract)(using p: SimParams): InitResult =
+  def initialize(
+      randomness: InitRandomness.Contract,
+      openingBankProfileRows: Vector[OpeningBankBalanceProfileBridge.Row] = OpeningBankBalanceProfileBridge.Rows,
+  )(using p: SimParams): InitResult =
     // --- Firms ---
     val initCorporateBonds      = CorporateBondMarket.initial
     val initCorporateBondStocks = CorporateBondMarket.initialStock
     val firmPop                 = FirmInit.create(randomness.firms.newStreams())
-    val firms                   = firmPop.firms
-    val firmStocks              = firmPop.financialStocks
-    val initFirmBalances        = CorporateBondOwnership.initializeIssuerBalances(firms, firmStocks, initCorporateBondStocks.outstanding)
-    assert(firms.length == p.pop.firmsCount)
+    val firms0                  = firmPop.firms
+    val firmStocks0             = firmPop.financialStocks
+    assert(firms0.length == p.pop.firmsCount)
 
     // --- Households ---
-    val households0     = Household.Init.create(randomness.households.newStreams(), firms)
-    val householdPop    = ImmigrantInit.create(randomness.immigration.newStreams(), households0)
-    val households      = householdPop.households
+    val households0        = Household.Init.create(randomness.households.newStreams(), firms0)
+    val householdPop       = ImmigrantInit.create(randomness.immigration.newStreams(), households0)
+    val householdsRaw      = householdPop.households
     // Household deposits absorb the residual after the firm split, preserving holder-side assets.
-    val householdStocks = normalizeHouseholdOpeningDeposits(householdPop.financialStocks, firmStocks)
-    val totalPop        = households.length
-    val initEmployed    = households.count(_.status.isInstanceOf[HhStatus.Employed])
-    val initUnemployed  = totalPop - initEmployed
+    val householdStocksRaw = normalizeHouseholdOpeningDeposits(householdPop.financialStocks, firmStocks0)
+
+    val openingBankTargets =
+      OpeningBankProfileTargets.fromBridgeRows(openingBankProfileRows) match
+        case OpeningBankProfileTargets.Resolution.Complete(targets) => Some(targets)
+        case OpeningBankProfileTargets.Resolution.Pending(_)        => None
+
+    val openingBooks =
+      openingBankTargets match
+        case Some(targets) =>
+          OpeningBankRoutingReconciler.reconcile(
+            firms = firms0,
+            firmFinancialStocks = firmStocks0,
+            households = householdsRaw,
+            householdFinancialStocks = householdStocksRaw,
+            targets = targets,
+          )
+        case None          =>
+          OpeningBankRoutingReconciler.Result(
+            firms = firms0,
+            firmFinancialStocks = firmStocks0,
+            households = householdsRaw,
+            householdFinancialStocks = householdStocksRaw,
+          )
+
+    val firms            = openingBooks.firms
+    val firmStocks       = openingBooks.firmFinancialStocks
+    val households       = openingBooks.households
+    val householdStocks  = openingBooks.householdFinancialStocks
+    val initFirmBalances = CorporateBondOwnership.initializeIssuerBalances(firms, firmStocks, initCorporateBondStocks.outstanding)
+    val totalPop         = households.length
+    val initEmployed     = households.count(_.status.isInstanceOf[HhStatus.Employed])
+    val initUnemployed   = totalPop - initEmployed
     assert(totalPop > 0)
 
     // --- Banking sector ---
@@ -44,14 +75,26 @@ object WorldInit:
     val initImportCons   = initConsumption - initDomesticCons
 
     val initBankCorpBonds =
-      com.boombustgroup.ledger.Distribute
-        .distribute(
-          initCorporateBondStocks.bankHoldings.toLong,
-          Banking.DefaultConfigs.map(_.openingBalanceWeight.toLong).toArray,
-        )
-        .map(PLN.fromRaw)
-        .toVector
-    val initBankingSector = BankInit.create(firms, firmStocks, households, householdStocks, bankCorpBondHoldings = initBankCorpBonds)
+      openingBankTargets
+        .flatMap(_.corpBonds)
+        .getOrElse:
+          com.boombustgroup.ledger.Distribute
+            .distribute(
+              initCorporateBondStocks.bankHoldings.toLong,
+              Banking.DefaultConfigs.map(_.openingBalanceWeight.toLong).toArray,
+            )
+            .map(PLN.fromRaw)
+            .toVector
+    val initBankingSector = BankInit.create(
+      firms,
+      firmStocks,
+      households,
+      householdStocks,
+      bankGovBondHoldings = openingBankTargets.map(_.govBonds).getOrElse(Vector.empty),
+      bankReserveHoldings = openingBankTargets.flatMap(_.reserves).getOrElse(Vector.empty),
+      bankCorpBondHoldings = initBankCorpBonds,
+      openingCapitalProfiles = openingBankTargets.map(_.openingCapitalProfiles).getOrElse(Banking.DefaultOpeningCapitalProfiles),
+    )
     val initBankBalances  =
       initBankingSector.banks
         .zip(initBankingSector.financialStocks)
