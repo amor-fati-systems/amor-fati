@@ -85,28 +85,7 @@ class BankBalanceSheetBenchmarkExportSpec extends AnyFlatSpec with Matchers:
       SeedMetric("bank-spec", 2L, target, ObservedValue.Finite(BigDecimal("0.000")), Status.Warn),
     )
     val summary = summarize(Config(runId = "bank-spec", seeds = 2), rows)
-    val bankRow = BankRow(
-      runId = "bank-spec",
-      seed = 1L,
-      bankId = 0,
-      bankName = "PKO BP",
-      capital = PLN(10),
-      assets = PLN(100),
-      deposits = PLN(80),
-      totalCredit = PLN(50),
-      govBondHoldings = PLN(20),
-      govBondShareOfAssets = Share.decimal(20, 2),
-      polishBankLevyTaxableAssets = PLN(30),
-      polishBankLevyTaxableAssetsShare = Share.decimal(30, 2),
-      capitalAdequacyRatio = BigDecimal("0.20"),
-      effectiveMinCar = BigDecimal("0.125"),
-      carBuffer = BigDecimal("0.075"),
-      lcr = BigDecimal("1.20"),
-      nsfr = BigDecimal("1.10"),
-      creditShare = BigDecimal("0.25"),
-      depositShare = BigDecimal("0.30"),
-      assetShare = BigDecimal("0.20"),
-    )
+    val bankRow = sampleBankRow()
 
     val seedTsv   = renderSeedMetricsTsv(rows)
     val sumTsv    = renderSummaryTsv(summary)
@@ -157,6 +136,9 @@ class BankBalanceSheetBenchmarkExportSpec extends AnyFlatSpec with Matchers:
         "Capital",
         "Assets",
         "Deposits",
+        "FirmLoans",
+        "ConsumerLoans",
+        "MortgageLoans",
         "TotalCredit",
         "GovBondHoldings",
         "GovBondShareOfAssets",
@@ -170,6 +152,27 @@ class BankBalanceSheetBenchmarkExportSpec extends AnyFlatSpec with Matchers:
         "CreditShare",
         "DepositShare",
         "AssetShare",
+        "FirmLoanShare",
+        "ConsumerLoanShare",
+        "MortgageLoanShare",
+        "GovBondSectorShare",
+        "ProfileBridgeStatus",
+        "RelationshipWeightPrior",
+        "ProfileDepositsTarget",
+        "ProfileDepositsTargetShare",
+        "ProfileDepositsDelta",
+        "ProfileFirmLoansTarget",
+        "ProfileFirmLoansTargetShare",
+        "ProfileFirmLoansDelta",
+        "ProfileConsumerLoansTarget",
+        "ProfileConsumerLoansTargetShare",
+        "ProfileConsumerLoansDelta",
+        "ProfileMortgageLoansTarget",
+        "ProfileMortgageLoansTargetShare",
+        "ProfileMortgageLoansDelta",
+        "ProfileGovBondsTarget",
+        "ProfileGovBondsTargetShare",
+        "ProfileGovBondsDelta",
       )
     bankTsv should include("PKO BP")
     report should include("--seed-start 2")
@@ -196,27 +199,9 @@ class BankBalanceSheetBenchmarkExportSpec extends AnyFlatSpec with Matchers:
     val targetTsv = renderTargetsTsv(Vector(target))
     val bankTsv   = renderBankRowsTsv(
       Vector(
-        BankRow(
+        sampleBankRow(
           runId = "run\t\"id\"",
-          seed = 1L,
-          bankId = 0,
           bankName = "Bank\t\"Name\"\nSA",
-          capital = PLN(10),
-          assets = PLN(100),
-          deposits = PLN(80),
-          totalCredit = PLN(50),
-          govBondHoldings = PLN(20),
-          govBondShareOfAssets = Share.decimal(20, 2),
-          polishBankLevyTaxableAssets = PLN(30),
-          polishBankLevyTaxableAssetsShare = Share.decimal(30, 2),
-          capitalAdequacyRatio = BigDecimal("0.20"),
-          effectiveMinCar = BigDecimal("0.125"),
-          carBuffer = BigDecimal("0.075"),
-          lcr = BigDecimal("1.20"),
-          nsfr = BigDecimal("1.10"),
-          creditShare = BigDecimal("0.25"),
-          depositShare = BigDecimal("0.30"),
-          assetShare = BigDecimal("0.20"),
         ),
       ),
     )
@@ -253,6 +238,85 @@ class BankBalanceSheetBenchmarkExportSpec extends AnyFlatSpec with Matchers:
     metricValue(metrics, "CapitalToAssets") shouldBe ObservedValue.Finite(BigDecimal(aggregate.capital.toLong) / BigDecimal(totalAssets.toLong))
     metricValue(metrics, "AggregateCar") shouldBe ObservedValue.Finite(BigDecimal(aggregate.car.toLong) / BigDecimal(FixedPointBase.Scale))
   }
+
+  it should "derive market-share columns from initialized bank stocks" in {
+    given SimParams = SimParams.defaults
+
+    val init           = WorldInit.initialize(InitRandomness.Contract.fromSeed(1L))
+    val (_, bankRows)  = computeSeed(Config(runId = "bank-spec", seeds = 1), 1L, init)
+    val totalCredit    = bankRows.map(_.totalCredit).sumPln
+    val totalDeposits  = bankRows.map(_.deposits).sumPln
+    val totalAssets    = bankRows.map(_.assets).sumPln
+    val totalFirmLoans = bankRows.map(_.firmLoans).sumPln
+    val totalConsumer  = bankRows.map(_.consumerLoans).sumPln
+    val totalMortgages = bankRows.map(_.mortgageLoans).sumPln
+    val totalGovBonds  = bankRows.map(_.govBondHoldings).sumPln
+    val pekao          = bankRows.find(_.bankName == "Pekao").getOrElse(fail("Missing Pekao benchmark row"))
+    val bpsCoop        = bankRows.find(_.bankName == "BPS/Coop").getOrElse(fail("Missing BPS/Coop benchmark row"))
+
+    bankRows.foreach: row =>
+      row.creditShare shouldBe BigDecimal(row.totalCredit.toLong) / BigDecimal(totalCredit.toLong)
+      row.depositShare shouldBe BigDecimal(row.deposits.toLong) / BigDecimal(totalDeposits.toLong)
+      row.assetShare shouldBe BigDecimal(row.assets.toLong) / BigDecimal(totalAssets.toLong)
+      row.firmLoanShare shouldBe BigDecimal(row.firmLoans.toLong) / BigDecimal(totalFirmLoans.toLong)
+      row.consumerLoanShare shouldBe BigDecimal(row.consumerLoans.toLong) / BigDecimal(totalConsumer.toLong)
+      row.mortgageLoanShare shouldBe BigDecimal(row.mortgageLoans.toLong) / BigDecimal(totalMortgages.toLong)
+      row.govBondSectorShare shouldBe BigDecimal(row.govBondHoldings.toLong) / BigDecimal(totalGovBonds.toLong)
+
+    pekao.profileBridgeStatus shouldBe "SOURCE_BACKED_PARTIAL_EVIDENCE"
+    pekao.profileDepositsTarget.get should be > PLN.Zero
+    pekao.profileDepositsDelta shouldBe pekao.profileDepositsTarget.map(pekao.deposits - _)
+    bpsCoop.profileConsumerLoansTarget shouldBe None
+    bpsCoop.profileConsumerLoansDelta shouldBe None
+  }
+
+  private def sampleBankRow(runId: String = "bank-spec", seed: Long = 1L, bankId: Int = 0, bankName: String = "PKO BP"): BankRow =
+    BankRow(
+      runId = runId,
+      seed = seed,
+      bankId = bankId,
+      bankName = bankName,
+      capital = PLN(10),
+      assets = PLN(100),
+      deposits = PLN(80),
+      firmLoans = PLN(20),
+      consumerLoans = PLN(10),
+      mortgageLoans = PLN(20),
+      totalCredit = PLN(50),
+      govBondHoldings = PLN(20),
+      govBondShareOfAssets = Share.decimal(20, 2),
+      polishBankLevyTaxableAssets = PLN(30),
+      polishBankLevyTaxableAssetsShare = Share.decimal(30, 2),
+      capitalAdequacyRatio = BigDecimal("0.20"),
+      effectiveMinCar = BigDecimal("0.125"),
+      carBuffer = BigDecimal("0.075"),
+      lcr = BigDecimal("1.20"),
+      nsfr = BigDecimal("1.10"),
+      creditShare = BigDecimal("0.25"),
+      depositShare = BigDecimal("0.30"),
+      assetShare = BigDecimal("0.20"),
+      firmLoanShare = BigDecimal("0.10"),
+      consumerLoanShare = BigDecimal("0.15"),
+      mortgageLoanShare = BigDecimal("0.20"),
+      govBondSectorShare = BigDecimal("0.25"),
+      profileBridgeStatus = "SOURCE_BACKED_PARTIAL_EVIDENCE",
+      relationshipWeightPrior = Some(BigDecimal("0.175")),
+      profileDepositsTarget = Some(PLN(75)),
+      profileDepositsTargetShare = Some(BigDecimal("0.29")),
+      profileDepositsDelta = Some(PLN(5)),
+      profileFirmLoansTarget = Some(PLN(19)),
+      profileFirmLoansTargetShare = Some(BigDecimal("0.18")),
+      profileFirmLoansDelta = Some(PLN(1)),
+      profileConsumerLoansTarget = Some(PLN(12)),
+      profileConsumerLoansTargetShare = Some(BigDecimal("0.16")),
+      profileConsumerLoansDelta = Some(PLN(-2)),
+      profileMortgageLoansTarget = Some(PLN(17)),
+      profileMortgageLoansTargetShare = Some(BigDecimal("0.14")),
+      profileMortgageLoansDelta = Some(PLN(3)),
+      profileGovBondsTarget = None,
+      profileGovBondsTargetShare = None,
+      profileGovBondsDelta = None,
+    )
 
   private def metricValue(rows: Vector[SeedMetric], id: String): ObservedValue =
     rows.find(_.target.id == id).map(_.value).getOrElse(fail(s"Missing metric $id"))

@@ -2,9 +2,10 @@ package com.boombustgroup.amorfati.diagnostics
 
 import com.boombustgroup.amorfati.agents.{Banking, EclStaging}
 import com.boombustgroup.amorfati.agents.banking.PolishBankLevyAssetPerimeter
-import com.boombustgroup.amorfati.config.SimParams
+import com.boombustgroup.amorfati.config.{OpeningBankBalanceProfileBridge, SimParams}
 import com.boombustgroup.amorfati.engine.ledger.LedgerFinancialState
 import com.boombustgroup.amorfati.engine.mechanisms.Macroprudential
+import com.boombustgroup.amorfati.fp.FixedPointBase
 import com.boombustgroup.amorfati.init.{InitRandomness, WorldInit}
 import com.boombustgroup.amorfati.montecarlo.{DelimitedTextFormat, McTsvFile, McTsvSchema}
 import com.boombustgroup.amorfati.types.*
@@ -88,6 +89,9 @@ object BankBalanceSheetBenchmarkExport:
       capital: PLN,
       assets: PLN,
       deposits: PLN,
+      firmLoans: PLN,
+      consumerLoans: PLN,
+      mortgageLoans: PLN,
       totalCredit: PLN,
       govBondHoldings: PLN,
       govBondShareOfAssets: Share,
@@ -101,6 +105,27 @@ object BankBalanceSheetBenchmarkExport:
       creditShare: BigDecimal,
       depositShare: BigDecimal,
       assetShare: BigDecimal,
+      firmLoanShare: BigDecimal,
+      consumerLoanShare: BigDecimal,
+      mortgageLoanShare: BigDecimal,
+      govBondSectorShare: BigDecimal,
+      profileBridgeStatus: String,
+      relationshipWeightPrior: Option[BigDecimal],
+      profileDepositsTarget: Option[PLN],
+      profileDepositsTargetShare: Option[BigDecimal],
+      profileDepositsDelta: Option[PLN],
+      profileFirmLoansTarget: Option[PLN],
+      profileFirmLoansTargetShare: Option[BigDecimal],
+      profileFirmLoansDelta: Option[PLN],
+      profileConsumerLoansTarget: Option[PLN],
+      profileConsumerLoansTargetShare: Option[BigDecimal],
+      profileConsumerLoansDelta: Option[PLN],
+      profileMortgageLoansTarget: Option[PLN],
+      profileMortgageLoansTargetShare: Option[BigDecimal],
+      profileMortgageLoansDelta: Option[PLN],
+      profileGovBondsTarget: Option[PLN],
+      profileGovBondsTargetShare: Option[BigDecimal],
+      profileGovBondsDelta: Option[PLN],
   )
 
   final case class ExportResult(
@@ -112,13 +137,48 @@ object BankBalanceSheetBenchmarkExport:
 
   private final case class MetricDef(target: TargetBand, compute: SeedContext => ObservedValue)
 
+  private final case class ProfileStockComparison(target: Option[PLN], targetShare: Option[BigDecimal], delta: Option[PLN])
+
+  private final case class RuntimeBankProfileEvidence(
+      bridgeStatus: String,
+      relationshipWeightPrior: Option[BigDecimal],
+      deposits: Option[PLN],
+      depositShare: Option[BigDecimal],
+      firmLoans: Option[PLN],
+      firmLoanShare: Option[BigDecimal],
+      consumerLoans: Option[PLN],
+      consumerLoanShare: Option[BigDecimal],
+      mortgageLoans: Option[PLN],
+      mortgageLoanShare: Option[BigDecimal],
+      govBonds: Option[PLN],
+      govBondShare: Option[BigDecimal],
+  ):
+    def depositsComparison(realized: PLN): ProfileStockComparison =
+      compare(deposits, depositShare, realized)
+
+    def firmLoansComparison(realized: PLN): ProfileStockComparison =
+      compare(firmLoans, firmLoanShare, realized)
+
+    def consumerLoansComparison(realized: PLN): ProfileStockComparison =
+      compare(consumerLoans, consumerLoanShare, realized)
+
+    def mortgageLoansComparison(realized: PLN): ProfileStockComparison =
+      compare(mortgageLoans, mortgageLoanShare, realized)
+
+    def govBondsComparison(realized: PLN): ProfileStockComparison =
+      compare(govBonds, govBondShare, realized)
+
+    private def compare(target: Option[PLN], targetShare: Option[BigDecimal], realized: PLN): ProfileStockComparison =
+      ProfileStockComparison(target = target, targetShare = target.flatMap(_ => targetShare), delta = target.map(realized - _))
+
   private final case class SeedContext(seed: Long, init: WorldInit.InitResult)(using p: SimParams):
-    val params: SimParams                                       = p
-    val bankBalances: Vector[LedgerFinancialState.BankBalances] = init.ledgerFinancialState.banks
-    val bankStocks: Vector[Banking.BankFinancialStocks]         = bankBalances.map(LedgerFinancialState.projectBankFinancialStocks)
-    val corpBondHoldings: Banking.BankCorpBondHoldings          =
+    val params: SimParams                                         = p
+    val bankBalances: Vector[LedgerFinancialState.BankBalances]   = init.ledgerFinancialState.banks
+    val bankStocks: Vector[Banking.BankFinancialStocks]           = bankBalances.map(LedgerFinancialState.projectBankFinancialStocks)
+    val profileRowsByBankId: Map[Int, RuntimeBankProfileEvidence] = runtimeProfileRowsByBankId()
+    val corpBondHoldings: Banking.BankCorpBondHoldings            =
       Banking.bankCorpBondHoldingsFromVector(bankBalances.map(_.corpBond))
-    val aggregate: Banking.Aggregate                            =
+    val aggregate: Banking.Aggregate                              =
       Banking.aggregateFromBankStocks(init.banks, bankStocks, corpBondHoldings)
 
     val annualGdp: PLN        = init.world.flows.monthlyGdpProxy * 12
@@ -159,18 +219,27 @@ object BankBalanceSheetBenchmarkExport:
         throw new IllegalStateException(
           s"Bank balance-sheet benchmark requires aligned bank and ledger rows, got banks=${init.banks.size} bankBalances=${bankBalances.size} bankIds=$bankIds",
         )
-      init.banks
+      val rows = init.banks
         .zip(bankBalances)
         .map: (bank, balances) =>
-          val stocks     = LedgerFinancialState.projectBankFinancialStocks(balances)
-          val corpBond   = corpBondHoldings(bank.id)
-          val credit     = balances.firmLoan + balances.consumerLoan + balances.mortgageLoan
-          val govBonds   = balances.govBondAfs + balances.govBondHtm
-          val bankAssets = singleBankAssets(balances)
-          val levyBase   =
+          val stocks          = LedgerFinancialState.projectBankFinancialStocks(balances)
+          val corpBond        = corpBondHoldings(bank.id)
+          val credit          = balances.firmLoan + balances.consumerLoan + balances.mortgageLoan
+          val bankGovBonds    = balances.govBondAfs + balances.govBondHtm
+          val bankAssets      = singleBankAssets(balances)
+          val profile         = profileRowsByBankId.getOrElse(
+            bank.id.toInt,
+            throw new IllegalStateException(s"Missing opening bank profile benchmark row for BankId ${bank.id.toInt}"),
+          )
+          val depositsProfile = profile.depositsComparison(balances.totalDeposits)
+          val firmLoanProfile = profile.firmLoansComparison(balances.firmLoan)
+          val consumerProfile = profile.consumerLoansComparison(balances.consumerLoan)
+          val mortgageProfile = profile.mortgageLoansComparison(balances.mortgageLoan)
+          val govBondsProfile = profile.govBondsComparison(bankGovBonds)
+          val levyBase        =
             Banking.computePolishBankLevyTaxableAssets(bank, PolishBankLevyAssetPerimeter.fromBankStocks(stocks, corpBond))
-          val car        = rawDecimal(Banking.car(bank, stocks, corpBond).toLong)
-          val minCar     = rawDecimal(Macroprudential.effectiveMinCar(bank.id.toInt, init.world.mechanisms.macropru.ccyb).toLong)
+          val car             = rawDecimal(Banking.car(bank, stocks, corpBond).toLong)
+          val minCar          = rawDecimal(Macroprudential.effectiveMinCar(bank.id.toInt, init.world.mechanisms.macropru.ccyb).toLong)
           BankRow(
             runId = "",
             seed = seed,
@@ -179,9 +248,12 @@ object BankBalanceSheetBenchmarkExport:
             capital = bank.capital,
             assets = bankAssets,
             deposits = balances.totalDeposits,
+            firmLoans = balances.firmLoan,
+            consumerLoans = balances.consumerLoan,
+            mortgageLoans = balances.mortgageLoan,
             totalCredit = credit,
-            govBondHoldings = govBonds,
-            govBondShareOfAssets = finiteShare(govBonds, bankAssets),
+            govBondHoldings = bankGovBonds,
+            govBondShareOfAssets = finiteShare(bankGovBonds, bankAssets),
             polishBankLevyTaxableAssets = levyBase,
             polishBankLevyTaxableAssetsShare = finiteShare(levyBase, bankAssets),
             capitalAdequacyRatio = car,
@@ -192,7 +264,47 @@ object BankBalanceSheetBenchmarkExport:
             creditShare = finiteRatio(credit, totalCredit),
             depositShare = finiteRatio(balances.totalDeposits, deposits),
             assetShare = finiteRatio(bankAssets, assets),
+            firmLoanShare = finiteRatio(balances.firmLoan, firmLoans),
+            consumerLoanShare = finiteRatio(balances.consumerLoan, consumerLoans),
+            mortgageLoanShare = finiteRatio(balances.mortgageLoan, mortgageLoans),
+            govBondSectorShare = finiteRatio(bankGovBonds, govBonds),
+            profileBridgeStatus = profile.bridgeStatus,
+            relationshipWeightPrior = profile.relationshipWeightPrior,
+            profileDepositsTarget = depositsProfile.target,
+            profileDepositsTargetShare = depositsProfile.targetShare,
+            profileDepositsDelta = depositsProfile.delta,
+            profileFirmLoansTarget = firmLoanProfile.target,
+            profileFirmLoansTargetShare = firmLoanProfile.targetShare,
+            profileFirmLoansDelta = firmLoanProfile.delta,
+            profileConsumerLoansTarget = consumerProfile.target,
+            profileConsumerLoansTargetShare = consumerProfile.targetShare,
+            profileConsumerLoansDelta = consumerProfile.delta,
+            profileMortgageLoansTarget = mortgageProfile.target,
+            profileMortgageLoansTargetShare = mortgageProfile.targetShare,
+            profileMortgageLoansDelta = mortgageProfile.delta,
+            profileGovBondsTarget = govBondsProfile.target,
+            profileGovBondsTargetShare = govBondsProfile.targetShare,
+            profileGovBondsDelta = govBondsProfile.delta,
           )
+      requireDerivedMarketShares(rows)
+      rows
+
+    private def requireDerivedMarketShares(rows: Vector[BankRow]): Unit =
+      requireShareSum("creditShare", rows.map(_.creditShare), totalCredit)
+      requireShareSum("depositShare", rows.map(_.depositShare), deposits)
+      requireShareSum("assetShare", rows.map(_.assetShare), assets)
+      requireShareSum("firmLoanShare", rows.map(_.firmLoanShare), firmLoans)
+      requireShareSum("consumerLoanShare", rows.map(_.consumerLoanShare), consumerLoans)
+      requireShareSum("mortgageLoanShare", rows.map(_.mortgageLoanShare), mortgageLoans)
+      requireShareSum("govBondSectorShare", rows.map(_.govBondSectorShare), govBonds)
+
+    private def requireShareSum(label: String, shares: Vector[BigDecimal], denominator: PLN): Unit =
+      if denominator > PLN.Zero then
+        val delta = (shares.sum - BigDecimal(1)).abs
+        require(
+          delta <= BigDecimal("0.000001"),
+          s"Bank balance-sheet benchmark $label must be derived from initialized stocks and sum to one; got sum=${shares.sum}",
+        )
 
   private val RequiredMetricIds: Set[String] = Set(
     "CapitalToAssets",
@@ -696,6 +808,9 @@ object BankBalanceSheetBenchmarkExport:
         "Capital",
         "Assets",
         "Deposits",
+        "FirmLoans",
+        "ConsumerLoans",
+        "MortgageLoans",
         "TotalCredit",
         "GovBondHoldings",
         "GovBondShareOfAssets",
@@ -709,6 +824,27 @@ object BankBalanceSheetBenchmarkExport:
         "CreditShare",
         "DepositShare",
         "AssetShare",
+        "FirmLoanShare",
+        "ConsumerLoanShare",
+        "MortgageLoanShare",
+        "GovBondSectorShare",
+        "ProfileBridgeStatus",
+        "RelationshipWeightPrior",
+        "ProfileDepositsTarget",
+        "ProfileDepositsTargetShare",
+        "ProfileDepositsDelta",
+        "ProfileFirmLoansTarget",
+        "ProfileFirmLoansTargetShare",
+        "ProfileFirmLoansDelta",
+        "ProfileConsumerLoansTarget",
+        "ProfileConsumerLoansTargetShare",
+        "ProfileConsumerLoansDelta",
+        "ProfileMortgageLoansTarget",
+        "ProfileMortgageLoansTargetShare",
+        "ProfileMortgageLoansDelta",
+        "ProfileGovBondsTarget",
+        "ProfileGovBondsTargetShare",
+        "ProfileGovBondsDelta",
       ),
       render = row =>
         DelimitedTextFormat.Tsv.join(
@@ -720,6 +856,9 @@ object BankBalanceSheetBenchmarkExport:
             renderPln(row.capital),
             renderPln(row.assets),
             renderPln(row.deposits),
+            renderPln(row.firmLoans),
+            renderPln(row.consumerLoans),
+            renderPln(row.mortgageLoans),
             renderPln(row.totalCredit),
             renderPln(row.govBondHoldings),
             row.govBondShareOfAssets.format(6),
@@ -733,6 +872,27 @@ object BankBalanceSheetBenchmarkExport:
             renderDecimal(row.creditShare),
             renderDecimal(row.depositShare),
             renderDecimal(row.assetShare),
+            renderDecimal(row.firmLoanShare),
+            renderDecimal(row.consumerLoanShare),
+            renderDecimal(row.mortgageLoanShare),
+            renderDecimal(row.govBondSectorShare),
+            row.profileBridgeStatus,
+            renderOptionalDecimal(row.relationshipWeightPrior),
+            renderOptionalPln(row.profileDepositsTarget),
+            renderOptionalDecimal(row.profileDepositsTargetShare),
+            renderOptionalPln(row.profileDepositsDelta),
+            renderOptionalPln(row.profileFirmLoansTarget),
+            renderOptionalDecimal(row.profileFirmLoansTargetShare),
+            renderOptionalPln(row.profileFirmLoansDelta),
+            renderOptionalPln(row.profileConsumerLoansTarget),
+            renderOptionalDecimal(row.profileConsumerLoansTargetShare),
+            renderOptionalPln(row.profileConsumerLoansDelta),
+            renderOptionalPln(row.profileMortgageLoansTarget),
+            renderOptionalDecimal(row.profileMortgageLoansTargetShare),
+            renderOptionalPln(row.profileMortgageLoansDelta),
+            renderOptionalPln(row.profileGovBondsTarget),
+            renderOptionalDecimal(row.profileGovBondsTargetShare),
+            renderOptionalPln(row.profileGovBondsDelta),
           ),
         ),
     )
@@ -860,6 +1020,56 @@ object BankBalanceSheetBenchmarkExport:
   private def singleBankAssets(row: LedgerFinancialState.BankBalances): PLN =
     row.firmLoan + row.consumerLoan + row.mortgageLoan + row.govBondAfs + row.govBondHtm + row.corpBond + row.reserve + row.interbankLoan.max(PLN.Zero)
 
+  private def runtimeProfileRowsByBankId()(using p: SimParams): Map[Int, RuntimeBankProfileEvidence] =
+    val runtimeRows = OpeningBankBalanceProfileBridge.Rows.filterNot(_.rowType == "sector_total")
+    require(
+      runtimeRows.length == Banking.DefaultConfigs.length,
+      s"Bank balance-sheet benchmark requires ${Banking.DefaultConfigs.length} opening bank profile rows, got ${runtimeRows.length}",
+    )
+    val byId        = runtimeRows
+      .map: row =>
+        val bankId = parseBankId(row)
+        bankId -> RuntimeBankProfileEvidence(
+          bridgeStatus = row.bridgeStatus,
+          relationshipWeightPrior = row.relationshipWeightPrior,
+          deposits = profileTarget(row.depositsMPln),
+          depositShare = row.depositShare,
+          firmLoans = profileTarget(row.firmLoansMPln),
+          firmLoanShare = row.firmLoanShare,
+          consumerLoans = profileTarget(row.consumerLoansMPln),
+          consumerLoanShare = row.consumerLoanShare,
+          mortgageLoans = profileTarget(row.mortgageLoansMPln),
+          mortgageLoanShare = row.mortgageLoanShare,
+          govBonds = profileTarget(row.govBondsMPln),
+          govBondShare = row.govBondShare,
+        )
+      .toMap
+    require(byId.size == runtimeRows.length, "Bank balance-sheet benchmark requires unique opening bank profile bank_id values")
+    Banking.DefaultConfigs.foreach: config =>
+      val row = runtimeRows
+        .find(parseBankId(_) == config.id.toInt)
+        .getOrElse:
+          throw new IllegalStateException(s"Missing opening bank profile row for BankId ${config.id.toInt}")
+      require(
+        row.runtimeBankName == config.name,
+        s"Opening bank profile row ${config.id.toInt} names ${row.runtimeBankName}, expected ${config.name}",
+      )
+    byId
+
+  private def parseBankId(row: OpeningBankBalanceProfileBridge.Row): Int =
+    Try(row.bankId.toInt)
+      .getOrElse(throw new IllegalStateException(s"Opening bank profile row has non-integer bank_id='${row.bankId}'"))
+
+  private def profileTarget(value: Option[BigDecimal])(using SimParams): Option[PLN] =
+    value.map(mPlnToRuntime)
+
+  private def mPlnToRuntime(value: BigDecimal)(using p: SimParams): PLN =
+    val pln = value * BigDecimal(1000000L)
+    val raw = (pln * FixedPointBase.ScaleDecimal)
+      .setScale(0, RoundingMode.HALF_EVEN)
+      .toLongExact
+    PLN.fromRaw(raw) * p.gdpRatio
+
   private def ratioRaw(numerator: BigDecimal, denominator: BigDecimal): ObservedValue =
     if denominator == BigDecimal(0) then
       if numerator == BigDecimal(0) then ObservedValue.Finite(BigDecimal(0))
@@ -877,6 +1087,12 @@ object BankBalanceSheetBenchmarkExport:
 
   private def renderPln(value: PLN): String =
     renderDecimal(rawDecimal(value.toLong))
+
+  private def renderOptionalPln(value: Option[PLN]): String =
+    value.map(renderPln).getOrElse("")
+
+  private def renderOptionalDecimal(value: Option[BigDecimal]): String =
+    value.map(renderDecimal).getOrElse("")
 
   private def renderDecimal(value: BigDecimal): String =
     value.setScale(6, RoundingMode.HALF_UP).bigDecimal.stripTrailingZeros.toPlainString
