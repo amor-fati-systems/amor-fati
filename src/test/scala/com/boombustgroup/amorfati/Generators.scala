@@ -15,8 +15,8 @@ object Generators:
   private val p: SimParams     = summon[SimParams]
   private val DefaultBankIdMax = Banking.DefaultConfigs.length - 1
 
-  /** Test helper: create banking sector by splitting aggregates across banks by
-    * explicit opening allocation weights.
+  /** Test helper: create banking-sector stock rows by splitting explicit
+    * balances across banks, then assigning capital by opening RWA.
     */
   def testBankingSector(
       totalDeposits: PLN = PLN(1000000000),
@@ -26,12 +26,42 @@ object Generators:
       totalConsumerLoans: PLN = PLN.Zero,
       configs: Vector[Banking.Config] = Banking.DefaultConfigs,
   ): Banking.BankStockState =
-    val rows = configs.map: cfg =>
+    val stockRows         = configs.map: cfg =>
       val bankBonds = totalGovBonds * cfg.openingBalanceWeight
+      val stocks    = Banking.BankFinancialStocks(
+        totalDeposits = totalDeposits * cfg.openingBalanceWeight,
+        firmLoan = totalLoans * cfg.openingBalanceWeight,
+        govBondAfs = bankBonds * (Share.One - p.banking.htmShare),
+        govBondHtm = bankBonds * p.banking.htmShare,
+        reserve = PLN.Zero,
+        interbankLoan = PLN.Zero,
+        demandDeposit = PLN.Zero,
+        termDeposit = PLN.Zero,
+        consumerLoan = totalConsumerLoans * cfg.openingBalanceWeight,
+      )
+      (cfg, stocks)
+    val totalRwa          = stockRows.map((_, stocks) => Banking.riskWeightedAssets(stocks, PLN.Zero)).sumPln
+    val totalCapitalRatio =
+      if totalRwa > PLN.Zero then totalCapital.ratioTo(totalRwa).toMultiplier
+      else
+        require(
+          totalCapital <= PLN.Zero,
+          s"Generators.testBankingSector requires positive RWA when totalCapital is positive, got totalCapital=$totalCapital totalRwa=$totalRwa",
+        )
+        Multiplier.Zero
+    val rows              = stockRows.map: (cfg, stocks) =>
+      val capital = Banking
+        .openingCapitalFromProfile(
+          Banking.OpeningCapitalProfile(cfg.id, totalCapitalRatio = Some(totalCapitalRatio)),
+          stocks,
+          PLN.Zero,
+          totalCapitalRatio,
+        )
+        .capital
       (
         Banking.BankState(
           id = cfg.id,
-          capital = totalCapital * cfg.openingCapitalWeight,
+          capital = capital,
           nplAmount = PLN.Zero,
           htmBookYield = p.banking.initHtmBookYield,
           status = Banking.BankStatus.Active(0),
@@ -40,17 +70,7 @@ object Generators:
           loansLong = PLN.Zero,
           consumerNpl = PLN.Zero,
         ),
-        Banking.BankFinancialStocks(
-          totalDeposits = totalDeposits * cfg.openingBalanceWeight,
-          firmLoan = totalLoans * cfg.openingBalanceWeight,
-          govBondAfs = bankBonds * (Share.One - p.banking.htmShare),
-          govBondHtm = bankBonds * p.banking.htmShare,
-          reserve = PLN.Zero,
-          interbankLoan = PLN.Zero,
-          demandDeposit = PLN.Zero,
-          termDeposit = PLN.Zero,
-          consumerLoan = totalConsumerLoans * cfg.openingBalanceWeight,
-        ),
+        stocks,
       )
     Banking.BankStockState(rows.map(_._1), rows.map(_._2))
 
@@ -714,7 +734,6 @@ object Generators:
       id                 <- Gen.choose(0, DefaultBankIdMax)
       relationshipWeight <- genDecimal("0.01", "0.50")
       balanceWeight      <- genDecimal("0.01", "0.50")
-      capitalWeight      <- genDecimal("0.01", "0.50")
       spread             <- genDecimal("-0.005", "0.005")
       aff                <- Gen.sequence[Vector[BigDecimal], BigDecimal]((0 until 6).map(_ => genDecimal("0.05", "0.40")))
     yield Banking.Config(
@@ -722,7 +741,6 @@ object Generators:
       s"Bank$id",
       shareBD(relationshipWeight),
       shareBD(balanceWeight),
-      shareBD(capitalWeight),
       rateBD(spread),
       aff.map(shareBD(_)),
     )

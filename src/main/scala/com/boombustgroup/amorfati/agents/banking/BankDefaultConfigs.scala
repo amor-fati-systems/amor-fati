@@ -23,7 +23,6 @@ private[agents] object BankDefaultConfigs:
       name = name,
       relationshipWeight = relationshipWeight,
       openingBalanceWeight = relationshipWeight,
-      openingCapitalWeight = relationshipWeight,
       lendingSpread = lendingSpread,
       sectorAffinity = sectorAffinity,
     )

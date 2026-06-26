@@ -4,6 +4,7 @@ import com.boombustgroup.amorfati.FixedPointSpecSupport.*
 import com.boombustgroup.amorfati.agents.{Banking, EclStaging}
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.ledger.LedgerFinancialState
+import com.boombustgroup.amorfati.engine.mechanisms.Macroprudential
 import com.boombustgroup.amorfati.fp.FixedPointBase
 import com.boombustgroup.amorfati.types.*
 import org.scalatest.flatspec.AnyFlatSpec
@@ -85,6 +86,28 @@ class WorldInitSpec extends AnyFlatSpec with Matchers:
     householdMortgage shouldBe p.housing.initMortgage
     bankMortgageBook shouldBe p.housing.initMortgage
     init.world.real.housing.mortgageStock shouldBe p.housing.initMortgage
+  }
+
+  it should "compute opening bank capital from opening RWA and preserve the sector capital target" in {
+    val init                 = WorldInit.initialize(InitRandomness.Contract.fromSeed(42L))
+    val aggregateCapital     = init.banks.map(_.capital).sumPln
+    val bankRows             = init.banks.zip(init.ledgerFinancialState.banks)
+    val totalOpeningRwa      = bankRows.map { case (_, balances) =>
+      Banking.riskWeightedAssets(LedgerFinancialState.projectBankFinancialStocks(balances), balances.corpBond)
+    }.sumPln
+    val expectedCapitalRatio = p.banking.initCapital.ratioTo(totalOpeningRwa).toMultiplier
+
+    decimal(aggregateCapital) shouldBe decimal(p.banking.initCapital) +- (decimal(p.banking.initCapital) * BigDecimal("0.001"))
+    bankRows.foreach { case (bank, balances) =>
+      val stocks = LedgerFinancialState.projectBankFinancialStocks(balances)
+      val rwa    = Banking.riskWeightedAssets(stocks, balances.corpBond)
+      val car    = Banking.car(bank, stocks, balances.corpBond)
+      val minCar = Macroprudential.effectiveMinCar(bank.id.toInt, p.banking.initialCcyb)
+
+      rwa should be > PLN.Zero
+      car should be >= minCar
+      decimal(car) shouldBe decimal(expectedCapitalRatio) +- BigDecimal("0.0001")
+    }
   }
 
   it should "normalize opening customer deposits to the banking deposit stock" in {

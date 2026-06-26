@@ -172,9 +172,13 @@ class BankingSectorPropertySpec extends AnyFlatSpec with Matchers with ScalaChec
 
   "initialize" should "preserve total deposits and capital" in
     forAll(genDecimal("1e5", "1e10"), genDecimal("1e4", "1e9")) { (totalDep: BigDecimal, totalCap: BigDecimal) =>
-      val bs = testBankingSector(totalDeposits = plnBD(totalDep), totalCapital = plnBD(totalCap), totalLoans = PLN.Zero, configs = configs)
-      bs.financialStocks.map(stocks => decimal(stocks.totalDeposits)).sum shouldBe totalDep +- BigDecimal("1.0")
-      bs.banks.map(b => decimal(b.capital)).sum shouldBe totalCap +- BigDecimal("1.0")
+      val deposits = plnBD(totalDep)
+      val capital  = plnBD(totalCap)
+      whenever(deposits > PLN.Zero && capital > PLN(1000)) {
+        val bs = testBankingSector(totalDeposits = deposits, totalCapital = capital, totalLoans = capital, configs = configs)
+        bs.financialStocks.map(stocks => decimal(stocks.totalDeposits)).sum shouldBe decimal(deposits) +- BigDecimal("1.0")
+        bs.banks.map(b => decimal(b.capital)).sum shouldBe decimal(capital) +- BigDecimal("1.0")
+      }
     }
 
   // ---- QE purchases don't exceed bond holdings ----

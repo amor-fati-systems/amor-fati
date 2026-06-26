@@ -113,26 +113,25 @@ class BankingSectorSpec extends AnyFlatSpec with Matchers:
       rng,
     )
 
-  "Banking.Config" should "name relationship and opening allocation weights separately" in {
+  "Banking.Config" should "name relationship routing and opening balance weights separately" in {
     val fieldNames = configs.head.productElementNames.toSet
 
     fieldNames should contain("relationshipWeight")
     fieldNames should contain("openingBalanceWeight")
-    fieldNames should contain("openingCapitalWeight")
     fieldNames should not contain "initMarketShare"
+    fieldNames should not contain "openingCapitalWeight"
     fieldNames.exists(_.toLowerCase.contains("cet1")) shouldBe false
   }
 
-  "Banking.DefaultConfigs" should "split relationship and opening allocation weights across default rows" in {
+  "Banking.DefaultConfigs" should "split relationship and opening balance weights across default rows" in {
     configs.map(_.id.toInt) shouldBe configs.indices.toVector
     configs.map(_.relationshipWeight).sumShare shouldBe Share.One
     configs.map(_.openingBalanceWeight).sumShare shouldBe Share.One
-    configs.map(_.openingCapitalWeight).sumShare shouldBe Share.One
     configs.map(_.relationshipWeight).max should be <= summon[SimParams].banking.concentrationLimit
   }
 
   "Generators.testBankingSector" should "create default bank rows with explicit financial stocks preserving totals" in {
-    val bs = Generators.testBankingSector(totalDeposits = PLN(1000000), totalCapital = PLN(100000), totalLoans = PLN.Zero, configs = configs)
+    val bs = Generators.testBankingSector(totalDeposits = PLN(1000000), totalCapital = PLN(100000), totalLoans = PLN(500000), configs = configs)
 
     bs.banks.length shouldBe configs.length
     bs.financialStocks.map(s => decimal(s.totalDeposits)).sum shouldBe BigDecimal("1000000.0") +- BigDecimal("0.01")
@@ -140,6 +139,37 @@ class BankingSectorSpec extends AnyFlatSpec with Matchers:
     decimal(bs.financialStocks(0).totalDeposits) shouldBe (BigDecimal("1000000.0") * BigDecimal("0.175")) +- BigDecimal("0.01")
     decimal(bs.financialStocks(5).totalDeposits) shouldBe (BigDecimal("1000000.0") * BigDecimal("0.050")) +- BigDecimal("0.01")
     bs.banks.forall(!_.failed) shouldBe true
+  }
+
+  "Banking.openingCapitalFromProfile" should "derive bank opening capital from RWA and total capital ratio" in {
+    val stocks = Banking.BankFinancialStocks(
+      totalDeposits = PLN(1000000),
+      firmLoan = PLN(600000),
+      govBondAfs = PLN(150000),
+      govBondHtm = PLN(150000),
+      reserve = PLN(50000),
+      interbankLoan = PLN.Zero,
+      demandDeposit = PLN(800000),
+      termDeposit = PLN(200000),
+      consumerLoan = PLN(100000),
+      mortgageLoan = PLN(300000),
+    )
+    val low    = Banking.openingCapitalFromProfile(
+      Banking.OpeningCapitalProfile(BankId(0), totalCapitalRatio = Some(Multiplier.decimal(10, 2))),
+      stocks,
+      corpBondHoldings = PLN(50000),
+      fallbackTotalCapitalRatio = Multiplier.decimal(20, 2),
+    )
+    val high   = Banking.openingCapitalFromProfile(
+      Banking.OpeningCapitalProfile(BankId(0), totalCapitalRatio = Some(Multiplier.decimal(20, 2))),
+      stocks,
+      corpBondHoldings = PLN(50000),
+      fallbackTotalCapitalRatio = Multiplier.decimal(20, 2),
+    )
+
+    low.riskWeightedAssets should be > PLN.Zero
+    high.riskWeightedAssets shouldBe low.riskWeightedAssets
+    high.capital should be > low.capital
   }
 
   "Banking.assignBank" should "return valid bank index" in {
@@ -627,12 +657,12 @@ class BankingSectorSpec extends AnyFlatSpec with Matchers:
   }
 
   "Banking.aggregateFromBankStocks" should "sum operational state and explicit financial stocks" in {
-    val bs  = Generators.testBankingSector(totalDeposits = PLN(1000000), totalCapital = PLN(100000), totalLoans = PLN.Zero, configs = configs)
+    val bs  = Generators.testBankingSector(totalDeposits = PLN(1000000), totalCapital = PLN(100000), totalLoans = PLN(500000), configs = configs)
     val agg = Banking.aggregateFromBankStocks(bs.banks, bs.financialStocks)
 
     agg.deposits shouldBe PLN(1000000)
     agg.capital shouldBe PLN(100000)
-    agg.totalLoans shouldBe PLN.Zero
+    agg.totalLoans shouldBe PLN(500000)
   }
 
   it should "decompose aggregate RWA into weighted exposures and floors" in {
