@@ -17,6 +17,7 @@ private[banking] object BankFailurePipeline:
       in: StepInput,
       prevBankAgg: Banking.Aggregate,
       waterfall: BondWaterfallResult,
+      creditLosses: BankCreditLossAccounting.Breakdown,
       settledBankCorpBonds: Vector[PLN],
       jstDepositChange: PLN,
       investNetDepositFlow: PLN,
@@ -29,7 +30,7 @@ private[banking] object BankFailurePipeline:
     val failureDetection                    = runFailureDetection(in, waterfall, bankCorpBondHoldingsAfterSettlement)
     val bailIn                              = runBailIn(failureDetection)
     val bankResolution                      = runBankResolution(failureDetection, bailIn, settledBankCorpBonds)
-    val bankCapitalTerms                    = computeBankCapitalTerms(prevBankAgg, waterfall.banks, in, mortgageFlows)
+    val bankCapitalTerms                    = computeBankCapitalTerms(prevBankAgg, waterfall.banks, creditLosses, in, mortgageFlows)
     val aggregateReconciliation             = BankAggregateReconciliation.reconcile(
       banks = bankResolution.banks,
       financialStocks = bankResolution.financialStocks,
@@ -39,7 +40,6 @@ private[banking] object BankFailurePipeline:
       jstDepositChange = jstDepositChange,
       investNetDepositFlow = investNetDepositFlow,
       quasiFiscalDepositChange = quasiFiscalDepositChange,
-      mortgageFlows = mortgageFlows,
       bailInLoss = bailIn.loss,
       multiCapDestruction = failureDetection.capitalDestruction,
       interbankContagionLoss = failureDetection.contagion.totalLoss,
@@ -182,6 +182,7 @@ private[banking] object BankFailurePipeline:
   private def computeBankCapitalTerms(
       prevBankAgg: Banking.Aggregate,
       bankRows: Vector[Banking.BankState],
+      creditLosses: BankCreditLossAccounting.Breakdown,
       in: StepInput,
       mortgageFlows: HousingMarket.MortgageFlows,
   )(using p: SimParams): BankCapitalTerms =
@@ -210,6 +211,7 @@ private[banking] object BankFailurePipeline:
       mortgageFlows.interest + (in.householdFinancial.consumerDebtService - in.householdFinancial.consumerPrincipal) +
       in.openEconomy.corpBonds.corpBondBankCoupon
     BankCapitalTerms(
+      creditLosses = creditLosses,
       unrealizedBondLoss = unrealizedBondLoss,
       eclProvisionChange = eclProvisionChange,
       capitalGrossIncome = capitalGrossIncome,

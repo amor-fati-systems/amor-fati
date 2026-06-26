@@ -145,6 +145,7 @@ private[banking] final case class PerBankHhFlows(
 private[banking] final case class SingleBankUpdate(
     bank: Banking.BankState,
     financialStocks: Banking.BankFinancialStocks,
+    creditLosses: BankCreditLossAccounting.Breakdown = BankCreditLossAccounting.Breakdown.zero,
 )
 
 private[banking] final case class MultiBankResult(
@@ -215,11 +216,17 @@ private[banking] final case class LedgerClosingResult(
 )
 
 private[banking] final case class BankCapitalTerms(
+    creditLosses: BankCreditLossAccounting.Breakdown,
     unrealizedBondLoss: PLN,
     eclProvisionChange: PLN,
     capitalGrossIncome: PLN,
     retainedIncome: PLN,
-)
+):
+  def firmNplLoss: PLN         = creditLosses.firm.netCapitalLoss
+  def mortgageNplLoss: PLN     = creditLosses.mortgage.netCapitalLoss
+  def consumerNplLoss: PLN     = creditLosses.consumer.netCapitalLoss
+  def corpBondDefaultLoss: PLN = creditLosses.corpBondDefaultLoss
+  def realizedCreditLoss: PLN  = creditLosses.realizedCreditLoss
 
 private[amorfati] final case class ReserveSettlementResult(
     banks: Vector[Banking.BankState],

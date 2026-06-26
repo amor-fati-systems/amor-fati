@@ -123,9 +123,9 @@ object MonthFlowEmitter:
       BankingFlows.emitBatches(
         BankingFlows.Input(
           firmInterestIncome = c.firmInterestIncome,
-          firmNplLoss = c.firmNplLoss,
-          mortgageNplLoss = c.mortgageDefault * (Share.One - p.housing.mortgageRecovery),
-          consumerNplLoss = (c.totalCcDefault - c.liquidityShortfallFinancing).max(PLN.Zero) * (Share.One - p.household.ccNplRecovery),
+          firmNplLoss = c.bankFirmNplLoss,
+          mortgageNplLoss = c.bankMortgageNplLoss,
+          consumerNplLoss = c.bankConsumerNplLoss,
           govBondIncome = c.bankGovBondIncome,
           reserveInterest = c.bankReserveInterest,
           standingFacilityIncome = c.bankStandingFacility,

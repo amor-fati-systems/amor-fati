@@ -8,7 +8,7 @@ import com.boombustgroup.amorfati.montecarlo.McSeedMonth
 import com.boombustgroup.amorfati.montecarlo.McTimeseriesSchema
 import com.boombustgroup.amorfati.montecarlo.MetricValue
 import com.boombustgroup.amorfati.montecarlo.MetricValue.*
-import zio.ZIO
+import zio.{Cause, Ref, ZIO}
 import zio.stream.ZStream
 
 import java.nio.file.Path
@@ -39,6 +39,9 @@ object BankFailureAblationExport:
       scenarioLabel: String,
       seed: Long,
       months: Int,
+      observedMonths: Int,
+      crashed: Int,
+      crashReason: String,
       firstFailureMonth: Option[Int],
       firstFailureReasonCode: Int,
       firstFailureBankId: Int,
@@ -72,6 +75,7 @@ object BankFailureAblationExport:
       scenarioLabel: String,
       seeds: Int,
       months: Int,
+      crashedSeeds: Int,
       failedSeeds: Int,
       firstFailureMonthMean: Option[BigDecimal],
       firstFailureMonthMin: Option[Int],
@@ -260,24 +264,27 @@ object BankFailureAblationExport:
         cumulativeReconciliationResidualAbs = cumulativeReconciliationResidualAbs + col(row, "BankCapital_ReconciliationResidual").abs,
       )
 
-    def toSeedResult(config: Config, scenario: BankFailureAblationScenarios.Spec, seed: Long): Either[String, SeedResult] =
+    def toSeedResult(config: Config, scenario: BankFailureAblationScenarios.Spec, seed: Long, crashReason: Option[String]): Either[String, SeedResult] =
       for
-        _        <- Either.cond(
-          observedMonths == config.months,
+        _       <- Either.cond(
+          crashReason.nonEmpty || observedMonths == config.months,
           (),
           s"bank-failure ablation expected ${config.months} monthly rows for scenario ${scenario.id} seed $seed, observed $observedMonths",
         )
-        terminal <- terminalRow.toRight("bank-failure ablation run produced no monthly rows")
+        terminal = terminalRow
       yield SeedResult(
         runId = config.runId,
         scenarioId = scenario.id,
         scenarioLabel = scenario.label,
         seed = seed,
         months = config.months,
+        observedMonths = observedMonths,
+        crashed = if crashReason.nonEmpty then 1 else 0,
+        crashReason = crashReason.getOrElse(""),
         firstFailureMonth = firstFailure.map(_.month),
         firstFailureReasonCode = firstFailure.map(_.reasonCode).getOrElse(0),
         firstFailureBankId = firstFailure.map(_.bankId).getOrElse(-1),
-        terminalFailures = colInt(terminal, "BankFailures"),
+        terminalFailures = terminal.map(row => colInt(row, "BankFailures")).getOrElse(0),
         peakFailures = peakFailures,
         cumulativeNewFailures = cumulativeNewFailures,
         cumulativeRealizedCreditLoss = cumulativeRealizedCreditLoss,
@@ -295,9 +302,9 @@ object BankFailureAblationExport:
         firstFailureInterbankContagionLoss = firstFailure.map(_.interbankContagionLoss).getOrElse(BigDecimal(0)),
         firstFailureReconciliationResidual = firstFailure.map(_.reconciliationResidual).getOrElse(BigDecimal(0)),
         firstFailureDepositBailInLoss = firstFailure.map(_.depositBailInLoss).getOrElse(BigDecimal(0)),
-        terminalTotalCreditToGdp = col(terminal, "TotalCreditToGdp"),
-        terminalUnemployment = col(terminal, "Unemployment"),
-        terminalInflation = col(terminal, "Inflation"),
+        terminalTotalCreditToGdp = terminal.map(row => col(row, "TotalCreditToGdp")).getOrElse(BigDecimal(0)),
+        terminalUnemployment = terminal.map(row => col(row, "Unemployment")).getOrElse(BigDecimal(0)),
+        terminalInflation = terminal.map(row => col(row, "Inflation")).getOrElse(BigDecimal(0)),
         interpretation = scenario.interpretation,
       )
 
@@ -323,9 +330,15 @@ object BankFailureAblationExport:
       seed: Long,
       months: ZStream[Any, String, McSeedMonth],
   ): ZIO[Any, String, SeedResult] =
-    months
-      .runFold(SeedAccumulator.Empty)((acc, month) => acc.observe(month.row))
-      .flatMap(acc => ZIO.fromEither(acc.toSeedResult(config, scenario, seed)))
+    for
+      ref     <- Ref.make(SeedAccumulator.Empty)
+      outcome <- months
+        .foreach(month => ref.update(_.observe(month.row)))
+        .as(Right(()))
+        .catchAllCause(cause => ZIO.succeed(Left(renderStreamCrash(cause))))
+      acc     <- ref.get
+      result  <- ZIO.fromEither(acc.toSeedResult(config, scenario, seed, outcome.left.toOption))
+    yield result
 
   private[diagnostics] def summarize(config: Config, rows: Vector[SeedResult]): Vector[SummaryResult] =
     Scenarios.map: scenario =>
@@ -337,6 +350,7 @@ object BankFailureAblationExport:
         scenarioLabel = scenario.label,
         seeds = scenarioRows.length,
         months = config.months,
+        crashedSeeds = scenarioRows.count(_.crashed != 0),
         failedSeeds = failureMonths.length,
         firstFailureMonthMean = meanOption(failureMonths.map(month => BigDecimal(month))),
         firstFailureMonthMin = failureMonths.minOption,
@@ -390,6 +404,9 @@ object BankFailureAblationExport:
       "ScenarioLabel",
       "Seed",
       "Months",
+      "ObservedMonths",
+      "Crashed",
+      "CrashReason",
       "FirstFailureMonth",
       "FirstFailureReasonCode",
       "FirstFailureBankId",
@@ -425,6 +442,7 @@ object BankFailureAblationExport:
       "ScenarioLabel",
       "Seeds",
       "Months",
+      "CrashedSeeds",
       "FailedSeeds",
       "FirstFailureMonthMean",
       "FirstFailureMonthMin",
@@ -465,6 +483,9 @@ object BankFailureAblationExport:
       row.scenarioLabel,
       row.seed.toString,
       row.months.toString,
+      row.observedMonths.toString,
+      row.crashed.toString,
+      row.crashReason,
       row.firstFailureMonth.map(_.toString).getOrElse(""),
       row.firstFailureReasonCode.toString,
       row.firstFailureBankId.toString,
@@ -499,6 +520,7 @@ object BankFailureAblationExport:
       row.scenarioLabel,
       row.seeds.toString,
       row.months.toString,
+      row.crashedSeeds.toString,
       row.failedSeeds.toString,
       row.firstFailureMonthMean.map(renderDecimal).getOrElse(""),
       row.firstFailureMonthMin.map(_.toString).getOrElse(""),
@@ -535,6 +557,7 @@ object BankFailureAblationExport:
       markdownRow(
         Vector(
           row.scenarioId,
+          row.crashedSeeds.toString,
           row.failedSeeds.toString,
           row.firstFailureMonthMean.map(renderDecimal).getOrElse("n/a"),
           renderDecimal(row.terminalFailuresMean),
@@ -568,6 +591,7 @@ object BankFailureAblationExport:
       markdownRow(
         Vector(
           "Scenario",
+          "Crashed Seeds",
           "Failed Seeds",
           "Mean First Failure Month",
           "Mean Terminal Failures",
@@ -578,7 +602,7 @@ object BankFailureAblationExport:
           "Mean Abs Reconciliation Residual",
         ),
       ),
-      markdownRow(Vector("---", "---", "---", "---", "---", "---", "---", "---", "---")),
+      markdownRow(Vector("---", "---", "---", "---", "---", "---", "---", "---", "---", "---")),
     ) ++ rows ++ Vector(
       "",
       "## Baseline Comparison",
@@ -640,6 +664,9 @@ object BankFailureAblationExport:
 
   private def renderDecimal(value: BigDecimal): String =
     value.setScale(6, RoundingMode.HALF_UP).bigDecimal.stripTrailingZeros.toPlainString
+
+  private def renderStreamCrash(cause: Cause[String]): String =
+    cause.failureOption.getOrElse(cause.prettyPrint)
 
   private def signed(value: Int): String =
     if value > 0 then s"+$value" else value.toString

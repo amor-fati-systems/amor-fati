@@ -73,9 +73,11 @@ object OpeningBankProfileTargets:
       )
     else
       val missingMandatory =
-        orderedRows.flatMap: row =>
-          MandatoryColumns.collect:
+        orderedRows.flatMap { row =>
+          MandatoryColumns.collect {
             case (column, value) if value(row).isEmpty => s"${row.runtimeBankName}.$column"
+          }
+        }
 
       if missingMandatory.nonEmpty then
         throw new IllegalStateException(

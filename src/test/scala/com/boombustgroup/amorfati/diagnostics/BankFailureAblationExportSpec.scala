@@ -31,7 +31,6 @@ class BankFailureAblationExportSpec extends AnyFlatSpec with Matchers:
       "no-ecl-stress-migration",
       "no-realized-credit-loss-capital-hit",
       "no-resolution-feedback",
-      "initial-capital-150pct",
     )
   }
 
@@ -67,6 +66,22 @@ class BankFailureAblationExportSpec extends AnyFlatSpec with Matchers:
     result.left.value should include("observed 0")
   }
 
+  it should "return a partial seed result when a seed stream crashes" in {
+    val config = BankFailureAblationExport.Config(seeds = 1, months = 2, runId = "test")
+    val result = DiagnosticIo.unsafeRun:
+      BankFailureAblationExport.computeSeedResult(
+        config,
+        BankFailureAblationExport.Scenarios.head,
+        1L,
+        ZStream.fail("synthetic crash"),
+      )
+
+    val seed = result.value
+    seed.observedMonths shouldBe 0
+    seed.crashed shouldBe 1
+    seed.crashReason should include("synthetic crash")
+  }
+
   private def seed(
       scenarioId: String,
       scenarioLabel: String,
@@ -81,6 +96,9 @@ class BankFailureAblationExportSpec extends AnyFlatSpec with Matchers:
       scenarioLabel = scenarioLabel,
       seed = seed,
       months = 12,
+      observedMonths = 12,
+      crashed = 0,
+      crashReason = "",
       firstFailureMonth = firstFailureMonth,
       firstFailureReasonCode = firstFailureMonth.fold(0)(_ => 1),
       firstFailureBankId = firstFailureMonth.fold(-1)(_ => 0),

@@ -4,7 +4,6 @@ import com.boombustgroup.amorfati.agents.*
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.diagnostics.banking.BankReconciliationDiagnostics
 import com.boombustgroup.amorfati.engine.ledger.LedgerFinancialState
-import com.boombustgroup.amorfati.engine.markets.HousingMarket
 import com.boombustgroup.amorfati.types.*
 import com.boombustgroup.ledger.Distribute
 
@@ -29,7 +28,6 @@ private[banking] object BankAggregateReconciliation:
       jstDepositChange: PLN,
       investNetDepositFlow: PLN,
       quasiFiscalDepositChange: PLN,
-      mortgageFlows: HousingMarket.MortgageFlows,
       bailInLoss: PLN,
       multiCapDestruction: PLN,
       interbankContagionLoss: PLN,
@@ -62,7 +60,6 @@ private[banking] object BankAggregateReconciliation:
         jstDepositChange = jstDepositChange,
         investNetDepositFlow = investNetDepositFlow,
         quasiFiscalDepositChange = quasiFiscalDepositChange,
-        mortgageFlows = mortgageFlows,
         bailInLoss = bailInLoss,
         multiCapDestruction = multiCapDestruction,
         interbankContagionLoss = interbankContagionLoss,
@@ -272,7 +269,6 @@ private[banking] object BankAggregateReconciliation:
       jstDepositChange: PLN,
       investNetDepositFlow: PLN,
       quasiFiscalDepositChange: PLN,
-      mortgageFlows: HousingMarket.MortgageFlows,
       bailInLoss: PLN,
       multiCapDestruction: PLN,
       interbankContagionLoss: PLN,
@@ -280,8 +276,7 @@ private[banking] object BankAggregateReconciliation:
       htmRealizedLoss: PLN,
       bankCapitalTerms: BankCapitalTerms,
   )(using p: SimParams): AggregateReconciliation =
-    val capitalLosses  = in.firm.nplLoss + mortgageFlows.defaultLoss + in.householdFinancial.consumerNplLoss +
-      in.openEconomy.corpBonds.corpBondBankDefaultLoss +
+    val capitalLosses  = bankCapitalTerms.realizedCreditLoss +
       Banking.computeBfgLevy(in.banks, in.ledgerFinancialState.banks.map(LedgerFinancialState.projectBankFinancialStocks)).total +
       polishBankLevyTax + interbankContagionLoss + bankCapitalTerms.unrealizedBondLoss + htmRealizedLoss +
       bankCapitalTerms.eclProvisionChange + multiCapDestruction

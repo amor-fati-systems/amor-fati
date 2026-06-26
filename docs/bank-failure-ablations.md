@@ -39,7 +39,6 @@ full model simulation.
   and corporate-bond recoveries to 100%, while leaving ECL provisioning active.
 - `no-resolution-feedback`: neutralizes bail-in haircuts, failure-panic
   switching, CAR-driven deposit flight, and interbank contagion losses.
-- `initial-capital-150pct`: raises opening regulatory capital by 50%.
 
 These scenarios are diagnostics, not candidate policy settings. A scenario that
 materially delays or prevents failures identifies a channel that needs deeper

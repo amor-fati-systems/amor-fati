@@ -395,6 +395,10 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     "BankCapital_MortgageNplLoss",
     "BankCapital_ConsumerNplLoss",
     "BankCapital_CorpBondDefaultLoss",
+    "BankCapital_FirmNplAllowanceDraw",
+    "BankCapital_MortgageNplAllowanceDraw",
+    "BankCapital_ConsumerNplAllowanceDraw",
+    "BankCapital_CreditLossAllowanceDraw",
     "BankCapital_InterbankContagionLoss",
     "BankCapital_BfgLevy",
     "BankCapital_PolishBankLevyTax",
@@ -587,7 +591,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     MetricValue.fromRaw(numerator.ratioTo(denominator).toLong)
 
   "McTimeseriesSchema" should "expose the stable schema contract" in {
-    McTimeseriesSchema.nCols shouldBe 521
+    McTimeseriesSchema.nCols shouldBe 525
     McTimeseriesSchema.colNames.toVector shouldBe expectedColNames
   }
 
@@ -933,6 +937,9 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
       mortgageNplLoss = PLN(2),
       consumerNplLoss = PLN(5),
       corpBondDefaultLoss = PLN(3),
+      firmNplAllowanceDraw = PLN(6),
+      mortgageNplAllowanceDraw = PLN(7),
+      consumerNplAllowanceDraw = PLN(8),
       interbankContagionLoss = PLN(4),
     )
     val world               = init.world.copy(
@@ -1085,16 +1092,17 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     valueAt(row, "NbfiLoansToGdp") shouldBe MetricValue.fromRaw((nbfiLoans / annualGdp).toLong)
     valueAt(row, "TotalCreditToGdp") shouldBe MetricValue.fromRaw((totalCredit / annualGdp).toLong)
 
-    val firmGrossDefault     =
-      val lossRate = Share.One - summon[SimParams].banking.loanRecovery
-      if lossRate > Share.Zero then bankCapital.firmNplLoss / lossRate else PLN.Zero
     val corpBondGrossDefault =
       val lossRate = Share.One - summon[SimParams].corpBond.recovery
       if lossRate > Share.Zero then bankCapital.corpBondDefaultLoss / lossRate else PLN.Zero
 
     valueAt(row, "BankCreditLoss_RealizedToOpeningCapital") shouldBe MetricValue.fromRaw((bankCapital.realizedCreditLoss / bankCapital.openingCapital).toLong)
     valueAt(row, "BankCapital_InterbankContagionLoss") shouldBe polandScale(PLN(4))
-    valueAt(row, "BankCreditLoss_FirmDefaultRate") shouldBe MetricValue.fromRaw((firmGrossDefault / bankFirmLoans).toLong)
+    valueAt(row, "BankCapital_FirmNplAllowanceDraw") shouldBe polandScale(PLN(6))
+    valueAt(row, "BankCapital_MortgageNplAllowanceDraw") shouldBe polandScale(PLN(7))
+    valueAt(row, "BankCapital_ConsumerNplAllowanceDraw") shouldBe polandScale(PLN(8))
+    valueAt(row, "BankCapital_CreditLossAllowanceDraw") shouldBe polandScale(PLN(21))
+    valueAt(row, "BankCreditLoss_FirmDefaultRate") shouldBe MetricValue.fromRaw((firmDefault / bankFirmLoans).toLong)
     valueAt(row, "BankCreditLoss_FirmLossRate") shouldBe MetricValue.fromRaw((bankCapital.firmNplLoss / bankFirmLoans).toLong)
     valueAt(row, "BankCreditLoss_MortgageDefaultRate") shouldBe MetricValue.fromRaw((mortgageDefault / mortgageStock).toLong)
     valueAt(row, "BankCreditLoss_MortgageLossRate") shouldBe MetricValue.fromRaw((bankCapital.mortgageNplLoss / mortgageStock).toLong)
