@@ -7,21 +7,24 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 /** Multi-month flow verification: FlowSimulation.step() drives state
-  * autonomously across a long horizon.
+  * autonomously across the calibrated five-year baseline horizon.
   */
 @Heavy
 class MultiMonthFlowSpec extends AnyFlatSpec with Matchers:
   import RuntimeFlowsTestSupport.*
 
   private given p: SimParams = SimParams.defaults
+  private val HorizonMonths  = 60
 
-  "Multi-month flow verification (120 months)" should "preserve SFC and basic dynamics every month" in {
+  "Multi-month flow verification (60 months)" should "preserve SFC and basic dynamics every month" in {
     var state   = stateFromSeed()
     var gdps    = Vector.empty[PLN]
     var volumes = Vector.empty[PLN]
 
-    (1 to 120).foreach { month =>
-      val result = stepWithSeed(state, 42L * 1000 + month)
+    (1 to HorizonMonths).foreach { month =>
+      val result = withClue(s"FlowSimulation.step failed at month $month: ") {
+        stepWithSeed(state, 42L * 1000 + month)
+      }
 
       withClue(s"SFC violated at month $month: ") {
         result.execution.netDelta shouldBe 0L
