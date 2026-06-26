@@ -56,9 +56,14 @@ object WorldInit:
       initBankingSector.banks
         .zip(initBankingSector.financialStocks)
         .map: (bank, stocks) =>
+          val bankIndex = bank.id.toInt
+          require(
+            bankIndex >= 0 && bankIndex < initBankCorpBonds.length,
+            s"WorldInit bank corp-bond allocation missing BankId ${bank.id}; index=$bankIndex holdings=${initBankCorpBonds.length}",
+          )
           LedgerFinancialState.bankBalances(
             stocks,
-            corpBond = initBankCorpBonds.lift(bank.id.toInt).getOrElse(PLN.Zero),
+            corpBond = initBankCorpBonds(bankIndex),
             mortgageLoan = stocks.mortgageLoan,
           )
 
