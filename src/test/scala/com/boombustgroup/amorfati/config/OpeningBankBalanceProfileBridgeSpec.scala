@@ -92,14 +92,15 @@ class OpeningBankBalanceProfileBridgeSpec extends AnyFlatSpec with Matchers with
     santander.sourceProvider should include("Erste")
     santander.depositsMPln.value shouldBe BigDecimal("228000")
     santander.firmLoansMPln.value shouldBe BigDecimal("91839")
-    santander.consumerLoansMPln shouldBe None
-    santander.mortgageLoansMPln shouldBe None
+    santander.consumerLoansMPln.value shouldBe BigDecimal("23577.174")
+    santander.mortgageLoansMPln.value shouldBe BigDecimal("56553.797")
+    santander.govBondsMPln.value shouldBe BigDecimal("75499.412")
     santander.rwaMPln.value shouldBe BigDecimal("139500")
     santander.totalCapitalRatio.value shouldBe BigDecimal("0.1872")
 
     val bps = namedRows.find(_.runtimeBankName == "BPS/Coop").value
     bps.depositsMPln.value shouldBe BigDecimal("120042.373")
-    bps.firmLoansMPln shouldBe None
+    bps.firmLoansMPln.value shouldBe BigDecimal("24803.3016")
     bps.consumerLoansMPln shouldBe None
     bps.mortgageLoansMPln shouldBe None
     bps.ownFundsMPln.value shouldBe BigDecimal("11985.070")
@@ -118,6 +119,7 @@ class OpeningBankBalanceProfileBridgeSpec extends AnyFlatSpec with Matchers with
     millennium.firmLoansMPln.value shouldBe BigDecimal("23310")
     millennium.consumerLoansMPln.value shouldBe BigDecimal("19174")
     millennium.mortgageLoansMPln.value shouldBe BigDecimal("35766")
+    millennium.govBondsMPln.value shouldBe BigDecimal("34102.847")
     millennium.rwaMPln.value shouldBe BigDecimal("58386")
     millennium.totalCapitalRatio.value shouldBe BigDecimal("0.1757")
 
@@ -126,7 +128,8 @@ class OpeningBankBalanceProfileBridgeSpec extends AnyFlatSpec with Matchers with
     alior.firmLoansMPln.value shouldBe BigDecimal("24798")
     alior.consumerLoansMPln.value shouldBe BigDecimal("20754.416")
     alior.mortgageLoansMPln.value shouldBe BigDecimal("24094.288")
-    alior.rwaMPln.value shouldBe BigDecimal("61388.65546218487394957983193")
+    alior.govBondsMPln.value shouldBe BigDecimal("25645.757")
+    alior.rwaMPln.value shouldBe BigDecimal("61388.7")
     alior.totalCapitalRatio.value shouldBe BigDecimal("0.1785")
 
     namedRows.foreach: row =>

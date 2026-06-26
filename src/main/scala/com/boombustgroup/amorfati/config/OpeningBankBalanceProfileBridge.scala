@@ -306,30 +306,35 @@ object OpeningBankBalanceProfileBridge:
         "Source-backed partial named-bank evidence row. It remains evidence-only until government-bond and remaining named-bank target coverage are complete.",
     ),
     "4" -> NamedBankEvidence(
-      sourceProvider = "Erste Bank Polska Q1 2026 presentation",
-      sourceUrl = "https://www.erste.pl/regulation_file_server/time20260527134210/download?id=169387&lang=pl_PL",
-      datasetCode = "Erste Bank Polska Group Q1 2026 presentation: key volumes, gross-loan structure, Basel 3 capital and RWA",
+      sourceProvider = "Erste Bank Polska Q1 2026 report and presentation",
+      sourceUrl =
+        "https://www.erste.pl/regulation_file_server/time20260430065429/download?id=169388&lang=pl_PL ; https://www.erste.pl/regulation_file_server/time20260527134210/download?id=169387&lang=pl_PL",
+      datasetCode = "Erste Bank Polska Group Q1 2026 report and presentation: loan structure, key volumes, government securities, Basel 3 capital and RWA",
       vintage = "2026-03-31 Q1 disclosure",
       depositsMPln = Some(BigDecimal("228000")),
       firmLoansMPln = Some(BigDecimal("91839")),
+      consumerLoansMPln = Some(BigDecimal("23577.174")),
+      mortgageLoansMPln = Some(BigDecimal("56553.797")),
+      govBondsMPln = Some(BigDecimal("75499.412")),
       rwaMPln = Some(BigDecimal("139500")),
       ownFundsMPln = Some(BigDecimal("26100")),
       tier1Ratio = Some(BigDecimal("0.1842")),
       totalCapitalRatio = Some(BigDecimal("0.1872")),
       transformation =
-        "Runtime bank name remains Santander, while the current public issuer disclosure is Erste Bank Polska. Deposits use the key-volumes slide. Firm loans use gross loans to business and public-sector clients. RWA and own funds use the Basel 3 capital/RWA slide. Retail mortgage and non-mortgage split remains blank because the extracted presentation text does not safely map chart colors to product labels.",
+        "Runtime bank name remains Santander, while the current public issuer disclosure is Erste Bank Polska. Deposits, RWA and own funds use the presentation. Firm loans use gross business/public-sector loans plus finance leases and other customer receivables. Consumer loans are retail customer receivables less residential-property loans. Government bonds sum State Treasury securities across trading, FVOCI and amortised-cost books.",
       notes =
-        "Source-backed partial named-bank evidence row for the runtime Santander slot after the Erste rebrand. Do not infer missing retail product targets or government bonds from relationship_weight_prior.",
+        "Source-backed partial named-bank evidence row for the runtime Santander slot after the Erste rebrand. CET1 remains blank because the Q1 report and presentation expose Tier 1 but not a separate CET1 ratio.",
     ),
     "5" -> NamedBankEvidence(
       sourceProvider = "Bank BPS 2024 annual report",
       sourceUrl = "https://www.bankbps.pl/images/Dokumenty/bankowosc_elektroniczna/raport-roczny-2024.pdf",
-      datasetCode = "Bank BPS annual report 2024: associated cooperative banks financial situation table",
+      datasetCode = "Bank BPS annual report 2024: associated cooperative banks financial situation and loan-portfolio structure",
       vintage = "2024-12-31 annual disclosure",
       depositsMPln = Some(BigDecimal("120042.373")),
+      firmLoansMPln = Some(BigDecimal("24803.3016")),
       ownFundsMPln = Some(BigDecimal("11985.070")),
       transformation =
-        "Runtime BPS/Coop is mapped to the annual-report table for cooperative banks associated with Bank BPS S.A. Deposits and own funds are converted from PLN thousand to PLN million. The report exposes associated-bank loan totals, but not a product split matching firm_loans_m_pln, consumer_loans_m_pln and mortgage_loans_m_pln, so those runtime stock columns remain blank.",
+        "Runtime BPS/Coop is mapped to cooperative banks associated with Bank BPS S.A. Deposits and own funds are converted from PLN thousand to PLN million. Firm loans use the gross loan portfolio of associated cooperative banks multiplied by companies, individual-entrepreneur and individual-farmer shares. Consumer and mortgage loans remain blank because the private-individual split is not a product split.",
       notes =
         "Source-backed partial row for the cooperative-bank runtime slot. This is not a 2026 Q1 bank-level balance sheet and should not be promoted to runtime-ready without a product-level cooperative-sector source bridge.",
     ),
@@ -360,15 +365,16 @@ object OpeningBankBalanceProfileBridge:
       firmLoansMPln = Some(BigDecimal("23310")),
       consumerLoansMPln = Some(BigDecimal("19174")),
       mortgageLoansMPln = Some(BigDecimal("35766")),
+      govBondsMPln = Some(BigDecimal("34102.847")),
       rwaMPln = Some(BigDecimal("58386")),
       ownFundsMPln = Some(BigDecimal("10258")),
       cet1Ratio = Some(BigDecimal("0.1379")),
       tier1Ratio = Some(BigDecimal("0.1636")),
       totalCapitalRatio = Some(BigDecimal("0.1757")),
       transformation =
-        "Customer deposits use the Q1 2026 liabilities table. Firm loans use loans to enterprises and the public sector. Mortgage loans sum PLN and FX mortgage loans. Consumer loans use the consumer-loan line. RWA, own funds and capital ratios use the group capital-adequacy table. Government-bond holdings remain blank because issuer-level securities are not exposed in this bridge.",
+        "Customer deposits use the Q1 2026 liabilities table. Firm loans use loans to enterprises and the public sector. Mortgage loans sum PLN and FX mortgage loans. Consumer loans use the consumer-loan line. Government bonds sum State Treasury securities across trading and FVOCI books. RWA, own funds and capital ratios use the group capital-adequacy table.",
       notes =
-        "Source-backed partial named-bank evidence row. Millennium's mortgage stock is net of the disclosed legal-risk allocation embedded in the reported loan portfolio.",
+        "Source-backed partial named-bank evidence row. Millennium's government-securities line includes securities issued by other EU governments, so the issuer perimeter is explicit but not purely domestic. Mortgage stock is net of the disclosed legal-risk allocation embedded in the reported loan portfolio.",
     ),
     "8" -> NamedBankEvidence(
       sourceProvider = "Alior Bank Q1 2026 report and presentation",
@@ -380,13 +386,14 @@ object OpeningBankBalanceProfileBridge:
       firmLoansMPln = Some(BigDecimal("24798")),
       consumerLoansMPln = Some(BigDecimal("20754.416")),
       mortgageLoansMPln = Some(BigDecimal("24094.288")),
-      rwaMPln = Some(BigDecimal("61388.65546218487394957983193")),
+      govBondsMPln = Some(BigDecimal("25645.757")),
+      rwaMPln = Some(BigDecimal("61388.7")),
       ownFundsMPln = Some(BigDecimal("10957.875")),
       cet1Ratio = Some(BigDecimal("0.1785")),
       tier1Ratio = Some(BigDecimal("0.1785")),
       totalCapitalRatio = Some(BigDecimal("0.1785")),
       transformation =
-        "Customer liabilities and retail loan products use the Q1 2026 report. Firm loans use the presentation's business-segment loan stock excluding reverse repo/BSB. RWA is derived from own funds divided by TCR because the source exposes own funds and capital ratios directly. Government-bond holdings remain blank because issuer-level securities are not exposed in this bridge.",
+        "Customer liabilities and retail loan products use the Q1 2026 report. Firm loans use the presentation's business-segment loan stock excluding reverse repo/BSB. Government bonds sum treasury bonds and treasury bills across FVOCI, FVTPL and amortised-cost books. RWA is derived from own funds divided by TCR, rounded to 0.1 mPLN because the source exposes own funds and capital ratios directly.",
       notes =
         "Source-backed partial named-bank evidence row. The business loan bridge excludes reverse repo/BSB so the stock better matches ordinary firm-credit exposure.",
     ),
