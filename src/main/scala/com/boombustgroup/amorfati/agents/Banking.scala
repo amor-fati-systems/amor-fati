@@ -225,7 +225,7 @@ object Banking:
       banks: Vector[BankState],
       financialStocks: Vector[BankFinancialStocks],
       absorberId: BankId,
-      bankCorpBondHoldings: Vector[PLN] = Vector.empty,
+      bankCorpBondHoldings: Vector[PLN],
       allFailedFallbackUsed: Boolean = false,
       resolvedBankCount: Int = 0,
   )
@@ -613,7 +613,7 @@ object Banking:
   def resolveFailures(
       banks: Vector[BankState],
       financialStocks: Vector[BankFinancialStocks],
-      bankCorpBondHoldings: Vector[PLN] = Vector.empty,
+      bankCorpBondHoldings: Vector[PLN],
   )(using p: SimParams): ResolutionResult =
     BankFailureResolution.resolveFailures(banks, financialStocks, bankCorpBondHoldings)
 

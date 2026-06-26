@@ -220,13 +220,12 @@ private[banking] object BankMultiBankStage:
       finalBankLedgerBalances = finalFailureBanks
         .zip(finalFailureStocks)
         .map { case (bank, stocks) =>
-          val bankIndex    = bank.id.toInt
           val mortgageLoan =
             if bank.failed then PLN.Zero
             else stocks.mortgageLoan
           LedgerFinancialState.bankBalances(
             stocks,
-            finalCorpBondHoldings.lift(bankIndex).getOrElse(PLN.Zero),
+            finalCorpBondLookup(bank.id),
             mortgageLoan = mortgageLoan,
           )
         },

@@ -88,7 +88,7 @@ class WorldInitSpec extends AnyFlatSpec with Matchers:
     init.world.real.housing.mortgageStock shouldBe p.housing.initMortgage
   }
 
-  it should "compute opening bank capital from opening RWA and preserve the sector capital target" in {
+  it should "load opening bank capital from profile own funds and preserve the sector capital target" in {
     val init                = WorldInit.initialize(InitRandomness.Contract.fromSeed(42L))
     val aggregateCapital    = init.banks.map(_.capital).sumPln
     val bankRows            = init.banks.zip(init.ledgerFinancialState.banks)

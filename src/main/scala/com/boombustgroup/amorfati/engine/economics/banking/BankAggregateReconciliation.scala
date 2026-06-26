@@ -37,6 +37,10 @@ private[banking] object BankAggregateReconciliation:
       htmRealizedLoss: PLN,
       bankCapitalTerms: BankCapitalTerms,
   )(using p: SimParams): AggregateReconciliationResult =
+    require(
+      bankCorpBondHoldings.length == banks.length,
+      s"BankAggregateReconciliation requires ${banks.length} bank corporate-bond rows, got ${bankCorpBondHoldings.length}",
+    )
     if banks.isEmpty then
       AggregateReconciliationResult(
         banks,
@@ -85,7 +89,7 @@ private[banking] object BankAggregateReconciliation:
           BankReconciliationDiagnostics.zero,
         )
       else
-        val targetCorpBonds = (bankId: BankId) => bankCorpBondHoldings.lift(bankId.toInt).getOrElse(PLN.Zero)
+        val targetCorpBonds = Banking.bankCorpBondHoldingsFromVector(bankCorpBondHoldings)
         val patched         = applyPatch(
           banks = banks,
           financialStocks = financialStocks,
@@ -199,7 +203,7 @@ private[banking] object BankAggregateReconciliation:
       val nextStocksVector = nextStocks.toVector
       val targetPosition   = mostImpactedPatchPosition(capitalAllocations, depositAllocations)
       val targetIndex      = patchIndices(targetPosition)
-      val corpBondLookup   = (bankId: BankId) => bankCorpBondHoldings.lift(bankId.toInt).getOrElse(PLN.Zero)
+      val corpBondLookup   = Banking.bankCorpBondHoldingsFromVector(bankCorpBondHoldings)
       val crossedFailure   =
         var crossed = false
         var j       = 0
