@@ -42,24 +42,104 @@ class OpeningBankBalanceProfileBridgeSpec extends AnyFlatSpec with Matchers with
     sectorTotal.bridgeStatus shouldBe "EMPIRICAL_SECTOR_TOTAL"
   }
 
-  it should "make named-bank extraction gaps and the residual calculation explicit" in {
+  it should "publish source-backed named-bank evidence while keeping remaining gaps explicit" in {
     val namedRows = Rows.filter(_.rowType == "named_bank")
     val residual  = Rows.find(_.rowType == "residual_bank").value
 
     namedRows should have size (Banking.DefaultConfigs.size - 1)
-    namedRows.map(_.bridgeStatus).distinct shouldBe Vector("PENDING_PUBLIC_REPORT_EXTRACTION")
+    namedRows.map(_.bridgeStatus).distinct shouldBe Vector("SOURCE_BACKED_PARTIAL_EVIDENCE")
+
+    val pko = namedRows.find(_.runtimeBankName == "PKO BP").value
+    pko.depositsMPln.value shouldBe BigDecimal("440454")
+    pko.firmLoansMPln.value shouldBe BigDecimal("89238")
+    pko.consumerLoansMPln.value shouldBe BigDecimal("41143")
+    pko.mortgageLoansMPln.value shouldBe BigDecimal("130142")
+    pko.rwaMPln.value shouldBe BigDecimal("280625")
+    pko.ownFundsMPln.value shouldBe BigDecimal("50361")
+    pko.totalCapitalRatio.value shouldBe BigDecimal("0.17946013363028954")
+    pko.notes should include("nearest official bank-level disclosure")
+
+    val pekao = namedRows.find(_.runtimeBankName == "Pekao").value
+    pekao.depositsMPln.value shouldBe BigDecimal("273849")
+    pekao.firmLoansMPln.value shouldBe BigDecimal("119583")
+    pekao.consumerLoansMPln.value shouldBe BigDecimal("6868")
+    pekao.mortgageLoansMPln.value shouldBe BigDecimal("82130")
+    pekao.govBondsMPln.value shouldBe BigDecimal("89919")
+    pekao.rwaMPln.value shouldBe BigDecimal("181200")
+    pekao.ownFundsMPln.value shouldBe BigDecimal("32014")
+    pekao.totalCapitalRatio.value shouldBe BigDecimal("0.177")
+    pekao.depositsMPln.value should not be (SectorTotals.depositsMPln * pekao.relationshipWeightPrior.value)
+
+    val mBank = namedRows.find(_.runtimeBankName == "mBank").value
+    mBank.depositsMPln.value shouldBe BigDecimal("237097")
+    mBank.firmLoansMPln.value shouldBe BigDecimal("64761")
+    mBank.consumerLoansMPln.value shouldBe BigDecimal("25600")
+    mBank.mortgageLoansMPln.value shouldBe BigDecimal("53455")
+    mBank.govBondsMPln shouldBe None
+    mBank.totalCapitalRatio.value shouldBe BigDecimal("0.1596")
+    mBank.notes should include("Do not infer the missing government-bond target")
+
+    val ing = namedRows.find(_.runtimeBankName == "ING BSK").value
+    ing.depositsMPln.value shouldBe BigDecimal("242489")
+    ing.firmLoansMPln.value shouldBe BigDecimal("102940")
+    ing.consumerLoansMPln.value shouldBe BigDecimal("11432")
+    ing.mortgageLoansMPln.value shouldBe BigDecimal("70823")
+    ing.govBondsMPln shouldBe None
+    ing.rwaMPln.value shouldBe BigDecimal("130337.5")
+    ing.totalCapitalRatio.value shouldBe BigDecimal("0.1581")
+
+    val santander = namedRows.find(_.runtimeBankName == "Santander").value
+    santander.sourceProvider should include("Erste")
+    santander.depositsMPln.value shouldBe BigDecimal("228000")
+    santander.firmLoansMPln.value shouldBe BigDecimal("91839")
+    santander.consumerLoansMPln.value shouldBe BigDecimal("23577.174")
+    santander.mortgageLoansMPln.value shouldBe BigDecimal("56553.797")
+    santander.govBondsMPln.value shouldBe BigDecimal("75499.412")
+    santander.rwaMPln.value shouldBe BigDecimal("139500")
+    santander.totalCapitalRatio.value shouldBe BigDecimal("0.1872")
+
+    val bps = namedRows.find(_.runtimeBankName == "BPS/Coop").value
+    bps.depositsMPln.value shouldBe BigDecimal("120042.373")
+    bps.firmLoansMPln.value shouldBe BigDecimal("24803.3016")
+    bps.consumerLoansMPln shouldBe None
+    bps.mortgageLoansMPln shouldBe None
+    bps.ownFundsMPln.value shouldBe BigDecimal("11985.070")
+    bps.notes should include("cooperative-bank runtime slot")
+
+    val bnp = namedRows.find(_.runtimeBankName == "BNP Paribas").value
+    bnp.depositsMPln.value shouldBe BigDecimal("137000")
+    bnp.firmLoansMPln.value shouldBe BigDecimal("60794")
+    bnp.consumerLoansMPln.value shouldBe BigDecimal("13288")
+    bnp.mortgageLoansMPln.value shouldBe BigDecimal("21188")
+    bnp.rwaMPln.value shouldBe BigDecimal("102900")
+    bnp.totalCapitalRatio.value shouldBe BigDecimal("0.1679")
+
+    val millennium = namedRows.find(_.runtimeBankName == "Millennium").value
+    millennium.depositsMPln.value shouldBe BigDecimal("134806")
+    millennium.firmLoansMPln.value shouldBe BigDecimal("23310")
+    millennium.consumerLoansMPln.value shouldBe BigDecimal("19174")
+    millennium.mortgageLoansMPln.value shouldBe BigDecimal("35766")
+    millennium.govBondsMPln.value shouldBe BigDecimal("34102.847")
+    millennium.rwaMPln.value shouldBe BigDecimal("58386")
+    millennium.totalCapitalRatio.value shouldBe BigDecimal("0.1757")
+
+    val alior = namedRows.find(_.runtimeBankName == "Alior").value
+    alior.depositsMPln.value shouldBe BigDecimal("85413.751")
+    alior.firmLoansMPln.value shouldBe BigDecimal("24798")
+    alior.consumerLoansMPln.value shouldBe BigDecimal("20754.416")
+    alior.mortgageLoansMPln.value shouldBe BigDecimal("24094.288")
+    alior.govBondsMPln.value shouldBe BigDecimal("25645.757")
+    alior.rwaMPln.value shouldBe BigDecimal("61388.7")
+    alior.totalCapitalRatio.value shouldBe BigDecimal("0.1785")
+
     namedRows.foreach: row =>
-      row.depositsMPln shouldBe None
-      row.rwaMPln shouldBe None
-      row.cet1Ratio shouldBe None
-      row.tier1Ratio shouldBe None
-      row.totalCapitalRatio shouldBe None
-      row.notes should include("bank capital ratios must come from the explicit ratio columns")
+      row.notes should not include "Do not derive bank-level stock targets from relationship_weight_prior"
 
     residual.runtimeBankName shouldBe "Other banks"
-    residual.bridgeStatus shouldBe "RESIDUAL_PENDING_NAMED_COVERAGE"
+    residual.bridgeStatus shouldBe "RESIDUAL_PARTIAL_SOURCE_COVERAGE"
     residual.transformation should include("sector total minus all named-bank values")
-    residual.depositsMPln shouldBe None
+    residual.depositsMPln.value shouldBe BigDecimal("643148.876")
+    residual.ownFundsMPln shouldBe None
   }
 
   it should "keep current relationship-weight priors normalized but separate from empirical stocks" in {
@@ -71,10 +151,21 @@ class OpeningBankBalanceProfileBridgeSpec extends AnyFlatSpec with Matchers with
       row.relationshipWeightPrior.value should be > BigDecimal(0)
   }
 
-  it should "leave runtime bank targets pending while profile stock columns are empty" in {
+  it should "leave runtime bank targets pending while source-backed evidence is incomplete" in {
     OpeningBankProfileTargets.fromBridgeRows(Rows) shouldBe OpeningBankProfileTargets.Resolution.Pending(
-      "Opening bank profile has no complete runtime stock targets yet",
+      "Opening bank profile has source-backed evidence but is not runtime-ready yet",
     )
+  }
+
+  it should "fail fast when complete named-bank residual coverage exceeds the sector total" in {
+    residualFromNamedValues("test stock", Vector(Some(BigDecimal("40")), None), BigDecimal("100")) shouldBe None
+    residualFromNamedValues("test stock", Vector(Some(BigDecimal("40")), Some(BigDecimal("50"))), BigDecimal("100")).value shouldBe BigDecimal("10")
+
+    val error = intercept[IllegalStateException]:
+      residualFromNamedValues("test stock", Vector(Some(BigDecimal("40")), Some(BigDecimal("70"))), BigDecimal("100"))
+
+    error.getMessage should include("Named-bank test stock coverage exceeds sector total")
+    error.getMessage should include("residual=-10")
   }
 
   it should "resolve complete runtime bank target rows without falling back to relationship weights" in {

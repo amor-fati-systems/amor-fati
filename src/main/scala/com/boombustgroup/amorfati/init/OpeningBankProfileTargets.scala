@@ -53,69 +53,86 @@ object OpeningBankProfileTargets:
     "gov_bonds_m_pln"      -> (_.govBondsMPln),
   )
 
+  private val RuntimeReadyBridgeStatuses: Set[String] = Set(
+    "EMPIRICAL_RUNTIME_TARGET",
+    "RESIDUAL_RUNTIME_TARGET",
+    "TEST_COMPLETE_RUNTIME_PROFILE",
+  )
+
   private val AggregateToleranceFloor: PLN   = PLN(1000000)
   private val AggregateToleranceShare: Share = Share.decimal(1, 6)
 
   def fromBridgeRows(rows: Vector[OpeningBankBalanceProfileBridge.Row])(using p: SimParams): Resolution =
-    val orderedRows      = runtimeRows(rows)
-    val missingMandatory =
-      orderedRows.flatMap: row =>
-        MandatoryColumns.collect:
-          case (column, value) if value(row).isEmpty => s"${row.runtimeBankName}.$column"
-
+    val orderedRows       = runtimeRows(rows)
     val anyMandatoryValue =
       orderedRows.exists(row => MandatoryColumns.exists((_, value) => value(row).nonEmpty))
+    val runtimeReadyRows  =
+      orderedRows.filter(row => RuntimeReadyBridgeStatuses.contains(row.bridgeStatus))
 
-    if missingMandatory.nonEmpty then
-      if anyMandatoryValue then
+    if runtimeReadyRows.isEmpty then
+      if anyMandatoryValue then Resolution.Pending("Opening bank profile has source-backed evidence but is not runtime-ready yet")
+      else Resolution.Pending("Opening bank profile has no complete runtime stock targets yet")
+    else if runtimeReadyRows.length != orderedRows.length then
+      val nonReady = orderedRows.filterNot(row => RuntimeReadyBridgeStatuses.contains(row.bridgeStatus)).map(_.runtimeBankName)
+      throw new IllegalStateException(
+        s"Opening bank profile mixes runtime-ready and non-runtime-ready rows; non-runtime-ready rows: ${nonReady.mkString(", ")}",
+      )
+    else
+      val missingMandatory =
+        orderedRows.flatMap: row =>
+          MandatoryColumns.collect:
+            case (column, value) if value(row).isEmpty => s"${row.runtimeBankName}.$column"
+
+      if missingMandatory.nonEmpty then
         throw new IllegalStateException(
           s"Opening bank profile has partial runtime stock targets; missing ${missingMandatory.mkString(", ")}",
         )
-      else Resolution.Pending("Opening bank profile has no complete runtime stock targets yet")
-    else
-      val bankIds       = orderedRows.map(row => BankId(row.bankId.toInt))
-      val residualIndex = residualBankIndex(orderedRows)
-      val deposits      = closeResidual("opening bank deposits", orderedRows.map(row => mPlnToRuntime(row.depositsMPln.get)), p.banking.initDeposits, residualIndex)
-      val firmLoans     = closeResidual("opening bank firm loans", orderedRows.map(row => mPlnToRuntime(row.firmLoansMPln.get)), p.banking.initLoans, residualIndex)
-      val consumerLoans =
-        closeResidual(
-          "opening bank consumer loans",
-          orderedRows.map(row => mPlnToRuntime(row.consumerLoansMPln.get)),
-          p.banking.initConsumerLoans,
-          residualIndex,
-        )
-      val mortgageLoans =
-        closeResidual("opening bank mortgage loans", orderedRows.map(row => mPlnToRuntime(row.mortgageLoansMPln.get)), p.housing.initMortgage, residualIndex)
-      val govBonds      =
-        closeResidual("opening bank government bonds", orderedRows.map(row => mPlnToRuntime(row.govBondsMPln.get)), p.banking.initGovBonds, residualIndex)
-      val reserves      = optionalPlnVector("reserves_m_pln", orderedRows, _.reservesMPln)
-        .map(values => closeResidual("opening bank reserves", values, p.banking.initDeposits * p.banking.reserveReq, residualIndex))
-      val corpBonds     = optionalPlnVector("corp_bonds_m_pln", orderedRows, _.corpBondsMPln)
-        .map(values => closeResidual("opening bank corporate bonds", values, p.corpBond.initStock * p.corpBond.bankShare, residualIndex))
-      val ownFunds      = optionalPlnVector("own_funds_m_pln", orderedRows, _.ownFundsMPln)
-        .map(values => closeResidual("opening bank own funds", values, p.banking.initCapital, residualIndex))
-      val capitalRatios = optionalMultiplierVector("total_capital_ratio", orderedRows, _.totalCapitalRatio)
+      else completeTargets(orderedRows)
 
-      val capitalProfiles = bankIds.indices.map: i =>
-        Banking.OpeningCapitalProfile(
-          bankId = bankIds(i),
-          ownFunds = ownFunds.map(_(i)),
-          totalCapitalRatio = capitalRatios.map(_(i)),
-        )
-
-      Resolution.Complete(
-        Targets(
-          bankIds = bankIds,
-          deposits = deposits,
-          firmLoans = firmLoans,
-          consumerLoans = consumerLoans,
-          mortgageLoans = mortgageLoans,
-          govBonds = govBonds,
-          reserves = reserves,
-          corpBonds = corpBonds,
-          openingCapitalProfiles = capitalProfiles.toVector,
-        ),
+  private def completeTargets(orderedRows: Vector[OpeningBankBalanceProfileBridge.Row])(using p: SimParams): Resolution =
+    val bankIds       = orderedRows.map(row => BankId(row.bankId.toInt))
+    val residualIndex = residualBankIndex(orderedRows)
+    val deposits      = closeResidual("opening bank deposits", orderedRows.map(row => mPlnToRuntime(row.depositsMPln.get)), p.banking.initDeposits, residualIndex)
+    val firmLoans     = closeResidual("opening bank firm loans", orderedRows.map(row => mPlnToRuntime(row.firmLoansMPln.get)), p.banking.initLoans, residualIndex)
+    val consumerLoans =
+      closeResidual(
+        "opening bank consumer loans",
+        orderedRows.map(row => mPlnToRuntime(row.consumerLoansMPln.get)),
+        p.banking.initConsumerLoans,
+        residualIndex,
       )
+    val mortgageLoans =
+      closeResidual("opening bank mortgage loans", orderedRows.map(row => mPlnToRuntime(row.mortgageLoansMPln.get)), p.housing.initMortgage, residualIndex)
+    val govBonds      =
+      closeResidual("opening bank government bonds", orderedRows.map(row => mPlnToRuntime(row.govBondsMPln.get)), p.banking.initGovBonds, residualIndex)
+    val reserves      = optionalPlnVector("reserves_m_pln", orderedRows, _.reservesMPln)
+      .map(values => closeResidual("opening bank reserves", values, p.banking.initDeposits * p.banking.reserveReq, residualIndex))
+    val corpBonds     = optionalPlnVector("corp_bonds_m_pln", orderedRows, _.corpBondsMPln)
+      .map(values => closeResidual("opening bank corporate bonds", values, p.corpBond.initStock * p.corpBond.bankShare, residualIndex))
+    val ownFunds      = optionalPlnVector("own_funds_m_pln", orderedRows, _.ownFundsMPln)
+      .map(values => closeResidual("opening bank own funds", values, p.banking.initCapital, residualIndex))
+    val capitalRatios = optionalMultiplierVector("total_capital_ratio", orderedRows, _.totalCapitalRatio)
+
+    val capitalProfiles = bankIds.indices.map: i =>
+      Banking.OpeningCapitalProfile(
+        bankId = bankIds(i),
+        ownFunds = ownFunds.map(_(i)),
+        totalCapitalRatio = capitalRatios.map(_(i)),
+      )
+
+    Resolution.Complete(
+      Targets(
+        bankIds = bankIds,
+        deposits = deposits,
+        firmLoans = firmLoans,
+        consumerLoans = consumerLoans,
+        mortgageLoans = mortgageLoans,
+        govBonds = govBonds,
+        reserves = reserves,
+        corpBonds = corpBonds,
+        openingCapitalProfiles = capitalProfiles.toVector,
+      ),
+    )
 
   private def runtimeRows(rows: Vector[OpeningBankBalanceProfileBridge.Row]): Vector[OpeningBankBalanceProfileBridge.Row] =
     val runtime = rows.filterNot(_.rowType == "sector_total")
