@@ -42,19 +42,53 @@ class OpeningBankBalanceProfileBridgeSpec extends AnyFlatSpec with Matchers with
     sectorTotal.bridgeStatus shouldBe "EMPIRICAL_SECTOR_TOTAL"
   }
 
-  it should "make named-bank extraction gaps and the residual calculation explicit" in {
+  it should "publish source-backed named-bank evidence while keeping remaining gaps explicit" in {
     val namedRows = Rows.filter(_.rowType == "named_bank")
     val residual  = Rows.find(_.rowType == "residual_bank").value
 
     namedRows should have size (Banking.DefaultConfigs.size - 1)
-    namedRows.map(_.bridgeStatus).distinct shouldBe Vector("PENDING_PUBLIC_REPORT_EXTRACTION")
-    namedRows.foreach: row =>
+
+    val pekao = namedRows.find(_.runtimeBankName == "Pekao").value
+    pekao.bridgeStatus shouldBe "SOURCE_BACKED_PARTIAL_EVIDENCE"
+    pekao.depositsMPln.value shouldBe BigDecimal("273849")
+    pekao.firmLoansMPln.value shouldBe BigDecimal("119583")
+    pekao.consumerLoansMPln.value shouldBe BigDecimal("6868")
+    pekao.mortgageLoansMPln.value shouldBe BigDecimal("82130")
+    pekao.govBondsMPln.value shouldBe BigDecimal("89919")
+    pekao.rwaMPln.value shouldBe BigDecimal("181200")
+    pekao.ownFundsMPln.value shouldBe BigDecimal("32014")
+    pekao.totalCapitalRatio.value shouldBe BigDecimal("0.177")
+    pekao.depositsMPln.value should not be (SectorTotals.depositsMPln * pekao.relationshipWeightPrior.value)
+
+    val mBank = namedRows.find(_.runtimeBankName == "mBank").value
+    mBank.bridgeStatus shouldBe "SOURCE_BACKED_PARTIAL_EVIDENCE"
+    mBank.depositsMPln.value shouldBe BigDecimal("237097")
+    mBank.firmLoansMPln.value shouldBe BigDecimal("64761")
+    mBank.consumerLoansMPln.value shouldBe BigDecimal("25600")
+    mBank.mortgageLoansMPln.value shouldBe BigDecimal("53455")
+    mBank.govBondsMPln shouldBe None
+    mBank.totalCapitalRatio.value shouldBe BigDecimal("0.1596")
+    mBank.notes should include("Do not infer the missing government-bond target")
+
+    val ing = namedRows.find(_.runtimeBankName == "ING BSK").value
+    ing.bridgeStatus shouldBe "SOURCE_BACKED_PARTIAL_EVIDENCE"
+    ing.depositsMPln.value shouldBe BigDecimal("242489")
+    ing.firmLoansMPln.value shouldBe BigDecimal("102940")
+    ing.consumerLoansMPln.value shouldBe BigDecimal("11432")
+    ing.mortgageLoansMPln.value shouldBe BigDecimal("70823")
+    ing.govBondsMPln shouldBe None
+    ing.rwaMPln.value shouldBe BigDecimal("130337.5")
+    ing.totalCapitalRatio.value shouldBe BigDecimal("0.1581")
+
+    val pendingRows = namedRows.filterNot(row => Set("Pekao", "mBank", "ING BSK").contains(row.runtimeBankName))
+    pendingRows.map(_.bridgeStatus).distinct shouldBe Vector("PENDING_PUBLIC_REPORT_EXTRACTION")
+    pendingRows.foreach: row =>
       row.depositsMPln shouldBe None
       row.rwaMPln shouldBe None
       row.cet1Ratio shouldBe None
       row.tier1Ratio shouldBe None
       row.totalCapitalRatio shouldBe None
-      row.notes should include("bank capital ratios must come from the explicit ratio columns")
+      row.notes should include("Do not derive bank-level stock targets from relationship_weight_prior")
 
     residual.runtimeBankName shouldBe "Other banks"
     residual.bridgeStatus shouldBe "RESIDUAL_PENDING_NAMED_COVERAGE"
@@ -71,9 +105,9 @@ class OpeningBankBalanceProfileBridgeSpec extends AnyFlatSpec with Matchers with
       row.relationshipWeightPrior.value should be > BigDecimal(0)
   }
 
-  it should "leave runtime bank targets pending while profile stock columns are empty" in {
+  it should "leave runtime bank targets pending while source-backed evidence is incomplete" in {
     OpeningBankProfileTargets.fromBridgeRows(Rows) shouldBe OpeningBankProfileTargets.Resolution.Pending(
-      "Opening bank profile has no complete runtime stock targets yet",
+      "Opening bank profile has source-backed evidence but is not runtime-ready yet",
     )
   }
 

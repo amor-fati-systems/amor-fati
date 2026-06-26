@@ -2,6 +2,8 @@ package com.boombustgroup.amorfati.config
 
 import com.boombustgroup.amorfati.montecarlo.DelimitedTextFormat
 
+import scala.math.BigDecimal.RoundingMode
+
 object OpeningBankBalanceProfileBridge:
 
   final case class Row(
@@ -119,7 +121,7 @@ object OpeningBankBalanceProfileBridge:
     "https://nbp.pl/en/statistic-and-financial-reporting/monetary-and-financial-statistics/consolidated-balance-sheet-of-mfis/"
   private val SectorSourceUrl = s"$KnfUrl ; $NbpMfiUrl"
 
-  private val AccessedAt = "2026-06-25"
+  private val AccessedAt = "2026-06-26"
   private val Unit       = "PLN million for stocks; decimal ratios and shares"
 
   object SectorTotals:
@@ -138,6 +140,27 @@ object OpeningBankBalanceProfileBridge:
       runtimeBankName: String,
       sourceUrl: String,
       relationshipWeightPrior: BigDecimal,
+  )
+
+  private final case class NamedBankEvidence(
+      sourceProvider: String,
+      sourceUrl: String,
+      datasetCode: String,
+      vintage: String,
+      depositsMPln: Option[BigDecimal] = None,
+      firmLoansMPln: Option[BigDecimal] = None,
+      consumerLoansMPln: Option[BigDecimal] = None,
+      mortgageLoansMPln: Option[BigDecimal] = None,
+      govBondsMPln: Option[BigDecimal] = None,
+      reservesMPln: Option[BigDecimal] = None,
+      corpBondsMPln: Option[BigDecimal] = None,
+      rwaMPln: Option[BigDecimal] = None,
+      ownFundsMPln: Option[BigDecimal] = None,
+      cet1Ratio: Option[BigDecimal] = None,
+      tier1Ratio: Option[BigDecimal] = None,
+      totalCapitalRatio: Option[BigDecimal] = None,
+      transformation: String,
+      notes: String,
   )
 
   val RuntimeBankPriors: Vector[RuntimeBankPrior] = Vector(
@@ -203,6 +226,68 @@ object OpeningBankBalanceProfileBridge:
     ),
   )
 
+  private val NamedBankEvidenceById: Map[String, NamedBankEvidence] = Map(
+    "1" -> NamedBankEvidence(
+      sourceProvider = "Bank Pekao Q1 2026 interim report",
+      sourceUrl =
+        "https://www.pekao.com.pl/dam/jcr%3Ae3b63a74-5baf-4e18-a9df-0c78f64a31dd/Raport_Grupy_Kapita%C5%82owej_Banku_Pekao_SA_za_I_kwarta%C5%82_2026_roku.pdf",
+      datasetCode = "Bank Pekao Group Q1 2026 report: customer liabilities, loan structure, securities note, capital adequacy",
+      vintage = "2026-03-31 Q1 disclosure",
+      depositsMPln = Some(BigDecimal("273849")),
+      firmLoansMPln = Some(BigDecimal("119583")),
+      consumerLoansMPln = Some(BigDecimal("6868")),
+      mortgageLoansMPln = Some(BigDecimal("82130")),
+      govBondsMPln = Some(BigDecimal("89919")),
+      rwaMPln = Some(BigDecimal("181200")),
+      ownFundsMPln = Some(BigDecimal("32014")),
+      cet1Ratio = Some(BigDecimal("0.152")),
+      tier1Ratio = Some(BigDecimal("0.152")),
+      totalCapitalRatio = Some(BigDecimal("0.177")),
+      transformation =
+        "Customer liabilities use the Q1 2026 customer-liabilities note. Firm loans use corporate loans plus non-sovereign debt securities. Consumer loans are retail loans less property loans. Government bonds sum central-government securities across trading, amortised-cost and FVOCI books. RWA is total capital requirement divided by 8%.",
+      notes =
+        "Source-backed named-bank evidence row. It is not a runtime target until all runtime bank rows have complete mandatory stock coverage and are explicitly marked runtime-ready.",
+    ),
+    "2" -> NamedBankEvidence(
+      sourceProvider = "mBank Q1 2026 investor presentation",
+      sourceUrl = "https://www.mbank.pl/pdf/msp-korporacje/relacje-inwestorskie/wyniki-finansowe/2026/presentation-q1-pol.pdf",
+      datasetCode = "mBank Group Q1 2026 presentation: balance sheet, loan/deposit structure, capital position",
+      vintage = "2026-03-31 Q1 disclosure",
+      depositsMPln = Some(BigDecimal("237097")),
+      firmLoansMPln = Some(BigDecimal("64761")),
+      consumerLoansMPln = Some(BigDecimal("25600")),
+      mortgageLoansMPln = Some(BigDecimal("53455")),
+      rwaMPln = Some(BigDecimal("135901")),
+      ownFundsMPln = Some(BigDecimal("21688")),
+      cet1Ratio = Some(BigDecimal("0.1303")),
+      tier1Ratio = Some(BigDecimal("0.1414")),
+      totalCapitalRatio = Some(BigDecimal("0.1596")),
+      transformation =
+        "Customer deposits and capital metrics use the Q1 2026 presentation. Firm, consumer and mortgage loans use the gross loan-portfolio structure. Government-bond holdings remain blank because the presentation exposes investment securities but not a central-government issuer split.",
+      notes =
+        "Source-backed partial named-bank evidence row. Do not infer the missing government-bond target from relationshipWeight or total investment securities.",
+    ),
+    "3" -> NamedBankEvidence(
+      sourceProvider = "ING Bank Slaski Q1 2026 financial-data XLS",
+      sourceUrl = "https://www.ing.pl/_fileserver/item/bcc3fz9",
+      datasetCode = "ING Bank Slaski Q1 2026 financial data XLS: loan portfolio, deposit portfolio, TCR worksheet",
+      vintage = "2026-03-31 Q1 disclosure",
+      depositsMPln = Some(BigDecimal("242489")),
+      firmLoansMPln = Some(BigDecimal("102940")),
+      consumerLoansMPln = Some(BigDecimal("11432")),
+      mortgageLoansMPln = Some(BigDecimal("70823")),
+      rwaMPln = Some(BigDecimal("130337.5")),
+      ownFundsMPln = Some(BigDecimal("20606")),
+      cet1Ratio = Some(BigDecimal("0.1424")),
+      tier1Ratio = Some(BigDecimal("0.1424")),
+      totalCapitalRatio = Some(BigDecimal("0.1581")),
+      transformation =
+        "Customer deposits use the quarterly table. Firm, consumer and mortgage loans use the gross loan-portfolio worksheet. RWA is total capital requirement divided by 8%. Government-bond holdings remain blank because the XLS exposes debt securities without a central-government issuer split.",
+      notes =
+        "Source-backed partial named-bank evidence row. It remains evidence-only until government-bond and remaining named-bank target coverage are complete.",
+    ),
+  )
+
   private val SectorTotalRow: Row =
     Row(
       rowType = "sector_total",
@@ -245,43 +330,88 @@ object OpeningBankBalanceProfileBridge:
     RuntimeBankPriors
       .filterNot(_.runtimeBankName == "Other banks")
       .map: prior =>
-        Row(
-          rowType = "named_bank",
-          bankId = prior.bankId,
-          bankName = prior.runtimeBankName,
-          runtimeBankName = prior.runtimeBankName,
-          sourceProvider = "bank public financial reports and Pillar 3 disclosures to be extracted",
-          sourceUrl = prior.sourceUrl,
-          datasetCode = "pending named-bank report extraction",
-          vintage = "target: 2026 Q1 or nearest opening balance-sheet disclosure",
-          accessedAt = AccessedAt,
-          frequency = "quarterly/annual bank-level disclosure",
-          unit = Unit,
-          bridgeStatus = "PENDING_PUBLIC_REPORT_EXTRACTION",
-          relationshipWeightPrior = Some(prior.relationshipWeightPrior),
-          depositsMPln = None,
-          firmLoansMPln = None,
-          consumerLoansMPln = None,
-          mortgageLoansMPln = None,
-          govBondsMPln = None,
-          reservesMPln = None,
-          corpBondsMPln = None,
-          rwaMPln = None,
-          ownFundsMPln = None,
-          cet1Ratio = None,
-          tier1Ratio = None,
-          totalCapitalRatio = None,
-          depositShare = None,
-          firmLoanShare = None,
-          consumerLoanShare = None,
-          mortgageLoanShare = None,
-          govBondShare = None,
-          rwaShare = None,
-          transformation =
-            "Extract bank-level stocks and capital metrics from public filings, map them to the runtime bank row, then compute metric-specific shares against the sector total.",
-          notes =
-            "relationship_weight_prior mirrors current runtime relationship routing only; bank capital ratios must come from the explicit ratio columns once public filings are extracted.",
-        )
+        NamedBankEvidenceById.get(prior.bankId) match
+          case Some(evidence) => sourceBackedNamedBankRow(prior, evidence)
+          case None           => pendingNamedBankRow(prior)
+
+  private def sourceBackedNamedBankRow(prior: RuntimeBankPrior, evidence: NamedBankEvidence): Row =
+    Row(
+      rowType = "named_bank",
+      bankId = prior.bankId,
+      bankName = prior.runtimeBankName,
+      runtimeBankName = prior.runtimeBankName,
+      sourceProvider = evidence.sourceProvider,
+      sourceUrl = evidence.sourceUrl,
+      datasetCode = evidence.datasetCode,
+      vintage = evidence.vintage,
+      accessedAt = AccessedAt,
+      frequency = "quarterly bank-level disclosure",
+      unit = Unit,
+      bridgeStatus = "SOURCE_BACKED_PARTIAL_EVIDENCE",
+      relationshipWeightPrior = Some(prior.relationshipWeightPrior),
+      depositsMPln = evidence.depositsMPln,
+      firmLoansMPln = evidence.firmLoansMPln,
+      consumerLoansMPln = evidence.consumerLoansMPln,
+      mortgageLoansMPln = evidence.mortgageLoansMPln,
+      govBondsMPln = evidence.govBondsMPln,
+      reservesMPln = evidence.reservesMPln,
+      corpBondsMPln = evidence.corpBondsMPln,
+      rwaMPln = evidence.rwaMPln,
+      ownFundsMPln = evidence.ownFundsMPln,
+      cet1Ratio = evidence.cet1Ratio,
+      tier1Ratio = evidence.tier1Ratio,
+      totalCapitalRatio = evidence.totalCapitalRatio,
+      depositShare = shareOf(evidence.depositsMPln, SectorTotals.depositsMPln),
+      firmLoanShare = shareOf(evidence.firmLoansMPln, SectorTotals.firmLoansMPln),
+      consumerLoanShare = shareOf(evidence.consumerLoansMPln, SectorTotals.consumerLoansMPln),
+      mortgageLoanShare = shareOf(evidence.mortgageLoansMPln, SectorTotals.mortgageLoansMPln),
+      govBondShare = shareOf(evidence.govBondsMPln, SectorTotals.govBondsMPln),
+      rwaShare = shareOf(evidence.rwaMPln, SectorTotals.rwaMPln),
+      transformation = evidence.transformation,
+      notes = evidence.notes,
+    )
+
+  private def pendingNamedBankRow(prior: RuntimeBankPrior): Row =
+    Row(
+      rowType = "named_bank",
+      bankId = prior.bankId,
+      bankName = prior.runtimeBankName,
+      runtimeBankName = prior.runtimeBankName,
+      sourceProvider = "bank public financial reports and Pillar 3 disclosures to be extracted",
+      sourceUrl = prior.sourceUrl,
+      datasetCode = "pending named-bank report extraction",
+      vintage = "target: 2026 Q1 or nearest opening balance-sheet disclosure",
+      accessedAt = AccessedAt,
+      frequency = "quarterly/annual bank-level disclosure",
+      unit = Unit,
+      bridgeStatus = "PENDING_PUBLIC_REPORT_EXTRACTION",
+      relationshipWeightPrior = Some(prior.relationshipWeightPrior),
+      depositsMPln = None,
+      firmLoansMPln = None,
+      consumerLoansMPln = None,
+      mortgageLoansMPln = None,
+      govBondsMPln = None,
+      reservesMPln = None,
+      corpBondsMPln = None,
+      rwaMPln = None,
+      ownFundsMPln = None,
+      cet1Ratio = None,
+      tier1Ratio = None,
+      totalCapitalRatio = None,
+      depositShare = None,
+      firmLoanShare = None,
+      consumerLoanShare = None,
+      mortgageLoanShare = None,
+      govBondShare = None,
+      rwaShare = None,
+      transformation =
+        "Extract bank-level stocks and capital metrics from public filings, map them to the runtime bank row, then compute metric-specific shares against the sector total.",
+      notes =
+        "Explicitly missing for the production bridge. Do not derive bank-level stock targets from relationship_weight_prior; relationship routing and balance-sheet evidence are separate.",
+    )
+
+  private def shareOf(value: Option[BigDecimal], total: BigDecimal): Option[BigDecimal] =
+    value.map(v => (v / total).setScale(9, RoundingMode.HALF_EVEN))
 
   private val OtherBankResidualRow: Row =
     val prior = RuntimeBankPriors
