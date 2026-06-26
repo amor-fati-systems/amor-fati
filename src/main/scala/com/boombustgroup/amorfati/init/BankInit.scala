@@ -33,6 +33,8 @@ object BankInit:
       firmFinancialStocks: Vector[Firm.FinancialStocks],
       households: Vector[Household.State],
       householdFinancialStocks: Vector[Household.FinancialStocks],
+      bankGovBondHoldings: Vector[PLN] = Vector.empty,
+      bankReserveHoldings: Vector[PLN] = Vector.empty,
       bankCorpBondHoldings: Vector[PLN] = Vector.empty,
       openingCapitalProfiles: Vector[Banking.OpeningCapitalProfile] = Banking.DefaultOpeningCapitalProfiles,
   )(using p: SimParams): Result =
@@ -52,19 +54,22 @@ object BankInit:
     val perBankMortgages  = householdRows.groupMapReduce(_._1.bankId.toInt)(_._2.mortgageLoan)(_ + _)
     val perBankHhDeposits = householdRows.groupMapReduce(_._1.bankId.toInt)(_._2.demandDeposit)(_ + _)
 
-    val totalGovBonds           = p.banking.initGovBonds
-    val bondAlloc               = com.boombustgroup.ledger.Distribute.distribute(
-      totalGovBonds.toLong,
-      Banking.DefaultConfigs.map(_.openingBalanceWeight.toLong).toArray,
-    )
+    val govBondHoldings         =
+      if bankGovBondHoldings.isEmpty then
+        com.boombustgroup.ledger.Distribute
+          .distribute(
+            p.banking.initGovBonds.toLong,
+            Banking.DefaultConfigs.map(_.openingBalanceWeight.toLong).toArray,
+          )
+          .map(PLN.fromRaw)
+          .toVector
+      else requireBankVector("government-bond", bankGovBondHoldings)
+    val reserveHoldings         =
+      if bankReserveHoldings.isEmpty then Vector.empty
+      else requireBankVector("reserve", bankReserveHoldings)
     val corpBondHoldings        =
       if bankCorpBondHoldings.isEmpty then Vector.fill(Banking.DefaultConfigs.length)(PLN.Zero)
-      else
-        require(
-          bankCorpBondHoldings.length == Banking.DefaultConfigs.length,
-          s"BankInit.create requires ${Banking.DefaultConfigs.length} bank corporate-bond rows, got ${bankCorpBondHoldings.length}",
-        )
-        bankCorpBondHoldings
+      else requireBankVector("corporate-bond", bankCorpBondHoldings)
     val capitalProfilesByBankId = openingCapitalProfiles.map(profile => profile.bankId -> profile).toMap
     require(
       capitalProfilesByBankId.size == openingCapitalProfiles.size,
@@ -72,19 +77,21 @@ object BankInit:
     )
 
     val openingRows             = Banking.DefaultConfigs
-      .zip(bondAlloc)
+      .zip(govBondHoldings)
       .zip(corpBondHoldings)
-      .map { case ((cfg, bankBondRaw), bankCorpBonds) =>
+      .map { case ((cfg, bankBonds), bankCorpBonds) =>
         val bId             = cfg.id.toInt
         val corpLoans       = perBankCorpLoans.getOrElse(bId, PLN.Zero)
         val consLoans       = perBankConsLoans.getOrElse(bId, PLN.Zero)
         val mortgageLoans   = perBankMortgages.getOrElse(bId, PLN.Zero)
         val firmDeposits    = perBankCash.getOrElse(bId, PLN.Zero)
         val hhDeposits      = perBankHhDeposits.getOrElse(bId, PLN.Zero)
-        val bankBonds       = PLN.fromRaw(bankBondRaw)
         val deposits        = firmDeposits + hhDeposits
         val termDeposits    = deposits * p.banking.termDepositFrac
         val demandDeposits  = deposits - termDeposits
+        val reserve         =
+          if reserveHoldings.isEmpty then deposits * p.banking.reserveReq
+          else bankVectorValue("reserve", reserveHoldings, bId)
         val eclCoveredLoans = corpLoans + consLoans
         OpeningRow(
           config = cfg,
@@ -93,7 +100,7 @@ object BankInit:
             firmLoan = corpLoans,
             govBondAfs = bankBonds * (Share.One - p.banking.htmShare),
             govBondHtm = bankBonds * p.banking.htmShare,
-            reserve = deposits * p.banking.reserveReq,
+            reserve = reserve,
             interbankLoan = PLN.Zero,
             demandDeposit = demandDeposits,
             termDeposit = termDeposits,
@@ -159,3 +166,18 @@ object BankInit:
 
   private def absoluteDelta(left: PLN, right: PLN): PLN =
     if left >= right then left - right else right - left
+
+  private def requireBankVector(label: String, values: Vector[PLN]): Vector[PLN] =
+    require(
+      values.length == Banking.DefaultConfigs.length,
+      s"BankInit.create requires ${Banking.DefaultConfigs.length} bank $label rows, got ${values.length}",
+    )
+    require(values.forall(_ >= PLN.Zero), s"BankInit.create requires non-negative bank $label rows")
+    values
+
+  private def bankVectorValue(label: String, values: Vector[PLN], bankIndex: Int): PLN =
+    require(
+      bankIndex >= 0 && bankIndex < values.length,
+      s"BankInit.create $label rows missing BankId index $bankIndex; rows=${values.length}",
+    )
+    values(bankIndex)
