@@ -113,20 +113,19 @@ class BankingSectorSpec extends AnyFlatSpec with Matchers:
       rng,
     )
 
-  "Banking.Config" should "name relationship routing and opening balance weights separately" in {
+  "Banking.Config" should "keep relationship routing separate from opening balance targets" in {
     val fieldNames = configs.head.productElementNames.toSet
 
     fieldNames should contain("relationshipWeight")
-    fieldNames should contain("openingBalanceWeight")
+    fieldNames should not contain "openingBalanceWeight"
     fieldNames should not contain "initMarketShare"
     fieldNames should not contain "openingCapitalWeight"
     fieldNames.exists(_.toLowerCase.contains("cet1")) shouldBe false
   }
 
-  "Banking.DefaultConfigs" should "split relationship and opening balance weights across default rows" in {
+  "Banking.DefaultConfigs" should "normalize relationship weights across default rows" in {
     configs.map(_.id.toInt) shouldBe configs.indices.toVector
     configs.map(_.relationshipWeight).sumShare shouldBe Share.One
-    configs.map(_.openingBalanceWeight).sumShare shouldBe Share.One
     configs.map(_.relationshipWeight).max should be <= summon[SimParams].banking.concentrationLimit
   }
 
@@ -141,7 +140,7 @@ class BankingSectorSpec extends AnyFlatSpec with Matchers:
     bs.banks.forall(!_.failed) shouldBe true
   }
 
-  "Banking.openingCapitalFromProfile" should "derive bank opening capital from RWA and total capital ratio" in {
+  "Banking.openingCapitalFromProfile" should "use explicit bank opening own funds" in {
     val stocks = Banking.BankFinancialStocks(
       totalDeposits = PLN(1000000),
       firmLoan = PLN(600000),
@@ -155,20 +154,20 @@ class BankingSectorSpec extends AnyFlatSpec with Matchers:
       mortgageLoan = PLN(300000),
     )
     val low    = Banking.openingCapitalFromProfile(
-      Banking.OpeningCapitalProfile(BankId(0), totalCapitalRatio = Some(Multiplier.decimal(10, 2))),
+      Banking.OpeningCapitalProfile(BankId(0), ownFunds = PLN(100000)),
       stocks,
       corpBondHoldings = PLN(50000),
-      fallbackTotalCapitalRatio = Multiplier.decimal(20, 2),
     )
     val high   = Banking.openingCapitalFromProfile(
-      Banking.OpeningCapitalProfile(BankId(0), totalCapitalRatio = Some(Multiplier.decimal(20, 2))),
+      Banking.OpeningCapitalProfile(BankId(0), ownFunds = PLN(200000)),
       stocks,
       corpBondHoldings = PLN(50000),
-      fallbackTotalCapitalRatio = Multiplier.decimal(20, 2),
     )
 
     low.riskWeightedAssets should be > PLN.Zero
     high.riskWeightedAssets shouldBe low.riskWeightedAssets
+    low.capital shouldBe PLN(100000)
+    high.capital shouldBe PLN(200000)
     high.capital should be > low.capital
   }
 

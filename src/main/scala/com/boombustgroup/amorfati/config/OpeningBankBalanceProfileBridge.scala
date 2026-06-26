@@ -131,6 +131,7 @@ object OpeningBankBalanceProfileBridge:
     val mortgageLoansMPln: BigDecimal = BigDecimal("506300")
     val govBondsMPln: BigDecimal      = BigDecimal("400000")
     val reservesMPln: BigDecimal      = depositsMPln * BigDecimal("0.035")
+    val corpBondsMPln: BigDecimal     = BigDecimal("32550")
     val ownFundsMPln: BigDecimal      = BigDecimal("199000")
     val totalCapitalRatio: BigDecimal = BigDecimal("0.211")
     val rwaMPln: BigDecimal           = BigDecimal("943127.962085308")
@@ -435,6 +436,12 @@ object OpeningBankBalanceProfileBridge:
   private lazy val RuntimeGovBondTargetsById: Map[String, BigDecimal] =
     runtimeTargetsWithDepositScaleProxy("government-bond", _.govBondsMPln, SectorTotals.govBondsMPln)
 
+  private lazy val RuntimeReserveTargetsById: Map[String, BigDecimal] =
+    allocateByBasis("reserve deposit-scale target", SectorTotals.reservesMPln, RuntimeDepositTargetsById.toVector).toMap
+
+  private lazy val RuntimeCorpBondTargetsById: Map[String, BigDecimal] =
+    allocateByBasis("corporate-bond deposit-scale target", SectorTotals.corpBondsMPln, RuntimeDepositTargetsById.toVector).toMap
+
   private lazy val RuntimeOwnFundsTargetsById: Map[String, BigDecimal] =
     directNamedPlusResidualTargets("own-funds", _.ownFundsMPln, SectorTotals.ownFundsMPln, normalizeOverCoverage = true)
 
@@ -459,7 +466,7 @@ object OpeningBankBalanceProfileBridge:
       mortgageLoansMPln = Some(SectorTotals.mortgageLoansMPln),
       govBondsMPln = Some(SectorTotals.govBondsMPln),
       reservesMPln = Some(SectorTotals.reservesMPln),
-      corpBondsMPln = None,
+      corpBondsMPln = Some(SectorTotals.corpBondsMPln),
       rwaMPln = Some(SectorTotals.rwaMPln),
       ownFundsMPln = Some(SectorTotals.ownFundsMPln),
       cet1Ratio = None,
@@ -491,6 +498,8 @@ object OpeningBankBalanceProfileBridge:
     val consumer         = runtimeTarget(prior.bankId, RuntimeConsumerLoanTargetsById, "consumer-loan")
     val mortgage         = runtimeTarget(prior.bankId, RuntimeMortgageLoanTargetsById, "mortgage-loan")
     val govBonds         = runtimeTarget(prior.bankId, RuntimeGovBondTargetsById, "government-bond")
+    val reserves         = runtimeTarget(prior.bankId, RuntimeReserveTargetsById, "reserve")
+    val corpBonds        = runtimeTarget(prior.bankId, RuntimeCorpBondTargetsById, "corporate-bond")
     val ownFunds         = runtimeTarget(prior.bankId, RuntimeOwnFundsTargetsById, "own-funds")
 
     Row(
@@ -512,8 +521,8 @@ object OpeningBankBalanceProfileBridge:
       consumerLoansMPln = Some(consumer),
       mortgageLoansMPln = Some(mortgage),
       govBondsMPln = Some(govBonds),
-      reservesMPln = evidence.reservesMPln,
-      corpBondsMPln = evidence.corpBondsMPln,
+      reservesMPln = Some(reserves),
+      corpBondsMPln = Some(corpBonds),
       rwaMPln = evidence.rwaMPln,
       ownFundsMPln = Some(ownFunds),
       cet1Ratio = evidence.cet1Ratio,
@@ -613,6 +622,8 @@ object OpeningBankBalanceProfileBridge:
       "consumer_loans_m_pln" -> evidence.consumerLoansMPln,
       "mortgage_loans_m_pln" -> evidence.mortgageLoansMPln,
       "gov_bonds_m_pln"      -> evidence.govBondsMPln,
+      "reserves_m_pln"       -> evidence.reservesMPln,
+      "corp_bonds_m_pln"     -> evidence.corpBondsMPln,
     ).collect { case (field, None) => field }
 
   private def normalizedRuntimeFields(bankId: String, evidence: NamedBankEvidence): Vector[String] =
@@ -657,6 +668,8 @@ object OpeningBankBalanceProfileBridge:
     val consumerResidual = runtimeTarget(prior.bankId, RuntimeConsumerLoanTargetsById, "consumer-loan")
     val mortgageResidual = runtimeTarget(prior.bankId, RuntimeMortgageLoanTargetsById, "mortgage-loan")
     val govBondResidual  = runtimeTarget(prior.bankId, RuntimeGovBondTargetsById, "government-bond")
+    val reserveResidual  = runtimeTarget(prior.bankId, RuntimeReserveTargetsById, "reserve")
+    val corpBondResidual = runtimeTarget(prior.bankId, RuntimeCorpBondTargetsById, "corporate-bond")
     val ownFundsResidual = runtimeTarget(prior.bankId, RuntimeOwnFundsTargetsById, "own-funds")
 
     Row(
@@ -678,8 +691,8 @@ object OpeningBankBalanceProfileBridge:
       consumerLoansMPln = Some(consumerResidual),
       mortgageLoansMPln = Some(mortgageResidual),
       govBondsMPln = Some(govBondResidual),
-      reservesMPln = None,
-      corpBondsMPln = None,
+      reservesMPln = Some(reserveResidual),
+      corpBondsMPln = Some(corpBondResidual),
       rwaMPln = None,
       ownFundsMPln = Some(ownFundsResidual),
       cet1Ratio = None,

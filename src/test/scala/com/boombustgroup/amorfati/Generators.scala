@@ -27,17 +27,17 @@ object Generators:
       configs: Vector[Banking.Config] = Banking.DefaultConfigs,
   ): Banking.BankStockState =
     val stockRows         = configs.map: cfg =>
-      val bankBonds = totalGovBonds * cfg.openingBalanceWeight
+      val bankBonds = totalGovBonds * cfg.relationshipWeight
       val stocks    = Banking.BankFinancialStocks(
-        totalDeposits = totalDeposits * cfg.openingBalanceWeight,
-        firmLoan = totalLoans * cfg.openingBalanceWeight,
+        totalDeposits = totalDeposits * cfg.relationshipWeight,
+        firmLoan = totalLoans * cfg.relationshipWeight,
         govBondAfs = bankBonds * (Share.One - p.banking.htmShare),
         govBondHtm = bankBonds * p.banking.htmShare,
         reserve = PLN.Zero,
         interbankLoan = PLN.Zero,
         demandDeposit = PLN.Zero,
         termDeposit = PLN.Zero,
-        consumerLoan = totalConsumerLoans * cfg.openingBalanceWeight,
+        consumerLoan = totalConsumerLoans * cfg.relationshipWeight,
       )
       (cfg, stocks)
     val totalRwa          = stockRows.map((_, stocks) => Banking.riskWeightedAssets(stocks, PLN.Zero)).sumPln
@@ -50,12 +50,12 @@ object Generators:
         )
         Multiplier.Zero
     val rows              = stockRows.map: (cfg, stocks) =>
-      val capital = Banking
+      val ownFunds = Banking.riskWeightedAssets(stocks, PLN.Zero) * totalCapitalRatio
+      val capital  = Banking
         .openingCapitalFromProfile(
-          Banking.OpeningCapitalProfile(cfg.id, totalCapitalRatio = Some(totalCapitalRatio)),
+          Banking.OpeningCapitalProfile(cfg.id, ownFunds),
           stocks,
           PLN.Zero,
-          totalCapitalRatio,
         )
         .capital
       (
@@ -733,14 +733,12 @@ object Generators:
     val Config: Gen[Banking.Config] = for
       id                 <- Gen.choose(0, DefaultBankIdMax)
       relationshipWeight <- genDecimal("0.01", "0.50")
-      balanceWeight      <- genDecimal("0.01", "0.50")
       spread             <- genDecimal("-0.005", "0.005")
       aff                <- Gen.sequence[Vector[BigDecimal], BigDecimal]((0 until 6).map(_ => genDecimal("0.05", "0.40")))
     yield Banking.Config(
       BankId(id),
       s"Bank$id",
       shareBD(relationshipWeight),
-      shareBD(balanceWeight),
       rateBD(spread),
       aff.map(shareBD(_)),
     )

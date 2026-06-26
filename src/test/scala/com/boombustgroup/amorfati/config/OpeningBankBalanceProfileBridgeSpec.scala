@@ -36,6 +36,7 @@ class OpeningBankBalanceProfileBridgeSpec extends AnyFlatSpec with Matchers with
     sectorTotal.mortgageLoansMPln.value shouldBe BigDecimal("506300")
     sectorTotal.govBondsMPln.value shouldBe BigDecimal("400000")
     sectorTotal.reservesMPln.value shouldBe BigDecimal("88980.5")
+    sectorTotal.corpBondsMPln.value shouldBe BigDecimal("32550")
     sectorTotal.ownFundsMPln.value shouldBe BigDecimal("199000")
     sectorTotal.totalCapitalRatio.value shouldBe BigDecimal("0.211")
     (sectorTotal.rwaMPln.value - BigDecimal("943127.962085308")).abs should be <= BigDecimal("0.000001")
@@ -169,6 +170,8 @@ class OpeningBankBalanceProfileBridgeSpec extends AnyFlatSpec with Matchers with
     residual.consumerLoansMPln.value should be > BigDecimal(0)
     residual.mortgageLoansMPln.value should be > BigDecimal(0)
     residual.govBondsMPln.value should be > BigDecimal(0)
+    residual.reservesMPln.value should be > BigDecimal(0)
+    residual.corpBondsMPln.value should be > BigDecimal(0)
     residual.ownFundsMPln.value should be > BigDecimal(0)
 
     Rows.filterNot(_.rowType == "sector_total").map(_.depositsMPln.value).sum shouldBe SectorTotals.depositsMPln
@@ -176,6 +179,8 @@ class OpeningBankBalanceProfileBridgeSpec extends AnyFlatSpec with Matchers with
     Rows.filterNot(_.rowType == "sector_total").map(_.consumerLoansMPln.value).sum shouldBe SectorTotals.consumerLoansMPln
     Rows.filterNot(_.rowType == "sector_total").map(_.mortgageLoansMPln.value).sum shouldBe SectorTotals.mortgageLoansMPln
     Rows.filterNot(_.rowType == "sector_total").map(_.govBondsMPln.value).sum shouldBe SectorTotals.govBondsMPln
+    Rows.filterNot(_.rowType == "sector_total").map(_.reservesMPln.value).sum shouldBe SectorTotals.reservesMPln
+    Rows.filterNot(_.rowType == "sector_total").map(_.corpBondsMPln.value).sum shouldBe SectorTotals.corpBondsMPln
     Rows.filterNot(_.rowType == "sector_total").map(_.ownFundsMPln.value).sum shouldBe SectorTotals.ownFundsMPln
   }
 
@@ -189,10 +194,7 @@ class OpeningBankBalanceProfileBridgeSpec extends AnyFlatSpec with Matchers with
   }
 
   it should "resolve the production bridge to complete runtime bank targets" in {
-    val resolved = OpeningBankProfileTargets.fromBridgeRows(Rows)
-
-    resolved shouldBe a[OpeningBankProfileTargets.Resolution.Complete]
-    val targets = resolved.asInstanceOf[OpeningBankProfileTargets.Resolution.Complete].targets
+    val targets = OpeningBankProfileTargets.fromBridgeRows(Rows)
 
     targets.bankIds.map(_.toInt) shouldBe Banking.DefaultConfigs.map(_.id.toInt)
     targets.deposits.sumPln shouldBe summon[SimParams].banking.initDeposits
@@ -200,8 +202,9 @@ class OpeningBankBalanceProfileBridgeSpec extends AnyFlatSpec with Matchers with
     targets.consumerLoans.sumPln shouldBe summon[SimParams].banking.initConsumerLoans
     targets.mortgageLoans.sumPln shouldBe summon[SimParams].housing.initMortgage
     targets.govBonds.sumPln shouldBe summon[SimParams].banking.initGovBonds
-    targets.openingCapitalProfiles.flatMap(_.ownFunds).sumPln shouldBe summon[SimParams].banking.initCapital
-    targets.openingCapitalProfiles.flatMap(_.totalCapitalRatio) shouldBe Vector.empty
+    targets.reserves.sumPln shouldBe summon[SimParams].banking.initDeposits * summon[SimParams].banking.reserveReq
+    targets.corpBonds.sumPln shouldBe summon[SimParams].corpBond.initStock * summon[SimParams].corpBond.bankShare
+    targets.openingCapitalProfiles.map(_.ownFunds).sumPln shouldBe summon[SimParams].banking.initCapital
   }
 
   it should "fail fast when complete named-bank residual coverage exceeds the sector total" in {
@@ -216,10 +219,7 @@ class OpeningBankBalanceProfileBridgeSpec extends AnyFlatSpec with Matchers with
   }
 
   it should "resolve complete runtime bank target rows without falling back to relationship weights" in {
-    val resolved = OpeningBankProfileTargets.fromBridgeRows(OpeningBankProfileTestFixtures.completeRows)
-
-    resolved shouldBe a[OpeningBankProfileTargets.Resolution.Complete]
-    val targets = resolved.asInstanceOf[OpeningBankProfileTargets.Resolution.Complete].targets
+    val targets = OpeningBankProfileTargets.fromBridgeRows(OpeningBankProfileTestFixtures.completeRows)
 
     targets.bankIds.map(_.toInt) shouldBe Banking.DefaultConfigs.map(_.id.toInt)
     targets.deposits.sumPln shouldBe summon[SimParams].banking.initDeposits
@@ -227,9 +227,9 @@ class OpeningBankBalanceProfileBridgeSpec extends AnyFlatSpec with Matchers with
     targets.consumerLoans.sumPln shouldBe summon[SimParams].banking.initConsumerLoans
     targets.mortgageLoans.sumPln shouldBe summon[SimParams].housing.initMortgage
     targets.govBonds.sumPln shouldBe summon[SimParams].banking.initGovBonds
-    targets.reserves.value.sumPln shouldBe summon[SimParams].banking.initDeposits * summon[SimParams].banking.reserveReq
-    targets.corpBonds.value.sumPln shouldBe summon[SimParams].corpBond.initStock * summon[SimParams].corpBond.bankShare
-    targets.openingCapitalProfiles.flatMap(_.ownFunds).sumPln shouldBe summon[SimParams].banking.initCapital
+    targets.reserves.sumPln shouldBe summon[SimParams].banking.initDeposits * summon[SimParams].banking.reserveReq
+    targets.corpBonds.sumPln shouldBe summon[SimParams].corpBond.initStock * summon[SimParams].corpBond.bankShare
+    targets.openingCapitalProfiles.map(_.ownFunds).sumPln shouldBe summon[SimParams].banking.initCapital
     targets.deposits(0) shouldBe summon[SimParams].banking.initDeposits * Share.decimal(2, 1)
     targets.deposits(1) shouldBe summon[SimParams].banking.initDeposits * Share.decimal(13, 2)
     targets.deposits(0) should not be (summon[SimParams].banking.initDeposits * Banking.DefaultConfigs.head.relationshipWeight)
@@ -252,11 +252,9 @@ class OpeningBankBalanceProfileBridgeSpec extends AnyFlatSpec with Matchers with
       case row if row.rowType == "residual_bank" => row.copy(corpBondsMPln = row.corpBondsMPln.map(_ - BigDecimal("0.001")))
       case row                                   => row
 
-    val targets = OpeningBankProfileTargets.fromBridgeRows(rows) match
-      case OpeningBankProfileTargets.Resolution.Complete(targets) => targets
-      case other                                                  => fail(s"Expected complete opening bank targets, got $other")
+    val targets = OpeningBankProfileTargets.fromBridgeRows(rows)
 
-    targets.corpBonds.value.sumPln shouldBe summon[SimParams].corpBond.initStock * summon[SimParams].corpBond.bankShare
+    targets.corpBonds.sumPln shouldBe summon[SimParams].corpBond.initStock * summon[SimParams].corpBond.bankShare
   }
 
   it should "render the committed TSV extract from the typed bridge" in {

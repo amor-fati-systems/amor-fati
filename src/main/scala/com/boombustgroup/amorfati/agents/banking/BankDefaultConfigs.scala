@@ -22,7 +22,6 @@ private[agents] object BankDefaultConfigs:
       id = BankId(id),
       name = name,
       relationshipWeight = relationshipWeight,
-      openingBalanceWeight = relationshipWeight,
       lendingSpread = lendingSpread,
       sectorAffinity = sectorAffinity,
     )

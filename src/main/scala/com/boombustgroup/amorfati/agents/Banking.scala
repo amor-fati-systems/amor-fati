@@ -193,24 +193,14 @@ object Banking:
   /** Pair of operational bank state and ledger-owned bank financial stocks. */
   case class BankStockState(banks: Vector[BankState], financialStocks: Vector[BankFinancialStocks])
 
-  /** Source profile for opening regulatory capital.
-    *
-    * `ownFunds` is an explicit opening capital amount. When it is absent,
-    * capital is computed as opening RWA times `totalCapitalRatio`, falling back
-    * to the sector ratio derived by the initializer.
-    */
+  /** Source profile for opening regulatory capital. */
   case class OpeningCapitalProfile(
       bankId: BankId,
-      ownFunds: Option[PLN] = None,
-      totalCapitalRatio: Option[Multiplier] = None,
+      ownFunds: PLN,
   ):
     require(
-      ownFunds.forall(_ >= PLN.Zero),
+      ownFunds >= PLN.Zero,
       s"OpeningCapitalProfile requires non-negative ownFunds for bank $bankId",
-    )
-    require(
-      totalCapitalRatio.forall(_ >= Multiplier.Zero),
-      s"OpeningCapitalProfile requires non-negative totalCapitalRatio for bank $bankId",
     )
 
   /** Auditable opening-capital computation result. */
@@ -332,7 +322,6 @@ object Banking:
       id: BankId,                   // unique bank identifier (index into DefaultConfigs)
       name: String,                 // human-readable label (KNF registry)
       relationshipWeight: Share,    // borrower relationship sampling weight
-      openingBalanceWeight: Share,  // temporary model-start balance-sheet allocation weight
       lendingSpread: Rate,          // bank-specific spread over base lending rate
       sectorAffinity: Vector[Share], // relative lending preference per sector
   )
@@ -406,18 +395,9 @@ object Banking:
       profile: OpeningCapitalProfile,
       stocks: BankFinancialStocks,
       corpBondHoldings: PLN,
-      fallbackTotalCapitalRatio: Multiplier,
   )(using p: SimParams): OpeningCapitalResult =
-    require(
-      fallbackTotalCapitalRatio >= Multiplier.Zero,
-      s"openingCapitalFromProfile requires non-negative fallbackTotalCapitalRatio, got $fallbackTotalCapitalRatio",
-    )
     val rwa     = riskWeightedAssets(stocks, corpBondHoldings)
-    val capital = profile.ownFunds.getOrElse(rwa * profile.totalCapitalRatio.getOrElse(fallbackTotalCapitalRatio))
-    require(
-      capital >= PLN.Zero,
-      s"openingCapitalFromProfile produced negative capital for bank ${profile.bankId}: $capital",
-    )
+    val capital = profile.ownFunds
     val ratio   =
       if rwa > BankRiskWeightedAssets.MinBalanceThreshold then capital.ratioTo(rwa).toMultiplier
       else BankRiskWeightedAssets.SafeRatioFloor
@@ -456,9 +436,6 @@ object Banking:
   // ---------------------------------------------------------------------------
 
   val DefaultConfigs: Vector[Config] = BankDefaultConfigs.defaultConfigs
-
-  val DefaultOpeningCapitalProfiles: Vector[OpeningCapitalProfile] =
-    DefaultConfigs.map(config => OpeningCapitalProfile(config.id))
 
   // ---------------------------------------------------------------------------
   // Bank assignment
