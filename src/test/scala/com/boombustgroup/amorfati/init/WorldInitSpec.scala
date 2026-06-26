@@ -2,7 +2,7 @@ package com.boombustgroup.amorfati.init
 
 import com.boombustgroup.amorfati.FixedPointSpecSupport.*
 import com.boombustgroup.amorfati.agents.{Banking, EclStaging}
-import com.boombustgroup.amorfati.config.SimParams
+import com.boombustgroup.amorfati.config.{OpeningBankBalanceProfileBridge, SimParams}
 import com.boombustgroup.amorfati.engine.ledger.LedgerFinancialState
 import com.boombustgroup.amorfati.engine.mechanisms.Macroprudential
 import com.boombustgroup.amorfati.fp.FixedPointBase
@@ -89,13 +89,16 @@ class WorldInitSpec extends AnyFlatSpec with Matchers:
   }
 
   it should "compute opening bank capital from opening RWA and preserve the sector capital target" in {
-    val init                 = WorldInit.initialize(InitRandomness.Contract.fromSeed(42L))
-    val aggregateCapital     = init.banks.map(_.capital).sumPln
-    val bankRows             = init.banks.zip(init.ledgerFinancialState.banks)
-    val totalOpeningRwa      = bankRows.map { case (_, balances) =>
-      Banking.riskWeightedAssets(LedgerFinancialState.projectBankFinancialStocks(balances), balances.corpBond)
-    }.sumPln
-    val expectedCapitalRatio = p.banking.initCapital.ratioTo(totalOpeningRwa).toMultiplier
+    val init                = WorldInit.initialize(InitRandomness.Contract.fromSeed(42L))
+    val aggregateCapital    = init.banks.map(_.capital).sumPln
+    val bankRows            = init.banks.zip(init.ledgerFinancialState.banks)
+    val productionTargets   = OpeningBankProfileTargets.fromBridgeRows(OpeningBankBalanceProfileBridge.Rows) match
+      case OpeningBankProfileTargets.Resolution.Complete(targets) => targets
+      case other                                                  => fail(s"Expected complete production bank targets, got $other")
+    val expectedCapitalById = productionTargets.openingCapitalProfiles
+      .map: profile =>
+        profile.bankId -> profile.ownFunds.getOrElse(fail(s"Expected own-funds target for bank ${profile.bankId}"))
+      .toMap
 
     decimal(aggregateCapital) shouldBe decimal(p.banking.initCapital) +- (decimal(p.banking.initCapital) * BigDecimal("0.001"))
     bankRows.foreach { case (bank, balances) =>
@@ -104,9 +107,9 @@ class WorldInitSpec extends AnyFlatSpec with Matchers:
       val car    = Banking.car(bank, stocks, balances.corpBond)
       val minCar = Macroprudential.effectiveMinCar(bank.id.toInt, p.banking.initialCcyb)
 
+      bank.capital shouldBe expectedCapitalById(bank.id)
       rwa should be > PLN.Zero
       car should be >= minCar
-      decimal(car) shouldBe decimal(expectedCapitalRatio) +- BigDecimal("0.0001")
     }
   }
 
@@ -172,6 +175,22 @@ class WorldInitSpec extends AnyFlatSpec with Matchers:
       firmDebtByBank.getOrElse(bankId, PLN.Zero) shouldBe bank.firmLoan
       hhConsDebtByBank.getOrElse(bankId, PLN.Zero) shouldBe bank.consumerLoan
       hhMortgageByBank.getOrElse(bankId, PLN.Zero) shouldBe bank.mortgageLoan
+    }
+  }
+
+  it should "use production opening bank profile targets by default" in {
+    val targets = OpeningBankProfileTargets.fromBridgeRows(OpeningBankBalanceProfileBridge.Rows) match
+      case OpeningBankProfileTargets.Resolution.Complete(targets) => targets
+      case other                                                  => fail(s"Expected complete production bank targets, got $other")
+    val init    = WorldInit.initialize(InitRandomness.Contract.fromSeed(42L))
+
+    val bankBalances = init.ledgerFinancialState.banks
+    bankBalances.map(_.totalDeposits) shouldBe targets.deposits
+    bankBalances.map(_.firmLoan) shouldBe targets.firmLoans
+    bankBalances.map(_.consumerLoan) shouldBe targets.consumerLoans
+    bankBalances.map(_.mortgageLoan) shouldBe targets.mortgageLoans
+    bankBalances.map(bank => bank.govBondAfs + bank.govBondHtm).zip(targets.govBonds).foreach { case (actual, expected) =>
+      (actual - expected).abs should be <= PLN(1)
     }
   }
 

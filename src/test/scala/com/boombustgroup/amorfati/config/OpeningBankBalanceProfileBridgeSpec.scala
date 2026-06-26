@@ -42,56 +42,73 @@ class OpeningBankBalanceProfileBridgeSpec extends AnyFlatSpec with Matchers with
     sectorTotal.bridgeStatus shouldBe "EMPIRICAL_SECTOR_TOTAL"
   }
 
-  it should "publish source-backed named-bank evidence while keeping remaining gaps explicit" in {
+  it should "publish runtime-ready named-bank targets while keeping proxy fields explicit" in {
     val namedRows = Rows.filter(_.rowType == "named_bank")
     val residual  = Rows.find(_.rowType == "residual_bank").value
 
     namedRows should have size (Banking.DefaultConfigs.size - 1)
-    namedRows.map(_.bridgeStatus).distinct shouldBe Vector("SOURCE_BACKED_PARTIAL_EVIDENCE")
+    namedRows.map(_.bridgeStatus).toSet shouldBe Set("EMPIRICAL_PROXY_RUNTIME_TARGET")
+    namedRows.foreach: row =>
+      row.notes should include("Sector-normalized source field(s): firm_loans_m_pln, own_funds_m_pln")
 
     val pko = namedRows.find(_.runtimeBankName == "PKO BP").value
     pko.depositsMPln.value shouldBe BigDecimal("440454")
-    pko.firmLoansMPln.value shouldBe BigDecimal("89238")
+    pko.firmLoansMPln.value should be > BigDecimal(0)
+    pko.firmLoansMPln.value should be < BigDecimal("89238")
     pko.consumerLoansMPln.value shouldBe BigDecimal("41143")
     pko.mortgageLoansMPln.value shouldBe BigDecimal("130142")
+    pko.govBondsMPln.value should be > BigDecimal(0)
+    pko.govBondsMPln.value should not be (SectorTotals.govBondsMPln * pko.relationshipWeightPrior.value)
     pko.rwaMPln.value shouldBe BigDecimal("280625")
-    pko.ownFundsMPln.value shouldBe BigDecimal("50361")
+    pko.ownFundsMPln.value should be > BigDecimal(0)
+    pko.ownFundsMPln.value should be < BigDecimal("50361")
     pko.totalCapitalRatio.value shouldBe BigDecimal("0.17946013363028954")
+    pko.bridgeStatus shouldBe "EMPIRICAL_PROXY_RUNTIME_TARGET"
     pko.notes should include("nearest official bank-level disclosure")
+    pko.notes should include("Proxy mandatory field(s): gov_bonds_m_pln")
 
     val pekao = namedRows.find(_.runtimeBankName == "Pekao").value
     pekao.depositsMPln.value shouldBe BigDecimal("273849")
-    pekao.firmLoansMPln.value shouldBe BigDecimal("119583")
+    pekao.firmLoansMPln.value should be > BigDecimal(0)
+    pekao.firmLoansMPln.value should be < BigDecimal("119583")
     pekao.consumerLoansMPln.value shouldBe BigDecimal("6868")
     pekao.mortgageLoansMPln.value shouldBe BigDecimal("82130")
     pekao.govBondsMPln.value shouldBe BigDecimal("89919")
     pekao.rwaMPln.value shouldBe BigDecimal("181200")
-    pekao.ownFundsMPln.value shouldBe BigDecimal("32014")
+    pekao.ownFundsMPln.value should be > BigDecimal(0)
+    pekao.ownFundsMPln.value should be < BigDecimal("32014")
     pekao.totalCapitalRatio.value shouldBe BigDecimal("0.177")
+    pekao.bridgeStatus shouldBe "EMPIRICAL_PROXY_RUNTIME_TARGET"
     pekao.depositsMPln.value should not be (SectorTotals.depositsMPln * pekao.relationshipWeightPrior.value)
 
     val mBank = namedRows.find(_.runtimeBankName == "mBank").value
     mBank.depositsMPln.value shouldBe BigDecimal("237097")
-    mBank.firmLoansMPln.value shouldBe BigDecimal("64761")
+    mBank.firmLoansMPln.value should be > BigDecimal(0)
+    mBank.firmLoansMPln.value should be < BigDecimal("64761")
     mBank.consumerLoansMPln.value shouldBe BigDecimal("25600")
     mBank.mortgageLoansMPln.value shouldBe BigDecimal("53455")
-    mBank.govBondsMPln shouldBe None
+    mBank.govBondsMPln.value should be > BigDecimal(0)
+    mBank.govBondsMPln.value should not be (SectorTotals.govBondsMPln * mBank.relationshipWeightPrior.value)
     mBank.totalCapitalRatio.value shouldBe BigDecimal("0.1596")
     mBank.notes should include("Do not infer the missing government-bond target")
+    mBank.notes should include("Proxy mandatory field(s): gov_bonds_m_pln")
 
     val ing = namedRows.find(_.runtimeBankName == "ING BSK").value
     ing.depositsMPln.value shouldBe BigDecimal("242489")
-    ing.firmLoansMPln.value shouldBe BigDecimal("102940")
+    ing.firmLoansMPln.value should be > BigDecimal(0)
+    ing.firmLoansMPln.value should be < BigDecimal("102940")
     ing.consumerLoansMPln.value shouldBe BigDecimal("11432")
     ing.mortgageLoansMPln.value shouldBe BigDecimal("70823")
-    ing.govBondsMPln shouldBe None
+    ing.govBondsMPln.value should be > BigDecimal(0)
+    ing.govBondsMPln.value should not be (SectorTotals.govBondsMPln * ing.relationshipWeightPrior.value)
     ing.rwaMPln.value shouldBe BigDecimal("130337.5")
     ing.totalCapitalRatio.value shouldBe BigDecimal("0.1581")
 
     val santander = namedRows.find(_.runtimeBankName == "Santander").value
     santander.sourceProvider should include("Erste")
     santander.depositsMPln.value shouldBe BigDecimal("228000")
-    santander.firmLoansMPln.value shouldBe BigDecimal("91839")
+    santander.firmLoansMPln.value should be > BigDecimal(0)
+    santander.firmLoansMPln.value should be < BigDecimal("91839")
     santander.consumerLoansMPln.value shouldBe BigDecimal("23577.174")
     santander.mortgageLoansMPln.value shouldBe BigDecimal("56553.797")
     santander.govBondsMPln.value shouldBe BigDecimal("75499.412")
@@ -100,23 +117,31 @@ class OpeningBankBalanceProfileBridgeSpec extends AnyFlatSpec with Matchers with
 
     val bps = namedRows.find(_.runtimeBankName == "BPS/Coop").value
     bps.depositsMPln.value shouldBe BigDecimal("120042.373")
-    bps.firmLoansMPln.value shouldBe BigDecimal("24803.3016")
-    bps.consumerLoansMPln shouldBe None
-    bps.mortgageLoansMPln shouldBe None
-    bps.ownFundsMPln.value shouldBe BigDecimal("11985.070")
+    bps.firmLoansMPln.value should be > BigDecimal(0)
+    bps.firmLoansMPln.value should be < BigDecimal("24803.3016")
+    bps.consumerLoansMPln.value should be > BigDecimal(0)
+    bps.mortgageLoansMPln.value should be > BigDecimal(0)
+    bps.govBondsMPln.value should be > BigDecimal(0)
+    bps.ownFundsMPln.value should be > BigDecimal(0)
+    bps.ownFundsMPln.value should be < BigDecimal("11985.070")
     bps.notes should include("cooperative-bank runtime slot")
+    bps.notes should include("Proxy mandatory field(s): consumer_loans_m_pln, mortgage_loans_m_pln, gov_bonds_m_pln")
 
     val bnp = namedRows.find(_.runtimeBankName == "BNP Paribas").value
     bnp.depositsMPln.value shouldBe BigDecimal("137000")
-    bnp.firmLoansMPln.value shouldBe BigDecimal("60794")
+    bnp.firmLoansMPln.value should be > BigDecimal(0)
+    bnp.firmLoansMPln.value should be < BigDecimal("60794")
     bnp.consumerLoansMPln.value shouldBe BigDecimal("13288")
     bnp.mortgageLoansMPln.value shouldBe BigDecimal("21188")
+    bnp.govBondsMPln.value should be > BigDecimal(0)
+    bnp.govBondsMPln.value should not be (SectorTotals.govBondsMPln * bnp.relationshipWeightPrior.value)
     bnp.rwaMPln.value shouldBe BigDecimal("102900")
     bnp.totalCapitalRatio.value shouldBe BigDecimal("0.1679")
 
     val millennium = namedRows.find(_.runtimeBankName == "Millennium").value
     millennium.depositsMPln.value shouldBe BigDecimal("134806")
-    millennium.firmLoansMPln.value shouldBe BigDecimal("23310")
+    millennium.firmLoansMPln.value should be > BigDecimal(0)
+    millennium.firmLoansMPln.value should be < BigDecimal("23310")
     millennium.consumerLoansMPln.value shouldBe BigDecimal("19174")
     millennium.mortgageLoansMPln.value shouldBe BigDecimal("35766")
     millennium.govBondsMPln.value shouldBe BigDecimal("34102.847")
@@ -125,7 +150,8 @@ class OpeningBankBalanceProfileBridgeSpec extends AnyFlatSpec with Matchers with
 
     val alior = namedRows.find(_.runtimeBankName == "Alior").value
     alior.depositsMPln.value shouldBe BigDecimal("85413.751")
-    alior.firmLoansMPln.value shouldBe BigDecimal("24798")
+    alior.firmLoansMPln.value should be > BigDecimal(0)
+    alior.firmLoansMPln.value should be < BigDecimal("24798")
     alior.consumerLoansMPln.value shouldBe BigDecimal("20754.416")
     alior.mortgageLoansMPln.value shouldBe BigDecimal("24094.288")
     alior.govBondsMPln.value shouldBe BigDecimal("25645.757")
@@ -136,10 +162,21 @@ class OpeningBankBalanceProfileBridgeSpec extends AnyFlatSpec with Matchers with
       row.notes should not include "Do not derive bank-level stock targets from relationship_weight_prior"
 
     residual.runtimeBankName shouldBe "Other banks"
-    residual.bridgeStatus shouldBe "RESIDUAL_PARTIAL_SOURCE_COVERAGE"
-    residual.transformation should include("sector total minus all named-bank values")
+    residual.bridgeStatus shouldBe "RESIDUAL_RUNTIME_TARGET"
+    residual.transformation should include("final residual closure")
     residual.depositsMPln.value shouldBe BigDecimal("643148.876")
-    residual.ownFundsMPln shouldBe None
+    residual.firmLoansMPln.value should be > BigDecimal(0)
+    residual.consumerLoansMPln.value should be > BigDecimal(0)
+    residual.mortgageLoansMPln.value should be > BigDecimal(0)
+    residual.govBondsMPln.value should be > BigDecimal(0)
+    residual.ownFundsMPln.value should be > BigDecimal(0)
+
+    Rows.filterNot(_.rowType == "sector_total").map(_.depositsMPln.value).sum shouldBe SectorTotals.depositsMPln
+    Rows.filterNot(_.rowType == "sector_total").map(_.firmLoansMPln.value).sum shouldBe SectorTotals.firmLoansMPln
+    Rows.filterNot(_.rowType == "sector_total").map(_.consumerLoansMPln.value).sum shouldBe SectorTotals.consumerLoansMPln
+    Rows.filterNot(_.rowType == "sector_total").map(_.mortgageLoansMPln.value).sum shouldBe SectorTotals.mortgageLoansMPln
+    Rows.filterNot(_.rowType == "sector_total").map(_.govBondsMPln.value).sum shouldBe SectorTotals.govBondsMPln
+    Rows.filterNot(_.rowType == "sector_total").map(_.ownFundsMPln.value).sum shouldBe SectorTotals.ownFundsMPln
   }
 
   it should "keep current relationship-weight priors normalized but separate from empirical stocks" in {
@@ -151,10 +188,20 @@ class OpeningBankBalanceProfileBridgeSpec extends AnyFlatSpec with Matchers with
       row.relationshipWeightPrior.value should be > BigDecimal(0)
   }
 
-  it should "leave runtime bank targets pending while source-backed evidence is incomplete" in {
-    OpeningBankProfileTargets.fromBridgeRows(Rows) shouldBe OpeningBankProfileTargets.Resolution.Pending(
-      "Opening bank profile has source-backed evidence but is not runtime-ready yet",
-    )
+  it should "resolve the production bridge to complete runtime bank targets" in {
+    val resolved = OpeningBankProfileTargets.fromBridgeRows(Rows)
+
+    resolved shouldBe a[OpeningBankProfileTargets.Resolution.Complete]
+    val targets = resolved.asInstanceOf[OpeningBankProfileTargets.Resolution.Complete].targets
+
+    targets.bankIds.map(_.toInt) shouldBe Banking.DefaultConfigs.map(_.id.toInt)
+    targets.deposits.sumPln shouldBe summon[SimParams].banking.initDeposits
+    targets.firmLoans.sumPln shouldBe summon[SimParams].banking.initLoans
+    targets.consumerLoans.sumPln shouldBe summon[SimParams].banking.initConsumerLoans
+    targets.mortgageLoans.sumPln shouldBe summon[SimParams].housing.initMortgage
+    targets.govBonds.sumPln shouldBe summon[SimParams].banking.initGovBonds
+    targets.openingCapitalProfiles.flatMap(_.ownFunds).sumPln shouldBe summon[SimParams].banking.initCapital
+    targets.openingCapitalProfiles.flatMap(_.totalCapitalRatio) shouldBe Vector.empty
   }
 
   it should "fail fast when complete named-bank residual coverage exceeds the sector total" in {

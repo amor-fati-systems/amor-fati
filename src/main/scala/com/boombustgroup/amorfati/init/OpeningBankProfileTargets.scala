@@ -55,6 +55,7 @@ object OpeningBankProfileTargets:
 
   private val RuntimeReadyBridgeStatuses: Set[String] = Set(
     "EMPIRICAL_RUNTIME_TARGET",
+    "EMPIRICAL_PROXY_RUNTIME_TARGET",
     "RESIDUAL_RUNTIME_TARGET",
     "TEST_COMPLETE_RUNTIME_PROFILE",
   )
@@ -111,7 +112,7 @@ object OpeningBankProfileTargets:
       .map(values => closeResidual("opening bank corporate bonds", values, p.corpBond.initStock * p.corpBond.bankShare, residualIndex))
     val ownFunds      = optionalPlnVector("own_funds_m_pln", orderedRows, _.ownFundsMPln)
       .map(values => closeResidual("opening bank own funds", values, p.banking.initCapital, residualIndex))
-    val capitalRatios = optionalMultiplierVector("total_capital_ratio", orderedRows, _.totalCapitalRatio)
+    val capitalRatios = optionalCapitalRatioVector(orderedRows, ownFunds)
 
     val capitalProfiles = bankIds.indices.map: i =>
       Banking.OpeningCapitalProfile(
@@ -159,12 +160,17 @@ object OpeningBankProfileTargets:
   )(using SimParams): Option[Vector[PLN]] =
     optionalVector(column, rows, value).map(_.map(mPlnToRuntime))
 
-  private def optionalMultiplierVector(
-      column: String,
+  private def optionalCapitalRatioVector(
       rows: Vector[OpeningBankBalanceProfileBridge.Row],
-      value: OpeningBankBalanceProfileBridge.Row => Option[BigDecimal],
+      ownFunds: Option[Vector[PLN]],
   ): Option[Vector[Multiplier]] =
-    optionalVector(column, rows, value).map(_.map(decimalToMultiplier))
+    val extracted = rows.map(_.totalCapitalRatio)
+    if extracted.forall(_.isEmpty) then None
+    else if extracted.forall(_.nonEmpty) then Some(extracted.flatten.map(decimalToMultiplier))
+    else if ownFunds.nonEmpty then None
+    else
+      val missing = rows.zip(extracted).collect { case (row, None) => s"${row.runtimeBankName}.total_capital_ratio" }
+      throw new IllegalStateException(s"Opening bank profile has partial total_capital_ratio coverage; missing ${missing.mkString(", ")}")
 
   private def optionalVector(
       column: String,

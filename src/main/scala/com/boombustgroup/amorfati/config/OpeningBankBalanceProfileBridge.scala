@@ -336,7 +336,7 @@ object OpeningBankBalanceProfileBridge:
       transformation =
         "Runtime BPS/Coop is mapped to cooperative banks associated with Bank BPS S.A. Deposits and own funds are converted from PLN thousand to PLN million. Firm loans use the gross loan portfolio of associated cooperative banks multiplied by companies, individual-entrepreneur and individual-farmer shares. Consumer and mortgage loans remain blank because the private-individual split is not a product split.",
       notes =
-        "Source-backed partial row for the cooperative-bank runtime slot. This is not a 2026 Q1 bank-level balance sheet and should not be promoted to runtime-ready without a product-level cooperative-sector source bridge.",
+        "Source-backed partial row for the cooperative-bank runtime slot. This is not a 2026 Q1 bank-level balance sheet, so missing product-level stocks require explicit proxy treatment before runtime use.",
     ),
     "6" -> NamedBankEvidence(
       sourceProvider = "BNP Paribas Bank Polska Q1 2026 presentation",
@@ -409,6 +409,35 @@ object OpeningBankBalanceProfileBridge:
         .mkString(",")}, unused=${UnusedNamedEvidenceIds.toVector.sorted.mkString(",")}",
   )
 
+  private val RuntimeReadyNamedStatus      = "EMPIRICAL_RUNTIME_TARGET"
+  private val RuntimeReadyNamedProxyStatus = "EMPIRICAL_PROXY_RUNTIME_TARGET"
+  private val RuntimeReadyResidualStatus   = "RESIDUAL_RUNTIME_TARGET"
+
+  private val OtherBankPrior: RuntimeBankPrior = RuntimeBankPriors
+    .find(_.runtimeBankName == "Other banks")
+    .getOrElse:
+      sys.error("Missing Other banks runtime prior")
+
+  private val OtherBankId = OtherBankPrior.bankId
+
+  private lazy val RuntimeDepositTargetsById: Map[String, BigDecimal] =
+    directNamedPlusResidualTargets("deposit", _.depositsMPln, SectorTotals.depositsMPln)
+
+  private lazy val RuntimeFirmLoanTargetsById: Map[String, BigDecimal] =
+    runtimeTargetsWithDepositScaleProxy("firm-loan", _.firmLoansMPln, SectorTotals.firmLoansMPln)
+
+  private lazy val RuntimeConsumerLoanTargetsById: Map[String, BigDecimal] =
+    runtimeTargetsWithDepositScaleProxy("consumer-loan", _.consumerLoansMPln, SectorTotals.consumerLoansMPln)
+
+  private lazy val RuntimeMortgageLoanTargetsById: Map[String, BigDecimal] =
+    runtimeTargetsWithDepositScaleProxy("mortgage-loan", _.mortgageLoansMPln, SectorTotals.mortgageLoansMPln)
+
+  private lazy val RuntimeGovBondTargetsById: Map[String, BigDecimal] =
+    runtimeTargetsWithDepositScaleProxy("government-bond", _.govBondsMPln, SectorTotals.govBondsMPln)
+
+  private lazy val RuntimeOwnFundsTargetsById: Map[String, BigDecimal] =
+    directNamedPlusResidualTargets("own-funds", _.ownFundsMPln, SectorTotals.ownFundsMPln, normalizeOverCoverage = true)
+
   private val SectorTotalRow: Row =
     Row(
       rowType = "sector_total",
@@ -455,6 +484,15 @@ object OpeningBankBalanceProfileBridge:
         sourceBackedNamedBankRow(prior, evidence)
 
   private def sourceBackedNamedBankRow(prior: RuntimeBankPrior, evidence: NamedBankEvidence): Row =
+    val proxyFields      = mandatoryRuntimeProxyFields(evidence)
+    val normalizedFields = normalizedRuntimeFields(prior.bankId, evidence)
+    val deposits         = runtimeTarget(prior.bankId, RuntimeDepositTargetsById, "deposit")
+    val firmLoans        = runtimeTarget(prior.bankId, RuntimeFirmLoanTargetsById, "firm-loan")
+    val consumer         = runtimeTarget(prior.bankId, RuntimeConsumerLoanTargetsById, "consumer-loan")
+    val mortgage         = runtimeTarget(prior.bankId, RuntimeMortgageLoanTargetsById, "mortgage-loan")
+    val govBonds         = runtimeTarget(prior.bankId, RuntimeGovBondTargetsById, "government-bond")
+    val ownFunds         = runtimeTarget(prior.bankId, RuntimeOwnFundsTargetsById, "own-funds")
+
     Row(
       rowType = "named_bank",
       bankId = prior.bankId,
@@ -467,28 +505,28 @@ object OpeningBankBalanceProfileBridge:
       accessedAt = AccessedAt,
       frequency = "quarterly bank-level disclosure",
       unit = Unit,
-      bridgeStatus = "SOURCE_BACKED_PARTIAL_EVIDENCE",
+      bridgeStatus = if proxyFields.isEmpty && normalizedFields.isEmpty then RuntimeReadyNamedStatus else RuntimeReadyNamedProxyStatus,
       relationshipWeightPrior = Some(prior.relationshipWeightPrior),
-      depositsMPln = evidence.depositsMPln,
-      firmLoansMPln = evidence.firmLoansMPln,
-      consumerLoansMPln = evidence.consumerLoansMPln,
-      mortgageLoansMPln = evidence.mortgageLoansMPln,
-      govBondsMPln = evidence.govBondsMPln,
+      depositsMPln = Some(deposits),
+      firmLoansMPln = Some(firmLoans),
+      consumerLoansMPln = Some(consumer),
+      mortgageLoansMPln = Some(mortgage),
+      govBondsMPln = Some(govBonds),
       reservesMPln = evidence.reservesMPln,
       corpBondsMPln = evidence.corpBondsMPln,
       rwaMPln = evidence.rwaMPln,
-      ownFundsMPln = evidence.ownFundsMPln,
+      ownFundsMPln = Some(ownFunds),
       cet1Ratio = evidence.cet1Ratio,
       tier1Ratio = evidence.tier1Ratio,
       totalCapitalRatio = evidence.totalCapitalRatio,
-      depositShare = shareOf(evidence.depositsMPln, SectorTotals.depositsMPln),
-      firmLoanShare = shareOf(evidence.firmLoansMPln, SectorTotals.firmLoansMPln),
-      consumerLoanShare = shareOf(evidence.consumerLoansMPln, SectorTotals.consumerLoansMPln),
-      mortgageLoanShare = shareOf(evidence.mortgageLoansMPln, SectorTotals.mortgageLoansMPln),
-      govBondShare = shareOf(evidence.govBondsMPln, SectorTotals.govBondsMPln),
+      depositShare = shareOf(Some(deposits), SectorTotals.depositsMPln),
+      firmLoanShare = shareOf(Some(firmLoans), SectorTotals.firmLoansMPln),
+      consumerLoanShare = shareOf(Some(consumer), SectorTotals.consumerLoansMPln),
+      mortgageLoanShare = shareOf(Some(mortgage), SectorTotals.mortgageLoansMPln),
+      govBondShare = shareOf(Some(govBonds), SectorTotals.govBondsMPln),
       rwaShare = shareOf(evidence.rwaMPln, SectorTotals.rwaMPln),
-      transformation = evidence.transformation,
-      notes = evidence.notes,
+      transformation = runtimeTransformation(evidence.transformation, proxyFields, normalizedFields),
+      notes = runtimeNotes(evidence.notes, proxyFields, normalizedFields),
     )
 
   private def shareOf(value: Option[BigDecimal], total: BigDecimal): Option[BigDecimal] =
@@ -502,17 +540,124 @@ object OpeningBankBalanceProfileBridge:
         throw new IllegalStateException(s"Named-bank $label coverage exceeds sector total: named=$namedTotal, sector=$total, residual=$residual")
       residual
 
-  private def residualOf(label: String, values: NamedBankEvidence => Option[BigDecimal], total: BigDecimal): Option[BigDecimal] =
-    val namedValues = NamedBankEvidenceById.values.toVector.map(values)
-    residualFromNamedValues(label, namedValues, total)
+  private def directNamedPlusResidualTargets(
+      label: String,
+      value: NamedBankEvidence => Option[BigDecimal],
+      total: BigDecimal,
+      normalizeOverCoverage: Boolean = false,
+  ): Map[String, BigDecimal] =
+    val namedValues = RuntimeBankPriors
+      .filterNot(_.bankId == OtherBankId)
+      .map(prior => prior.bankId -> value(NamedBankEvidenceById(prior.bankId)))
+    val missing     = namedValues.collect { case (bankId, None) => bankId }
+    require(missing.isEmpty, s"Missing named-bank $label coverage for runtime target: ${missing.mkString(", ")}")
+    val namedTotal  = namedValues.flatMap(_._2).sum
+    val residual    = total - namedTotal
+    if residual >= BigDecimal(0) then namedValues.map((bankId, target) => bankId -> target.get).toMap + (OtherBankId -> residual)
+    else if normalizeOverCoverage then
+      val residualBasis  = Vector(OtherBankId -> runtimeTarget(OtherBankId, RuntimeDepositTargetsById, "deposit residual basis"))
+      val residualBudget = depositScaleBudget(total, residualBasis)
+      val directBudget   = total - residualBudget
+      val directTargets  = allocateByBasis(s"$label source-share normalization", directBudget, namedValues.map((bankId, target) => bankId -> target.get)).toMap
+      val residualTarget = allocateByBasis(s"$label deposit-scale residual", residualBudget, residualBasis).toMap
+      directTargets ++ residualTarget
+    else throw new IllegalArgumentException(s"Named-bank $label coverage exceeds sector total: named=$namedTotal, sector=$total, residual=$residual")
+
+  private def runtimeTargetsWithDepositScaleProxy(
+      label: String,
+      value: NamedBankEvidence => Option[BigDecimal],
+      total: BigDecimal,
+  ): Map[String, BigDecimal] =
+    val namedValues      = RuntimeBankPriors
+      .filterNot(_.bankId == OtherBankId)
+      .map(prior => prior.bankId -> value(NamedBankEvidenceById(prior.bankId)))
+    val directNamed      = namedValues.collect { case (bankId, Some(target)) => bankId -> target }
+    val directNamedTotal = directNamed.map(_._2).sum
+    val missingBankIds   = namedValues.collect { case (bankId, None) => bankId } :+ OtherBankId
+    val proxyBasis       = missingBankIds.map(bankId => bankId -> runtimeTarget(bankId, RuntimeDepositTargetsById, "deposit proxy basis"))
+
+    if directNamedTotal > total then
+      val proxyBudget   = depositScaleBudget(total, proxyBasis)
+      val directBudget  = total - proxyBudget
+      val directTargets = allocateByBasis(s"$label source-share normalization", directBudget, directNamed).toMap
+      val proxyTargets  = allocateByBasis(s"$label deposit-scale proxy", proxyBudget, proxyBasis).toMap
+      directTargets ++ proxyTargets
+    else
+      val remaining    = total - directNamedTotal
+      val proxyTargets = allocateByBasis(label, remaining, proxyBasis).toMap
+      directNamed.toMap ++ proxyTargets
+
+  private def allocateByBasis(label: String, total: BigDecimal, basis: Vector[(String, BigDecimal)]): Vector[(String, BigDecimal)] =
+    require(basis.nonEmpty, s"$label proxy allocation requires at least one target row")
+    val basisTotal = basis.map(_._2).sum
+    require(basisTotal > BigDecimal(0), s"$label proxy allocation requires positive basis total")
+    val leading    = basis
+      .dropRight(1)
+      .map: (bankId, bankBasis) =>
+        bankId -> ((total * bankBasis) / basisTotal).setScale(6, RoundingMode.HALF_EVEN)
+    val residual   = total - leading.map(_._2).sum
+    leading :+ (basis.last._1 -> residual)
+
+  private def depositScaleBudget(total: BigDecimal, basis: Vector[(String, BigDecimal)]): BigDecimal =
+    val totalDepositBasis = RuntimeDepositTargetsById.values.sum
+    require(totalDepositBasis > BigDecimal(0), "deposit-scale proxy budget requires positive deposit target total")
+    ((total * basis.map(_._2).sum) / totalDepositBasis).setScale(6, RoundingMode.HALF_EVEN)
+
+  private def runtimeTarget(bankId: String, targets: Map[String, BigDecimal], label: String): BigDecimal =
+    targets.getOrElse(bankId, sys.error(s"Missing runtime $label target for bank_id=$bankId"))
+
+  private def mandatoryRuntimeProxyFields(evidence: NamedBankEvidence): Vector[String] =
+    Vector(
+      "deposits_m_pln"       -> evidence.depositsMPln,
+      "firm_loans_m_pln"     -> evidence.firmLoansMPln,
+      "consumer_loans_m_pln" -> evidence.consumerLoansMPln,
+      "mortgage_loans_m_pln" -> evidence.mortgageLoansMPln,
+      "gov_bonds_m_pln"      -> evidence.govBondsMPln,
+    ).collect { case (field, None) => field }
+
+  private def normalizedRuntimeFields(bankId: String, evidence: NamedBankEvidence): Vector[String] =
+    Vector(
+      ("deposits_m_pln", evidence.depositsMPln, RuntimeDepositTargetsById),
+      ("firm_loans_m_pln", evidence.firmLoansMPln, RuntimeFirmLoanTargetsById),
+      ("consumer_loans_m_pln", evidence.consumerLoansMPln, RuntimeConsumerLoanTargetsById),
+      ("mortgage_loans_m_pln", evidence.mortgageLoansMPln, RuntimeMortgageLoanTargetsById),
+      ("gov_bonds_m_pln", evidence.govBondsMPln, RuntimeGovBondTargetsById),
+      ("own_funds_m_pln", evidence.ownFundsMPln, RuntimeOwnFundsTargetsById),
+    ).collect:
+      case (field, Some(sourceValue), targets) if runtimeTarget(bankId, targets, field) != sourceValue => field
+
+  private def runtimeTransformation(base: String, proxyFields: Vector[String], normalizedFields: Vector[String]): String =
+    val proxyClause      =
+      Option.when(proxyFields.nonEmpty)(
+        s"Runtime target proxy: missing mandatory field(s) ${proxyFields.mkString(", ")} are allocated by source-backed deposit scale, with final residual closure in Other banks.",
+      )
+    val normalizedClause =
+      Option.when(normalizedFields.nonEmpty)(
+        s"Runtime target normalization: direct source field(s) ${normalizedFields.mkString(", ")} are scaled by source shares to the model sector stock when named-bank coverage exceeds the sector anchor.",
+      )
+    (base +: Vector(proxyClause, normalizedClause).flatten).mkString(" ")
+
+  private def runtimeNotes(base: String, proxyFields: Vector[String], normalizedFields: Vector[String]): String =
+    val proxyClause      =
+      Option.when(proxyFields.nonEmpty)(
+        s"Proxy mandatory field(s): ${proxyFields.mkString(", ")}. The proxy basis is source-backed deposit scale, not relationship_weight_prior.",
+      )
+    val normalizedClause =
+      Option.when(normalizedFields.nonEmpty)(
+        s"Sector-normalized source field(s): ${normalizedFields.mkString(", ")}. Direct source shares are preserved, but the runtime stock is anchored to the model sector total.",
+      )
+    val clauses          = Vector(proxyClause, normalizedClause).flatten
+    if clauses.isEmpty then s"$base Runtime-ready source-backed mandatory stock target row."
+    else s"$base Runtime-ready adjusted target row. ${clauses.mkString(" ")}"
 
   private val OtherBankResidualRow: Row =
-    val prior = RuntimeBankPriors
-      .find(_.runtimeBankName == "Other banks")
-      .getOrElse:
-        sys.error("Missing Other banks runtime prior")
-
-    val depositResidual = residualOf("deposit", _.depositsMPln, SectorTotals.depositsMPln)
+    val prior            = OtherBankPrior
+    val depositResidual  = runtimeTarget(prior.bankId, RuntimeDepositTargetsById, "deposit")
+    val firmLoanResidual = runtimeTarget(prior.bankId, RuntimeFirmLoanTargetsById, "firm-loan")
+    val consumerResidual = runtimeTarget(prior.bankId, RuntimeConsumerLoanTargetsById, "consumer-loan")
+    val mortgageResidual = runtimeTarget(prior.bankId, RuntimeMortgageLoanTargetsById, "mortgage-loan")
+    val govBondResidual  = runtimeTarget(prior.bankId, RuntimeGovBondTargetsById, "government-bond")
+    val ownFundsResidual = runtimeTarget(prior.bankId, RuntimeOwnFundsTargetsById, "own-funds")
 
     Row(
       rowType = "residual_bank",
@@ -526,30 +671,30 @@ object OpeningBankBalanceProfileBridge:
       accessedAt = AccessedAt,
       frequency = "monthly/opening bridge",
       unit = Unit,
-      bridgeStatus = "RESIDUAL_PARTIAL_SOURCE_COVERAGE",
+      bridgeStatus = RuntimeReadyResidualStatus,
       relationshipWeightPrior = Some(prior.relationshipWeightPrior),
-      depositsMPln = depositResidual,
-      firmLoansMPln = None,
-      consumerLoansMPln = None,
-      mortgageLoansMPln = None,
-      govBondsMPln = None,
+      depositsMPln = Some(depositResidual),
+      firmLoansMPln = Some(firmLoanResidual),
+      consumerLoansMPln = Some(consumerResidual),
+      mortgageLoansMPln = Some(mortgageResidual),
+      govBondsMPln = Some(govBondResidual),
       reservesMPln = None,
       corpBondsMPln = None,
       rwaMPln = None,
-      ownFundsMPln = None,
+      ownFundsMPln = Some(ownFundsResidual),
       cet1Ratio = None,
       tier1Ratio = None,
       totalCapitalRatio = None,
-      depositShare = shareOf(depositResidual, SectorTotals.depositsMPln),
-      firmLoanShare = None,
-      consumerLoanShare = None,
-      mortgageLoanShare = None,
-      govBondShare = None,
+      depositShare = shareOf(Some(depositResidual), SectorTotals.depositsMPln),
+      firmLoanShare = shareOf(Some(firmLoanResidual), SectorTotals.firmLoansMPln),
+      consumerLoanShare = shareOf(Some(consumerResidual), SectorTotals.consumerLoansMPln),
+      mortgageLoanShare = shareOf(Some(mortgageResidual), SectorTotals.mortgageLoansMPln),
+      govBondShare = shareOf(Some(govBondResidual), SectorTotals.govBondsMPln),
       rwaShare = None,
       transformation =
-        "For each stock numerator, compute sector total minus all named-bank values only when every named row has direct non-negative source coverage for that field; otherwise leave the field blank.",
+        "Runtime residual target. Directly covered named-bank values are subtracted from the sector total when coverage is below the sector anchor. When named-bank source coverage exceeds the sector anchor, direct source shares are normalized to leave a source-backed deposit-scale residual/proxy budget. This row receives the final residual closure.",
       notes =
-        "This row is intentionally not a plug from relationshipWeight. Deposit residual is available because every named bank has deposit evidence. Other stock fields remain blank while product-level or perimeter-consistent coverage is incomplete.",
+        "Runtime-ready residual row. Mandatory stock values are deterministic residual/proxy closures tied to sector totals, source-backed shares and source-backed deposits, not relationship_weight_prior.",
     )
 
   val Rows: Vector[Row] =
