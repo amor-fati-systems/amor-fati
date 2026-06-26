@@ -74,14 +74,26 @@ object OpeningBankProfileTargets:
       else Resolution.Pending("Opening bank profile has no complete runtime stock targets yet")
     else
       val bankIds       = orderedRows.map(row => BankId(row.bankId.toInt))
-      val deposits      = orderedRows.map(row => mPlnToRuntime(row.depositsMPln.get))
-      val firmLoans     = orderedRows.map(row => mPlnToRuntime(row.firmLoansMPln.get))
-      val consumerLoans = orderedRows.map(row => mPlnToRuntime(row.consumerLoansMPln.get))
-      val mortgageLoans = orderedRows.map(row => mPlnToRuntime(row.mortgageLoansMPln.get))
-      val govBonds      = orderedRows.map(row => mPlnToRuntime(row.govBondsMPln.get))
+      val residualIndex = residualBankIndex(orderedRows)
+      val deposits      = closeResidual("opening bank deposits", orderedRows.map(row => mPlnToRuntime(row.depositsMPln.get)), p.banking.initDeposits, residualIndex)
+      val firmLoans     = closeResidual("opening bank firm loans", orderedRows.map(row => mPlnToRuntime(row.firmLoansMPln.get)), p.banking.initLoans, residualIndex)
+      val consumerLoans =
+        closeResidual(
+          "opening bank consumer loans",
+          orderedRows.map(row => mPlnToRuntime(row.consumerLoansMPln.get)),
+          p.banking.initConsumerLoans,
+          residualIndex,
+        )
+      val mortgageLoans =
+        closeResidual("opening bank mortgage loans", orderedRows.map(row => mPlnToRuntime(row.mortgageLoansMPln.get)), p.housing.initMortgage, residualIndex)
+      val govBonds      =
+        closeResidual("opening bank government bonds", orderedRows.map(row => mPlnToRuntime(row.govBondsMPln.get)), p.banking.initGovBonds, residualIndex)
       val reserves      = optionalPlnVector("reserves_m_pln", orderedRows, _.reservesMPln)
+        .map(values => closeResidual("opening bank reserves", values, p.banking.initDeposits * p.banking.reserveReq, residualIndex))
       val corpBonds     = optionalPlnVector("corp_bonds_m_pln", orderedRows, _.corpBondsMPln)
+        .map(values => closeResidual("opening bank corporate bonds", values, p.corpBond.initStock * p.corpBond.bankShare, residualIndex))
       val ownFunds      = optionalPlnVector("own_funds_m_pln", orderedRows, _.ownFundsMPln)
+        .map(values => closeResidual("opening bank own funds", values, p.banking.initCapital, residualIndex))
       val capitalRatios = optionalMultiplierVector("total_capital_ratio", orderedRows, _.totalCapitalRatio)
 
       val capitalProfiles = bankIds.indices.map: i =>
@@ -90,15 +102,6 @@ object OpeningBankProfileTargets:
           ownFunds = ownFunds.map(_(i)),
           totalCapitalRatio = capitalRatios.map(_(i)),
         )
-
-      requireClose("opening bank deposits", deposits.sumPln, p.banking.initDeposits)
-      requireClose("opening bank firm loans", firmLoans.sumPln, p.banking.initLoans)
-      requireClose("opening bank consumer loans", consumerLoans.sumPln, p.banking.initConsumerLoans)
-      requireClose("opening bank mortgage loans", mortgageLoans.sumPln, p.housing.initMortgage)
-      requireClose("opening bank government bonds", govBonds.sumPln, p.banking.initGovBonds)
-      reserves.foreach(values => requireClose("opening bank reserves", values.sumPln, p.banking.initDeposits * p.banking.reserveReq))
-      corpBonds.foreach(values => requireClose("opening bank corporate bonds", values.sumPln, p.corpBond.initStock * p.corpBond.bankShare))
-      ownFunds.foreach(values => requireClose("opening bank own funds", values.sumPln, p.banking.initCapital))
 
       Resolution.Complete(
         Targets(
@@ -158,6 +161,11 @@ object OpeningBankProfileTargets:
       val missing = rows.zip(extracted).collect { case (row, None) => s"${row.runtimeBankName}.$column" }
       throw new IllegalStateException(s"Opening bank profile has partial $column coverage; missing ${missing.mkString(", ")}")
 
+  private def residualBankIndex(rows: Vector[OpeningBankBalanceProfileBridge.Row]): Int =
+    val index = rows.indexWhere(_.rowType == "residual_bank")
+    require(index >= 0, "Opening bank profile requires a residual_bank row for residual closure")
+    index
+
   private def mPlnToRuntime(value: BigDecimal)(using p: SimParams): PLN =
     val pln = value * BigDecimal(1000000L)
     val raw = (pln * FixedPointBase.ScaleDecimal)
@@ -179,3 +187,17 @@ object OpeningBankProfileTargets:
       delta <= tolerance,
       s"$label target sum $actual differs from model aggregate $expected by $delta, above tolerance $tolerance",
     )
+
+  private def closeResidual(label: String, values: Vector[PLN], expected: PLN, residualIndex: Int): Vector[PLN] =
+    requireClose(label, values.sumPln, expected)
+    val delta = expected - values.sumPln
+    if delta == PLN.Zero then values
+    else
+      val closedResidual = values(residualIndex) + delta
+      require(
+        closedResidual >= PLN.Zero,
+        s"$label residual closure would make residual bank negative: current=${values(residualIndex)} delta=$delta",
+      )
+      val closed         = values.updated(residualIndex, closedResidual)
+      require(closed.sumPln == expected, s"$label residual closure failed: ${closed.sumPln} != $expected")
+      closed

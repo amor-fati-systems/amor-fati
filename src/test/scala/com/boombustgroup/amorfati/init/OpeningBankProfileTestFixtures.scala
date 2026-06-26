@@ -11,6 +11,8 @@ object OpeningBankProfileTestFixtures:
   private val TestProfileWeights: Vector[BigDecimal] =
     Vector("0.200", "0.130", "0.090", "0.080", "0.070", "0.040", "0.080", "0.060", "0.050", "0.200").map(BigDecimal(_))
 
+  private val TestBankCorpBondsMPln: BigDecimal = BigDecimal("32550")
+
   def completeRows: Vector[Row] =
     val runtimeRows = Rows.filterNot(_.rowType == "sector_total")
     require(
@@ -28,6 +30,7 @@ object OpeningBankProfileTestFixtures:
     val mortgageLoans = split(SectorTotals.mortgageLoansMPln, TestProfileWeights)
     val govBonds      = split(SectorTotals.govBondsMPln, TestProfileWeights)
     val reserves      = split(SectorTotals.reservesMPln, TestProfileWeights)
+    val corpBonds     = split(TestBankCorpBondsMPln, TestProfileWeights)
     val ownFunds      = split(SectorTotals.ownFundsMPln, TestProfileWeights)
     val rwa           = split(SectorTotals.rwaMPln, TestProfileWeights)
 
@@ -44,6 +47,7 @@ object OpeningBankProfileTestFixtures:
           mortgageLoansMPln = Some(mortgageLoans(bankIndex)),
           govBondsMPln = Some(govBonds(bankIndex)),
           reservesMPln = Some(reserves(bankIndex)),
+          corpBondsMPln = Some(corpBonds(bankIndex)),
           rwaMPln = Some(rwa(bankIndex)),
           ownFundsMPln = Some(ownFunds(bankIndex)),
           totalCapitalRatio = Some(SectorTotals.totalCapitalRatio),

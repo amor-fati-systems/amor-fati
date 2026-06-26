@@ -90,10 +90,35 @@ class OpeningBankBalanceProfileBridgeSpec extends AnyFlatSpec with Matchers with
     targets.mortgageLoans.sumPln shouldBe summon[SimParams].housing.initMortgage
     targets.govBonds.sumPln shouldBe summon[SimParams].banking.initGovBonds
     targets.reserves.value.sumPln shouldBe summon[SimParams].banking.initDeposits * summon[SimParams].banking.reserveReq
+    targets.corpBonds.value.sumPln shouldBe summon[SimParams].corpBond.initStock * summon[SimParams].corpBond.bankShare
     targets.openingCapitalProfiles.flatMap(_.ownFunds).sumPln shouldBe summon[SimParams].banking.initCapital
-    targets.deposits
-      .zip(Banking.DefaultConfigs.map(cfg => summon[SimParams].banking.initDeposits * cfg.relationshipWeight))
-      .exists((actual, relationshipWeightSplit) => actual != relationshipWeightSplit) shouldBe true
+    targets.deposits(0) shouldBe summon[SimParams].banking.initDeposits * Share.decimal(2, 1)
+    targets.deposits(1) shouldBe summon[SimParams].banking.initDeposits * Share.decimal(13, 2)
+    targets.deposits(0) should not be (summon[SimParams].banking.initDeposits * Banking.DefaultConfigs.head.relationshipWeight)
+  }
+
+  it should "fail fast when runtime stock target coverage is mixed" in {
+    val mixedRows = OpeningBankProfileTestFixtures.completeRows.map:
+      case row if row.rowType != "sector_total" && row.bankId == "0" => row.copy(depositsMPln = None)
+      case row                                                       => row
+
+    val err = intercept[IllegalStateException]:
+      OpeningBankProfileTargets.fromBridgeRows(mixedRows)
+
+    err.getMessage should include("partial runtime stock targets")
+    err.getMessage should include("PKO BP.deposits_m_pln")
+  }
+
+  it should "close accepted residual differences into the residual bank target" in {
+    val rows = OpeningBankProfileTestFixtures.completeRows.map:
+      case row if row.rowType == "residual_bank" => row.copy(corpBondsMPln = row.corpBondsMPln.map(_ - BigDecimal("0.001")))
+      case row                                   => row
+
+    val targets = OpeningBankProfileTargets.fromBridgeRows(rows) match
+      case OpeningBankProfileTargets.Resolution.Complete(targets) => targets
+      case other                                                  => fail(s"Expected complete opening bank targets, got $other")
+
+    targets.corpBonds.value.sumPln shouldBe summon[SimParams].corpBond.initStock * summon[SimParams].corpBond.bankShare
   }
 
   it should "render the committed TSV extract from the typed bridge" in {

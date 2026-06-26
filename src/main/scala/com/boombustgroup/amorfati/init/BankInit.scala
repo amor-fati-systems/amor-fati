@@ -63,13 +63,13 @@ object BankInit:
           )
           .map(PLN.fromRaw)
           .toVector
-      else requireBankVector("government-bond", bankGovBondHoldings)
+      else requireBankVectorTotal("government-bond", bankGovBondHoldings, p.banking.initGovBonds)
     val reserveHoldings         =
       if bankReserveHoldings.isEmpty then Vector.empty
-      else requireBankVector("reserve", bankReserveHoldings)
+      else requireBankVectorTotal("reserve", bankReserveHoldings, p.banking.initDeposits * p.banking.reserveReq)
     val corpBondHoldings        =
       if bankCorpBondHoldings.isEmpty then Vector.fill(Banking.DefaultConfigs.length)(PLN.Zero)
-      else requireBankVector("corporate-bond", bankCorpBondHoldings)
+      else requireBankVectorTotal("corporate-bond", bankCorpBondHoldings, p.corpBond.initStock * p.corpBond.bankShare)
     val capitalProfilesByBankId = openingCapitalProfiles.map(profile => profile.bankId -> profile).toMap
     require(
       capitalProfilesByBankId.size == openingCapitalProfiles.size,
@@ -174,6 +174,15 @@ object BankInit:
     )
     require(values.forall(_ >= PLN.Zero), s"BankInit.create requires non-negative bank $label rows")
     values
+
+  private def requireBankVectorTotal(label: String, values: Vector[PLN], expectedTotal: PLN): Vector[PLN] =
+    val checked = requireBankVector(label, values)
+    val actual  = checked.sumPln
+    require(
+      actual == expectedTotal,
+      s"BankInit.create requires bank $label rows to sum to $expectedTotal, got $actual",
+    )
+    checked
 
   private def bankVectorValue(label: String, values: Vector[PLN], bankIndex: Int): PLN =
     require(
