@@ -91,6 +91,9 @@ class OpeningBankBalanceProfileBridgeSpec extends AnyFlatSpec with Matchers with
     targets.govBonds.sumPln shouldBe summon[SimParams].banking.initGovBonds
     targets.reserves.value.sumPln shouldBe summon[SimParams].banking.initDeposits * summon[SimParams].banking.reserveReq
     targets.openingCapitalProfiles.flatMap(_.ownFunds).sumPln shouldBe summon[SimParams].banking.initCapital
+    targets.deposits
+      .zip(Banking.DefaultConfigs.map(cfg => summon[SimParams].banking.initDeposits * cfg.relationshipWeight))
+      .exists((actual, relationshipWeightSplit) => actual != relationshipWeightSplit) shouldBe true
   }
 
   it should "render the committed TSV extract from the typed bridge" in {

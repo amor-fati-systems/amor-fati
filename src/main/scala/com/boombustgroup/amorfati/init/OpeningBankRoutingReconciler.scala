@@ -31,6 +31,8 @@ object OpeningBankRoutingReconciler:
     )
 
     val firmDepositTotal        = firmFinancialStocks.map(_.cash).sumPln
+    // The profile exposes aggregate deposits. Preserve the existing firm/HH
+    // aggregate split, then reconcile both holder groups to each bank target.
     val firmDepositTargets      = distributePln(firmDepositTotal, targets.deposits)
     val householdDepositTargets =
       targets.deposits
@@ -104,6 +106,9 @@ object OpeningBankRoutingReconciler:
     if entityCount == 0 then
       require(targetStocks.forall(_ <= PLN.Zero), s"Cannot route positive opening bank $label targets without $label")
       Vector.empty
+    else if targetStocks.forall(_ <= PLN.Zero) then
+      validateBankIds(currentBankIds, targetStocks.length, label)
+      currentBankIds
     else
       val desiredCounts = desiredEntityCounts(entityCount, targetStocks, label)
       val assigned      = Array.fill[Option[BankId]](entityCount)(None)
@@ -125,6 +130,13 @@ object OpeningBankRoutingReconciler:
       assigned.toVector.map:
         case Some(bankId) => bankId
         case None         => throw new IllegalStateException(s"Opening bank routing left an unassigned $label row")
+
+  private def validateBankIds(bankIds: Vector[BankId], bankCount: Int, label: String): Unit =
+    bankIds.foreach: bankId =>
+      require(
+        bankId.toInt >= 0 && bankId.toInt < bankCount,
+        s"Opening bank routing found invalid BankId ${bankId.toInt} in $label",
+      )
 
   private def desiredEntityCounts(entityCount: Int, targetStocks: Vector[PLN], label: String): Vector[Int] =
     val positiveBanks = targetStocks.zipWithIndex.collect { case (target, bankIndex) if target > PLN.Zero => bankIndex }

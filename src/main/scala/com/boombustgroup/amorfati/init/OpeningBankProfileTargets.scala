@@ -30,6 +30,10 @@ object OpeningBankProfileTargets:
 
     require(bankCount > 0, "Opening bank profile targets require at least one bank")
     require(
+      bankIds == Banking.DefaultConfigs.map(_.id),
+      s"Opening bank profile targets must follow DefaultConfigs BankId order ${Banking.DefaultConfigs.map(_.id.toInt).mkString("[", ",", "]")}",
+    )
+    require(
       deposits.length == bankCount &&
         firmLoans.length == bankCount &&
         consumerLoans.length == bankCount &&
