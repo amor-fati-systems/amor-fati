@@ -494,19 +494,25 @@ object OpeningBankBalanceProfileBridge:
   private def shareOf(value: Option[BigDecimal], total: BigDecimal): Option[BigDecimal] =
     value.map(v => (v / total).setScale(9, RoundingMode.HALF_EVEN))
 
-  private def residualOf(values: NamedBankEvidence => Option[BigDecimal], total: BigDecimal): Option[BigDecimal] =
+  private[config] def residualFromNamedValues(label: String, namedValues: Vector[Option[BigDecimal]], total: BigDecimal): Option[BigDecimal] =
+    Option.when(namedValues.forall(_.isDefined)):
+      val namedTotal = namedValues.flatten.sum
+      val residual   = total - namedTotal
+      if residual < BigDecimal(0) then
+        throw new IllegalStateException(s"Named-bank $label coverage exceeds sector total: named=$namedTotal, sector=$total, residual=$residual")
+      residual
+
+  private def residualOf(label: String, values: NamedBankEvidence => Option[BigDecimal], total: BigDecimal): Option[BigDecimal] =
     val namedValues = NamedBankEvidenceById.values.toVector.map(values)
-    Option
-      .when(namedValues.forall(_.isDefined)):
-        val residual = total - namedValues.flatten.sum
-        Option.when(residual >= BigDecimal(0))(residual)
-      .flatten
+    residualFromNamedValues(label, namedValues, total)
 
   private val OtherBankResidualRow: Row =
     val prior = RuntimeBankPriors
       .find(_.runtimeBankName == "Other banks")
       .getOrElse:
         sys.error("Missing Other banks runtime prior")
+
+    val depositResidual = residualOf("deposit", _.depositsMPln, SectorTotals.depositsMPln)
 
     Row(
       rowType = "residual_bank",
@@ -522,7 +528,7 @@ object OpeningBankBalanceProfileBridge:
       unit = Unit,
       bridgeStatus = "RESIDUAL_PARTIAL_SOURCE_COVERAGE",
       relationshipWeightPrior = Some(prior.relationshipWeightPrior),
-      depositsMPln = residualOf(_.depositsMPln, SectorTotals.depositsMPln),
+      depositsMPln = depositResidual,
       firmLoansMPln = None,
       consumerLoansMPln = None,
       mortgageLoansMPln = None,
@@ -534,7 +540,7 @@ object OpeningBankBalanceProfileBridge:
       cet1Ratio = None,
       tier1Ratio = None,
       totalCapitalRatio = None,
-      depositShare = shareOf(residualOf(_.depositsMPln, SectorTotals.depositsMPln), SectorTotals.depositsMPln),
+      depositShare = shareOf(depositResidual, SectorTotals.depositsMPln),
       firmLoanShare = None,
       consumerLoanShare = None,
       mortgageLoanShare = None,

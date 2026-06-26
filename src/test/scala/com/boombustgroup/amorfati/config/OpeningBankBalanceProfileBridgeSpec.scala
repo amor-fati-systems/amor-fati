@@ -157,6 +157,17 @@ class OpeningBankBalanceProfileBridgeSpec extends AnyFlatSpec with Matchers with
     )
   }
 
+  it should "fail fast when complete named-bank residual coverage exceeds the sector total" in {
+    residualFromNamedValues("test stock", Vector(Some(BigDecimal("40")), None), BigDecimal("100")) shouldBe None
+    residualFromNamedValues("test stock", Vector(Some(BigDecimal("40")), Some(BigDecimal("50"))), BigDecimal("100")).value shouldBe BigDecimal("10")
+
+    val error = intercept[IllegalStateException]:
+      residualFromNamedValues("test stock", Vector(Some(BigDecimal("40")), Some(BigDecimal("70"))), BigDecimal("100"))
+
+    error.getMessage should include("Named-bank test stock coverage exceeds sector total")
+    error.getMessage should include("residual=-10")
+  }
+
   it should "resolve complete runtime bank target rows without falling back to relationship weights" in {
     val resolved = OpeningBankProfileTargets.fromBridgeRows(OpeningBankProfileTestFixtures.completeRows)
 
