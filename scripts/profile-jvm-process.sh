@@ -220,6 +220,9 @@ if [[ -f "$jfr_path" ]]; then
   render_jfr
 else
   echo "JFR recording was not produced: ${jfr_path}" | tee "${profiling_dir}/jfr-render-error.txt"
+  if [[ "$process_exit_code" -eq 0 ]]; then
+    process_exit_code=1
+  fi
 fi
 
 echo "==> Profiling artifacts written to ${profiling_dir}"

@@ -1,8 +1,11 @@
 package com.boombustgroup.amorfati.diagnostics
 
+import com.boombustgroup.amorfati.engine.SimulationMonth.ExecutionMonth
+import com.boombustgroup.amorfati.montecarlo.{McSeedMonth, McTimeseriesSchema, MetricValue}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.EitherValues.*
+import zio.{Runtime, Unsafe, ZIO}
 import zio.stream.ZStream
 
 import java.nio.file.Path
@@ -112,6 +115,41 @@ class BankFailureAblationExportSpec extends AnyFlatSpec with Matchers:
     seed.terminalFailures shouldBe None
   }
 
+  it should "treat crashes after the requested horizon as completed seeds" in {
+    val config = BankFailureAblationExport.Config(seeds = 1, months = 2, runId = "test")
+    val result = DiagnosticIo.unsafeRun:
+      BankFailureAblationExport.computeSeedResult(
+        config,
+        BankFailureAblationExport.Scenarios.head,
+        1L,
+        ZStream.fromIterable(Vector(seedMonth(1), seedMonth(2, bankFailures = 7, totalCreditToGdp = MetricValue.fromDecimalDigits(42, 2)))) ++
+          ZStream.fail("late crash"),
+      )
+
+    val seed = result.value
+    seed.observedMonths shouldBe 2
+    seed.crashed shouldBe 0
+    seed.crashReason shouldBe ""
+    seed.terminalFailures shouldBe Some(7)
+    seed.terminalTotalCreditToGdp shouldBe Some(BigDecimal("0.42"))
+  }
+
+  it should "propagate interruption instead of rendering it as a crash seed" in {
+    val config = BankFailureAblationExport.Config(seeds = 1, months = 2, runId = "test")
+    val exit   = Unsafe.unsafe: unsafe =>
+      given Unsafe = unsafe
+      Runtime.default.unsafe
+        .run:
+          BankFailureAblationExport
+            .computeSeedResult(config, BankFailureAblationExport.Scenarios.head, 1L, ZStream.fromZIO(ZIO.interrupt))
+            .exit
+        .getOrThrowFiberFailure()
+
+    exit match
+      case zio.Exit.Failure(cause) => cause.isInterrupted shouldBe true
+      case zio.Exit.Success(seed)  => fail(s"expected interruption, got seed result $seed")
+  }
+
   private def seed(
       scenarioId: String,
       scenarioLabel: String,
@@ -159,3 +197,20 @@ class BankFailureAblationExportSpec extends AnyFlatSpec with Matchers:
       terminalInflation = terminalFailures.map(_ => BigDecimal("0.03")),
       interpretation = "test",
     )
+
+  private val metricColumnIndex: Map[String, Int] =
+    McTimeseriesSchema.colNames.zipWithIndex.toMap
+
+  private def seedMonth(
+      month: Int,
+      bankFailures: Int = 0,
+      totalCreditToGdp: MetricValue = MetricValue.Zero,
+  ): McSeedMonth =
+    val row = Array.fill(McTimeseriesSchema.colNames.length)(MetricValue.Zero)
+    putMetric(row, "Month", MetricValue(month))
+    putMetric(row, "BankFailures", MetricValue(bankFailures))
+    putMetric(row, "TotalCreditToGdp", totalCreditToGdp)
+    McSeedMonth(ExecutionMonth(month), row, null, null, null, Vector.empty, Vector.empty)
+
+  private def putMetric(row: Array[MetricValue], name: String, value: MetricValue): Unit =
+    row(metricColumnIndex(name)) = value

@@ -271,13 +271,14 @@ object BankFailureAblationExport:
 
     def toSeedResult(config: Config, scenario: BankFailureAblationScenarios.Spec, seed: Long, crashReason: Option[String]): Either[String, SeedResult] =
       for
-        _        <- Either.cond(
-          crashReason.nonEmpty || observedMonths == config.months,
+        completed            = observedMonths == config.months
+        effectiveCrashReason = crashReason.filter(_ => !completed)
+        _                   <- Either.cond(
+          effectiveCrashReason.nonEmpty || completed,
           (),
           s"bank-failure ablation expected ${config.months} monthly rows for scenario ${scenario.id} seed $seed, observed $observedMonths",
         )
-        completed = crashReason.isEmpty && observedMonths == config.months
-        terminal  = terminalRow.filter(_ => completed)
+        terminal             = terminalRow.filter(_ => completed)
       yield SeedResult(
         runId = config.runId,
         scenarioId = scenario.id,
@@ -285,8 +286,8 @@ object BankFailureAblationExport:
         seed = seed,
         months = config.months,
         observedMonths = observedMonths,
-        crashed = if crashReason.nonEmpty then 1 else 0,
-        crashReason = crashReason.getOrElse(""),
+        crashed = if effectiveCrashReason.nonEmpty then 1 else 0,
+        crashReason = effectiveCrashReason.getOrElse(""),
         firstFailureMonth = firstFailure.map(_.month),
         firstFailureReasonCode = firstFailure.map(_.reasonCode).getOrElse(0),
         firstFailureBankId = firstFailure.map(_.bankId).getOrElse(-1),
@@ -341,7 +342,9 @@ object BankFailureAblationExport:
       outcome <- months
         .foreach(month => ref.update(_.observe(month.row)))
         .as(Right(()))
-        .catchAllCause(cause => ZIO.succeed(Left(renderStreamCrash(cause))))
+        .catchAllCause: cause =>
+          if cause.isInterrupted then ZIO.failCause(cause)
+          else ZIO.succeed(Left(renderStreamCrash(cause)))
       acc     <- ref.get
       result  <- ZIO.fromEither(acc.toSeedResult(config, scenario, seed, outcome.left.toOption))
     yield result

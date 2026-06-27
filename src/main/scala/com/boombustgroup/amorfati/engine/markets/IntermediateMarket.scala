@@ -51,7 +51,11 @@ object IntermediateMarket:
       totalPaid: PLN,
       cashAdjustments: Vector[PLN],
       effectiveCapacities: Vector[PLN] = Vector.empty,
-  )
+  ):
+    require(
+      effectiveCapacities.lengthCompare(firms.length) == 0,
+      "IntermediateMarket.Result.effectiveCapacities must align with firms",
+    )
 
   def process(in: Input)(using SimParams): Result =
     val nSectors = in.ioMatrix.size

@@ -177,6 +177,13 @@ class IntermediateMarketSpec extends AnyFlatSpec with Matchers:
       else PLN.Zero
   }
 
+  it should "reject result instances with unaligned effective capacities" in {
+    val firms = Vector(makeFirm(0, 0), makeFirm(1, 1))
+
+    an[IllegalArgumentException] should be thrownBy
+      IntermediateMarket.Result(firms, PLN.Zero, Vector.fill(firms.length)(PLN.Zero), Vector(PLN.Zero))
+  }
+
   // ---- Test 8: demandMult and price scale output correctly ----
 
   it should "scale I-O flows with demandMult and price" in {

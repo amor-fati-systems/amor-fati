@@ -271,6 +271,14 @@ class FirmSpec extends AnyFlatSpec with Matchers:
     Firm.computeMarginalEffectiveCapacityAtWorkers(firm, 12, productivity) shouldBe expected
   }
 
+  it should "reject invalid hypothetical worker counts" in {
+    val firm = mkFirm(TechState.Traditional(8), sector = 1)
+
+    an[IllegalArgumentException] should be thrownBy Firm.computeCapacityAtWorkers(firm, -1)
+    an[IllegalArgumentException] should be thrownBy
+      Firm.computeMarginalEffectiveCapacityAtWorkers(firm, 0, Multiplier.One)
+  }
+
   // --- Firm.aiCapex / hybridCapex ---
 
   "Firm.computeAiCapex" should "be positive and scale with multipliers" in {

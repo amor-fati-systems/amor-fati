@@ -23,13 +23,14 @@
           amorFatiJava = pkgs.writeShellScriptBin "amor-fati-java" ''
             set -euo pipefail
 
-            java_opts="''${AMOR_FATI_JAVA_OPTS:-}"
-            if [[ -z "$java_opts" ]]; then
-              java_opts="${amorFatiJvmOpts}"
+            java_opts_raw="''${AMOR_FATI_JAVA_OPTS:-}"
+            if [[ -z "$java_opts_raw" ]]; then
+              java_opts_raw="${amorFatiJvmOpts}"
             fi
+            read -r -a java_opts <<< "$java_opts_raw"
 
             # AMOR_FATI_JAVA_OPTS is intentionally split into JVM arguments.
-            exec ${pkgs.jdk21}/bin/java $java_opts "$@"
+            exec ${pkgs.jdk21}/bin/java "''${java_opts[@]}" "$@"
           '';
         in
         {
