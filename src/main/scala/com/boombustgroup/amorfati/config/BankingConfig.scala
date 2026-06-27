@@ -2,6 +2,25 @@ package com.boombustgroup.amorfati.config
 
 import com.boombustgroup.amorfati.types.*
 
+enum OpeningBankProfileScenario:
+  case Baseline
+  case OwnFundsHaircut(factor: Multiplier)
+
+  def aggregateTarget(baseTarget: PLN): PLN =
+    this match
+      case OpeningBankProfileScenario.Baseline                => baseTarget
+      case OpeningBankProfileScenario.OwnFundsHaircut(factor) => baseTarget * factor
+
+  def ownFundsTargets(baseOwnFunds: Vector[PLN]): Vector[PLN] =
+    this match
+      case OpeningBankProfileScenario.Baseline                => baseOwnFunds
+      case OpeningBankProfileScenario.OwnFundsHaircut(factor) => baseOwnFunds.map(_ * factor)
+
+object OpeningBankProfileScenario:
+  def haircutOwnFunds(factor: Multiplier): OpeningBankProfileScenario =
+    require(factor >= Multiplier.Zero && factor <= Multiplier.One, s"own-funds haircut factor must be in [0,1], got $factor")
+    OwnFundsHaircut(factor)
+
 /** Commercial banking system: balance sheets, credit risk, LCR/NSFR,
   * macroprudential, and KNF/BFG supervision.
   *
@@ -13,12 +32,16 @@ import com.boombustgroup.amorfati.types.*
   * bank-archetype BION/SREP P2R add-ons, BFG resolution levy and bail-in, and
   * interbank market.
   *
-  * Stock values (`initCapital`, `initDeposits`, etc.) are in raw PLN — scaled
-  * by `gdpRatio` in `SimParams.defaults`.
+  * Stock values (`openingBankCapitalAggregateTarget`, `initDeposits`, etc.) are
+  * in raw PLN — scaled by `gdpRatio` in `SimParams.defaults`.
   *
-  * @param initCapital
-  *   initial aggregate regulatory-capital proxy; calibrated to KNF TCR 21.1% on
-  *   the model's explicit regulatory RWA perimeter, not book equity
+  * @param openingBankCapitalAggregateTarget
+  *   opening aggregate regulatory-capital proxy used as an invariant for the
+  *   bank-by-bank own-funds profile; calibrated to KNF TCR 21.1% on the model's
+  *   explicit regulatory RWA perimeter, not book equity
+  * @param openingBankProfileScenario
+  *   explicit scenario transform applied to the bank-by-bank opening profile;
+  *   stress scenarios must use this instead of overriding the aggregate target
   * @param initDeposits
   *   initial aggregate deposits (KNF monthly banking data, February 2026:
   *   ~2,542.3 bn PLN)
@@ -168,7 +191,8 @@ import com.boombustgroup.amorfati.types.*
   */
 case class BankingConfig(
     // Initial balance sheet (raw — scaled by gdpRatio in SimParams.defaults)
-    initCapital: PLN = PLN(199000000000L),
+    openingBankCapitalAggregateTarget: PLN = PLN(199000000000L),
+    openingBankProfileScenario: OpeningBankProfileScenario = OpeningBankProfileScenario.Baseline,
     initDeposits: PLN = PLN(2542300000000L),
     initLoans: PLN = PLN(557400000000L),
     initGovBonds: PLN = PLN(400000000000L),
@@ -304,7 +328,14 @@ case class BankingConfig(
   )
   rwaWeights.foreach: (name, value) =>
     require(value >= Share.Zero && value <= Share.One, s"$name must be in [0,1]: $value")
-  require(initCapital >= PLN.Zero, s"initCapital must be non-negative: $initCapital")
+  require(
+    openingBankCapitalAggregateTarget >= PLN.Zero,
+    s"openingBankCapitalAggregateTarget must be non-negative: $openingBankCapitalAggregateTarget",
+  )
+  openingBankProfileScenario match
+    case OpeningBankProfileScenario.Baseline                => ()
+    case OpeningBankProfileScenario.OwnFundsHaircut(factor) =>
+      require(factor >= Multiplier.Zero && factor <= Multiplier.One, s"own-funds haircut factor must be in [0,1], got $factor")
   require(initDeposits >= PLN.Zero, s"initDeposits must be non-negative: $initDeposits")
   require(p2rAddons.nonEmpty, "p2rAddons must be non-empty")
   require(

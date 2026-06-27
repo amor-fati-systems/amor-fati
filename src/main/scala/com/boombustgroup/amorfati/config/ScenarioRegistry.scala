@@ -292,14 +292,20 @@ object ScenarioRegistry:
         seedPolicy = "Compare on the same seed band as baseline.",
         outputFolder = "<out>/<run-id>/bank-failure",
         deltas = Vector(
-          ParameterDelta("banking.initCapital", "scaled default", "scaled default * 0.55", "Lower opening banking-sector capital.", BankFailureProvenance),
+          ParameterDelta(
+            "banking.openingBankProfileScenario",
+            "baseline profile",
+            "haircutOwnFunds(0.55)",
+            "Applies a 45% own-funds haircut across the explicit opening bank profile.",
+            BankFailureProvenance,
+          ),
           ParameterDelta("banking.minCar", "0.08", "0.12", "Higher regulatory capital requirement.", BankFailureProvenance),
           ParameterDelta("banking.depositPanicRate", "0.03", "0.08", "Higher deposit panic migration after failures.", BankFailureProvenance),
           ParameterDelta("banking.maxDepositSwitchRate", "0.10", "0.18", "Higher maximum monthly deposit switching.", BankFailureProvenance),
         ),
         params = Baseline.copy(
           banking = Baseline.banking.copy(
-            initCapital = Baseline.banking.initCapital * Multiplier.decimal(55, 2),
+            openingBankProfileScenario = OpeningBankProfileScenario.haircutOwnFunds(Multiplier.decimal(55, 2)),
             minCar = Multiplier.decimal(12, 2),
             depositPanicRate = Share.decimal(8, 2),
             maxDepositSwitchRate = Share.decimal(18, 2),
@@ -363,6 +369,14 @@ object ScenarioRegistry:
     )
 
   private val byId: Map[String, ScenarioSpec] = all.map(scenario => scenario.id -> scenario).toMap
+
+  all
+    .filterNot(_.id == "baseline")
+    .foreach: scenario =>
+      require(
+        scenario.params.banking.openingBankCapitalAggregateTarget == Baseline.banking.openingBankCapitalAggregateTarget,
+        s"Scenario ${scenario.id} must use banking.openingBankProfileScenario instead of overriding banking.openingBankCapitalAggregateTarget",
+      )
 
   def get(id: String): Either[String, ScenarioSpec] =
     byId.get(id).toRight(s"Unknown scenario '$id'. Known scenarios: ${all.map(_.id).mkString(", ")}")

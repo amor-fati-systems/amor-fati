@@ -118,7 +118,7 @@ objects.
 | `tourism-shock` | `tourism.shockSize` | `0.80` | `0.60` | 60% tourism-demand loss in the named scenario. |
 | `tourism-shock` | `tourism.shockRecovery` | `0.03` | `0.05` | Faster monthly recovery than default COVID-style setting. |
 | `tourism-shock` | `tourism.inboundShare` | `0.05` | `0.04` | Lower inbound tourism baseline share. |
-| `bank-failure` | `banking.initCapital` | scaled default | scaled default `* 0.55` | Lower opening banking-sector capital. |
+| `bank-failure` | `banking.openingBankProfileScenario` | baseline profile | `haircutOwnFunds(0.55)` | Applies a 45% own-funds haircut across the explicit opening bank profile. |
 | `bank-failure` | `banking.minCar` | `0.08` | `0.12` | Higher regulatory capital requirement. |
 | `bank-failure` | `banking.depositPanicRate` | `0.03` | `0.08` | Higher deposit panic migration after failures. |
 | `bank-failure` | `banking.maxDepositSwitchRate` | `0.10` | `0.18` | Higher maximum monthly deposit switching. |

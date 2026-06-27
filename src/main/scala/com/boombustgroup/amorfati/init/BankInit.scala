@@ -139,11 +139,12 @@ object BankInit:
       (bank, row.financialStocks)
 
     val aggregateOpeningCapital = rows.map(_._1.capital).sumPln
-    val capitalDelta            = absoluteDelta(aggregateOpeningCapital, p.banking.initCapital)
-    val capitalTolerance        = (p.banking.initCapital * OpeningCapitalAggregateTolerance).max(OpeningCapitalToleranceFloor)
+    val capitalTarget           = p.banking.openingBankProfileScenario.aggregateTarget(p.banking.openingBankCapitalAggregateTarget)
+    val capitalDelta            = absoluteDelta(aggregateOpeningCapital, capitalTarget)
+    val capitalTolerance        = (capitalTarget * OpeningCapitalAggregateTolerance).max(OpeningCapitalToleranceFloor)
     require(
       capitalDelta <= capitalTolerance,
-      s"Opening bank capital $aggregateOpeningCapital differs from banking.initCapital ${p.banking.initCapital} by $capitalDelta, above tolerance $capitalTolerance",
+      s"Opening bank capital $aggregateOpeningCapital differs from banking opening capital target $capitalTarget by $capitalDelta, above tolerance $capitalTolerance",
     )
 
     Result(

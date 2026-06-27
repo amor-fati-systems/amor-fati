@@ -86,36 +86,50 @@ object OpeningBankProfileTargets:
       else completeTargets(orderedRows)
 
   private def completeTargets(orderedRows: Vector[OpeningBankBalanceProfileBridge.Row])(using p: SimParams): Targets =
-    val bankIds       = orderedRows.map(row => BankId(row.bankId.toInt))
-    val residualIndex = residualBankIndex(orderedRows)
-    val deposits      = closeResidual("opening bank deposits", orderedRows.map(row => mPlnToRuntime(row.depositsMPln.get)), p.banking.initDeposits, residualIndex)
-    val firmLoans     = closeResidual("opening bank firm loans", orderedRows.map(row => mPlnToRuntime(row.firmLoansMPln.get)), p.banking.initLoans, residualIndex)
-    val consumerLoans =
+    val bankIds          = orderedRows.map(row => BankId(row.bankId.toInt))
+    val residualIndex    = residualBankIndex(orderedRows)
+    val deposits         = closeResidual("opening bank deposits", orderedRows.map(row => mPlnToRuntime(row.depositsMPln.get)), p.banking.initDeposits, residualIndex)
+    val firmLoans        = closeResidual("opening bank firm loans", orderedRows.map(row => mPlnToRuntime(row.firmLoansMPln.get)), p.banking.initLoans, residualIndex)
+    val consumerLoans    =
       closeResidual(
         "opening bank consumer loans",
         orderedRows.map(row => mPlnToRuntime(row.consumerLoansMPln.get)),
         p.banking.initConsumerLoans,
         residualIndex,
       )
-    val mortgageLoans =
+    val mortgageLoans    =
       closeResidual("opening bank mortgage loans", orderedRows.map(row => mPlnToRuntime(row.mortgageLoansMPln.get)), p.housing.initMortgage, residualIndex)
-    val govBonds      =
+    val govBonds         =
       closeResidual("opening bank government bonds", orderedRows.map(row => mPlnToRuntime(row.govBondsMPln.get)), p.banking.initGovBonds, residualIndex)
-    val reserves      =
+    val reserves         =
       closeResidual(
         "opening bank reserves",
         orderedRows.map(row => mPlnToRuntime(row.reservesMPln.get)),
         p.banking.initDeposits * p.banking.reserveReq,
         residualIndex,
       )
-    val corpBonds     =
+    val corpBonds        =
       closeResidual(
         "opening bank corporate bonds",
         orderedRows.map(row => mPlnToRuntime(row.corpBondsMPln.get)),
         p.corpBond.initStock * p.corpBond.bankShare,
         residualIndex,
       )
-    val ownFunds      = closeResidual("opening bank own funds", orderedRows.map(row => mPlnToRuntime(row.ownFundsMPln.get)), p.banking.initCapital, residualIndex)
+    val baselineOwnFunds =
+      closeResidual(
+        "opening bank own funds",
+        orderedRows.map(row => mPlnToRuntime(row.ownFundsMPln.get)),
+        p.banking.openingBankCapitalAggregateTarget,
+        residualIndex,
+      )
+    val ownFundsTarget   = p.banking.openingBankProfileScenario.aggregateTarget(p.banking.openingBankCapitalAggregateTarget)
+    val ownFunds         =
+      closeResidual(
+        "opening bank own funds scenario",
+        p.banking.openingBankProfileScenario.ownFundsTargets(baselineOwnFunds),
+        ownFundsTarget,
+        residualIndex,
+      )
 
     val capitalProfiles = bankIds.indices.map: i =>
       Banking.OpeningCapitalProfile(
