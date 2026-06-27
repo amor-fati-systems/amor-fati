@@ -1,6 +1,6 @@
 package com.boombustgroup.amorfati.agents.firm
 
-import com.boombustgroup.amorfati.agents.{Firm, StateOwned, TechState}
+import com.boombustgroup.amorfati.agents.{Firm, StateOwned}
 import com.boombustgroup.amorfati.agents.Firm.{FinancialStocks, PnL, State}
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.{OperationalSignals, World}
@@ -17,27 +17,21 @@ private[agents] object FirmLaborPlanning:
   /** Desired worker count from a one-period marginal-revenue comparison. */
   def desiredWorkers(f: State, w: World, operationalSignals: OperationalSignals)(using p: SimParams): Int =
     if isInStartup(f) then return Math.max(workerCount(f), f.startupTargetWorkers)
-    def withWorkers(workers: Int): State =
-      f.tech match
-        case TechState.Traditional(_) => f.copy(tech = TechState.Traditional(workers))
-        case TechState.Hybrid(_, eff) => f.copy(tech = TechState.Hybrid(workers, eff))
-        case _                        => f
-    val sectorDemand                     = operationalSignals.sectorDemandMult(f.sector.toInt)
-    val hiringSignal                     = operationalSignals.sectorHiringSignal(f.sector.toInt)
-    val demandMult                       = sectorDemand + (hiringSignal - sectorDemand).max(Multiplier.Zero) * HiringPressureBlend
-    val price                            = w.priceLevel.toMultiplier
-    val wage                             = w.householdMarket.marketWage * effectiveWageMult(f.sector)
-    val workers                          = workerCount(f)
-    val minW                             = p.firm.minWorkersRetained
-    val maxW                             = f.initialSize * 3
+    val sectorDemand = operationalSignals.sectorDemandMult(f.sector.toInt)
+    val hiringSignal = operationalSignals.sectorHiringSignal(f.sector.toInt)
+    val demandMult   = sectorDemand + (hiringSignal - sectorDemand).max(Multiplier.Zero) * HiringPressureBlend
+    val price        = w.priceLevel.toMultiplier
+    val wage         = w.householdMarket.marketWage * effectiveWageMult(f.sector)
+    val workers      = workerCount(f)
+    val minW         = p.firm.minWorkersRetained
+    val maxW         = f.initialSize * 3
 
-    var lo = minW
-    var hi = maxW
+    var lo       = minW
+    var hi       = maxW
+    val capacity = capacityEvaluator(f, w.real.productivityIndex)
     while lo < hi do
-      val mid     = (lo + hi + 1) / 2
-      val capMid  = computeEffectiveCapacity(withWorkers(mid), w.real.productivityIndex)
-      val capPrev = computeEffectiveCapacity(withWorkers(mid - 1), w.real.productivityIndex)
-      val mr      = (capMid - capPrev) * (demandMult * price)
+      val mid = (lo + hi + 1) / 2
+      val mr  = capacity.marginalEffectiveCapacityAtWorkers(mid) * (demandMult * price)
       if mr > wage then lo = mid else hi = mid - 1
     applyOperationalHiringSlack(workers, lo, minW, operationalSignals.operationalHiringSlack.toMultiplier)
 

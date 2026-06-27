@@ -251,6 +251,26 @@ class FirmSpec extends AnyFlatSpec with Matchers:
     Firm.computeCapacity(mkFirm(TechState.Bankrupt(BankruptReason.Other("test")))) shouldBe PLN.Zero
   }
 
+  it should "match copied-state capacity for hypothetical worker counts" in {
+    val traditional = mkFirm(TechState.Traditional(8), sector = 1).copy(initialSize = 20, capitalStock = PLN(4000000))
+    val hybrid      = mkFirm(TechState.Hybrid(8, Multiplier.decimal(12, 1)), sector = 4).copy(initialSize = 20, capitalStock = PLN(3000000))
+
+    Firm.computeCapacityAtWorkers(traditional, 12) shouldBe
+      Firm.computeCapacity(traditional.copy(tech = TechState.Traditional(12)))
+    Firm.computeCapacityAtWorkers(hybrid, 12) shouldBe
+      Firm.computeCapacity(hybrid.copy(tech = TechState.Hybrid(12, Multiplier.decimal(12, 1))))
+  }
+
+  it should "match copied-state marginal effective capacity for hypothetical worker counts" in {
+    val productivity = Multiplier.decimal(103, 2)
+    val firm         = mkFirm(TechState.Traditional(8), sector = 1).copy(initialSize = 20, capitalStock = PLN(4000000))
+    val expected     =
+      Firm.computeEffectiveCapacity(firm.copy(tech = TechState.Traditional(12)), productivity) -
+        Firm.computeEffectiveCapacity(firm.copy(tech = TechState.Traditional(11)), productivity)
+
+    Firm.computeMarginalEffectiveCapacityAtWorkers(firm, 12, productivity) shouldBe expected
+  }
+
   // --- Firm.aiCapex / hybridCapex ---
 
   "Firm.computeAiCapex" should "be positive and scale with multipliers" in {

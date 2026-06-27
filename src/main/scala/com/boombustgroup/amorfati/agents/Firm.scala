@@ -83,6 +83,12 @@ object Firm:
   def computeEffectiveCapacity(f: State, productivityIndex: Multiplier)(using p: SimParams): PLN =
     FirmProduction.computeEffectiveCapacity(f, productivityIndex)
 
+  private[amorfati] def computeCapacityAtWorkers(f: State, workers: Int)(using p: SimParams): PLN =
+    FirmProduction.computeCapacityAtWorkers(f, workers)
+
+  private[amorfati] def computeMarginalEffectiveCapacityAtWorkers(f: State, workers: Int, productivityIndex: Multiplier)(using p: SimParams): PLN =
+    FirmProduction.computeMarginalEffectiveCapacityAtWorkers(f, workers, productivityIndex)
+
   private[amorfati] def cesOutput(alpha: Share, k: Multiplier, l: Multiplier, sigma: Sigma): Multiplier =
     FirmProduction.cesOutput(alpha, k, l, sigma)
 
