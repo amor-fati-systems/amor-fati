@@ -65,8 +65,8 @@ private[banking] object BankMultiBankStage:
       perBankWorkers = in.firm.perBankWorkers,
     )
 
-    val updatedRows       = new Array[SingleBankUpdate](banks.length)
-    var bankIndex         = 0
+    val updatedRows           = new Array[SingleBankUpdate](banks.length)
+    var bankIndex             = 0
     while bankIndex < banks.length do
       val b           = banks(bankIndex)
       val stocks      = bankStocks(bankIndex)
@@ -89,22 +89,25 @@ private[banking] object BankMultiBankStage:
         in,
       )
       bankIndex += 1
-    val updatedBanks      = new Array[Banking.BankState](updatedRows.length)
-    val updatedBankStocks = new Array[Banking.BankFinancialStocks](updatedRows.length)
-    var creditLosses      = BankCreditLossAccounting.Breakdown.zero
-    var updatedIndex      = 0
+    val updatedBanks          = new Array[Banking.BankState](updatedRows.length)
+    val updatedBankStocks     = new Array[Banking.BankFinancialStocks](updatedRows.length)
+    var creditLosses          = BankCreditLossAccounting.Breakdown.zero
+    var updatedIndex          = 0
     while updatedIndex < updatedRows.length do
       val updated = updatedRows(updatedIndex)
       updatedBanks(updatedIndex) = updated.bank
       updatedBankStocks(updatedIndex) = updated.financialStocks
       creditLosses = creditLosses + updated.creditLosses
       updatedIndex += 1
+    val aggregateCreditLosses = creditLosses.copy(
+      corpBondDefaultLoss = in.openEconomy.corpBonds.corpBondBankDefaultLoss,
+    )
 
     runSettlementBoundary(
       in,
       updatedBanks.toVector,
       updatedBankStocks.toVector,
-      creditLosses,
+      aggregateCreditLosses,
       in.world.bankingSector.configs,
       wf,
       perBankReserveInt,

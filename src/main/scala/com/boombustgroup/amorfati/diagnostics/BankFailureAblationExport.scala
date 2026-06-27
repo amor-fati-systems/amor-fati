@@ -343,8 +343,8 @@ object BankFailureAblationExport:
         .foreach(month => ref.update(_.observe(month.row)))
         .as(Right(()))
         .catchAllCause: cause =>
-          if cause.isInterrupted then ZIO.failCause(cause)
-          else ZIO.succeed(Left(renderStreamCrash(cause)))
+          if cause.isInterrupted || cause.defects.nonEmpty then ZIO.failCause(cause)
+          else cause.failureOption.fold(ZIO.failCause(cause))(_ => ZIO.succeed(Left(renderStreamCrash(cause))))
       acc     <- ref.get
       result  <- ZIO.fromEither(acc.toSeedResult(config, scenario, seed, outcome.left.toOption))
     yield result

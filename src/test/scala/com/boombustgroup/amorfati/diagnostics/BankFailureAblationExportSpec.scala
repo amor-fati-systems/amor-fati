@@ -150,6 +150,23 @@ class BankFailureAblationExportSpec extends AnyFlatSpec with Matchers:
       case zio.Exit.Success(seed)  => fail(s"expected interruption, got seed result $seed")
   }
 
+  it should "propagate stream defects instead of rendering them as crash seeds" in {
+    val config = BankFailureAblationExport.Config(seeds = 1, months = 2, runId = "test")
+    val defect = RuntimeException("synthetic defect")
+    val exit   = Unsafe.unsafe: unsafe =>
+      given Unsafe = unsafe
+      Runtime.default.unsafe
+        .run:
+          BankFailureAblationExport
+            .computeSeedResult(config, BankFailureAblationExport.Scenarios.head, 1L, ZStream.fromZIO(ZIO.die(defect)))
+            .exit
+        .getOrThrowFiberFailure()
+
+    exit match
+      case zio.Exit.Failure(cause) => cause.defects should contain(defect)
+      case zio.Exit.Success(seed)  => fail(s"expected defect, got seed result $seed")
+  }
+
   private def seed(
       scenarioId: String,
       scenarioLabel: String,

@@ -233,6 +233,19 @@ class BankingEconomicsSpec extends AnyFlatSpec with Matchers:
     result.bankCapitalDiagnostics.consumerNplLoss shouldBe PLN.Zero
   }
 
+  it should "preserve aggregate corporate-bond default loss through bank-capital diagnostics" in {
+    val prepared             = preparedBankingStep()
+    val aggregateDefaultLoss = PLN(101)
+    val equalWorkerFirm      = prepared.firm.copy(perBankWorkers = Vector.fill(prepared.banks.length)(1))
+    val openEconomyWithLoss  = prepared.openEconomy.copy(
+      corpBonds = prepared.openEconomy.corpBonds.copy(corpBondBankDefaultLoss = aggregateDefaultLoss),
+    )
+
+    val result = prepared.run(firmOverride = equalWorkerFirm, openEconomyOverride = openEconomyWithLoss)
+
+    result.bankCapitalDiagnostics.corpBondDefaultLoss shouldBe aggregateDefaultLoss
+  }
+
   it should "read JST cash opening stocks from LedgerFinancialState" in {
     val prepared = preparedBankingStep()
     val aligned  = prepared.run()
@@ -268,6 +281,7 @@ class BankingEconomicsSpec extends AnyFlatSpec with Matchers:
         banksOverride: Vector[Banking.BankState] = banks,
         householdIncomeOverride: HouseholdIncomeEconomics.StepOutput = householdIncome,
         firmOverride: FirmEconomics.StepOutput = firm,
+        openEconomyOverride: OpenEconEconomics.StepOutput = openEconomy,
     ): BankingEconomics.StepOutput =
       val bankingRng = MonthRandomness.Contract.fromSeed(TestSeed).stages.newStreams().bankingEconomics
       BankingEconomics.runStep(
@@ -281,7 +295,7 @@ class BankingEconomicsSpec extends AnyFlatSpec with Matchers:
           firmOverride,
           householdFinancial,
           priceEquity,
-          openEconomy,
+          openEconomyOverride,
           banksOverride,
           bankingRng,
         ),
