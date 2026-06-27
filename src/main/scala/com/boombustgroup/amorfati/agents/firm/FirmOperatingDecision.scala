@@ -92,9 +92,9 @@ private[agents] object FirmOperatingDecision:
       allowDigiInvest: Boolean = true,
   )(using p: SimParams): DecisionWithAudit =
     val nc            = financialStocks.cash + pnl.netAfterTax
-    var audit         = DecisionAudit()
     val desiredW      = desiredWorkers(firm, w, operationalSignals)
     val feasibleW     = feasibleWorkers(firm, workers, desiredW, pnl, nc)
+    var audit         = DecisionAudit(desiredWorkers = Some(desiredW))
     val gap           = feasibleW - workers
     val hiringThresh  = hiringAdjustmentThreshold(workers)
     val firingThresh  = Math.max(2, workers / 10)

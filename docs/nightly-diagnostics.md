@@ -90,7 +90,7 @@ nix develop --command sbt assembly
 Run a profile from that jar with the diagnostics profile runner:
 
 ```bash
-nix develop --command java -cp target/scala-3.8.2/amor-fati.jar \
+nix develop --command amor-fati-java -cp target/scala-3.8.2/amor-fati.jar \
   com.boombustgroup.amorfati.diagnostics.NightlyDiagnosticsProfileRunner \
   --profile smoke \
   --out target/nightly-diagnostics \
@@ -100,14 +100,15 @@ nix develop --command java -cp target/scala-3.8.2/amor-fati.jar \
 
 `java -jar target/scala-3.8.2/amor-fati.jar` remains the normal simulation
 entry point (`com.boombustgroup.amorfati.Main`). Diagnostics profiles use
-`java -cp ... com.boombustgroup.amorfati.diagnostics.NightlyDiagnosticsProfileRunner`
-so they can select the profile runner while still executing from the assembled
-jar.
+`amor-fati-java -cp ...
+com.boombustgroup.amorfati.diagnostics.NightlyDiagnosticsProfileRunner` so they
+can select the profile runner while still executing from the assembled jar with
+the project heap defaults from `flake.nix`.
 
 Scheduled `main` runs should require a clean `main` ref:
 
 ```bash
-nix develop --command java -cp target/scala-3.8.2/amor-fati.jar \
+nix develop --command amor-fati-java -cp target/scala-3.8.2/amor-fati.jar \
   com.boombustgroup.amorfati.diagnostics.NightlyDiagnosticsProfileRunner \
   --profile nightly \
   --out target/nightly-diagnostics \
@@ -202,7 +203,7 @@ nix develop --command sbt assembly
 and runs:
 
 ```bash
-nix develop --command java -cp target/scala-3.8.2/amor-fati.jar \
+nix develop --command amor-fati-java -cp target/scala-3.8.2/amor-fati.jar \
   com.boombustgroup.amorfati.diagnostics.NightlyDiagnosticsProfileRunner \
   --profile <profile> \
   --out target/nightly-diagnostics \
@@ -351,7 +352,7 @@ Recommended steps:
 - robustness report: `--scenario-set core`, 5 seeds, 60 months
 - bank balance-sheet benchmark: 10 seeds
 - household credit-stress calibration: 10 seeds, 60 months
-- bank failure ablations: 10 seeds, 60 months, classified as
+- bank failure ablations: 10 seeds, 60 months, parallelism 2, classified as
   `stress_validation`
 - HH-bank lead-lag diagnostics: 10 seeds, 60 months, lag max 12
 - loan-origination quality diagnostics: 5 seeds, 60 months, outcome window 12

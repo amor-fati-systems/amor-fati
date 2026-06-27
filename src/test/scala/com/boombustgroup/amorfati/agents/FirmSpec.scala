@@ -184,6 +184,27 @@ class FirmSpec extends AnyFlatSpec with Matchers:
     explicit.feasibleWorkers should be >= bridged.feasibleWorkers
   }
 
+  it should "reuse cached desired workers when updating the hiring signal state" in {
+    val world       = mkWorld().copy(
+      pipeline = PipelineState(
+        sectorDemandMult = Vector.fill(p.sectorDefs.length)(Multiplier.One),
+        sectorDemandPressure = Vector.fill(p.sectorDefs.length)(Multiplier.decimal(175, 2)),
+        sectorHiringSignal = Vector.fill(p.sectorDefs.length)(Multiplier.decimal(175, 2)),
+        operationalHiringSlack = Share.One,
+      ),
+      flows = FlowState.zero,
+    )
+    val operational = OperationalSignals.fromDecisionSignals(world.seedIn, world.pipeline.operationalHiringSlack)
+    val firm        = mkFirm(TechState.Traditional(8), sector = 3)
+    val result      = Firm.Result.zero(firm)
+    val desired     = Firm.desiredWorkers(firm, world, operational)
+
+    val uncached = FirmPostProcessing.updateHiringSignalState(result, firm, world, operational)
+    val cached   = FirmPostProcessing.updateHiringSignalState(result, firm, world, operational, cachedDesiredWorkers = Some(desired))
+
+    cached.firm.hiringSignalMonths shouldBe uncached.firm.hiringSignalMonths
+  }
+
   "Firm.hasWorkingCapitalGrace" should "give startups a larger temporary liquidity runway" in {
     val startup   = mkFirm(TechState.Traditional(2), sector = 3).copy(startupMonthsLeft = 4, startupTargetWorkers = 3)
     val incumbent = mkFirm(TechState.Traditional(2), sector = 3)

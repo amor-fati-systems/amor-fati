@@ -43,6 +43,7 @@ private[agents] final case class DecisionAudit(
     digitalInvestRoll: Option[Share] = None,
     laborAdjustmentResidualProbability: Option[Share] = None,
     laborAdjustmentResidualRoll: Option[Share] = None,
+    desiredWorkers: Option[Int] = None,
 ):
   def merge(next: DecisionAudit): DecisionAudit =
     DecisionAudit(
@@ -78,6 +79,7 @@ private[agents] final case class DecisionAudit(
       digitalInvestRoll = next.digitalInvestRoll.orElse(digitalInvestRoll),
       laborAdjustmentResidualProbability = next.laborAdjustmentResidualProbability.orElse(laborAdjustmentResidualProbability),
       laborAdjustmentResidualRoll = next.laborAdjustmentResidualRoll.orElse(laborAdjustmentResidualRoll),
+      desiredWorkers = next.desiredWorkers.orElse(desiredWorkers),
     )
 
 private[agents] final case class DecisionWithAudit(decision: Decision, audit: DecisionAudit)

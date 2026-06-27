@@ -28,8 +28,9 @@ object NightlyDiagnosticsProfileRunner:
   /** CLI contract for profile runs.
     *
     * `jarPath` is recorded and hashed for provenance. The class is still
-    * launched with `java -cp ... NightlyDiagnosticsProfileRunner`, because the
-    * assembled jar's default `java -jar` entry point remains `Main`.
+    * launched with `java -cp ... NightlyDiagnosticsProfileRunner` or the
+    * Nix-provided `amor-fati-java` wrapper, because the assembled jar's default
+    * `java -jar` entry point remains `Main`.
     */
   final case class Config(
       profile: String = "smoke",
@@ -644,7 +645,7 @@ object NightlyDiagnosticsProfileRunner:
             robustnessReport(scenarioSet = ScenarioSet.Core, seeds = 5, months = 60),
             bankBalanceSheetBenchmark(seeds = 10),
             householdCreditStress(seeds = 10, months = 60),
-            bankFailureAblations(seeds = 10, months = 60),
+            bankFailureAblations(seeds = 10, months = 60, parallelism = 2),
             hhBankLeadLag(seeds = 10, months = 60, lagMax = 12),
             loanOriginationQuality(seeds = 5, months = 60, outcomeWindow = 12),
           ),
@@ -816,7 +817,7 @@ object NightlyDiagnosticsProfileRunner:
           .map(_.paths),
     )
 
-  private def bankFailureAblations(seeds: Int, months: Int): DiagnosticStep =
+  private def bankFailureAblations(seeds: Int, months: Int, parallelism: Int): DiagnosticStep =
     DiagnosticStep(
       id = "bank-failure-ablations",
       label = "Bank Failure Ablations",
@@ -826,7 +827,7 @@ object NightlyDiagnosticsProfileRunner:
       seeds = Some(seeds),
       months = Some(months),
       outputDir = ctx => ctx.runRoot.resolve("bank-failure-ablations").resolve(ctx.runId),
-      details = Vector.empty,
+      details = Vector("parallelism" -> parallelism.toString),
       run = ctx =>
         BankFailureAblationExport
           .runZIO(
@@ -834,6 +835,7 @@ object NightlyDiagnosticsProfileRunner:
               seedStart = 1L,
               seeds = seeds,
               months = months,
+              parallelism = parallelism,
               runId = ctx.runId,
               out = ctx.runRoot.resolve("bank-failure-ablations"),
             ),

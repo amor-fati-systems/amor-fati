@@ -46,18 +46,26 @@ object IntermediateMarket:
     * @param cashAdjustments
     *   per-firm cash deltas from intermediate purchases/sales
     */
-  case class Result(firms: Vector[Firm.State], totalPaid: PLN, cashAdjustments: Vector[PLN])
+  case class Result(
+      firms: Vector[Firm.State],
+      totalPaid: PLN,
+      cashAdjustments: Vector[PLN],
+      effectiveCapacities: Vector[PLN] = Vector.empty,
+  )
 
   def process(in: Input)(using SimParams): Result =
     val nSectors = in.ioMatrix.size
     val arr      = in.firms.toArray
 
     // Identify living firms and compute per-firm gross output
-    val living      = arr.indices.filter: i =>
+    val living            = arr.indices.filter: i =>
       Firm.isAlive(arr(i))
-    val grossOutput = Array.fill(arr.length)(PLN.Zero)
+    val effectiveCapacity = Array.fill(arr.length)(PLN.Zero)
+    val grossOutput       = Array.fill(arr.length)(PLN.Zero)
     for i <- living do
-      grossOutput(i) = Firm.computeEffectiveCapacity(arr(i), in.productivityIndex) * in.sectorMults(arr(i).sector.toInt) * in.price.toMultiplier
+      val capacity = Firm.computeEffectiveCapacity(arr(i), in.productivityIndex)
+      effectiveCapacity(i) = capacity
+      grossOutput(i) = capacity * in.sectorMults(arr(i).sector.toInt) * in.price.toMultiplier
 
     // Total gross output per sector (for revenue distribution)
     val sectorOutput = Array.fill(nSectors)(PLN.Zero)
@@ -104,4 +112,4 @@ object IntermediateMarket:
     val totalAdj = cashAdj.toVector.sumPln
     if totalAdj.abs > PLN.fromLong(1) then System.err.println("[IO] WARNING: non-zero-sum cash adjustment exceeded 1 PLN tolerance")
 
-    Result(in.firms, sectorCosts.foldLeft(PLN.Zero)(_ + _), cashAdj.toVector)
+    Result(in.firms, sectorCosts.foldLeft(PLN.Zero)(_ + _), cashAdj.toVector, effectiveCapacity.toVector)

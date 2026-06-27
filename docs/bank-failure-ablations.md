@@ -11,10 +11,16 @@ Operational appendix entry point:
 Use this page for bank-failure diagnostic details after starting from the
 operations index.
 
+Run the fast smoke fixture with:
+
+```bash
+sbt "bankFailureAblations --seeds 1 --months 12 --parallelism 1 --out target/bank-failure-ablations --run-id bank-failure-ablations-smoke"
+```
+
 Run the standard review fixture with:
 
 ```bash
-sbt "bankFailureAblations --seeds 2 --months 24 --out target/bank-failure-ablations --run-id bank-failure-ablations"
+sbt "bankFailureAblations --seeds 2 --months 24 --parallelism 1 --out target/bank-failure-ablations --run-id bank-failure-ablations"
 ```
 
 The task writes:
@@ -25,9 +31,17 @@ The task writes:
   interpretation.
 - `bank-failure-ablation-report.md`: human-readable summary.
 
-Use larger `--seeds` and `--months` values for slower research runs. The
-standard review fixture is intentionally smaller because each scenario runs a
-full model simulation.
+Use larger `--seeds` and `--months` values for slower research or profiling
+runs. A 5 seed / 60 month or larger run should be treated as heavy mode and run
+from `nix develop` so it inherits the 8 GB sbt heap from `flake.nix`:
+
+```bash
+nix develop --command sbt "bankFailureAblations --seeds 5 --months 60 --parallelism 2 --out target/bank-failure-ablations --run-id bank-failure-ablations-heavy"
+```
+
+The standard review fixture is intentionally smaller because each scenario
+runs a full model simulation. `--parallelism` bounds concurrent scenario/seed
+jobs; keep it at `1` or `2` unless the host has enough heap headroom.
 
 ## Scenario Semantics
 

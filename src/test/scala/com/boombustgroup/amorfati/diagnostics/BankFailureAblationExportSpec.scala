@@ -11,7 +11,7 @@ class BankFailureAblationExportSpec extends AnyFlatSpec with Matchers:
 
   "BankFailureAblationExport" should "parse CLI run controls" in {
     val parsed = BankFailureAblationExport.parseArgs(
-      Vector("--seed-start", "3", "--seeds", "4", "--months", "24", "--out", "target/x", "--run-id", "probe"),
+      Vector("--seed-start", "3", "--seeds", "4", "--months", "24", "--parallelism", "1", "--out", "target/x", "--run-id", "probe"),
     )
 
     parsed shouldBe Right(
@@ -19,6 +19,7 @@ class BankFailureAblationExportSpec extends AnyFlatSpec with Matchers:
         seedStart = 3L,
         seeds = 4,
         months = 24,
+        parallelism = 1,
         out = Path.of("target/x"),
         runId = "probe",
       ),
@@ -79,6 +80,7 @@ class BankFailureAblationExportSpec extends AnyFlatSpec with Matchers:
   it should "validate run controls and required schema columns" in {
     BankFailureAblationExport.validate(BankFailureAblationExport.Config(seeds = 0)).left.value should include("--seeds")
     BankFailureAblationExport.validate(BankFailureAblationExport.Config(months = 0)).left.value should include("--months")
+    BankFailureAblationExport.validate(BankFailureAblationExport.Config(parallelism = 0)).left.value should include("--parallelism")
     BankFailureAblationExport.validate(BankFailureAblationExport.Config(runId = " ")).left.value should include("--run-id")
     BankFailureAblationExport.validate(BankFailureAblationExport.Config()).isRight shouldBe true
   }

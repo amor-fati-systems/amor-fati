@@ -27,6 +27,7 @@ object BankFailureAblationExport:
       seedStart: Long = 1L,
       seeds: Int = 5,
       months: Int = 60,
+      parallelism: Int = 2,
       runId: String = "bank-failure-ablations",
       out: Path = Path.of("target/bank-failure-ablations"),
   ):
@@ -160,6 +161,7 @@ object BankFailureAblationExport:
             validConfig.months,
             _.id,
             _.params,
+            parallelism = Some(validConfig.parallelism),
           )((scenario, seed, months) => computeSeedResult(validConfig, scenario, seed, months)),
           SeedTsvSchema,
           Vector.newBuilder[SeedResult],
@@ -178,19 +180,21 @@ object BankFailureAblationExport:
         case Seq("--help", _*)                      => Left(usage)
         case Seq(flag, tail*) if knownFlag(flag)    =>
           tail match
-            case Seq()                                       => missingValue(flag)
-            case Seq(value, _*) if value.startsWith("--")    => missingValue(flag)
-            case Seq(value, next*) if flag == "--seed-start" =>
+            case Seq()                                        => missingValue(flag)
+            case Seq(value, _*) if value.startsWith("--")     => missingValue(flag)
+            case Seq(value, next*) if flag == "--seed-start"  =>
               parseLong(value, flag).flatMap(seedStart => loop(next, config.copy(seedStart = seedStart)))
-            case Seq(value, next*) if flag == "--seeds"      =>
+            case Seq(value, next*) if flag == "--seeds"       =>
               parseInt(value, flag).flatMap(seeds => loop(next, config.copy(seeds = seeds)))
-            case Seq(value, next*) if flag == "--months"     =>
+            case Seq(value, next*) if flag == "--months"      =>
               parseInt(value, flag).flatMap(months => loop(next, config.copy(months = months)))
-            case Seq(value, next*) if flag == "--run-id"     =>
+            case Seq(value, next*) if flag == "--parallelism" =>
+              parseInt(value, flag).flatMap(parallelism => loop(next, config.copy(parallelism = parallelism)))
+            case Seq(value, next*) if flag == "--run-id"      =>
               loop(next, config.copy(runId = value))
-            case Seq(value, next*) if flag == "--out"        =>
+            case Seq(value, next*) if flag == "--out"         =>
               loop(next, config.copy(out = Path.of(value)))
-            case Seq(_, _*)                                  => Left(s"Unknown argument: $flag")
+            case Seq(_, _*)                                   => Left(s"Unknown argument: $flag")
         case Seq(flag, _*) if flag.startsWith("--") => Left(s"Unknown argument: $flag")
         case Seq(value, _*)                         => Left(s"Unexpected positional argument: $value")
 
@@ -201,6 +205,7 @@ object BankFailureAblationExport:
     Either
       .cond(config.seeds > 0, config, "--seeds must be a positive integer")
       .flatMap(valid => Either.cond(valid.months > 0, valid, "--months must be a positive integer"))
+      .flatMap(valid => Either.cond(valid.parallelism > 0, valid, "--parallelism must be a positive integer"))
       .flatMap(valid => Either.cond(valid.runId.trim.nonEmpty, valid, "--run-id must be non-empty"))
       .flatMap(valid => Either.cond(missing.isEmpty, valid, s"Missing Monte Carlo columns: ${missing.toVector.sorted.mkString(", ")}"))
 
@@ -554,7 +559,7 @@ object BankFailureAblationExport:
 
   private[diagnostics] def renderReport(config: Config, summary: Vector[SummaryResult]): String =
     val command        =
-      s"""sbt "bankFailureAblations --seed-start ${config.seedStart} --seeds ${config.seeds} --months ${config.months} --out ${config.out} --run-id ${config.runId}""""
+      s"""sbt "bankFailureAblations --seed-start ${config.seedStart} --seeds ${config.seeds} --months ${config.months} --parallelism ${config.parallelism} --out ${config.out} --run-id ${config.runId}""""
     val rows           = summary.map: row =>
       markdownRow(
         Vector(
@@ -579,6 +584,7 @@ object BankFailureAblationExport:
       s"- Run id: `${config.runId}`",
       s"- Seeds: `${config.seeds}` from `${config.seedStart}`",
       s"- Months: `${config.months}`",
+      s"- Parallelism: `${config.parallelism}`",
       s"- Repeat command: `$command`",
       "",
       "These scenarios are diagnostic probes, not production policy settings.",
@@ -686,7 +692,7 @@ object BankFailureAblationExport:
     values.map(_.replace("|", "\\|")).mkString("| ", " | ", " |")
 
   private def knownFlag(flag: String): Boolean =
-    flag == "--seed-start" || flag == "--seeds" || flag == "--months" || flag == "--run-id" || flag == "--out"
+    flag == "--seed-start" || flag == "--seeds" || flag == "--months" || flag == "--parallelism" || flag == "--run-id" || flag == "--out"
 
   private def parseLong(value: String, name: String): Either[String, Long] =
     Try(value.toLong).toEither.left.map(_ => s"$name must be a long integer")
@@ -696,7 +702,7 @@ object BankFailureAblationExport:
 
   private val usage: String =
     """Usage:
-      |  bankFailureAblations [--seed-start N] [--seeds N] [--months N] [--out PATH] [--run-id ID]
+      |  bankFailureAblations [--seed-start N] [--seeds N] [--months N] [--parallelism N] [--out PATH] [--run-id ID]
       |
       |Runs baseline plus controlled bank-failure ablation scenarios and writes:
       |  bank-failure-ablation-seeds.tsv

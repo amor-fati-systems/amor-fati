@@ -81,7 +81,9 @@ The shell provides:
 - Python 3
 - Z3
 - Git, Bash, curl, unzip, and standard GNU shell utilities
-- `SBT_OPTS=-Xmx4G -XX:+UseG1GC`, matching CI
+- `SBT_OPTS=-Xmx8G -XX:+UseG1GC`, matching CI
+- `AMOR_FATI_JAVA_OPTS=-Xmx8G -XX:+UseG1GC` and the `amor-fati-java`
+  wrapper for assembled-JAR diagnostics
 
 `flake.lock` pins the nixpkgs revision used by both local Nix shells and CI.
 Update it intentionally with `nix flake update`.
@@ -101,6 +103,9 @@ through its normal Coursier path. Existing non-Nix workflows continue to work.
 GitHub Actions runs the project CI commands through `nix develop` so the
 checked shell is the same baseline used for formatting, tests, heavy tests,
 and integration tests.
+
+Use `amor-fati-java` instead of plain `java` for long assembled-JAR diagnostics
+that should inherit the project heap defaults from `flake.nix`.
 
 For `direnv` users, create a local `.envrc` from the checked-in example and
 approve it:
@@ -392,7 +397,7 @@ sbt "bankBalanceSheetBenchmark --seeds 10 --out target/bank-balance-sheet-benchm
 [Bank failure ablation diagnostics](bank-failure-ablations.md):
 
 ```bash
-sbt "bankFailureAblations --seeds 2 --months 24 --out target/bank-failure-ablations --run-id bank-failure-ablations"
+sbt "bankFailureAblations --seeds 2 --months 24 --parallelism 1 --out target/bank-failure-ablations --run-id bank-failure-ablations"
 ```
 
 Use larger `--seeds` and `--months` values for heavier research runs.

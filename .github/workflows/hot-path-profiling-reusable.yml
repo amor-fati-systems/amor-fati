@@ -158,7 +158,7 @@ jobs:
 
           start_seconds="$(date +%s)"
           set +e
-          nix develop --command java \
+          nix develop --command amor-fati-java \
             "-XX:StartFlightRecording=filename=${JFR_PATH},settings=${JFR_SETTINGS},dumponexit=true,disk=true" \
             -cp "${JAR_PATH}" \
             "${runner_args[@]}" 2>&1 | tee "${PROFILING_LOG_PATH}"
@@ -283,7 +283,7 @@ jobs:
                   "diagnostics TSV export paths",
               ],
               "command": (
-                  "nix develop --command java "
+                  "nix develop --command amor-fati-java "
                   f"-XX:StartFlightRecording=filename={jfr_path},settings={os.environ.get('JFR_SETTINGS', 'profile')},dumponexit=true,disk=true "
                   " -cp target/scala-3.8.2/amor-fati.jar "
                   "com.boombustgroup.amorfati.diagnostics.NightlyDiagnosticsProfileRunner "

@@ -17,11 +17,17 @@ private[agents] object FirmPostProcessing:
   // ---- Post-processing pipeline ----
 
   /** Persists demand pressure as the next month's hiring-signal state. */
-  private[agents] def updateHiringSignalState(result: Result, prior: State, w: World, operationalSignals: OperationalSignals)(using p: SimParams): Result =
+  private[agents] def updateHiringSignalState(
+      result: Result,
+      prior: State,
+      w: World,
+      operationalSignals: OperationalSignals,
+      cachedDesiredWorkers: Option[Int] = None,
+  )(using p: SimParams): Result =
     if !isAlive(result.firm) then result
     else
       val currentWorkers = workerCount(result.firm)
-      val desired        = desiredWorkers(prior, w, operationalSignals)
+      val desired        = cachedDesiredWorkers.getOrElse(desiredWorkers(prior, w, operationalSignals))
       val nextSignal     = nextHiringSignalMonths(prior, desired, currentWorkers)
       result.copy(firm = result.firm.copy(hiringSignalMonths = nextSignal))
 
