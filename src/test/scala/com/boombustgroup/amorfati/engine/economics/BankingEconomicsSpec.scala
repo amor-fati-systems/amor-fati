@@ -21,43 +21,43 @@ class BankingEconomicsSpec extends AnyFlatSpec with Matchers:
 
   "BankingEconomics.runStep" should "produce flows that close at SFC == 0L" in {
     val prepared    = preparedBankingStep()
-    val s9          = prepared.run()
+    val banking     = prepared.run()
     val prevBankAgg = Banking.aggregateFromBankStocks(
       prepared.banks,
       prepared.ledgerFinancialState.banks.map(LedgerFinancialState.projectBankFinancialStocks),
       bankId => CorporateBondOwnership.bankHolderFor(prepared.ledgerFinancialState, bankId),
     )
 
-    s9.ledgerFinancialState.government.govBondOutstanding shouldBe FiscalBudget.nextGovBondOutstanding(
+    banking.ledgerFinancialState.government.govBondOutstanding shouldBe FiscalBudget.nextGovBondOutstanding(
       prepared.ledgerFinancialState.government.govBondOutstanding,
-      s9.newGovWithYield.deficit,
+      banking.newGovWithYield.deficit,
     )
-    s9.ledgerFinancialState.insurance.govBondHoldings shouldBe s9.finalInsuranceBalances.govBondHoldings
-    s9.finalPpk shouldBe prepared.s2.newPpk
-    s9.ledgerFinancialState.funds.ppkGovBondHoldings should be >= prepared.ledgerFinancialState.funds.ppkGovBondHoldings
-    s9.ledgerFinancialState.funds.nbfi.tfiUnit shouldBe s9.finalNbfiBalances.tfiAum
-    s9.ledgerFinancialState.funds.quasiFiscal.bondsOutstanding should be >= PLN.Zero
-    s9.ledgerFinancialState.funds.quasiFiscal.loanPortfolio should be >= PLN.Zero
+    banking.ledgerFinancialState.insurance.govBondHoldings shouldBe banking.finalInsuranceBalances.govBondHoldings
+    banking.finalPpk shouldBe prepared.labor.newPpk
+    banking.ledgerFinancialState.funds.ppkGovBondHoldings should be >= prepared.ledgerFinancialState.funds.ppkGovBondHoldings
+    banking.ledgerFinancialState.funds.nbfi.tfiUnit shouldBe banking.finalNbfiBalances.tfiAum
+    banking.ledgerFinancialState.funds.quasiFiscal.bondsOutstanding should be >= PLN.Zero
+    banking.ledgerFinancialState.funds.quasiFiscal.loanPortfolio should be >= PLN.Zero
 
     val flows = BankingFlows.emit(
       BankingFlows.Input(
-        firmInterestIncome = prepared.s5.intIncome,
-        firmNplLoss = prepared.s5.nplLoss,
-        mortgageNplLoss = s9.mortgageDefaultLoss,
-        consumerNplLoss = prepared.s6.consumerNplLoss,
-        govBondIncome = prevBankAgg.govBondHoldings * prepared.s8.monetary.newBondYield.monthly,
-        reserveInterest = prepared.s8.banking.totalReserveInterest,
-        standingFacilityIncome = prepared.s8.banking.totalStandingFacilityIncome,
-        interbankInterest = prepared.s8.banking.totalInterbankInterest,
-        corpBondCoupon = prepared.s8.corpBonds.corpBondBankCoupon,
-        corpBondDefaultLoss = prepared.s8.corpBonds.corpBondBankDefaultLoss,
-        bfgLevy = s9.bfgLevy,
-        polishBankLevyTax = s9.polishBankLevyTax,
-        unrealizedBondLoss = s9.unrealizedBondLoss,
-        bailInLoss = s9.bailInLoss,
-        nbpRemittance = prepared.s8.banking.nbpRemittance,
+        firmInterestIncome = prepared.firm.intIncome,
+        firmNplLoss = prepared.firm.nplLoss,
+        mortgageNplLoss = banking.mortgageDefaultLoss,
+        consumerNplLoss = prepared.householdFinancial.consumerNplLoss,
+        govBondIncome = prevBankAgg.govBondHoldings * prepared.openEconomy.monetary.newBondYield.monthly,
+        reserveInterest = prepared.openEconomy.banking.totalReserveInterest,
+        standingFacilityIncome = prepared.openEconomy.banking.totalStandingFacilityIncome,
+        interbankInterest = prepared.openEconomy.banking.totalInterbankInterest,
+        corpBondCoupon = prepared.openEconomy.corpBonds.corpBondBankCoupon,
+        corpBondDefaultLoss = prepared.openEconomy.corpBonds.corpBondBankDefaultLoss,
+        bfgLevy = banking.bfgLevy,
+        polishBankLevyTax = banking.polishBankLevyTax,
+        unrealizedBondLoss = banking.unrealizedBondLoss,
+        bailInLoss = banking.bailInLoss,
+        nbpRemittance = prepared.openEconomy.banking.nbpRemittance,
         fxReserveSettlement = PLN.Zero,
-        standingFacilityBackstop = s9.standingFacilityBackstop,
+        standingFacilityBackstop = banking.standingFacilityBackstop,
       ),
     )
 
@@ -143,8 +143,8 @@ class BankingEconomicsSpec extends AnyFlatSpec with Matchers:
     )
     val alignedOpeningStocks = BankingEconomics
       .alignConsumerLoanBookToHouseholdRouting(
-        prepared.s5.households,
-        prepared.s5.ledgerFinancialState.households,
+        prepared.firm.households,
+        prepared.firm.ledgerFinancialState.households,
         shellLedger.banks.map(LedgerFinancialState.projectBankFinancialStocks),
       )
       .head
@@ -161,9 +161,9 @@ class BankingEconomicsSpec extends AnyFlatSpec with Matchers:
   it should "distribute aggregate capital reconciliation without creating a single-bank failure sink" in {
     val prepared                = preparedBankingStep()
     val survivableResidualShock = PLN(500000000L)
-    val stressedFirmS5          = prepared.s5.copy(nplLoss = prepared.s5.nplLoss + survivableResidualShock)
+    val stressedFirm            = prepared.firm.copy(nplLoss = prepared.firm.nplLoss + survivableResidualShock)
 
-    val result = prepared.run(s5Override = stressedFirmS5)
+    val result = prepared.run(firmOverride = stressedFirm)
 
     result.bankReconciliationDiagnostics.materialResidual shouldBe 1
     result.bankReconciliationDiagnostics.crossedFailureThreshold shouldBe 0
@@ -202,6 +202,37 @@ class BankingEconomicsSpec extends AnyFlatSpec with Matchers:
     aligned(2).consumerLoan shouldBe PLN(80)
   }
 
+  it should "exclude liquidity-bridge charge-offs from bank consumer NPL capital loss" in {
+    val prepared                  = preparedBankingStep()
+    val zeroHhBankFlow            = PerBankFlow(
+      income = PLN.Zero,
+      consumption = PLN.Zero,
+      debtService = PLN.Zero,
+      mortgageInterest = PLN.Zero,
+      depositInterest = PLN.Zero,
+      consumerDebtService = PLN.Zero,
+      consumerOrigination = PLN.Zero,
+      consumerApprovedOrigination = PLN.Zero,
+      consumerBankRejectedOrigination = PLN.Zero,
+      liquidityShortfallFinancing = PLN.Zero,
+      consumerDefault = PLN.Zero,
+      consumerLoanDefault = PLN.Zero,
+      consumerPrincipal = PLN.Zero,
+    )
+    val bridgeOnlyFlow            = zeroHhBankFlow.copy(
+      liquidityShortfallFinancing = PLN(1000),
+      consumerDefault = PLN(1000),
+      consumerLoanDefault = PLN.Zero,
+    )
+    val householdIncomeWithBridge = prepared.householdIncome.copy(
+      perBankHhFlowsOpt = Some(Vector(bridgeOnlyFlow) ++ Vector.fill(prepared.banks.length - 1)(zeroHhBankFlow)),
+    )
+
+    val result = prepared.run(householdIncomeOverride = householdIncomeWithBridge)
+
+    result.bankCapitalDiagnostics.consumerNplLoss shouldBe PLN.Zero
+  }
+
   it should "read JST cash opening stocks from LedgerFinancialState" in {
     val prepared = preparedBankingStep()
     val aligned  = prepared.run()
@@ -222,34 +253,35 @@ class BankingEconomicsSpec extends AnyFlatSpec with Matchers:
       world: World,
       ledgerFinancialState: LedgerFinancialState,
       banks: Vector[Banking.BankState],
-      s1: FiscalConstraintEconomics.StepOutput,
-      s2: LaborEconomics.StepOutput,
-      s3: HouseholdIncomeEconomics.StepOutput,
-      s4: DemandEconomics.StepOutput,
-      s5: FirmEconomics.StepOutput,
-      s6: HouseholdFinancialEconomics.StepOutput,
-      s7: PriceEquityEconomics.StepOutput,
-      s8: OpenEconEconomics.StepOutput,
+      fiscal: FiscalConstraintEconomics.StepOutput,
+      labor: LaborEconomics.StepOutput,
+      householdIncome: HouseholdIncomeEconomics.StepOutput,
+      demand: DemandEconomics.StepOutput,
+      firm: FirmEconomics.StepOutput,
+      householdFinancial: HouseholdFinancialEconomics.StepOutput,
+      priceEquity: PriceEquityEconomics.StepOutput,
+      openEconomy: OpenEconEconomics.StepOutput,
   ):
     def run(
         worldOverride: World = world,
         ledgerFinancialStateOverride: LedgerFinancialState = ledgerFinancialState,
         banksOverride: Vector[Banking.BankState] = banks,
-        s5Override: FirmEconomics.StepOutput = s5,
+        householdIncomeOverride: HouseholdIncomeEconomics.StepOutput = householdIncome,
+        firmOverride: FirmEconomics.StepOutput = firm,
     ): BankingEconomics.StepOutput =
       val bankingRng = MonthRandomness.Contract.fromSeed(TestSeed).stages.newStreams().bankingEconomics
       BankingEconomics.runStep(
         BankingEconomics.StepInput(
           worldOverride,
           ledgerFinancialStateOverride,
-          s1,
-          s2,
-          s3,
-          s4,
-          s5Override,
-          s6,
-          s7,
-          s8,
+          fiscal,
+          labor,
+          householdIncomeOverride,
+          demand,
+          firmOverride,
+          householdFinancial,
+          priceEquity,
+          openEconomy,
           banksOverride,
           bankingRng,
         ),
@@ -261,50 +293,63 @@ class BankingEconomicsSpec extends AnyFlatSpec with Matchers:
     val ledgerFinancialState = init.ledgerFinancialState
     val stageRandomness      = MonthRandomness.Contract.fromSeed(TestSeed).stages.newStreams()
 
-    val s1 = FiscalConstraintEconomics.compute(w, init.banks, ledgerFinancialState, ExecutionMonth.First)
-    val s2 = LaborEconomics.compute(w, init.firms, init.households, s1)
-    val s3 =
+    val fiscal             = FiscalConstraintEconomics.compute(w, init.banks, ledgerFinancialState, ExecutionMonth.First)
+    val labor              = LaborEconomics.compute(w, init.firms, init.households, fiscal)
+    val householdIncome    =
       HouseholdIncomeEconomics.compute(
         w,
         init.firms,
         init.households,
         init.banks,
         ledgerFinancialState,
-        s1.lendingBaseRate,
-        s1.resWage,
-        s2.newWage,
+        fiscal.lendingBaseRate,
+        fiscal.resWage,
+        labor.newWage,
         stageRandomness.householdIncomeEconomics,
       )
-    val s4 = DemandEconomics.compute(w, s2.employed, s2.living, s3.domesticCons)
-    val s5 = FirmEconomics.runStep(w, init.firms, init.households, init.banks, ledgerFinancialState, s1, s2, s3, s4, stageRandomness.firmEconomics)
-    val s6 = HouseholdFinancialEconomics.compute(w, s1.m, s2.employed, s3.hhAgg, stageRandomness.householdFinancialEconomics)
-    val s7 = PriceEquityEconomics.compute(
+    val demand             = DemandEconomics.compute(w, labor.employed, labor.living, householdIncome.domesticCons)
+    val firm               =
+      FirmEconomics.runStep(
+        w,
+        init.firms,
+        init.households,
+        init.banks,
+        ledgerFinancialState,
+        fiscal,
+        labor,
+        householdIncome,
+        demand,
+        stageRandomness.firmEconomics,
+      )
+    val householdFinancial =
+      HouseholdFinancialEconomics.compute(w, fiscal.m, labor.employed, householdIncome.hhAgg, stageRandomness.householdFinancialEconomics)
+    val priceEquity        = PriceEquityEconomics.compute(
       w = w,
-      month = s1.m,
-      wageGrowth = s2.wageGrowth,
-      avgDemandMult = s4.avgDemandMult,
-      sectorMults = s4.sectorMults,
+      month = fiscal.m,
+      wageGrowth = labor.wageGrowth,
+      avgDemandMult = demand.avgDemandMult,
+      sectorMults = demand.sectorMults,
       totalSystemLoans = ledgerFinancialState.banks.map(_.firmLoan).sumPln,
-      firmStep = s5,
+      firmStep = firm,
       ledgerFinancialState = ledgerFinancialState,
     )
-    val s8 = OpenEconEconomics.runStep(
+    val openEconomy        = OpenEconEconomics.runStep(
       OpenEconEconomics.StepInput(
         w,
         ledgerFinancialState,
-        s1,
-        s2,
-        s3,
-        s4,
-        s5,
-        s6,
-        s7,
+        fiscal,
+        labor,
+        householdIncome,
+        demand,
+        firm,
+        householdFinancial,
+        priceEquity,
         init.banks,
         stageRandomness.openEconEconomics,
       ),
     )
 
-    PreparedBankingStep(w, ledgerFinancialState, init.banks, s1, s2, s3, s4, s5, s6, s7, s8)
+    PreparedBankingStep(w, ledgerFinancialState, init.banks, fiscal, labor, householdIncome, demand, firm, householdFinancial, priceEquity, openEconomy)
 
   "BankingEconomics.distributeFxInjection" should "distribute exact positive injection by non-negative deposit weights" in {
     val rows   = Vector(
