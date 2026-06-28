@@ -79,7 +79,7 @@ The formal `X_t -> X_tau` transition contract is documented in
 | Firm production, investment, technology, financing, default, entry | `agents/Firm.scala`, `engine/economics/FirmEconomics.scala`, `engine/mechanisms/FirmEntry.scala` | `TotalAdoption`, `AutoRatio`, `HybridRatio`, `Automation_TechCapex`, `Automation_TechImports`, `Automation_TechLoans`, `Automation_UpgradeFailures`, `Automation_AiDebtTrap`, `Automation_NewFullAi`, `Automation_NewHybrid`, `Adoption_MicroShare`, `Adoption_SmallShare`, `Adoption_MediumShare`, `Adoption_LargeShare`, `Adoption_CashQ1`-`Q4`, `Adoption_DebtQ1`-`Q4`, sector `*_Auto`, sector `*_Sigma`, `GrossInvestment`, `FirmCredit_NewLoans`, `FirmCredit_PrincipalRepaid`, `FirmCredit_GrossDefault`, `FirmCredit_NetStockFlow`, `FirmCredit_CreditDemand`, `FirmCredit_BankRejected`, `AggCapitalStock`, `AggInventoryStock`, `InventoryChange`, `AggEnergyCost`, `GreenInvestment`, `FirmBirths`, `FirmDeaths`, `NetEntry`, `LivingFirmCount`, `CorpBondIssuance`, `EquityIssuanceTotal` |
 | Banking and monetary plumbing | `agents/Banking.scala`, `engine/economics/BankingEconomics.scala`, `engine/economics/banking/BankingStepRunner.scala`, `agents/EclStaging.scala`, `agents/DepositMobility.scala`, `agents/InterbankContagion.scala` | `NPL`, `MinBankCAR`, `MaxBankNPL`, `MinBankLCR`, `MinBankNSFR`, `BankFailures`, `BankFailure_*`, `BankEcl_*`, `BankCreditLoss_*`, `BankReconciliation_*`, `InterbankRate`, `WIBOR_1M`, `WIBOR_3M`, `WIBOR_6M`, `BankAfsBonds`, `BankHtmBonds`, `BankGovBondShareOfAssets`, `BankPrivateCreditToGovBondHoldings`, `BfgLevyTotal`, `PolishBankLevyTaxTotal`, `BailInLoss`, `M0`, `M1`, `M2`, `M3`, `CreditMultiplier` |
 | Housing and mortgages | `engine/markets/HousingMarket.scala`, `engine/economics/banking/BankingStepRunner.scala` | `HousingPriceIndex`, regional `*Hpi`, `MortgageStock`, `MortgageOrigination`, `MortgageRepayment`, `MortgageDefault`, `MortgageNetStockFlow`, `MortgageOriginationToStock`, `MortgageRepaymentToStock`, `MortgageDefaultToStock`, `MortgageNetStockFlowToStock`, `MortgageOriginationSupplyConstrained`, `MortgageToGdp`, `AnnualizedGdpProxy` |
-| Fiscal, NBP, bond market, external sector | `agents/Nbp.scala`, `engine/markets/OpenEconomy.scala`, `engine/economics/OpenEconEconomics.scala`, `engine/markets/CorporateBondMarket.scala`, `engine/markets/BondAuction.scala` | `RefRate`, `BondYield`, `WeightedCoupon`, `BondsOutstanding`, `NbpBondHoldings`, `ForeignBondHoldings`, `QeActive`, `NbpRemittance`, `NbpBondIncome`, `ReserveInterest`, `StandingFacilityNet`, `FxReserves`, `FxInterventionAmt`, `CurrentAccount`, `CapitalAccount`, `TradeBalance_OE`, `Exports_OE`, `TotalImports_OE`, `NFA`, `FDI` |
+| Fiscal, NBP, bond market, external sector | `agents/Nbp.scala`, `engine/markets/OpenEconomy.scala`, `engine/economics/OpenEconEconomics.scala`, `engine/markets/CorporateBondMarket.scala`, `engine/markets/BondAuction.scala` | `RefRate`, `GovBondMarketYield`, `GovDebtWeightedCoupon`, `BondsOutstanding`, `NbpBondHoldings`, `ForeignBondHoldings`, `QeActive`, `NbpRemittance`, `NbpBondIncome`, `ReserveInterest`, `StandingFacilityNet`, `FxReserves`, `FxInterventionAmt`, `CurrentAccount`, `CapitalAccount`, `TradeBalance_OE`, `Exports_OE`, `TotalImports_OE`, `NFA`, `FDI` |
 | Insurance, NBFI, quasi-fiscal, local government | `agents/Insurance.scala`, `agents/Nbfi.scala`, `agents/QuasiFiscal.scala`, `agents/Jst.scala` | `InsLifeReserves`, `InsNonLifeReserves`, `InsLifePremium`, `InsNonLifePremium`, `InsLifeClaims`, `InsNonLifeClaims`, `NbfiTfiAum`, `NbfiLoanStock`, `NbfiOrigination`, `NbfiRepayment`, `NbfiDefaults`, `NbfiNetStockFlow`, `NbfiBankTightness`, `NbfiDepositDrainToAum`, `QfBondsOutstanding`, `QfIssuance`, `QfLoanPortfolio`, `Esa2010DebtToGdp`, `JstRevenue`, `JstSpending`, `JstDebt`, `JstDeposits` |
 
 ## Household Rules
@@ -938,7 +938,7 @@ loanReturnRA_b(q, A) =
   - capitalCost_b(q)
   - marginalPolishBankLevyCost_b(q, A)
 
-bondReturnRA_b = govBondYield
+bondReturnRA_b = govBondMarketYield
 wedge_b(q, A) = loanReturnRA_b(q, A) - bondReturnRA_b
 
 portfolioPricePremium_b(q, A) =
@@ -1148,7 +1148,7 @@ Government bond yield is:
 ```text
 annualGdp = 12 * monthlyGdp
 
-bondYield =
+govBondMarketYield =
   max(referenceRate + termPremium, bundYield + termPremium)
   + fiscalRisk(debtToGdp)
   - qeCompression(qeCumulative / annualGdp)
@@ -1299,9 +1299,9 @@ TFI inflow is proportional to wage bill and excess fund return over deposits:
 ```text
 baseInflow = employed * wage * tfiInflowRate
 fundReturn =
-  govBondYield * tfiGovBondShare
+  govBondMarketYield * tfiGovBondShare
   + equityReturn.annualized * tfiEquityShare
-  + govBondYield * tfiCorpBondShare
+  + govBondMarketYield * tfiCorpBondShare
 netInflow = baseInflow * (1 + clamp(fundReturn - depositRate, cap)
                           * ExcessReturnSensitivity)
 ```

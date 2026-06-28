@@ -160,7 +160,7 @@ r^{loan,RA}_{b,tau}(q, A) =
   - polishBankLevyCost_b(q, A)
 
 r^{bond,RA}_{b,tau} =
-  govBondYield_tau
+  govBondMarketYield_tau
 
 wedge_b(q, A) =
   r^{loan,RA}_{b,tau}(q, A) - r^{bond,RA}_{b,tau}
@@ -497,7 +497,7 @@ computes yield, coupon, amortization, default, and issuance:
 
 ```text
 CorpBondYield_tau =
-  max(GovBondYield_tau + creditSpread_tau,
+  max(GovBondMarketYield_tau + creditSpread_tau,
       MinCorpBondYield)
 
 creditSpread_tau =

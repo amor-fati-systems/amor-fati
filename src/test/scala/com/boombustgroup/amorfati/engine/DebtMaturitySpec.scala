@@ -15,10 +15,10 @@ import org.scalatest.matchers.should.Matchers
   */
 class DebtMaturitySpec extends AnyFlatSpec with Matchers:
 
-  private val update = OpenEconEconomics.updateWeightedCouponPublic
+  private val update = OpenEconEconomics.updateGovDebtWeightedCouponPublic
   private val bonds  = PLN(100000000000L)
 
-  "updateWeightedCoupon" should "not reprice instantly after a yield shock" in {
+  "updateGovDebtWeightedCoupon" should "not reprice instantly after a yield shock" in {
     val after = update(Rate.decimal(5, 2), Rate.decimal(10, 2), bonds, PLN.Zero, 54)
     decimal(after) shouldBe BigDecimal("0.05") +- BigDecimal("0.002")
     decimal(after) should be > BigDecimal("0.05")

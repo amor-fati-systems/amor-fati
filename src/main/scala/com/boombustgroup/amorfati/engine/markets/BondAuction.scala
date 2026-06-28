@@ -40,15 +40,15 @@ object BondAuction:
     * foreignShare = baseShare × (1 + yieldSensitivity × spread − erSensitivity
     * × depreciation)
     *
-    * Spread = govBondYield − bundYield. Positive spread attracts foreign
+    * Spread = govBondMarketYield − bundYield. Positive spread attracts foreign
     * capital. Depreciation (positive = PLN weakening) deters via currency risk.
     * Clamped to [0, maxForeignShare] to prevent unrealistic extremes.
     */
   private[amorfati] def foreignDemandShare(
-      marketYield: Rate,
+      govBondMarketYield: Rate,
       erChange: Coefficient,
   )(using p: SimParams): Share =
-    val spread           = marketYield - p.fiscal.bundYield
+    val spread           = govBondMarketYield - p.fiscal.bundYield
     val yieldEffect      = (spread * p.fiscal.foreignYieldSensitivity).toScalar.toCoefficient
     val erEffect         = erChange * p.fiscal.foreignErSensitivity
     val demandAdjustment = (Coefficient.One + yieldEffect - erEffect).max(Coefficient.Zero)
@@ -60,7 +60,7 @@ object BondAuction:
     *   total new bonds to place (deficit + rollover, from FiscalBudget)
     * @param bankBondCapacity
     *   maximum additional bonds banks can absorb (available reserves/capital)
-    * @param marketYield
+    * @param govBondMarketYield
     *   current market yield on gov bonds
     * @param erChange
     *   month-on-month PLN exchange rate change (positive = depreciation)
@@ -70,12 +70,12 @@ object BondAuction:
   def auction(
       newIssuance: PLN,
       bankBondCapacity: PLN,
-      marketYield: Rate,
+      govBondMarketYield: Rate,
       erChange: Coefficient,
   )(using p: SimParams): Result =
     if newIssuance <= PLN.Zero then Result(PLN.Zero, PLN.Zero, Multiplier(1))
     else
-      val foreignShare   = foreignDemandShare(marketYield, erChange)
+      val foreignShare   = foreignDemandShare(govBondMarketYield, erChange)
       val foreignDemand  = newIssuance * foreignShare
       val domesticCap    = bankBondCapacity.max(PLN.Zero)
       val domesticDemand = (newIssuance - foreignDemand).min(domesticCap).max(PLN.Zero)

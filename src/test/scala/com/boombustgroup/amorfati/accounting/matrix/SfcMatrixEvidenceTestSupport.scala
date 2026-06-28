@@ -18,7 +18,7 @@ private[matrix] object SfcMatrixEvidenceTestSupport:
   def deterministicBundle(commit: String)(using SimParams): MatrixEvidenceBundle =
     bundleFrom(deterministicStep(), seed = EvidenceSeed, commit = commit)
 
-  def bundleFrom(step: FlowSimulation.StepOutput, seed: Long, commit: String)(using SimParams): MatrixEvidenceBundle =
+  def bundleFrom(step: FlowSimulation.StepOutput, seed: Long, commit: String): MatrixEvidenceBundle =
     MatrixEvidenceBundle.fromStep(seed = seed, step = step, commit = commit)
 
 end SfcMatrixEvidenceTestSupport

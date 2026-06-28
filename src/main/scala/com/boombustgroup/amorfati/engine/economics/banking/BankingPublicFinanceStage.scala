@@ -54,8 +54,8 @@ private[banking] object BankingPublicFinanceStage:
     )
     val newGovWithYield       = newGov.copy(
       policy = newGov.policy.copy(
-        bondYield = in.openEconomy.monetary.newBondYield,
-        weightedCoupon = in.openEconomy.monetary.newWeightedCoupon,
+        govBondMarketYield = in.openEconomy.monetary.newGovBondMarketYield,
+        govDebtWeightedCoupon = in.openEconomy.monetary.newGovDebtWeightedCoupon,
       ),
     )
     val newGovBondOutstanding = FiscalBudget.nextGovBondOutstanding(in.ledgerFinancialState.government.govBondOutstanding, newGov.deficit)

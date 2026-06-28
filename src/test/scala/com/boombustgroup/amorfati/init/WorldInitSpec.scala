@@ -39,9 +39,9 @@ class WorldInitSpec extends AnyFlatSpec with Matchers:
       val deAnchor = (Share.One - world.mechanisms.expectations.credibility) *
         (world.mechanisms.expectations.expectedInflation - p.monetary.targetInfl).abs.toScalar.toShare
       (deAnchor * p.labor.expBondSensitivity).toRate
-    world.gov.bondYield shouldBe Nbp.bondYield(p.monetary.initialRate, debtToGdp, Share.Zero, PLN.Zero, credibilityPrem)
-    world.gov.bondYield should be > Rate.Zero
-    world.gov.weightedCoupon shouldBe p.fiscal.govInitialWeightedCoupon
+    world.gov.govBondMarketYield shouldBe Nbp.govBondMarketYield(p.monetary.initialRate, debtToGdp, Share.Zero, PLN.Zero, credibilityPrem)
+    world.gov.govBondMarketYield should be > Rate.Zero
+    world.gov.govDebtWeightedCoupon shouldBe p.fiscal.govInitialDebtWeightedCoupon
   }
 
   it should "initialize unemployment and GDP scale from the production baseline" in {

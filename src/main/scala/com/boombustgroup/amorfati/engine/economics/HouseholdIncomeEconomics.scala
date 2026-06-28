@@ -82,7 +82,7 @@ object HouseholdIncomeEconomics:
             stocks,
             cfg,
             lendingBaseRate,
-            w.gov.bondYield,
+            w.gov.govBondMarketYield,
             bankCorpBonds(b.id),
             w.mechanisms.macropru.ccyb,
             Banking.CreditProduct.ConsumerLoan,
@@ -91,7 +91,7 @@ object HouseholdIncomeEconomics:
         depositRates = banks.map(_ => Banking.hhDepositRate(w.nbp.referenceRate)),
       ),
     )
-    val bankCreditSupply = capitalAwareBankCreditSupply(banks, bankStocks, bsec.configs, ccyb, bankCorpBonds, lendingBaseRate, w.gov.bondYield)
+    val bankCreditSupply = capitalAwareBankCreditSupply(banks, bankStocks, bsec.configs, ccyb, bankCorpBonds, lendingBaseRate, w.gov.govBondMarketYield)
     val eqReturn         = w.financialMarkets.equity.monthlyReturn
     val secWages         = Some(SectoralMobility.sectorWages(afterWages))
     val secVacancies     = Some(SectoralMobility.sectorVacancies(afterWages, firms))
@@ -166,7 +166,7 @@ object HouseholdIncomeEconomics:
       ccyb: Multiplier,
       bankCorpBonds: BankId => PLN,
       lendingBaseRate: Rate,
-      bondYield: Rate,
+      govBondMarketYield: Rate,
   )(using p: SimParams): Household.BankCreditSupply =
     requireBankInputsAligned("HouseholdIncomeEconomics.bankCreditSupply", banks, bankStocks, configs)
     val approvedFirmExposureByBank     = Array.fill(banks.length)(PLN.Zero)
@@ -182,7 +182,7 @@ object HouseholdIncomeEconomics:
           portfolio = Banking.CreditPortfolioContext(
             config = configs(idx),
             refRate = lendingBaseRate,
-            bondYield = bondYield,
+            govBondMarketYield = govBondMarketYield,
           ),
         )
       }.toVector

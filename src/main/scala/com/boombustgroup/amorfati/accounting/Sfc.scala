@@ -2,7 +2,6 @@ package com.boombustgroup.amorfati.accounting
 
 import com.boombustgroup.amorfati.agents.{Banking, Firm, Household}
 import com.boombustgroup.amorfati.engine.World
-import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.ledger.{CorporateBondOwnership, FundRuntimeIndex, GovernmentBondCircuit, LedgerFinancialState, TreasuryRuntimeContract}
 import com.boombustgroup.amorfati.types.*
 import com.boombustgroup.ledger.{AssetType, BatchedFlow, EntitySector}
@@ -147,6 +146,7 @@ object Sfc:
       reserveInterest: PLN,                     // NBP pays on required reserves
       standingFacilityIncome: PLN,              // Deposit/lombard facility net
       interbankInterest: PLN,                   // Interbank interest (net ≈ 0)
+      bankRetainedIncome: PLN,                  // executed retained bank income after per-bank retention rounding
       jstDepositChange: PLN,                    // JST deposit flow
       jstSpending: PLN,                         // JST spending
       jstRevenue: PLN,                          // JST revenue
@@ -330,10 +330,10 @@ object Sfc:
     *
     *   1. Bank capital: Δ = -nplLoss - mortgageNplLoss - consumerNplLoss -
     *      corpBondDefaultLoss - interbankContagionLoss - bfgLevy -
-    *      bankCapitalDestruction + (interestIncome + bankBondIncome +
-    *      mortgageInterestIncome + consumer interest income +
-    *      corpBondCouponIncome - depositInterestPaid + reserveInterest +
-    *      standingFacilityIncome + interbankInterest) × BankProfitRetention
+    *      bankCapitalDestruction + bankRetainedIncome. Retained income is
+    *      sourced from the executed per-bank capital waterfall because
+    *      retention rounding happens per bank, not on the aggregate
+    *      gross-income sum.
     *   2. Bank deposits: Δ = totalIncome - totalConsumption +
     *      investNetDepositFlow + jstDepositChange + dividendIncome -
     *      foreignDividendOutflow - remittanceOutflow + diasporaInflow +
@@ -378,7 +378,7 @@ object Sfc:
       prev: StockState,    // stocks at the beginning of the month (before Simulation.step)
       curr: StockState,    // stocks at the end of the month (after Simulation.step)
       flows: SemanticFlows, // all flows that occurred during the month
-  )(using p: SimParams): SfcResult =
+  ): SfcResult =
     val errors = stockFlowReconciliationRows(prev, curr, flows).collect:
       case row if !row.isValid =>
         SfcIdentityError(row.identity, row.msg, row.expected, row.actual)
@@ -389,7 +389,7 @@ object Sfc:
       prev: StockState,
       curr: StockState,
       flows: SemanticFlows,
-  )(using p: SimParams): Vector[StockFlowReconciliationRow] =
+  ): Vector[StockFlowReconciliationRow] =
     stockFlowIdentitySpecs(prev, curr, flows).map: spec =>
       StockFlowReconciliationRow(spec.id, spec.msg, spec.expected, spec.actual)
 
@@ -397,14 +397,14 @@ object Sfc:
       prev: RuntimeState,
       curr: RuntimeState,
       flows: SemanticFlows,
-  )(using p: SimParams): Vector[StockFlowReconciliationRow] =
+  ): Vector[StockFlowReconciliationRow] =
     stockFlowReconciliationRows(snapshot(prev), snapshot(curr), flows)
 
   private def stockFlowIdentitySpecs(
       prev: StockState,
       curr: StockState,
       flows: SemanticFlows,
-  )(using p: SimParams): Vector[IdentitySpec] =
+  ): Vector[IdentitySpec] =
     import SfcIdentity.*
 
     val quasiFiscalBankBondIssuance     =
@@ -419,16 +419,11 @@ object Sfc:
         BankCapital,
         "bank capital change (profit retention + losses)",
         expected = {
-          val losses                 = flows.nplLoss + flows.mortgageNplLoss + flows.consumerNplLoss +
+          val losses = flows.nplLoss + flows.mortgageNplLoss + flows.consumerNplLoss +
             flows.corpBondDefaultLoss + flows.bfgLevy + flows.polishBankLevyTax + flows.unrealizedBondLoss +
             flows.htmRealizedLoss + flows.eclProvisionChange + flows.interbankContagionLoss +
             flows.bankCapitalDestruction
-          val consumerInterestIncome = flows.consumerDebtService - flows.consumerPrincipalRepaid
-          val grossIncome            = flows.interestIncome + flows.bankBondIncome +
-            flows.mortgageInterestIncome + consumerInterestIncome + flows.corpBondCouponIncome -
-            flows.depositInterestPaid + flows.reserveInterest + flows.standingFacilityIncome +
-            flows.interbankInterest
-          -losses + grossIncome * p.banking.profitRetention
+          -losses + flows.bankRetainedIncome
         },
         actual = curr.bankCapital - prev.bankCapital,
       ),
@@ -584,7 +579,7 @@ object Sfc:
       batches: Vector[BatchedFlow],
       executionDeltaLedger: ExecutionDeltaLedger,
       deltaLedgerNet: Long,
-  )(using p: SimParams): SfcResult =
+  ): SfcResult =
     // In the runtime API, Flow-of-Funds is checked from executed ledger
     // batches. Keep the stock-side identities from the legacy oracle, but
     // neutralize the old hand-assembled residual to avoid double-counting the

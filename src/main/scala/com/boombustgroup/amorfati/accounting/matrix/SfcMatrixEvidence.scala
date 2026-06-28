@@ -1,7 +1,6 @@
 package com.boombustgroup.amorfati.accounting.matrix
 
 import com.boombustgroup.amorfati.accounting.Sfc
-import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.flows.FlowMechanism
 import com.boombustgroup.amorfati.engine.flows.FlowSimulation
 import com.boombustgroup.amorfati.engine.ledger.{CorporateBondOwnership, GovernmentBondCircuit}
@@ -418,7 +417,7 @@ object SfcMatrixEvidence:
                 (OtherChangeKind.CoverageGap, instrument.note)
 
   object StockFlowReconciliationEvidence:
-    def fromStep(step: FlowSimulation.StepOutput)(using SimParams): StockFlowReconciliationEvidence =
+    def fromStep(step: FlowSimulation.StepOutput): StockFlowReconciliationEvidence =
       val prev  = Sfc.RuntimeState(
         step.stateIn.world,
         step.stateIn.firms,
@@ -694,7 +693,7 @@ object SfcMatrixEvidence:
       MatrixValidationReport(sfcErrors ++ bsmErrors ++ tfmErrors ++ registryErrors)
 
   object MatrixEvidenceBundle:
-    def fromStep(seed: Long, step: FlowSimulation.StepOutput, commit: String = BuildInfo.gitCommit)(using SimParams): MatrixEvidenceBundle =
+    def fromStep(seed: Long, step: FlowSimulation.StepOutput, commit: String = BuildInfo.gitCommit): MatrixEvidenceBundle =
       val opening        = BsmEvidence.fromStepOpening(step)
       val closing        = BsmEvidence.fromStepClosing(step)
       val tfm            = TfmEvidence.fromStep(step)

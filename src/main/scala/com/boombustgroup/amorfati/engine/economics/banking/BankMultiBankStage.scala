@@ -360,7 +360,7 @@ private[banking] object BankMultiBankStage:
     val firmLoss      = BankCreditLossAccounting.firm(bankNplNew)
     val bankNplLoss   = firmLoss.netCapitalLoss
     val bankIntIncome = in.firm.perBankIntIncome(bId)
-    val bankBondInc   = Banking.govBondHoldings(stocks) * in.openEconomy.monetary.newBondYield.monthly
+    val bankBondInc   = Banking.govBondHoldings(stocks) * in.openEconomy.monetary.newGovBondMarketYield.monthly
     val bankResInt    = perBankReserveInt.perBank(bId)
     val bankSfInc     = perBankStandingFac.perBank(bId)
     val bankIbInt     = perBankInterbankInt.perBank(bId)
@@ -412,7 +412,7 @@ private[banking] object BankMultiBankStage:
     val bankPolishLevyTax         = perBankPolishLevy.perBank(bId)
 
     // Per-bank mark-to-market loss on AFS bonds only (HTM losses hidden until forced reclassification)
-    val bankYieldChange        = in.openEconomy.monetary.newBondYield - in.world.gov.bondYield
+    val bankYieldChange        = in.openEconomy.monetary.newGovBondMarketYield - in.world.gov.govBondMarketYield
     val bankUnrealizedLoss     = if bankYieldChange > Rate.Zero then stocks.govBondAfs * bankYieldChange * p.banking.govBondDuration else PLN.Zero
     val bankCapitalGrossIncome =
       bankIntIncome + bankBondInc - hhFlows.depInterest + bankResInt + bankSfInc + bankIbInt +

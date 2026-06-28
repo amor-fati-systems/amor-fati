@@ -101,7 +101,7 @@ class OpenEconEconomicsSpec extends AnyFlatSpec with Matchers:
   }
 
   it should "produce a valid bond yield" in {
-    decimal(result.monetary.newBondYield) should be >= BigDecimal("0.0")
+    decimal(result.monetary.newGovBondMarketYield) should be >= BigDecimal("0.0")
   }
 
   it should "cap QE requests against annualized GDP in the open-economy call-site" in {

@@ -66,7 +66,7 @@ class RuntimeMechanismSurvivabilitySpec extends AnyFlatSpec with Matchers:
       prevCorpBondHoldings = PLN(50000000),
       corpBondDefaultLoss = PLN.Zero,
       prevEquityHoldings = PLN(40000000),
-      govBondYield = Rate.decimal(6, 2),
+      govBondMarketYield = Rate.decimal(6, 2),
       corpBondYield = Rate.decimal(8, 2),
       equityReturn = Rate.decimal(3, 2),
     )

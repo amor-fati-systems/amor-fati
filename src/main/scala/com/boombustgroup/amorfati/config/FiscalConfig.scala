@@ -91,7 +91,7 @@ import com.boombustgroup.amorfati.types.*
   *   baseline sensitivity of bond spread to debt/GDP pressure above 40%
   * @param govTermPremium
   *   term/liquidity premium over the long-rate anchor (NBP/MF calibration)
-  * @param govInitialWeightedCoupon
+  * @param govInitialDebtWeightedCoupon
   *   opening weighted-average coupon on the outstanding Treasury debt stock (MF
   *   interest-cost calibration)
   * @param govAvgMaturityMonths
@@ -197,7 +197,7 @@ case class FiscalConfig(
     // Bond market
     govFiscalRiskBeta: Coefficient = Coefficient.decimal(3, 2),
     govTermPremium: Rate = Rate.decimal(5, 3),
-    govInitialWeightedCoupon: Rate = Rate.decimal(4, 2),
+    govInitialDebtWeightedCoupon: Rate = Rate.decimal(4, 2),
     govAvgMaturityMonths: Int = 69,
     // Bond auction — foreign demand
     baseForeignShare: Share = Share.decimal(35, 2),
@@ -239,7 +239,7 @@ case class FiscalConfig(
 ):
   require(citRate >= Rate.Zero && citRate <= Rate(1), s"citRate must be in [0,1]: $citRate")
   require(govBaseSpending >= PLN.Zero, s"govBaseSpending must be non-negative: $govBaseSpending")
-  require(govInitialWeightedCoupon >= Rate.Zero, s"govInitialWeightedCoupon must be non-negative: $govInitialWeightedCoupon")
+  require(govInitialDebtWeightedCoupon >= Rate.Zero, s"govInitialDebtWeightedCoupon must be non-negative: $govInitialDebtWeightedCoupon")
   require(sgpCorrectionSpeed >= Share.Zero && sgpCorrectionSpeed <= Share.One, s"sgpCorrectionSpeed must be in [0,1]: $sgpCorrectionSpeed")
   require(initGovDebt >= PLN.Zero, s"initGovDebt must be non-negative: $initGovDebt")
   require(vatRates.length == 6, s"vatRates must have 6 sectors: ${vatRates.length}")

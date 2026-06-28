@@ -488,8 +488,8 @@ object McTimeseriesSchema:
 
   private def bankingMonetaryGroup: Vector[ColumnDef] = Vector(
     // Bond market
-    ColumnDef("BondYield", ctx => ctx.world.gov.bondYield),
-    ColumnDef("WeightedCoupon", ctx => ctx.world.gov.weightedCoupon),
+    ColumnDef("GovBondMarketYield", ctx => ctx.world.gov.govBondMarketYield),
+    ColumnDef("GovDebtWeightedCoupon", ctx => ctx.world.gov.govDebtWeightedCoupon),
     ColumnDef.macroPln("BondsOutstanding", ctx => ctx.ledgerFinancialState.government.govBondOutstanding),
     ColumnDef.macroPln("BankBondHoldings", ctx => ctx.ledgerBankGovBondHoldings),
     ColumnDef.macroPln("ForeignBondHoldings", ctx => ctx.ledgerFinancialState.foreign.govBondHoldings),
@@ -1261,7 +1261,7 @@ object McTimeseriesSchema:
     val FDI: Col                                       = lookup("FDI")
     val UnempBenefitSpend: Col                         = lookup("UnempBenefitSpend")
     val OutputGap: Col                                 = lookup("OutputGap")
-    val BondYield: Col                                 = lookup("BondYield")
+    val GovBondMarketYield: Col                        = lookup("GovBondMarketYield")
     val BondsOutstanding: Col                          = lookup("BondsOutstanding")
     val BankBondHoldings: Col                          = lookup("BankBondHoldings")
     val ForeignBondHoldings: Col                       = lookup("ForeignBondHoldings")

@@ -95,12 +95,12 @@ object Insurance:
 
   case class StepInput(
       opening: OpeningBalances,
-      employed: Int,       // employed workers (premium base)
-      wage: PLN,           // average monthly wage
-      unempRate: Share,    // unemployment rate (non-life claim cyclicality)
-      govBondYield: Rate,  // government bond yield (annualised)
-      corpBondYield: Rate, // corporate bond yield (annualised)
-      equityReturn: Rate,  // equity monthly return
+      employed: Int,            // employed workers (premium base)
+      wage: PLN,                // average monthly wage
+      unempRate: Share,         // unemployment rate (non-life claim cyclicality)
+      govBondMarketYield: Rate, // government bond yield (annualised)
+      corpBondYield: Rate,      // corporate bond yield (annualised)
+      equityReturn: Rate,       // equity monthly return
       corpBondDefaultLoss: PLN,
   )
 
@@ -127,7 +127,7 @@ object Insurance:
     val nonLifeCl   = nonLifeBase * (Multiplier.One + stressAdj)
 
     // Investment income from all three asset classes
-    val grossInvestmentIncome = opening.govBondHoldings * input.govBondYield.monthly +
+    val grossInvestmentIncome = opening.govBondHoldings * input.govBondMarketYield.monthly +
       opening.corpBondHoldings * input.corpBondYield.monthly +
       opening.equityHoldings * input.equityReturn
     val invIncome             = grossInvestmentIncome - input.corpBondDefaultLoss

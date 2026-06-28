@@ -96,14 +96,14 @@ class OpenEconomySpec extends AnyFlatSpec with Matchers:
     val prevBop = OpenEconomy.BopState.zero.copy(carryTradeStock = PLN(20000000))
     val input   = baseInput(prevBop = prevBop, month = 30).copy(
       domesticRate = Rate.decimal(8, 2),
-      bondYield = Rate.decimal(9, 2),
+      govBondMarketYield = Rate.decimal(9, 2),
       prevBidToCover = Multiplier.decimal(50, 2),
     )
 
     val r                            = OpenEconomy.step(input)
     val capitalFlight                = CapitalFlows.compute(
       month = input.month,
-      yieldSpread = input.bondYield - p.forex.foreignRate,
+      yieldSpread = input.govBondMarketYield - p.forex.foreignRate,
       bidToCover = input.prevBidToCover,
       prevCarry = CapitalFlows.CarryState(prevBop.carryTradeStock),
       monthlyGdp = input.gdp,

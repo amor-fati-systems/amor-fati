@@ -150,7 +150,7 @@ private[flows] object MonthFlowPlanBuilder:
         mortgageDefault = h.lastDefault,
       ),
       banking = MonthlyCalculus.BankingFlowsPlan(
-        bankGovBondIncome = prevBankAgg.govBondHoldings * openEconomy.monetary.newBondYield.monthly,
+        bankGovBondIncome = prevBankAgg.govBondHoldings * openEconomy.monetary.newGovBondMarketYield.monthly,
         bankReserveInterest = openEconomy.banking.totalReserveInterest,
         bankStandingFacility = openEconomy.banking.totalStandingFacilityIncome,
         bankStandingFacilityBackstop = banking.standingFacilityBackstop,
@@ -188,7 +188,7 @@ private[flows] object MonthFlowPlanBuilder:
         insurancePrevCorpBonds = ledger.insurance.corpBondHoldings,
         insuranceCorpBondDefaultLoss = openEconomy.corpBonds.corpBondInsuranceDefaultLoss,
         insurancePrevEquity = ledger.insurance.equityHoldings,
-        govBondYield = openEconomy.monetary.newBondYield,
+        govBondMarketYield = openEconomy.monetary.newGovBondMarketYield,
         corpBondYield = openEconomy.corpBonds.newCorpBonds.corpBondYield,
       ),
     )

@@ -45,7 +45,7 @@ class BankingEconomicsSpec extends AnyFlatSpec with Matchers:
         firmNplLoss = prepared.firm.nplLoss,
         mortgageNplLoss = banking.mortgageDefaultLoss,
         consumerNplLoss = prepared.householdFinancial.consumerNplLoss,
-        govBondIncome = prevBankAgg.govBondHoldings * prepared.openEconomy.monetary.newBondYield.monthly,
+        govBondIncome = prevBankAgg.govBondHoldings * prepared.openEconomy.monetary.newGovBondMarketYield.monthly,
         reserveInterest = prepared.openEconomy.banking.totalReserveInterest,
         standingFacilityIncome = prepared.openEconomy.banking.totalStandingFacilityIncome,
         interbankInterest = prepared.openEconomy.banking.totalInterbankInterest,

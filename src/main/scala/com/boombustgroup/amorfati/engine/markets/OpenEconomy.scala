@@ -109,7 +109,7 @@ object OpenEconomy:
       diasporaInflow: PLN = PLN.Zero,
       tourismExport: PLN = PLN.Zero,
       tourismImport: PLN = PLN.Zero,
-      bondYield: Rate = Rate.Zero,
+      govBondMarketYield: Rate = Rate.Zero,
       prevBidToCover: Multiplier = Multiplier(2),
   )
 
@@ -206,7 +206,7 @@ object OpenEconomy:
       val monthlyGdp    = if in.gdp > PLN.Zero then in.gdp else PLN.fromLong(1)
       val portfolioRate = (rateDiff + riskPremium) * p.openEcon.portfolioSensitivity
       monthlyGdp * portfolioRate
-    val yieldSpread          = in.bondYield - p.forex.foreignRate
+    val yieldSpread          = in.govBondMarketYield - p.forex.foreignRate
     val capitalFlight        = CapitalFlows.compute(
       month = in.month,
       yieldSpread = yieldSpread,

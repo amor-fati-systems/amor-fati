@@ -61,9 +61,10 @@ private[banking] object BankBondWaterfall:
       financialStocks: Vector[Banking.BankFinancialStocks],
   )(using p: SimParams): BondWaterfallResult =
     val afterBonds    =
-      if wf.actualBondChange > PLN.Zero then Banking.allocateBondIssuance(banks, financialStocks, wf.actualBondChange, in.openEconomy.monetary.newBondYield)
+      if wf.actualBondChange > PLN.Zero then
+        Banking.allocateBondIssuance(banks, financialStocks, wf.actualBondChange, in.openEconomy.monetary.newGovBondMarketYield)
       else if wf.actualBondChange < PLN.Zero then
-        Banking.allocateBondRedemption(banks, financialStocks, PLN.fromRaw(-wf.actualBondChange.toLong), in.openEconomy.monetary.newBondYield)
+        Banking.allocateBondRedemption(banks, financialStocks, PLN.fromRaw(-wf.actualBondChange.toLong), in.openEconomy.monetary.newGovBondMarketYield)
       else Banking.BankStockState(banks, financialStocks)
     val primaryByBank = afterBonds.financialStocks
       .zip(financialStocks)
@@ -73,7 +74,7 @@ private[banking] object BankBondWaterfall:
     val auctionResult = BondAuction.auction(
       newIssuance = wf.actualBondChange.max(PLN.Zero),
       bankBondCapacity = bankDeposits * p.fiscal.bankBondAbsorptionShare,
-      marketYield = in.openEconomy.monetary.newBondYield,
+      govBondMarketYield = in.openEconomy.monetary.newGovBondMarketYield,
       erChange = wf.erChange,
     )
     val foreignSale   = Banking.sellToBuyer(afterBonds.banks, afterBonds.financialStocks, auctionResult.foreignAbsorbed)

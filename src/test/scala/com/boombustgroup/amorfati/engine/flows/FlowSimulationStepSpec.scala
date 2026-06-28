@@ -140,12 +140,12 @@ class FlowSimulationStepSpec extends AnyFlatSpec with Matchers:
     result.calculus.insurancePrevEquity should be > PLN.Zero
 
     val sameMonthInvestmentIncome     =
-      result.calculus.insurancePrevGovBonds * result.calculus.govBondYield.monthly +
+      result.calculus.insurancePrevGovBonds * result.calculus.govBondMarketYield.monthly +
         result.calculus.insurancePrevCorpBonds * result.calculus.corpBondYield.monthly +
         result.calculus.insurancePrevEquity * result.calculus.equityReturn -
         result.calculus.insuranceCorpBondDefaultLoss
     val staleBoundaryInvestmentIncome =
-      result.calculus.insurancePrevGovBonds * result.calculus.govBondYield.monthly +
+      result.calculus.insurancePrevGovBonds * result.calculus.govBondMarketYield.monthly +
         result.calculus.insurancePrevCorpBonds * result.calculus.corpBondYield.monthly +
         result.calculus.insurancePrevEquity * staleEquityReturn -
         result.calculus.insuranceCorpBondDefaultLoss
@@ -420,7 +420,7 @@ class FlowSimulationStepSpec extends AnyFlatSpec with Matchers:
         employed = result.calculus.employed,
         wage = result.calculus.wage,
         unempRate = result.calculus.unemploymentRate,
-        govBondYield = result.calculus.govBondYield,
+        govBondMarketYield = result.calculus.govBondMarketYield,
         corpBondYield = result.calculus.corpBondYield,
         equityReturn = result.calculus.equityReturn,
         corpBondDefaultLoss = result.calculus.insuranceCorpBondDefaultLoss,
@@ -432,7 +432,7 @@ class FlowSimulationStepSpec extends AnyFlatSpec with Matchers:
         employed = result.calculus.payroll.employed,
         wage = result.calculus.payroll.averageWage,
         unempRate = result.calculus.unemploymentRate,
-        govBondYield = result.calculus.govBondYield,
+        govBondMarketYield = result.calculus.govBondMarketYield,
         corpBondYield = result.calculus.corpBondYield,
         equityReturn = result.calculus.equityReturn,
         corpBondDefaultLoss = result.calculus.insuranceCorpBondDefaultLoss,

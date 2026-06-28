@@ -115,15 +115,15 @@ object Nbfi:
     nplExcess.ratioTo(NplTightnessRange).toShare.clamp(Share.Zero, Share.One)
 
   /** TFI net inflow: proportional to wage bill, modulated by excess returns. */
-  def tfiInflow(employed: Int, wage: PLN, equityReturn: Rate, govBondYield: Rate, depositRate: Rate)(using
+  def tfiInflow(employed: Int, wage: PLN, equityReturn: Rate, govBondMarketYield: Rate, depositRate: Rate)(using
       p: SimParams,
   ): PLN =
     val wageBill   = employed * wage
     val base       = wageBill * p.nbfi.tfiInflowRate
     // Excess return: weighted avg of fund returns vs deposit rate
-    val fundReturn = govBondYield * p.nbfi.tfiGovBondShare +
+    val fundReturn = govBondMarketYield * p.nbfi.tfiGovBondShare +
       equityReturn.annualize * p.nbfi.tfiEquityShare +
-      govBondYield * p.nbfi.tfiCorpBondShare // proxy: corp ~ gov yield
+      govBondMarketYield * p.nbfi.tfiCorpBondShare // proxy: corp ~ gov yield
     val excessReturn = (fundReturn - depositRate).clamp(-ExcessReturnCap, ExcessReturnCap)
     base * (Multiplier.One + (excessReturn * ExcessReturnSens).toMultiplier)
 
@@ -156,7 +156,7 @@ object Nbfi:
       @scala.annotation.unused priceLevel: PriceIndex, // CPI price level (unused in current spec, kept for interface stability)
       unempRate: Share,                                // unemployment rate
       bankNplRatio: Share,                             // aggregate bank NPL ratio (tightness signal)
-      govBondYield: Rate,                              // government bond yield (annualised)
+      govBondMarketYield: Rate,                        // government bond yield (annualised)
       corpBondYield: Rate,                             // corporate bond yield (annualised)
       equityReturn: Rate,                              // equity monthly return
       depositRate: Rate,                               // bank deposit rate (TFI opportunity cost)
@@ -176,8 +176,8 @@ object Nbfi:
     val opening = input.opening
 
     // TFI: inflow + investment income + rebalance
-    val netInflow             = tfiInflow(input.employed, input.wage, input.equityReturn, input.govBondYield, input.depositRate)
-    val grossInvestmentIncome = opening.tfiGovBondHoldings * input.govBondYield.monthly +
+    val netInflow             = tfiInflow(input.employed, input.wage, input.equityReturn, input.govBondMarketYield, input.depositRate)
+    val grossInvestmentIncome = opening.tfiGovBondHoldings * input.govBondMarketYield.monthly +
       opening.corpBondHoldings * input.corpBondYield.monthly +
       opening.tfiEquityHoldings * input.equityReturn
     val invIncome             = grossInvestmentIncome - input.corpBondDefaultLoss

@@ -36,7 +36,7 @@ private[amorfati] object BankInterbankSettlement:
       throw IllegalStateException(
         s"NBP reserve settlement left unallocated FX residual ${nbpSettlement.residual} after reserve-side settlement.",
       )
-    val htmResult      = Banking.processHtmForcedSale(nbpSettlement.banks, nbpSettlement.financialStocks, in.openEconomy.monetary.newBondYield)
+    val htmResult      = Banking.processHtmForcedSale(nbpSettlement.banks, nbpSettlement.financialStocks, in.openEconomy.monetary.newGovBondMarketYield)
 
     InterbankSettlementResult(
       banks = htmResult.banks,

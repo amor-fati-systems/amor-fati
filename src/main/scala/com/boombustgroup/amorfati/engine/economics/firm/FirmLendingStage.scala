@@ -27,7 +27,7 @@ private[firm] object FirmLendingStage:
         portfolio = Banking.CreditPortfolioContext(
           config = bsec.configs(idx),
           refRate = in.fiscal.lendingBaseRate,
-          bondYield = in.w.gov.bondYield,
+          govBondMarketYield = in.w.gov.govBondMarketYield,
         ),
       )
     }.toVector
@@ -35,7 +35,7 @@ private[firm] object FirmLendingStage:
       val b      = in.banks(idx)
       val stocks = bankStocks(idx)
       val cfg    = bsec.configs(idx)
-      Banking.lendingRate(b, stocks, cfg, in.fiscal.lendingBaseRate, in.w.gov.bondYield, bankCorpBonds(b.id), ccyb, Banking.CreditProduct.FirmLoan)
+      Banking.lendingRate(b, stocks, cfg, in.fiscal.lendingBaseRate, in.w.gov.govBondMarketYield, bankCorpBonds(b.id), ccyb, Banking.CreditProduct.FirmLoan)
     }.toVector
     val creditDecision     = (bankId: Int, amt: PLN) =>
       val approval = Banking.creditApproval(approvalContexts(bankId), bankStocks(bankId), Banking.CreditProduct.FirmLoan, amt, rng)

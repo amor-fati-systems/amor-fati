@@ -43,8 +43,8 @@ object FiscalBudget:
     * `deficit` = totalSpend − totalRevenue (positive = deficit, negative =
     * surplus). `cumulativeDebt` += deficit each month.
     *
-    * `weightedCoupon` tracks the portfolio-weighted average coupon rate. This
-    * is the rolling-portfolio WAM (weighted average maturity) model: each
+    * `govDebtWeightedCoupon` tracks the portfolio-weighted average coupon rate.
+    * This is the rolling-portfolio WAM (weighted average maturity) model: each
     * month, a fraction `1/govAvgMaturityMonths` of the portfolio matures and is
     * refinanced at the current market yield. New deficit issuance also enters
     * at current yield. The weighted coupon converges gradually to market yield
@@ -59,8 +59,8 @@ object FiscalBudget:
   )
 
   case class GovPolicyState(
-      bondYield: Rate = Rate.Zero,                    // lagged market yield (for lending rates)
-      weightedCoupon: Rate = Rate.Zero,               // portfolio-weighted average coupon (WAM rolling model)
+      govBondMarketYield: Rate = Rate.Zero,           // lagged market yield (for lending rates)
+      govDebtWeightedCoupon: Rate = Rate.Zero,        // portfolio-weighted average coupon (WAM rolling model)
       publicCapitalStock: PLN = PLN.Zero,             // public capital stock accumulated from domestic capex and EU project capital
       minWageLevel: PLN = PLN(4806),                  // statutory 2026 minimum wage (PLN/month)
       minWagePriceLevel: PriceIndex = PriceIndex.Base, // price level at last minimum wage adjustment
@@ -92,8 +92,8 @@ object FiscalBudget:
     def deficit: PLN                  = monthly.deficit
     def cumulativeDebt: PLN           = financial.cumulativeDebt
     def unempBenefitSpend: PLN        = monthly.unempBenefitSpend
-    def bondYield: Rate               = policy.bondYield
-    def weightedCoupon: Rate          = policy.weightedCoupon
+    def govBondMarketYield: Rate      = policy.govBondMarketYield
+    def govDebtWeightedCoupon: Rate   = policy.govDebtWeightedCoupon
     def debtServiceSpend: PLN         = monthly.debtServiceSpend
     def socialTransferSpend: PLN      = monthly.socialTransferSpend
     def publicCapitalStock: PLN       = policy.publicCapitalStock
@@ -121,8 +121,8 @@ object FiscalBudget:
         deficit: PLN,
         cumulativeDebt: PLN,
         unempBenefitSpend: PLN,
-        bondYield: Rate = Rate.Zero,
-        weightedCoupon: Rate = Rate.Zero,
+        govBondMarketYield: Rate = Rate.Zero,
+        govDebtWeightedCoupon: Rate = Rate.Zero,
         debtServiceSpend: PLN = PLN.Zero,
         socialTransferSpend: PLN = PLN.Zero,
         publicCapitalStock: PLN = PLN.Zero,
@@ -138,7 +138,7 @@ object FiscalBudget:
     ): GovState =
       GovState(
         financial = GovFinancialState(cumulativeDebt),
-        policy = GovPolicyState(bondYield, weightedCoupon, publicCapitalStock, minWageLevel, minWagePriceLevel),
+        policy = GovPolicyState(govBondMarketYield, govDebtWeightedCoupon, publicCapitalStock, minWageLevel, minWagePriceLevel),
         monthly = GovFlowState(
           taxRevenue,
           deficit,
@@ -208,8 +208,8 @@ object FiscalBudget:
       deficit = deficit,
       cumulativeDebt = in.prev.cumulativeDebt + deficit,
       unempBenefitSpend = in.unempBenefitSpend,
-      bondYield = in.prev.bondYield,           // lagged market yield — updated by OpenEconomyStep
-      weightedCoupon = in.prev.weightedCoupon, // WAM coupon — updated by OpenEconomyStep
+      govBondMarketYield = in.prev.govBondMarketYield,       // lagged market yield — updated by OpenEconomyStep
+      govDebtWeightedCoupon = in.prev.govDebtWeightedCoupon, // WAM coupon — updated by OpenEconomyStep
       debtServiceSpend = in.debtService,
       socialTransferSpend = in.socialTransferSpend,
       publicCapitalStock = newCapitalStock,

@@ -59,7 +59,7 @@ private[agents] object BankCreditApproval:
       stocks: BankFinancialStocks,
       cfg: Config,
       refRate: Rate,
-      bondYield: Rate,
+      govBondMarketYield: Rate,
       corpBondHoldings: PLN,
       ccyb: Multiplier,
       product: CreditProduct,
@@ -73,7 +73,7 @@ private[agents] object BankCreditApproval:
         product = product,
         amount = PLN.Zero,
         loanRateBeforePortfolio = prePortfolioRate,
-        bondYield = bondYield,
+        govBondMarketYield = govBondMarketYield,
         corpBondHoldings = corpBondHoldings,
         ccyb = ccyb,
       )
@@ -142,7 +142,7 @@ private[agents] object BankCreditApproval:
           context.ccyb,
           product,
         ),
-        bondYield = context.portfolio.bondYield,
+        govBondMarketYield = context.portfolio.govBondMarketYield,
         corpBondHoldings = context.corpBondHoldings,
         ccyb = context.ccyb,
       )

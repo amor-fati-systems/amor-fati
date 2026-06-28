@@ -298,7 +298,7 @@ object Banking:
   case class CreditPortfolioContext(
       config: Config,
       refRate: Rate,
-      bondYield: Rate,
+      govBondMarketYield: Rate,
   )
 
   /** Bank and macroprudential context for product-specific credit approval.
@@ -464,12 +464,12 @@ object Banking:
       stocks: BankFinancialStocks,
       cfg: Config,
       refRate: Rate,
-      bondYield: Rate,
+      govBondMarketYield: Rate,
       corpBondHoldings: PLN,
       ccyb: Multiplier,
       product: CreditProduct,
   )(using p: SimParams): Rate =
-    BankCreditApproval.lendingRate(bank, stocks, cfg, refRate, bondYield, corpBondHoldings, ccyb, product)
+    BankCreditApproval.lendingRate(bank, stocks, cfg, refRate, govBondMarketYield, corpBondHoldings, ccyb, product)
 
   /** Interbank rate (WIBOR O/N proxy): blends credit stress (NPL) and liquidity
     * position (excess reserves). Under excess liquidity (post-QE, post-FX

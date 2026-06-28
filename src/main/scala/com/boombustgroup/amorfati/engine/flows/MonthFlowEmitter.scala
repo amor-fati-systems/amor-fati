@@ -77,7 +77,7 @@ object MonthFlowEmitter:
           prevCorpBondHoldings = c.insurancePrevCorpBonds,
           corpBondDefaultLoss = c.insuranceCorpBondDefaultLoss,
           prevEquityHoldings = c.insurancePrevEquity,
-          govBondYield = c.govBondYield,
+          govBondMarketYield = c.govBondMarketYield,
           corpBondYield = c.corpBondYield,
           equityReturn = c.equityReturn,
         ),
