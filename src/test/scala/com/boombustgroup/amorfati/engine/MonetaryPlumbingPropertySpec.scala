@@ -116,10 +116,10 @@ class MonetaryPlumbingPropertySpec extends AnyFlatSpec with Matchers with ScalaC
       result shouldBe Right(())
     }
 
-  it should "detect reserve interest perturbation" in
+  it should "detect retained-income perturbation" in
     forAll(genConsistentFlowsAndSnapshots, genDecimal("5000.0", "1e6")) { case ((prev, curr, flows), delta) =>
-      // Add reserve interest to flows but NOT to bank capital → should fail
-      val perturbedFlows = flows.copy(reserveInterest = flows.reserveInterest + plnBD(delta))
+      // Add retained income to flows but NOT to bank capital -> should fail.
+      val perturbedFlows = flows.copy(bankRetainedIncome = flows.bankRetainedIncome + plnBD(delta))
       val result         = Sfc.validateStockExactness(prev, curr, perturbedFlows)
       result shouldBe a[Left[?, ?]]
     }

@@ -318,11 +318,11 @@ class MonetaryPlumbingSpec extends AnyFlatSpec with Matchers:
     result shouldBe Right(())
   }
 
-  it should "detect mismatch when reserve interest not in flows" in {
+  it should "detect mismatch when retained income is missing from flows" in {
     val prev       = zeroSnap.copy(bankCapital = PLN(100000000), bankDeposits = PLN(1000000000), bankLoans = PLN(500000000))
     val reserveInt = PLN(100000)
     val curr       = prev.copy(bankCapital = prev.bankCapital + reserveInt * Share.decimal(3, 1))
-    // Flows do NOT include reserveInterest — should fail
+    // Flows do NOT include bankRetainedIncome - should fail.
     val flows      = zeroFlows
     val result     = Sfc.validateStockExactness(prev, curr, flows)
     result shouldBe a[Left[?, ?]]

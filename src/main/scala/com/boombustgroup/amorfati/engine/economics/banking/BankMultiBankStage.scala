@@ -80,8 +80,8 @@ private[banking] object BankMultiBankStage:
       perBankWorkers = in.firm.perBankWorkers,
     )
 
-    val updatedRows                 = new Array[SingleBankUpdate](banks.length)
-    var bankIndex                   = 0
+    val updatedRows       = new Array[SingleBankUpdate](banks.length)
+    var bankIndex         = 0
     while bankIndex < banks.length do
       val b           = banks(bankIndex)
       val stocks      = bankStocks(bankIndex)
@@ -107,24 +107,11 @@ private[banking] object BankMultiBankStage:
         in,
       )
       bankIndex += 1
-    var bankCapitalTerms            = BankCapitalTerms.zero
-    var termsIndex                  = 0
+    var bankCapitalTerms  = BankCapitalTerms.zero
+    var termsIndex        = 0
     while termsIndex < updatedRows.length do
       bankCapitalTerms = bankCapitalTerms + updatedRows(termsIndex).bankCapitalTerms
       termsIndex += 1
-    val retainedIncomeRoundingDelta =
-      bankCapitalTerms.capitalGrossIncome * p.banking.profitRetention - bankCapitalTerms.retainedIncome
-    if retainedIncomeRoundingDelta != PLN.Zero then
-      // SFC validates sector gross income × retention; per-bank rounding can differ by a few PLN.
-      val recipientIndex = updatedRows.indexWhere(row => !row.bank.failed)
-      require(
-        recipientIndex >= 0,
-        s"BankMultiBankStage cannot allocate retained-income rounding delta $retainedIncomeRoundingDelta without an active bank",
-      )
-      val recipient      = updatedRows(recipientIndex)
-      updatedRows(recipientIndex) = recipient.copy(bank = recipient.bank.copy(capital = recipient.bank.capital + retainedIncomeRoundingDelta))
-      bankCapitalTerms = bankCapitalTerms.copy(retainedIncome = bankCapitalTerms.retainedIncome + retainedIncomeRoundingDelta)
-
     val updatedBanks      = new Array[Banking.BankState](updatedRows.length)
     val updatedBankStocks = new Array[Banking.BankFinancialStocks](updatedRows.length)
     var updatedIndex      = 0
