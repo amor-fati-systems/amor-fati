@@ -47,7 +47,7 @@ class BaselineInvariantIntegrationSpec extends AnyFlatSpec with Matchers:
             result.execution.netDelta shouldBe 0L
             result.sfcResult shouldBe Right(())
             result.trace.validations.flatMap(_.failures) shouldBe empty
-            assertNoBankFailures(result)
+            assertBankResolutionState(result)
             assertBankRouting(seed, result.nextState)
             assertCriticalStocks(seed, result.nextState)
             assertBoundedMacroRatios(result.nextState)
@@ -82,23 +82,39 @@ class BaselineInvariantIntegrationSpec extends AnyFlatSpec with Matchers:
     if errors.isEmpty then "ok"
     else errors.map(error => s"${error.identity}: expected=${error.expected}, actual=${error.actual}").mkString("; ")
 
-  private def assertNoBankFailures(result: FlowSimulation.StepOutput): Unit =
-    val failedBanks = result.nextState.banks.filter(_.failed)
-    withClue(s"failedBanks=${failedBanks.map(_.id.toInt)}: ") {
-      failedBanks shouldBe empty
+  private def assertBankResolutionState(result: FlowSimulation.StepOutput): Unit =
+    val failedBanks     = result.nextState.banks.filter(_.failed)
+    val bankFailure     = result.nextState.world.flows.bankFailure
+    val bankResolution  = result.nextState.world.flows.bankResolution
+    val failureTriggers = bankFailure.newNegativeCapital + bankFailure.newCarBreach + bankFailure.newLiquidityBreach
+    withClue(s"failedBanks=${failedBanks.map(_.id.toInt)} bankFailure=$bankFailure bankResolution=$bankResolution: ") {
+      bankResolution.failedBanks shouldBe failedBanks.size
+      bankResolution.activeBanks shouldBe result.nextState.banks.size - failedBanks.size
+      bankResolution.activeBanks should be > 0
+      bankResolution.allFailedFallback shouldBe 0
+      bankResolution.invalidActiveBankInvariant shouldBe 0
+      bankFailure.allFailedFallback shouldBe 0
+      bankFailure.invariantViolation shouldBe 0
+      bankResolution.newFailures shouldBe failureTriggers
+      if bankResolution.newFailures == 0 then
+        bankFailure.firstNewReasonCode shouldBe 0
+        bankFailure.firstNewBankId shouldBe -1
+      else
+        bankFailure.firstNewReasonCode should (be >= 1 and be <= 3)
+        bankFailure.firstNewBankId should (be >= 0 and be < result.nextState.banks.length)
     }
-    result.nextState.world.flows.bankResolution.newFailures.shouldBe(0)
-    result.nextState.world.flows.bankFailure.invariantViolation.shouldBe(0)
 
   private def assertBankRouting(seed: Long, state: FlowSimulation.SimState): Unit =
     state.banks.length shouldBe state.ledgerFinancialState.banks.length
     state.households.foreach: household =>
       withClue(s"seed=$seed household=${household.id.toInt} bankId=${household.bankId.toInt}: ") {
         household.bankId.toInt should (be >= 0 and be < state.banks.length)
+        state.banks(household.bankId.toInt).failed shouldBe false
       }
     state.firms.foreach: firm =>
       withClue(s"seed=$seed firm=${firm.id.toInt} bankId=${firm.bankId.toInt}: ") {
         firm.bankId.toInt should (be >= 0 and be < state.banks.length)
+        state.banks(firm.bankId.toInt).failed shouldBe false
       }
 
   private def assertCriticalStocks(seed: Long, state: FlowSimulation.SimState): Unit =

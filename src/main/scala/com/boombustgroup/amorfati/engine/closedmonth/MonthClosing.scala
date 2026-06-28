@@ -106,4 +106,8 @@ object MonthClosing:
       regionalMigration = PopulationLifecycleTransitions.RegionalMigrationContext(
         regionalWages = state.labor.regionalWages,
       ),
+      bankRouting = PopulationLifecycleTransitions.BankRoutingContext(
+        banks = state.banking.banks,
+        bankFinancialBalances = state.banking.ledgerFinancialState.banks,
+      ),
     )
