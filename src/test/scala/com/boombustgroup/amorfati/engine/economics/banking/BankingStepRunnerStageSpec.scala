@@ -3,7 +3,7 @@ package com.boombustgroup.amorfati.engine.economics.banking
 import com.boombustgroup.amorfati.agents.*
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.SimulationMonth
-import com.boombustgroup.amorfati.engine.diagnostics.banking.BankReconciliationDiagnostics
+import com.boombustgroup.amorfati.engine.diagnostics.banking.{BankCapitalResidualBreakdown, BankReconciliationDiagnostics}
 import com.boombustgroup.amorfati.engine.markets.CorporateBondMarket
 import com.boombustgroup.amorfati.types.*
 import org.scalatest.flatspec.AnyFlatSpec
@@ -127,6 +127,7 @@ class BankingStepRunnerStageSpec extends AnyFlatSpec with Matchers:
       failureEvents = Vector(extraEvent),
       allFailedFallbackUsed = true,
       bankReconciliationDiagnostics = BankReconciliationDiagnostics.zero,
+      capitalResidualBreakdown = BankCapitalResidualBreakdown.zero,
       resolvedBanksDelta = 1,
     )
 

@@ -95,12 +95,14 @@ private[banking] object BankMultiBankStage:
     val updatedBanks          = new Array[Banking.BankState](updatedRows.length)
     val updatedBankStocks     = new Array[Banking.BankFinancialStocks](updatedRows.length)
     var creditLosses          = BankCreditLossAccounting.Breakdown.zero
+    var actualCapitalTerms    = BankCapitalTerms.zero
     var updatedIndex          = 0
     while updatedIndex < updatedRows.length do
       val updated = updatedRows(updatedIndex)
       updatedBanks(updatedIndex) = updated.bank
       updatedBankStocks(updatedIndex) = updated.financialStocks
       creditLosses = creditLosses + updated.creditLosses
+      actualCapitalTerms = actualCapitalTerms + updated.bankCapitalTerms
       updatedIndex += 1
     val aggregateCreditLosses = creditLosses.copy(
       corpBondDefaultLoss = in.openEconomy.corpBonds.corpBondBankDefaultLoss,
@@ -122,6 +124,7 @@ private[banking] object BankMultiBankStage:
       mortgageFlows,
       perBankPolishLevy.total,
       settledBankCorpBonds,
+      actualCapitalTerms,
     )
 
   /** Runs the multi-bank settlement and resolution boundary after per-bank
@@ -143,6 +146,7 @@ private[banking] object BankMultiBankStage:
       mortgageFlows: HousingMarket.MortgageFlows,
       polishBankLevyTax: PLN,
       settledBankCorpBonds: Vector[PLN],
+      actualCapitalTerms: BankCapitalTerms,
   )(using p: SimParams): MultiBankResult =
     val prevBankAgg =
       Banking.aggregateFromBankStocks(
@@ -175,6 +179,7 @@ private[banking] object BankMultiBankStage:
       mortgageFlows = mortgageFlows,
       polishBankLevyTax = polishBankLevyTax,
       htmRealizedLoss = settlement.htmRealizedLoss,
+      actualCapitalTerms = actualCapitalTerms,
     )
     val finalResolution       = resolved.finalResolution
     val failureDetection      = resolved.failureDetection
@@ -249,6 +254,7 @@ private[banking] object BankMultiBankStage:
       interbankContagionLoss = failureDetection.contagion.totalLoss,
       newFailures = finalResolution.newFailures,
       capitalReconciliationResidual = finalResolution.capitalReconciliationResidual,
+      capitalResidualBreakdown = finalResolution.capitalResidualBreakdown,
       bankCapitalTerms = resolved.bankCapitalTerms,
       bankFailureDiagnostics = failureDiagnostics,
       bankResolutionDiagnostics = resolutionDiagnostics,
@@ -388,8 +394,12 @@ private[banking] object BankMultiBankStage:
     val bankPolishLevyTax         = perBankPolishLevy.perBank(bId)
 
     // Per-bank mark-to-market loss on AFS bonds only (HTM losses hidden until forced reclassification)
-    val bankYieldChange    = in.openEconomy.monetary.newBondYield - in.world.gov.bondYield
-    val bankUnrealizedLoss = if bankYieldChange > Rate.Zero then stocks.govBondAfs * bankYieldChange * p.banking.govBondDuration else PLN.Zero
+    val bankYieldChange        = in.openEconomy.monetary.newBondYield - in.world.gov.bondYield
+    val bankUnrealizedLoss     = if bankYieldChange > Rate.Zero then stocks.govBondAfs * bankYieldChange * p.banking.govBondDuration else PLN.Zero
+    val bankCapitalGrossIncome =
+      bankIntIncome + bankBondInc - hhFlows.depInterest + bankResInt + bankSfInc + bankIbInt +
+        bankMortgageIntIncome + bankCcInterestIncome + bankCorpBondCoupon
+    val bankRetainedIncome     = bankCapitalGrossIncome * p.banking.profitRetention
 
     val capitalPnl = Banking.computeCapitalDelta(
       Banking.CapitalPnlInput(
@@ -438,6 +448,15 @@ private[banking] object BankMultiBankStage:
         consumerLoan = (stocks.consumerLoan + hhFlows.ccOrigination - bankCcStockReduction - hhFlows.ccDefault).max(PLN.Zero),
       ),
       creditLosses = creditLosses,
+      bankCapitalTerms = BankCapitalTerms(
+        creditLosses = creditLosses,
+        unrealizedBondLoss = bankUnrealizedLoss,
+        eclProvisionChange = eclResult.provisionChange,
+        capitalGrossIncome = bankCapitalGrossIncome,
+        retainedIncome = bankRetainedIncome,
+        bfgLevy = bankBfgLevy,
+        polishBankLevyTax = bankPolishLevyTax,
+      ),
     )
 
   private def eclGdpGrowth(in: StepInput): Coefficient =

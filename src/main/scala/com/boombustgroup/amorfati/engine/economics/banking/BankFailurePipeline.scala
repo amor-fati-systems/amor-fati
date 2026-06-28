@@ -2,6 +2,7 @@ package com.boombustgroup.amorfati.engine.economics.banking
 
 import com.boombustgroup.amorfati.agents.*
 import com.boombustgroup.amorfati.config.SimParams
+import com.boombustgroup.amorfati.engine.ledger.LedgerFinancialState
 import com.boombustgroup.amorfati.engine.markets.HousingMarket
 import com.boombustgroup.amorfati.types.*
 
@@ -25,12 +26,22 @@ private[banking] object BankFailurePipeline:
       mortgageFlows: HousingMarket.MortgageFlows,
       polishBankLevyTax: PLN,
       htmRealizedLoss: PLN,
+      actualCapitalTerms: BankCapitalTerms,
   )(using p: SimParams): FailureResolutionPipelineResult =
     val bankCorpBondHoldingsAfterSettlement = Banking.bankCorpBondHoldingsFromVector(settledBankCorpBonds)
     val failureDetection                    = runFailureDetection(in, waterfall, bankCorpBondHoldingsAfterSettlement)
     val bailIn                              = runBailIn(failureDetection)
     val bankResolution                      = runBankResolution(failureDetection, bailIn, settledBankCorpBonds)
-    val bankCapitalTerms                    = computeBankCapitalTerms(prevBankAgg, waterfall.banks, creditLosses, in, mortgageFlows)
+    val targetBfgLevy                       = Banking.computeBfgLevy(in.banks, in.ledgerFinancialState.banks.map(LedgerFinancialState.projectBankFinancialStocks)).total
+    val bankCapitalTerms                    = computeBankCapitalTerms(
+      prevBankAgg,
+      waterfall.banks,
+      creditLosses,
+      in,
+      mortgageFlows,
+      targetBfgLevy,
+      polishBankLevyTax,
+    )
     val aggregateReconciliation             = BankAggregateReconciliation.reconcile(
       banks = bankResolution.banks,
       financialStocks = bankResolution.financialStocks,
@@ -46,6 +57,7 @@ private[banking] object BankFailurePipeline:
       polishBankLevyTax = polishBankLevyTax,
       htmRealizedLoss = htmRealizedLoss,
       bankCapitalTerms = bankCapitalTerms,
+      actualCapitalTerms = actualCapitalTerms,
     )
     val finalResolution                     = reconcileResolution(failureDetection, bailIn, bankResolution, aggregateReconciliation)
 
@@ -176,6 +188,7 @@ private[banking] object BankFailurePipeline:
       resolvedBankCount = resolution.resolvedBankCount + reconciled.resolvedBanksDelta,
       allFailedFallbackUsed = resolution.allFailedFallbackUsed || reconciled.allFailedFallbackUsed,
       bankReconciliationDiagnostics = reconciled.bankReconciliationDiagnostics,
+      capitalResidualBreakdown = reconciled.capitalResidualBreakdown,
       capitalReconciliationResidual = reconciled.capitalResidual,
     )
 
@@ -185,6 +198,8 @@ private[banking] object BankFailurePipeline:
       creditLosses: BankCreditLossAccounting.Breakdown,
       in: StepInput,
       mortgageFlows: HousingMarket.MortgageFlows,
+      bfgLevy: PLN,
+      polishBankLevyTax: PLN,
   )(using p: SimParams): BankCapitalTerms =
     require(
       bankRows.length == in.banks.length,
@@ -216,4 +231,6 @@ private[banking] object BankFailurePipeline:
       eclProvisionChange = eclProvisionChange,
       capitalGrossIncome = capitalGrossIncome,
       retainedIncome = capitalGrossIncome * p.banking.profitRetention,
+      bfgLevy = bfgLevy,
+      polishBankLevyTax = polishBankLevyTax,
     )

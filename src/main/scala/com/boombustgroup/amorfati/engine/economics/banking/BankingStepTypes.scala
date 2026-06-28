@@ -118,6 +118,7 @@ private[banking] final case class ReconciledResolutionResult(
     resolvedBankCount: Int,
     allFailedFallbackUsed: Boolean,
     bankReconciliationDiagnostics: BankReconciliationDiagnostics,
+    capitalResidualBreakdown: BankCapitalResidualBreakdown,
     capitalReconciliationResidual: PLN,
 )
 
@@ -146,6 +147,7 @@ private[banking] final case class SingleBankUpdate(
     bank: Banking.BankState,
     financialStocks: Banking.BankFinancialStocks,
     creditLosses: BankCreditLossAccounting.Breakdown = BankCreditLossAccounting.Breakdown.zero,
+    bankCapitalTerms: BankCapitalTerms = BankCapitalTerms.zero,
 )
 
 private[banking] final case class MultiBankResult(
@@ -161,6 +163,7 @@ private[banking] final case class MultiBankResult(
     interbankContagionLoss: PLN,
     newFailures: Int,
     capitalReconciliationResidual: PLN,
+    capitalResidualBreakdown: BankCapitalResidualBreakdown,
     bankCapitalTerms: BankCapitalTerms,
     bankFailureDiagnostics: BankFailureDiagnostics,
     bankResolutionDiagnostics: BankResolutionDiagnostics,
@@ -200,6 +203,7 @@ private[banking] final case class AggregateReconciliationResult(
     failureEvents: Vector[Banking.FailureEvent],
     allFailedFallbackUsed: Boolean,
     bankReconciliationDiagnostics: BankReconciliationDiagnostics,
+    capitalResidualBreakdown: BankCapitalResidualBreakdown,
     resolvedBanksDelta: Int = 0,
 )
 
@@ -221,12 +225,35 @@ private[banking] final case class BankCapitalTerms(
     eclProvisionChange: PLN,
     capitalGrossIncome: PLN,
     retainedIncome: PLN,
+    bfgLevy: PLN = PLN.Zero,
+    polishBankLevyTax: PLN = PLN.Zero,
 ):
   def firmNplLoss: PLN         = creditLosses.firm.netCapitalLoss
   def mortgageNplLoss: PLN     = creditLosses.mortgage.netCapitalLoss
   def consumerNplLoss: PLN     = creditLosses.consumer.netCapitalLoss
   def corpBondDefaultLoss: PLN = creditLosses.corpBondDefaultLoss
   def realizedCreditLoss: PLN  = creditLosses.realizedCreditLoss
+
+  def +(other: BankCapitalTerms): BankCapitalTerms =
+    BankCapitalTerms(
+      creditLosses = creditLosses + other.creditLosses,
+      unrealizedBondLoss = unrealizedBondLoss + other.unrealizedBondLoss,
+      eclProvisionChange = eclProvisionChange + other.eclProvisionChange,
+      capitalGrossIncome = capitalGrossIncome + other.capitalGrossIncome,
+      retainedIncome = retainedIncome + other.retainedIncome,
+      bfgLevy = bfgLevy + other.bfgLevy,
+      polishBankLevyTax = polishBankLevyTax + other.polishBankLevyTax,
+    )
+
+object BankCapitalTerms:
+  val zero: BankCapitalTerms =
+    BankCapitalTerms(
+      creditLosses = BankCreditLossAccounting.Breakdown.zero,
+      unrealizedBondLoss = PLN.Zero,
+      eclProvisionChange = PLN.Zero,
+      capitalGrossIncome = PLN.Zero,
+      retainedIncome = PLN.Zero,
+    )
 
 private[amorfati] final case class ReserveSettlementResult(
     banks: Vector[Banking.BankState],

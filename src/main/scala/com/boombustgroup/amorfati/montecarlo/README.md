@@ -237,6 +237,16 @@ BankCapital_HtmRealizedLoss
 BankCapital_EclProvisionChange
 BankCapital_CapitalDestruction
 BankCapital_PreReconciliationResidual
+BankCapital_PreReconRetainedIncome
+BankCapital_PreReconRealizedCreditLoss
+BankCapital_PreReconBfgLevy
+BankCapital_PreReconPolishBankLevyTax
+BankCapital_PreReconUnrealizedBondLoss
+BankCapital_PreReconHtmRealizedLoss
+BankCapital_PreReconEclProvisionChange
+BankCapital_PreReconInterbankContagionLoss
+BankCapital_PreReconCapitalDestruction
+BankCapital_PreReconUnexplained
 BankCapital_ReconciliationResidual
 BankCapital_WaterfallResidual
 BankCapital_DepositBailInLoss
@@ -265,8 +275,11 @@ monthly Polish financial-institutions tax paid by active bank rows to central
 government. `BankCapital_PreReconciliationResidual` reports the capital gap
 before the aggregate exactness patch: positive values mean pre-patch bank
 capital was above the named waterfall target, and negative values mean it was
-below. `BankCapital_ReconciliationResidual` reports the aggregate exactness
-correction applied after the normal bank update. Positive values mean the patch
+below. The `BankCapital_PreRecon*` columns decompose that signed gap into named
+target-vs-actual differences; `BankCapital_PreReconUnexplained` is what remains
+after those named differences are accounted for. `BankCapital_ReconciliationResidual`
+reports the aggregate exactness correction applied after the normal bank update.
+Positive values mean the patch
 added capital, and negative values mean it removed capital. It is a diagnostic
 for per-bank allocation artifacts, not a standalone economic loss channel.
 `BankCapital_WaterfallResidual` reports the remaining unexplained capital delta

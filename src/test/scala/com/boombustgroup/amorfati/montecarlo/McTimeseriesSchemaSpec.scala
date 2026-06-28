@@ -5,6 +5,7 @@ import com.boombustgroup.amorfati.agents.{Banking, EarmarkedFunds, EclStaging, F
 import com.boombustgroup.amorfati.config.{HousingConfig, SimParams}
 import com.boombustgroup.amorfati.engine.diagnostics.banking.{
   BankCapitalDiagnostics,
+  BankCapitalResidualBreakdown,
   BankEclDiagnostics,
   BankFailureDiagnostics,
   BankReconciliationDiagnostics,
@@ -407,6 +408,16 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     "BankCapital_EclProvisionChange",
     "BankCapital_CapitalDestruction",
     "BankCapital_PreReconciliationResidual",
+    "BankCapital_PreReconRetainedIncome",
+    "BankCapital_PreReconRealizedCreditLoss",
+    "BankCapital_PreReconBfgLevy",
+    "BankCapital_PreReconPolishBankLevyTax",
+    "BankCapital_PreReconUnrealizedBondLoss",
+    "BankCapital_PreReconHtmRealizedLoss",
+    "BankCapital_PreReconEclProvisionChange",
+    "BankCapital_PreReconInterbankContagionLoss",
+    "BankCapital_PreReconCapitalDestruction",
+    "BankCapital_PreReconUnexplained",
     "BankCapital_ReconciliationResidual",
     "BankCapital_WaterfallResidual",
     "BankCapital_DepositBailInLoss",
@@ -592,7 +603,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     MetricValue.fromRaw(numerator.ratioTo(denominator).toLong)
 
   "McTimeseriesSchema" should "expose the stable schema contract" in {
-    McTimeseriesSchema.nCols shouldBe 526
+    McTimeseriesSchema.nCols shouldBe 536
     McTimeseriesSchema.colNames.toVector shouldBe expectedColNames
   }
 
@@ -1179,6 +1190,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
       openingCapital = PLN(100),
       closingCapital = PLN(120),
       retainedIncome = PLN(20),
+      preReconciliationBreakdown = BankCapitalResidualBreakdown(retainedIncome = PLN(-5)),
       reconciliationResidual = PLN(5),
     )
     val world       = init.world.copy(
@@ -1190,6 +1202,8 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     val row         = computeRow(world)
 
     valueAt(row, "BankCapital_PreReconciliationResidual") shouldBe polandScale(PLN(-5))
+    valueAt(row, "BankCapital_PreReconRetainedIncome") shouldBe polandScale(PLN(-5))
+    valueAt(row, "BankCapital_PreReconUnexplained") shouldBe polandScale(PLN.Zero)
     valueAt(row, "BankCapital_ReconciliationResidual") shouldBe polandScale(PLN(5))
     valueAt(row, "BankCapital_WaterfallResidual") shouldBe polandScale(PLN.Zero)
   }

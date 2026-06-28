@@ -29,6 +29,7 @@ case class BankCapitalDiagnostics(
     eclProvisionChange: PLN = PLN.Zero,       // IFRS 9 provision increase, positive when capital is hit
     capitalDestruction: PLN = PLN.Zero,       // shareholder capital wiped when banks newly fail
     interbankContagionLoss: PLN = PLN.Zero,   // failed-counterparty interbank exposure loss
+    preReconciliationBreakdown: BankCapitalResidualBreakdown = BankCapitalResidualBreakdown.zero,
     reconciliationResidual: PLN = PLN.Zero,   // aggregate exactness patch distributed across bank rows
     depositBailInLoss: PLN = PLN.Zero,        // depositor haircut from resolution, not equity-capital P&L
     newFailures: Int = 0,                     // banks newly marked failed during the month
@@ -64,6 +65,35 @@ case class BankCapitalDiagnostics(
 
 object BankCapitalDiagnostics:
   val zero: BankCapitalDiagnostics = BankCapitalDiagnostics()
+
+/** Signed contribution breakdown for `BankCapital_PreReconciliationResidual`.
+  *
+  * Positive values mean the actual pre-patch bank capital was higher than the
+  * aggregate waterfall target because of that line; negative values mean it was
+  * lower. `unexplained` is the residual after named target-vs-actual
+  * differences are accounted for.
+  */
+case class BankCapitalResidualBreakdown(
+    retainedIncome: PLN = PLN.Zero,
+    realizedCreditLoss: PLN = PLN.Zero,
+    bfgLevy: PLN = PLN.Zero,
+    polishBankLevyTax: PLN = PLN.Zero,
+    unrealizedBondLoss: PLN = PLN.Zero,
+    htmRealizedLoss: PLN = PLN.Zero,
+    eclProvisionChange: PLN = PLN.Zero,
+    interbankContagionLoss: PLN = PLN.Zero,
+    capitalDestruction: PLN = PLN.Zero,
+    unexplained: PLN = PLN.Zero,
+):
+  def explained: PLN =
+    retainedIncome + realizedCreditLoss + bfgLevy + polishBankLevyTax + unrealizedBondLoss +
+      htmRealizedLoss + eclProvisionChange + interbankContagionLoss + capitalDestruction
+
+  def total: PLN =
+    explained + unexplained
+
+object BankCapitalResidualBreakdown:
+  val zero: BankCapitalResidualBreakdown = BankCapitalResidualBreakdown()
 
 /** Monthly bank-failure trigger diagnostics.
   *
