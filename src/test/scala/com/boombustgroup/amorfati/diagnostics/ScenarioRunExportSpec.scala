@@ -1,6 +1,7 @@
 package com.boombustgroup.amorfati.diagnostics
 
-import com.boombustgroup.amorfati.config.ScenarioRegistry
+import com.boombustgroup.amorfati.config.{OpeningBankProfileScenario, ScenarioRegistry, SimParams}
+import com.boombustgroup.amorfati.types.Multiplier
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -46,5 +47,19 @@ class ScenarioRunExportSpec extends AnyFlatSpec with Matchers:
     metadata should include("| climate.etsBasePrice | 80 | 120 | Higher EU ETS starting price. | historical analogue |")
     metadata should include("Raises ETS and energy-cost burden, then starts a commodity-price shock in month 6.")
   }
+
+  it should "route bank-failure opening capital stress through the bank profile scenario" in {
+    val scenario = ScenarioRegistry.get("bank-failure").fold(err => fail(err), identity)
+
+    scenario.params.banking.openingBankCapitalAggregateTarget shouldBe SimParams.defaults.banking.openingBankCapitalAggregateTarget
+    scenario.params.banking.openingBankProfileScenario shouldBe OpeningBankProfileScenario.haircutOwnFunds(Multiplier.decimal(55, 2))
+    scenario.deltas.map(_.parameter) should contain("banking.openingBankProfileScenario")
+  }
+
+  it should "keep scenario runs from overriding the opening bank capital aggregate target directly" in
+    ScenarioRegistry.all
+      .filterNot(_.id == "baseline")
+      .foreach: scenario =>
+        scenario.params.banking.openingBankCapitalAggregateTarget shouldBe SimParams.defaults.banking.openingBankCapitalAggregateTarget
 
 end ScenarioRunExportSpec

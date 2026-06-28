@@ -184,6 +184,27 @@ class FirmSpec extends AnyFlatSpec with Matchers:
     explicit.feasibleWorkers should be >= bridged.feasibleWorkers
   }
 
+  it should "reuse cached desired workers when updating the hiring signal state" in {
+    val world       = mkWorld().copy(
+      pipeline = PipelineState(
+        sectorDemandMult = Vector.fill(p.sectorDefs.length)(Multiplier.One),
+        sectorDemandPressure = Vector.fill(p.sectorDefs.length)(Multiplier.decimal(175, 2)),
+        sectorHiringSignal = Vector.fill(p.sectorDefs.length)(Multiplier.decimal(175, 2)),
+        operationalHiringSlack = Share.One,
+      ),
+      flows = FlowState.zero,
+    )
+    val operational = OperationalSignals.fromDecisionSignals(world.seedIn, world.pipeline.operationalHiringSlack)
+    val firm        = mkFirm(TechState.Traditional(8), sector = 3)
+    val result      = Firm.Result.zero(firm)
+    val desired     = Firm.desiredWorkers(firm, world, operational)
+
+    val uncached = FirmPostProcessing.updateHiringSignalState(result, firm, world, operational)
+    val cached   = FirmPostProcessing.updateHiringSignalState(result, firm, world, operational, cachedDesiredWorkers = Some(desired))
+
+    cached.firm.hiringSignalMonths shouldBe uncached.firm.hiringSignalMonths
+  }
+
   "Firm.hasWorkingCapitalGrace" should "give startups a larger temporary liquidity runway" in {
     val startup   = mkFirm(TechState.Traditional(2), sector = 3).copy(startupMonthsLeft = 4, startupTargetWorkers = 3)
     val incumbent = mkFirm(TechState.Traditional(2), sector = 3)
@@ -228,6 +249,34 @@ class FirmSpec extends AnyFlatSpec with Matchers:
 
   it should "be 0 for Bankrupt" in {
     Firm.computeCapacity(mkFirm(TechState.Bankrupt(BankruptReason.Other("test")))) shouldBe PLN.Zero
+  }
+
+  it should "match copied-state capacity for hypothetical worker counts" in {
+    val traditional = mkFirm(TechState.Traditional(8), sector = 1).copy(initialSize = 20, capitalStock = PLN(4000000))
+    val hybrid      = mkFirm(TechState.Hybrid(8, Multiplier.decimal(12, 1)), sector = 4).copy(initialSize = 20, capitalStock = PLN(3000000))
+
+    Firm.computeCapacityAtWorkers(traditional, 12) shouldBe
+      Firm.computeCapacity(traditional.copy(tech = TechState.Traditional(12)))
+    Firm.computeCapacityAtWorkers(hybrid, 12) shouldBe
+      Firm.computeCapacity(hybrid.copy(tech = TechState.Hybrid(12, Multiplier.decimal(12, 1))))
+  }
+
+  it should "match copied-state marginal effective capacity for hypothetical worker counts" in {
+    val productivity = Multiplier.decimal(103, 2)
+    val firm         = mkFirm(TechState.Traditional(8), sector = 1).copy(initialSize = 20, capitalStock = PLN(4000000))
+    val expected     =
+      Firm.computeEffectiveCapacity(firm.copy(tech = TechState.Traditional(12)), productivity) -
+        Firm.computeEffectiveCapacity(firm.copy(tech = TechState.Traditional(11)), productivity)
+
+    Firm.computeMarginalEffectiveCapacityAtWorkers(firm, 12, productivity) shouldBe expected
+  }
+
+  it should "reject invalid hypothetical worker counts" in {
+    val firm = mkFirm(TechState.Traditional(8), sector = 1)
+
+    an[IllegalArgumentException] should be thrownBy Firm.computeCapacityAtWorkers(firm, -1)
+    an[IllegalArgumentException] should be thrownBy
+      Firm.computeMarginalEffectiveCapacityAtWorkers(firm, 0, Multiplier.One)
   }
 
   // --- Firm.aiCapex / hybridCapex ---

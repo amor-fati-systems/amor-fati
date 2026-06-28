@@ -102,18 +102,43 @@ object CalvoPricing:
       prevFirms: Vector[Firm.State],
       productivityIndex: Multiplier = Multiplier.One,
   )(using SimParams): Rate =
+    aggregateMarkupInflationFrom(firms, prevFirms, i => Firm.computeEffectiveCapacity(firms(i), productivityIndex))
+
+  /** Compute aggregate markup inflation from precomputed effective capacity.
+    *
+    * Use this when the caller already computed effective capacity for the same
+    * aligned firm snapshot. Markup changes do not affect capacity, so Calvo
+    * repricing can reuse the pre-repricing capacity vector.
+    */
+  def aggregateMarkupInflationFromCapacities(
+      firms: Vector[Firm.State],
+      prevFirms: Vector[Firm.State],
+      effectiveCapacities: Vector[PLN],
+  ): Rate =
+    require(
+      effectiveCapacities.lengthCompare(firms.length) == 0,
+      "effectiveCapacities must have the same length as firms",
+    )
+    aggregateMarkupInflationFrom(firms, prevFirms, effectiveCapacities.apply)
+
+  private def aggregateMarkupInflationFrom(
+      firms: Vector[Firm.State],
+      prevFirms: Vector[Firm.State],
+      capacityAt: Int => PLN,
+  ): Rate =
     require(
       firms.lengthCompare(prevFirms.length) == 0,
       "firms and prevFirms must have the same length",
     )
     if firms.isEmpty then Rate.Zero
     else
-      val totalRevenue = firms.foldLeft(PLN.Zero)((acc, f) => acc + Firm.computeEffectiveCapacity(f, productivityIndex))
+      var totalRevenue   = PLN.Zero
+      var weightedChange = PLN.Zero
+      var i              = 0
+      while i < firms.length do
+        val capacity = capacityAt(i)
+        totalRevenue = totalRevenue + capacity
+        weightedChange = weightedChange + (capacity * (firms(i).markup - prevFirms(i).markup))
+        i += 1
       if totalRevenue <= PLN.Zero then Rate.Zero
-      else
-        val weightedChange = firms
-          .zip(prevFirms)
-          .foldLeft(PLN.Zero): (acc, pair) =>
-            val (curr, prev) = pair
-            acc + (Firm.computeEffectiveCapacity(curr, productivityIndex) * (curr.markup - prev.markup))
-        weightedChange.ratioTo(totalRevenue).toRate
+      else weightedChange.ratioTo(totalRevenue).toRate

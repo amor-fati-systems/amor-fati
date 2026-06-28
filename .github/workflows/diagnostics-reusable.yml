@@ -139,7 +139,7 @@ jobs:
 
           start_seconds="$(date +%s)"
           set +e
-          nix develop --command java -cp "${JAR_PATH}" "${runner_args[@]}" 2>&1 | tee "${OUT_DIR}/diagnostics.log"
+          nix develop --command amor-fati-java -cp "${JAR_PATH}" "${runner_args[@]}" 2>&1 | tee "${OUT_DIR}/diagnostics.log"
           exit_code="${PIPESTATUS[0]}"
           set -e
           end_seconds="$(date +%s)"

@@ -7,8 +7,9 @@ import com.boombustgroup.amorfati.types.*
 /** Computes the monthly regulatory-capital P&L waterfall for a single bank.
   *
   * This module keeps ordinary retained income and realized banking losses in
-  * one auditable formula. Failure destruction, bail-in, and exactness
-  * reconciliation remain separate stages.
+  * one auditable formula. Credit losses passed here are net of any ECL
+  * allowance draw; provision movement, failure destruction, bail-in, and
+  * exactness reconciliation remain separate stages.
   */
 private[agents] object BankCapitalWaterfall:
 

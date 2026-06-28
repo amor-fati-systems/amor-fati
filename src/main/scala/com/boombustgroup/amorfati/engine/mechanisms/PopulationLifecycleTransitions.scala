@@ -40,11 +40,17 @@ object PopulationLifecycleTransitions:
       regionalWages: Map[Region, PLN],
   )
 
+  final case class BankRoutingContext(
+      banks: Vector[Banking.BankState],
+      bankFinancialBalances: Vector[LedgerFinancialState.BankBalances],
+  )
+
   final case class Input(
       stocks: AgentStocks,
       entry: EntryContext,
       startupStaffing: StartupStaffingContext,
       regionalMigration: RegionalMigrationContext,
+      bankRouting: BankRoutingContext,
   )
 
   final case class Result(
@@ -96,7 +102,7 @@ object PopulationLifecycleTransitions:
     )
 
     val postMigrationHouseholds = RegionalMigration(startupStaffing.households, in.regionalMigration.regionalWages, regionalMigrationRng).households
-    val finalFirms              = StartupStaffing.sync(startupStaffing.firms, postMigrationHouseholds)
+    val finalFirms              = repairFirmBankRouting(StartupStaffing.sync(startupStaffing.firms, postMigrationHouseholds), in.bankRouting)
 
     Result(
       firms = finalFirms,
@@ -110,3 +116,16 @@ object PopulationLifecycleTransitions:
       crossSectorHires = startupStaffing.crossSectorHires,
       startupAbsorptionRate = startupStaffing.startupAbsorptionRate,
     )
+
+  private def repairFirmBankRouting(firms: Vector[Firm.State], routing: BankRoutingContext)(using p: SimParams): Vector[Firm.State] =
+    if routing.banks.forall(bank => !bank.failed) then firms
+    else
+      require(
+        routing.banks.length == routing.bankFinancialBalances.length,
+        s"PopulationLifecycleTransitions bank routing requires aligned bank rows and balances, got ${routing.banks.length} banks and ${routing.bankFinancialBalances.length} balances",
+      )
+      val bankStocks           = routing.bankFinancialBalances.map(LedgerFinancialState.projectBankFinancialStocks)
+      val bankCorpBondHoldings = (bankId: BankId) => routing.bankFinancialBalances.lift(bankId.toInt).fold(PLN.Zero)(_.corpBond)
+      firms.map: firm =>
+        val nextBankId = Banking.reassignBankId(firm.bankId, routing.banks, bankStocks, bankCorpBondHoldings)
+        if nextBankId == firm.bankId then firm else firm.copy(bankId = nextBankId)

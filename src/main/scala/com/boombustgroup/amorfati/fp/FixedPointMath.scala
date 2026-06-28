@@ -9,12 +9,13 @@ object FixedPointMath:
   private val One  = BigDecimal(1)
   private val Two  = BigDecimal(2)
 
-  private val Pi      = BigDecimal("3.1415926535897932384626433832795029")
-  private val Tau     = Pi * Two
-  private val Ln2     = BigDecimal("0.6931471805599453094172321214581766")
-  private val Ln2Raw  = 6931L
-  private val ExpCap  = FixedPointBase.Scale * 20L
-  private val LnCache = java.util.concurrent.ConcurrentHashMap[Long, java.lang.Long]()
+  private val Pi               = BigDecimal("3.1415926535897932384626433832795029")
+  private val Tau              = Pi * Two
+  private val Ln2              = BigDecimal("0.6931471805599453094172321214581766")
+  private val Ln2Raw           = 6931L
+  private val ExpCap           = FixedPointBase.Scale * 20L
+  private val LnCache          = java.util.concurrent.ConcurrentHashMap[Long, java.lang.Long]()
+  private val PowLnSeriesCache = java.util.concurrent.ConcurrentHashMap[Long, java.lang.Long]()
 
   def expRaw(raw: Long): Long =
     try expRawSeries(raw)
@@ -42,7 +43,7 @@ object FixedPointMath:
     else if exponentRaw % FixedPointBase.Scale == 0L && exponentRaw / FixedPointBase.Scale >= Int.MinValue && exponentRaw / FixedPointBase.Scale <= Int.MaxValue
     then FixedPointBase.powIntRaw(baseRaw, (exponentRaw / FixedPointBase.Scale).toInt)
     else
-      try expRawSeries(FixedPointBase.multiplyRaw(lnRawSeries(baseRaw), exponentRaw))
+      try expRawSeries(FixedPointBase.multiplyRaw(cachedPowLnRawSeries(baseRaw), exponentRaw))
       catch
         case _: ArithmeticException =>
           val exponent = toDecimal(exponentRaw)
@@ -53,6 +54,14 @@ object FixedPointMath:
 
   private def toDecimal(raw: Long): BigDecimal =
     BigDecimal(raw) / FixedPointBase.ScaleDecimal
+
+  private def cachedPowLnRawSeries(raw: Long): Long =
+    val cached = PowLnSeriesCache.get(raw)
+    if cached != null then cached.longValue
+    else
+      val computed = lnRawSeries(raw)
+      val existing = PowLnSeriesCache.putIfAbsent(raw, computed)
+      if existing == null then computed else existing.longValue
 
   private def lnRawSeries(raw: Long): Long =
     var x = raw

@@ -86,6 +86,7 @@ class NightlyDiagnosticsProfileRunnerSpec extends AnyFlatSpec with Matchers:
     steps.find(_.id == "scenario-run").value.details should contain("scenario_selection" -> "all")
     steps.find(_.id == "scenario-run").value.classification shouldBe NightlyDiagnosticsProfileRunner.DiagnosticClass.StressValidation
     steps.find(_.id == "bank-failure-ablations").value.classification shouldBe NightlyDiagnosticsProfileRunner.DiagnosticClass.StressValidation
+    steps.find(_.id == "bank-failure-ablations").value.details should contain("parallelism" -> "2")
     steps.find(_.id == "hh-bank-lead-lag").value.details should contain("lag_max" -> "12")
     steps.find(_.id == "loan-origination-quality").value.seeds shouldBe Some(5)
     steps.flatMap(_.months).max shouldBe 60

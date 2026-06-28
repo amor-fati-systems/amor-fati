@@ -65,6 +65,102 @@ private[agents] object FirmProduction:
   def computeEffectiveCapacity(f: State, productivityIndex: Multiplier)(using p: SimParams): PLN =
     computeCapacity(f) * productivityIndex
 
+  /** Capacity evaluator for repeated hypothetical worker-count probes.
+    *
+    * Labor planning uses this during binary search. It keeps the public
+    * `computeCapacity` semantics, but avoids rebuilding synthetic firm states
+    * for every midpoint and reuses firm-level production constants.
+    */
+  final class CapacityEvaluator private[firm] (f: State, productivityIndex: Multiplier, p: SimParams):
+    private val sec                         = p.sectorDefs(f.sector.toInt)
+    private val sizeScale                   = Scalar.fraction(f.initialSize, p.pop.workersPerFirm).toMultiplier
+    private val tfp                         = sizeScale * sec.revenueMultiplier
+    private val baseRevenue                 = p.firm.baseRevenue * tfp
+    private val hasCapital                  = f.capitalStock > PLN.Zero
+    private val sectorKlRatio               = p.capital.klRatios(f.sector.toInt)
+    private val alpha                       = p.capital.prodElast
+    private val beta                        = Share.One - alpha
+    private val alphaScalar                 = alpha.toScalar
+    private val betaScalar                  = beta.toScalar
+    private val useCobbDouglas              = !(sec.sigma > Sigma.decimal(1001, 3))
+    private val supportsWorkerOverride      = f.tech match
+      case _: TechState.Traditional | _: TechState.Hybrid => true
+      case _                                              => false
+    private lazy val fixedEffectiveCapacity = computeEffectiveCapacity(f, productivityIndex)(using p)
+
+    private lazy val rho           = (sec.sigma.toScalar - Scalar.One).ratioTo(sec.sigma.toScalar)
+    private lazy val rhoReciprocal = rho.reciprocal
+
+    def capacityAtWorkers(workers: Int): PLN =
+      if supportsWorkerOverride then capacityFor(laborEffAt(workers), capitalPlanningWorkersAt(workers))
+      else computeCapacity(f)(using p)
+
+    def effectiveCapacityAtWorkers(workers: Int): PLN =
+      if supportsWorkerOverride then capacityAtWorkers(workers) * productivityIndex
+      else fixedEffectiveCapacity
+
+    def marginalEffectiveCapacityAtWorkers(workers: Int): PLN =
+      if !supportsWorkerOverride then PLN.Zero
+      else
+        val prevWorkers = workers - 1
+        val laborEff    = laborEffAt(workers)
+        val prevLabor   = laborEffAt(prevWorkers)
+        val planning    = capitalPlanningWorkersAt(workers)
+        val prevPlan    = capitalPlanningWorkersAt(prevWorkers)
+        val (cap, prev) =
+          if hasCapital && planning == prevPlan then capacitiesWithSharedCapital(laborEff, prevLabor, planning)
+          else (capacityFor(laborEff, planning), capacityFor(prevLabor, prevPlan))
+        cap * productivityIndex - prev * productivityIndex
+
+    private def laborEffAt(workers: Int): Multiplier =
+      f.tech match
+        case TechState.Traditional(_) => Scalar.fraction(workers, f.initialSize).toMultiplier
+        case TechState.Hybrid(_, eff) =>
+          HybridLaborCapShare.toMultiplier * Scalar.fraction(workers, f.initialSize).toMultiplier + HybridAiCapShare.toMultiplier * eff
+        case TechState.Automated(eff) => eff
+        case _: TechState.Bankrupt    => Multiplier.Zero
+
+    private def capitalPlanningWorkersAt(workers: Int): Int =
+      if !isAlive(f) then 0
+      else if f.startupTargetWorkers > 0 && workers < f.initialSize then Math.max(workers, f.startupTargetWorkers)
+      else Math.max(workers, f.initialSize)
+
+    private def capitalMultiplier(planningWorkers: Int): Multiplier =
+      val targetK: PLN = planningWorkers * sectorKlRatio
+      (if targetK > PLN.Zero then f.capitalStock.ratioTo(targetK).toMultiplier else Multiplier.One).clamp(Multiplier.decimal(1, 1), Multiplier(2))
+
+    private def capacityFor(laborEff: Multiplier, planningWorkers: Int): PLN =
+      if hasCapital && laborEff > Multiplier.Zero then baseRevenue * cesOutput(alpha, capitalMultiplier(planningWorkers), laborEff, sec.sigma)
+      else baseRevenue * laborEff
+
+    private def capacitiesWithSharedCapital(laborEff: Multiplier, prevLaborEff: Multiplier, planningWorkers: Int): (PLN, PLN) =
+      val k = capitalMultiplier(planningWorkers)
+      if useCobbDouglas then
+        val kTerm = k.pow(alphaScalar)
+        (capacityForSharedCobbDouglas(laborEff, kTerm), capacityForSharedCobbDouglas(prevLaborEff, kTerm))
+      else
+        val kTerm = alpha * k.pow(rho)
+        (capacityForSharedCes(laborEff, kTerm), capacityForSharedCes(prevLaborEff, kTerm))
+
+    private def capacityForSharedCobbDouglas(laborEff: Multiplier, kTerm: Multiplier): PLN =
+      if laborEff > Multiplier.Zero then baseRevenue * (kTerm * laborEff.pow(betaScalar))
+      else baseRevenue * laborEff
+
+    private def capacityForSharedCes(laborEff: Multiplier, kTerm: Multiplier): PLN =
+      if laborEff > Multiplier.Zero then
+        val lTerm = beta * laborEff.pow(rho)
+        baseRevenue * (kTerm + lTerm).pow(rhoReciprocal)
+      else baseRevenue * laborEff
+
+  def capacityEvaluator(f: State, productivityIndex: Multiplier)(using p: SimParams): CapacityEvaluator =
+    new CapacityEvaluator(f, productivityIndex, p)
+
+  def computeCapacityAtWorkers(f: State, workers: Int)(using p: SimParams): PLN =
+    capacityEvaluator(f, Multiplier.One).capacityAtWorkers(workers)
+
+  def computeMarginalEffectiveCapacityAtWorkers(f: State, workers: Int, productivityIndex: Multiplier)(using p: SimParams): PLN =
+    capacityEvaluator(f, productivityIndex).marginalEffectiveCapacityAtWorkers(workers)
+
   /** CES aggregator for physical-capital and labor/technology productivity. */
   def cesOutput(alpha: Share, k: Multiplier, l: Multiplier, sigma: Sigma): Multiplier =
     if !(sigma > Sigma.decimal(1001, 3)) then k.pow(alpha.toScalar) * l.pow((Share.One - alpha).toScalar)

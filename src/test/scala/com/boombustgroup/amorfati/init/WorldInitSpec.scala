@@ -98,7 +98,8 @@ class WorldInitSpec extends AnyFlatSpec with Matchers:
         profile.bankId -> profile.ownFunds
       .toMap
 
-    decimal(aggregateCapital) shouldBe decimal(p.banking.initCapital) +- (decimal(p.banking.initCapital) * BigDecimal("0.001"))
+    decimal(aggregateCapital) shouldBe decimal(p.banking.openingBankCapitalAggregateTarget) +-
+      (decimal(p.banking.openingBankCapitalAggregateTarget) * BigDecimal("0.001"))
     bankRows.foreach { case (bank, balances) =>
       val stocks = LedgerFinancialState.projectBankFinancialStocks(balances)
       val rwa    = Banking.riskWeightedAssets(stocks, balances.corpBond)

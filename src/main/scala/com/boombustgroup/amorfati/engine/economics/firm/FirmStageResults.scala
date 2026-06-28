@@ -20,6 +20,7 @@ private[firm] final case class IntermediateResult(
     firms: Vector[Firm.State],
     financialStocks: Vector[Firm.FinancialStocks],
     totalPaid: PLN,
+    effectiveCapacities: Vector[PLN],
 )
 
 /** Calvo repricing result over I-O-adjusted firms. */

@@ -204,7 +204,23 @@ class OpeningBankBalanceProfileBridgeSpec extends AnyFlatSpec with Matchers with
     targets.govBonds.sumPln shouldBe summon[SimParams].banking.initGovBonds
     targets.reserves.sumPln shouldBe summon[SimParams].banking.initDeposits * summon[SimParams].banking.reserveReq
     targets.corpBonds.sumPln shouldBe summon[SimParams].corpBond.initStock * summon[SimParams].corpBond.bankShare
-    targets.openingCapitalProfiles.map(_.ownFunds).sumPln shouldBe summon[SimParams].banking.initCapital
+    targets.openingCapitalProfiles.map(_.ownFunds).sumPln shouldBe summon[SimParams].banking.openingBankCapitalAggregateTarget
+  }
+
+  it should "apply opening own-funds stress through the explicit bank profile scenario" in {
+    given stressP: SimParams = SimParams.defaults.copy(
+      banking = SimParams.defaults.banking.copy(
+        openingBankProfileScenario = OpeningBankProfileScenario.haircutOwnFunds(Multiplier.decimal(55, 2)),
+      ),
+    )
+
+    val baselineTargets = OpeningBankProfileTargets.fromBridgeRows(Rows)(using SimParams.defaults)
+    val stressTargets   = OpeningBankProfileTargets.fromBridgeRows(Rows)
+    val stressTarget    = stressP.banking.openingBankProfileScenario.aggregateTarget(stressP.banking.openingBankCapitalAggregateTarget)
+
+    stressP.banking.openingBankCapitalAggregateTarget shouldBe SimParams.defaults.banking.openingBankCapitalAggregateTarget
+    stressTargets.openingCapitalProfiles.map(_.ownFunds).sumPln shouldBe stressTarget
+    stressTargets.openingCapitalProfiles.map(_.ownFunds).sumPln should be < baselineTargets.openingCapitalProfiles.map(_.ownFunds).sumPln
   }
 
   it should "fail fast when complete named-bank residual coverage exceeds the sector total" in {
@@ -229,7 +245,7 @@ class OpeningBankBalanceProfileBridgeSpec extends AnyFlatSpec with Matchers with
     targets.govBonds.sumPln shouldBe summon[SimParams].banking.initGovBonds
     targets.reserves.sumPln shouldBe summon[SimParams].banking.initDeposits * summon[SimParams].banking.reserveReq
     targets.corpBonds.sumPln shouldBe summon[SimParams].corpBond.initStock * summon[SimParams].corpBond.bankShare
-    targets.openingCapitalProfiles.map(_.ownFunds).sumPln shouldBe summon[SimParams].banking.initCapital
+    targets.openingCapitalProfiles.map(_.ownFunds).sumPln shouldBe summon[SimParams].banking.openingBankCapitalAggregateTarget
     targets.deposits(0) shouldBe summon[SimParams].banking.initDeposits * Share.decimal(2, 1)
     targets.deposits(1) shouldBe summon[SimParams].banking.initDeposits * Share.decimal(13, 2)
     targets.deposits(0) should not be (summon[SimParams].banking.initDeposits * Banking.DefaultConfigs.head.relationshipWeight)

@@ -12,28 +12,34 @@ import com.boombustgroup.amorfati.types.*
   * than equity capital.
   */
 case class BankCapitalDiagnostics(
-    openingCapital: PLN = PLN.Zero,         // aggregate bank capital at the start of the month
-    closingCapital: PLN = PLN.Zero,         // aggregate bank capital after monthly banking settlement
-    retainedIncome: PLN = PLN.Zero,         // retained ordinary bank income after profit-retention rule
-    firmNplLoss: PLN = PLN.Zero,            // realized firm-loan credit loss net of recovery
-    mortgageNplLoss: PLN = PLN.Zero,        // realized mortgage credit loss net of recovery
-    consumerNplLoss: PLN = PLN.Zero,        // realized ordinary consumer-loan loss net of recovery
-    corpBondDefaultLoss: PLN = PLN.Zero,    // bank-held corporate-bond default loss
-    bfgLevy: PLN = PLN.Zero,                // monthly BFG levy paid by active banks
-    polishBankLevyTax: PLN = PLN.Zero,      // monthly Polish bank tax paid by active banks
-    unrealizedBondLoss: PLN = PLN.Zero,     // AFS government-bond mark-to-market capital hit
-    htmRealizedLoss: PLN = PLN.Zero,        // HTM forced-reclassification realized loss
-    eclProvisionChange: PLN = PLN.Zero,     // IFRS 9 provision increase, positive when capital is hit
-    capitalDestruction: PLN = PLN.Zero,     // shareholder capital wiped when banks newly fail
-    interbankContagionLoss: PLN = PLN.Zero, // failed-counterparty interbank exposure loss
-    reconciliationResidual: PLN = PLN.Zero, // aggregate exactness patch distributed across bank rows
-    depositBailInLoss: PLN = PLN.Zero,      // depositor haircut from resolution, not equity-capital P&L
-    newFailures: Int = 0,                   // banks newly marked failed during the month
+    openingCapital: PLN = PLN.Zero,           // aggregate bank capital at the start of the month
+    closingCapital: PLN = PLN.Zero,           // aggregate bank capital after monthly banking settlement
+    retainedIncome: PLN = PLN.Zero,           // retained ordinary bank income after profit-retention rule
+    firmNplLoss: PLN = PLN.Zero,              // realized firm-loan capital loss net of recovery and ECL allowance draw
+    mortgageNplLoss: PLN = PLN.Zero,          // realized mortgage capital loss net of recovery; product-level ECL draw is not modeled yet
+    consumerNplLoss: PLN = PLN.Zero,          // realized consumer-loan capital loss net of recovery; product-level ECL draw is not modeled yet
+    corpBondDefaultLoss: PLN = PLN.Zero,      // bank-held corporate-bond default loss
+    firmNplAllowanceDraw: PLN = PLN.Zero,     // firm-loan default loss covered by existing/new ECL allowance instead of capital loss
+    mortgageNplAllowanceDraw: PLN = PLN.Zero, // currently zero until mortgage product-level ECL staging is modeled
+    consumerNplAllowanceDraw: PLN = PLN.Zero, // currently zero until consumer product-level ECL staging is modeled
+    bfgLevy: PLN = PLN.Zero,                  // monthly BFG levy paid by active banks
+    polishBankLevyTax: PLN = PLN.Zero,        // monthly Polish bank tax paid by active banks
+    unrealizedBondLoss: PLN = PLN.Zero,       // AFS government-bond mark-to-market capital hit
+    htmRealizedLoss: PLN = PLN.Zero,          // HTM forced-reclassification realized loss
+    eclProvisionChange: PLN = PLN.Zero,       // IFRS 9 provision increase, positive when capital is hit
+    capitalDestruction: PLN = PLN.Zero,       // shareholder capital wiped when banks newly fail
+    interbankContagionLoss: PLN = PLN.Zero,   // failed-counterparty interbank exposure loss
+    reconciliationResidual: PLN = PLN.Zero,   // aggregate exactness patch distributed across bank rows
+    depositBailInLoss: PLN = PLN.Zero,        // depositor haircut from resolution, not equity-capital P&L
+    newFailures: Int = 0,                     // banks newly marked failed during the month
 ):
   def delta: PLN = closingCapital - openingCapital
 
   def realizedCreditLoss: PLN =
     firmNplLoss + mortgageNplLoss + consumerNplLoss + corpBondDefaultLoss
+
+  def creditLossAllowanceDraw: PLN =
+    firmNplAllowanceDraw + mortgageNplAllowanceDraw + consumerNplAllowanceDraw
 
   def expectedDelta: PLN =
     retainedIncome - realizedCreditLoss - bfgLevy - polishBankLevyTax - unrealizedBondLoss -

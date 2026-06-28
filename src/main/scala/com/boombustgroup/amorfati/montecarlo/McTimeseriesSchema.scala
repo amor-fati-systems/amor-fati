@@ -109,6 +109,8 @@ object McTimeseriesSchema:
     lazy val householdLiquidity: McHouseholdLiquidityDiagnostics.Summary                            =
       McHouseholdLiquidityDiagnostics.fromBalances(ledgerFinancialState.households)
     lazy val bankFirmLoans: PLN                                                                     = bankAgg.totalLoans
+    lazy val bankFirmGrossDefault: PLN                                                              =
+      grossDefaultFromLoss(bankCapital.firmNplLoss + bankCapital.firmNplAllowanceDraw, p.banking.loanRecovery)
     lazy val firmDefaultRecovery: PLN                                                               = world.flows.firmGrossDefault * p.banking.loanRecovery
     lazy val firmCreditDemand: PLN                                                                  = world.flows.firmInvestmentCreditDemand + world.flows.firmTechCreditDemand
     lazy val firmCreditApproved: PLN                                                                = world.flows.firmInvestmentCreditApproved + world.flows.firmTechCreditApproved
@@ -818,6 +820,10 @@ object McTimeseriesSchema:
     ColumnDef.macroPln("BankCapital_MortgageNplLoss", ctx => ctx.bankCapital.mortgageNplLoss),
     ColumnDef.macroPln("BankCapital_ConsumerNplLoss", ctx => ctx.bankCapital.consumerNplLoss),
     ColumnDef.macroPln("BankCapital_CorpBondDefaultLoss", ctx => ctx.bankCapital.corpBondDefaultLoss),
+    ColumnDef.macroPln("BankCapital_FirmNplAllowanceDraw", ctx => ctx.bankCapital.firmNplAllowanceDraw),
+    ColumnDef.macroPln("BankCapital_MortgageNplAllowanceDraw", ctx => ctx.bankCapital.mortgageNplAllowanceDraw),
+    ColumnDef.macroPln("BankCapital_ConsumerNplAllowanceDraw", ctx => ctx.bankCapital.consumerNplAllowanceDraw),
+    ColumnDef.macroPln("BankCapital_CreditLossAllowanceDraw", ctx => ctx.bankCapital.creditLossAllowanceDraw),
     ColumnDef.macroPln("BankCapital_InterbankContagionLoss", ctx => ctx.bankCapital.interbankContagionLoss),
     ColumnDef.macroPln("BankCapital_BfgLevy", ctx => ctx.bankCapital.bfgLevy),
     ColumnDef.macroPln("BankCapital_PolishBankLevyTax", ctx => ctx.bankCapital.polishBankLevyTax),
@@ -832,7 +838,7 @@ object McTimeseriesSchema:
     ColumnDef("BankCreditLoss_RealizedToOpeningCapital", ctx => ctx.flowToStockRate(ctx.bankCapital.realizedCreditLoss, ctx.bankCapital.openingCapital)),
     ColumnDef(
       "BankCreditLoss_FirmDefaultRate",
-      ctx => ctx.flowToStockRate(ctx.grossDefaultFromLoss(ctx.bankCapital.firmNplLoss, ctx.p.banking.loanRecovery), ctx.bankFirmLoans),
+      ctx => ctx.flowToStockRate(ctx.bankFirmGrossDefault, ctx.bankFirmLoans),
     ),
     ColumnDef("BankCreditLoss_FirmLossRate", ctx => ctx.flowToStockRate(ctx.bankCapital.firmNplLoss, ctx.bankFirmLoans)),
     ColumnDef("BankCreditLoss_MortgageDefaultRate", ctx => ctx.flowToStockRate(ctx.world.real.housing.lastDefault, ctx.ledgerHouseholdMortgageStock)),

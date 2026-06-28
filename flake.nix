@@ -19,10 +19,24 @@
       devShells = forAllSystems (system:
         let
           pkgs = import nixpkgs { inherit system; };
+          amorFatiJvmOpts = "-Xmx8G -XX:+UseG1GC";
+          amorFatiJava = pkgs.writeShellScriptBin "amor-fati-java" ''
+            set -euo pipefail
+
+            java_opts_raw="''${AMOR_FATI_JAVA_OPTS:-}"
+            if [[ -z "$java_opts_raw" ]]; then
+              java_opts_raw="${amorFatiJvmOpts}"
+            fi
+            read -r -a java_opts <<< "$java_opts_raw"
+
+            # AMOR_FATI_JAVA_OPTS is intentionally split into JVM arguments.
+            exec ${pkgs.jdk21}/bin/java "''${java_opts[@]}" "$@"
+          '';
         in
         {
           default = pkgs.mkShell {
             packages = with pkgs; [
+              amorFatiJava
               bashInteractive
               coreutils
               curl
@@ -44,7 +58,8 @@
             ];
 
             JAVA_HOME = pkgs.jdk21.home;
-            SBT_OPTS = "-Xmx4G -XX:+UseG1GC";
+            AMOR_FATI_JAVA_OPTS = amorFatiJvmOpts;
+            SBT_OPTS = amorFatiJvmOpts;
             SSL_CERT_FILE = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
             GIT_SSL_CAINFO = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
           };

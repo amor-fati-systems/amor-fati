@@ -163,6 +163,27 @@ class IntermediateMarketSpec extends AnyFlatSpec with Matchers:
     result.totalPaid should be > PLN.Zero
   }
 
+  it should "return effective capacities aligned with input firms" in {
+    val productivity = Multiplier.decimal(105, 2)
+    val firms        = Vector(
+      makeFirm(0, 0),
+      makeFirm(1, 1, tech = TechState.Automated(Multiplier.decimal(15, 1))),
+      makeFirm(2, 2, tech = TechState.Bankrupt(BankruptReason.Other("test"))),
+    )
+    val result       = IntermediateMarket.process(baseInput(firms).copy(productivityIndex = productivity))
+    result.effectiveCapacities should have length firms.length
+    result.effectiveCapacities shouldBe firms.map: firm =>
+      if Firm.isAlive(firm) then Firm.computeEffectiveCapacity(firm, productivity)
+      else PLN.Zero
+  }
+
+  it should "reject result instances with unaligned effective capacities" in {
+    val firms = Vector(makeFirm(0, 0), makeFirm(1, 1))
+
+    an[IllegalArgumentException] should be thrownBy
+      IntermediateMarket.Result(firms, PLN.Zero, Vector.fill(firms.length)(PLN.Zero), Vector(PLN.Zero))
+  }
+
   // ---- Test 8: demandMult and price scale output correctly ----
 
   it should "scale I-O flows with demandMult and price" in {

@@ -17,7 +17,7 @@ private[agents] object FirmSettlementDsl:
   /** Runs all deterministic settlement phases after primary execution. */
   def run(opening: OpeningInput, decision: SelectedDecision, executed: PrimaryExecution)(using SimParams): Program[SettledResult] =
     for
-      signaled      <- hiringSignal(opening, executed)
+      signaled      <- hiringSignal(opening, decision, executed)
       debtSettled   <- debtService(signaled)
       traced        <- openingTrace(opening, decision, debtSettled)
       green         <- greenInvestment(traced)
@@ -29,11 +29,12 @@ private[agents] object FirmSettlementDsl:
     yield informalTaxes
 
   /** Persists the demand signal used by next-month labor planning. */
-  private def hiringSignal(opening: OpeningInput, executed: PrimaryExecution)(using SimParams): Program[HiringSignalUpdate] =
-    val state = opening.input.opening
+  private def hiringSignal(opening: OpeningInput, decision: SelectedDecision, executed: PrimaryExecution)(using SimParams): Program[HiringSignalUpdate] =
+    val state         = opening.input.opening
+    val cachedDesired = decision.decisionWithAudit.audit.desiredWorkers
     MonthWorkflow.pure(
       FirmStepSemantics.hiringSignalUpdate(
-        FirmPostProcessing.updateHiringSignalState(executed.result, state.firm, state.world, state.operationalSignals),
+        FirmPostProcessing.updateHiringSignalState(executed.result, state.firm, state.world, state.operationalSignals, cachedDesiredWorkers = cachedDesired),
       ),
     )
 

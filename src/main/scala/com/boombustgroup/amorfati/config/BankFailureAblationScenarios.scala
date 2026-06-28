@@ -61,12 +61,4 @@ object BankFailureAblationScenarios:
         ),
       ),
     ),
-    Spec(
-      id = "initial-capital-150pct",
-      label = "Initial bank capital 150%",
-      interpretation = "Raises opening regulatory capital by 50% to test whether failures are mostly a capital-buffer calibration problem.",
-      params = Baseline.copy(
-        banking = Baseline.banking.copy(initCapital = Baseline.banking.initCapital * Multiplier.decimal(150, 2)),
-      ),
-    ),
   )

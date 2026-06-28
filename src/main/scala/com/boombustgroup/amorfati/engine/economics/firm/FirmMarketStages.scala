@@ -30,7 +30,7 @@ private[firm] object FirmMarketStages:
       .zip(r.cashAdjustments)
       .map: (stocks, cashAdjustment) =>
         stocks.copy(cash = stocks.cash + cashAdjustment)
-    IntermediateResult(r.firms, adjustedStocks, r.totalPaid)
+    IntermediateResult(r.firms, adjustedStocks, r.totalPaid, r.effectiveCapacities)
 
   def calvoPricing(stepIn: StepInput, intermediate: IntermediateResult, rng: RandomStream)(using p: SimParams): PricingResult =
     val repriced = intermediate.firms.map: f =>
@@ -49,7 +49,7 @@ private[firm] object FirmMarketStages:
 
     PricingResult(
       firms = repriced,
-      markupInflation = CalvoPricing.aggregateMarkupInflation(repriced, intermediate.firms, stepIn.w.real.productivityIndex).annualize,
+      markupInflation = CalvoPricing.aggregateMarkupInflationFromCapacities(repriced, intermediate.firms, intermediate.effectiveCapacities).annualize,
     )
 
   def laborMarket(

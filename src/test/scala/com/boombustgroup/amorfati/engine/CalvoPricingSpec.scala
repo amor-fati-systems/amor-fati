@@ -1,6 +1,8 @@
 package com.boombustgroup.amorfati.engine
 
 import com.boombustgroup.amorfati.FixedPointSpecSupport.*
+import com.boombustgroup.amorfati.TestFirmState
+import com.boombustgroup.amorfati.agents.{Firm, TechState}
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.markets.CalvoPricing
 import com.boombustgroup.amorfati.types.*
@@ -61,4 +63,26 @@ class CalvoPricingSpec extends AnyFlatSpec with Matchers:
 
   "aggregateMarkupInflation" should "be zero when no firms present" in {
     CalvoPricing.aggregateMarkupInflation(Vector.empty, Vector.empty) shouldBe Rate.Zero
+  }
+
+  it should "match the precomputed-capacity path" in {
+    val productivity = Multiplier.decimal(103, 2)
+    val prevFirms    = Vector(
+      TestFirmState(id = FirmId(1), sector = SectorIdx(0), tech = TechState.Traditional(10), capitalStock = PLN(1800000), markup = Multiplier.One),
+      TestFirmState(
+        id = FirmId(2),
+        sector = SectorIdx(1),
+        tech = TechState.Hybrid(8, Multiplier.decimal(12, 1)),
+        capitalStock = PLN(3000000),
+        markup = Multiplier.One,
+      ),
+    )
+    val firms        = Vector(
+      prevFirms(0).copy(markup = Multiplier.decimal(12, 1)),
+      prevFirms(1).copy(markup = Multiplier.decimal(11, 1)),
+    )
+    val capacities   = prevFirms.map(firm => Firm.computeEffectiveCapacity(firm, productivity))
+
+    CalvoPricing.aggregateMarkupInflationFromCapacities(firms, prevFirms, capacities) shouldBe
+      CalvoPricing.aggregateMarkupInflation(firms, prevFirms, productivity)
   }

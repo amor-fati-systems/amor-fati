@@ -20,7 +20,39 @@ to feed the soft [performance regression budget](performance-regression-budgets.
 reports. Initial results remain report-only. Hard performance gates require a
 documented promotion step.
 
-## Workflow
+## Local Process Profiling
+
+For ad hoc profiling of a specific JVM entry point, use the generic local
+helper:
+
+```bash
+nix develop --command bash scripts/profile-jvm-process.sh --build --run-id bank-ablations-1x60 -- \
+  com.boombustgroup.amorfati.diagnostics.BankFailureAblationExport \
+  --seeds 1 \
+  --months 60 \
+  --parallelism 1 \
+  --out target/bank-failure-ablations \
+  --run-id bank-ablations-1x60
+```
+
+The same helper can profile the main simulation entry point:
+
+```bash
+nix develop --command bash scripts/profile-jvm-process.sh --build --run-id main-1x12 -- \
+  com.boombustgroup.amorfati.Main \
+  1 \
+  profile-main \
+  --duration 12 \
+  --run-id profile-main
+```
+
+The helper writes artifacts under `target/jvm-profiles/<run-id>/profiling/` by
+default: the raw JFR recording, GC log, process log, command metadata, and the
+standard `jfr view` reports for hot methods, allocation pressure, GC pauses,
+thread CPU load, and file I/O. It accepts `--raw-java` for commands that should
+not be run as `-cp <assembled jar> <main-class>`.
+
+## GitHub Actions Workflow
 
 GitHub Actions workflows:
 
@@ -63,7 +95,7 @@ nix develop --command sbt assembly
 It then profiles the selected diagnostics workload from that jar:
 
 ```bash
-nix develop --command java \
+nix develop --command amor-fati-java \
   -XX:StartFlightRecording=filename=<run-root>/profiling/amor-fati-<run-id>.jfr,settings=profile,dumponexit=true,disk=true \
   -cp target/scala-3.8.2/amor-fati.jar \
   com.boombustgroup.amorfati.diagnostics.NightlyDiagnosticsProfileRunner \
