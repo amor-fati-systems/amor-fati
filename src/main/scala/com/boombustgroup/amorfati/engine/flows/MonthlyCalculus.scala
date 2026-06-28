@@ -133,7 +133,7 @@ case class MonthlyCalculus(
   export quasiFiscal.{qfBankBondAmortization, qfBankBondIssuance, qfLending, qfNbpBondAbsorption, qfNbpBondAmortization, qfRepayment}
   export insurance.{
     corpBondYield,
-    govBondYield,
+    govBondMarketYield,
     insuranceCorpBondDefaultLoss,
     insuranceCurrentLifeReserves,
     insuranceCurrentNonLifeReserves,
@@ -319,6 +319,6 @@ object MonthlyCalculus:
       insurancePrevCorpBonds: PLN,
       insuranceCorpBondDefaultLoss: PLN,
       insurancePrevEquity: PLN,
-      govBondYield: Rate,
+      govBondMarketYield: Rate,
       corpBondYield: Rate,
   )

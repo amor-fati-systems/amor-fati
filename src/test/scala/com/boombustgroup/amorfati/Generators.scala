@@ -322,19 +322,20 @@ object Generators:
   )
 
   val genGovState: Gen[FiscalBudget.GovState] = for
-    taxRev      <- genDecimal("0.0", "1000000000.0")
-    deficit     <- genDecimal("-1000000000.0", "1000000000.0")
-    cumDebt     <- genDecimal("0.0", "10000000000.0")
-    unempBen    <- genDecimal("0.0", "100000000.0")
-    bondYield   <- genDecimal("0.0", "0.15")
-    debtService <- genDecimal("0.0", "100000000.0")
+    taxRev             <- genDecimal("0.0", "1000000000.0")
+    deficit            <- genDecimal("-1000000000.0", "1000000000.0")
+    cumDebt            <- genDecimal("0.0", "10000000000.0")
+    unempBen           <- genDecimal("0.0", "100000000.0")
+    govBondMarketYield <- genDecimal("0.0", "0.15")
+    govDebtCoupon      <- genDecimal("0.0", "0.15")
+    debtService        <- genDecimal("0.0", "100000000.0")
   yield FiscalBudget.GovState(
     plnBD(taxRev),
     plnBD(deficit),
     plnBD(cumDebt),
     plnBD(unempBen),
-    rateBD(bondYield),
-    rateBD(bondYield), // weightedCoupon starts at market yield
+    rateBD(govBondMarketYield),
+    rateBD(govDebtCoupon),
     plnBD(debtService),
   )
 
@@ -532,6 +533,7 @@ object Generators:
     resInt       <- genDecimal("0.0", "10000000.0")
     sfIncome     <- genDecimal("-1000000.0", "10000000.0")
     ibInterest   <- genDecimal("-10000000.0", "10000000.0")
+    retained     <- genDecimal("-100000000.0", "100000000.0")
     jstDepChg    <- genDecimal("-10000000.0", "10000000.0")
     jstSpend     <- genDecimal("0.0", "100000000.0")
     jstRev       <- genDecimal("0.0", "100000000.0")
@@ -565,6 +567,7 @@ object Generators:
     reserveInterest = plnBD(resInt),
     standingFacilityIncome = plnBD(sfIncome),
     interbankInterest = plnBD(ibInterest),
+    bankRetainedIncome = plnBD(retained),
     jstDepositChange = plnBD(jstDepChg),
     jstSpending = plnBD(jstSpend),
     jstRevenue = plnBD(jstRev),
@@ -633,10 +636,7 @@ object Generators:
       val expectedBankCapChange  = -flows.nplLoss - flows.mortgageNplLoss - flows.consumerNplLoss
         - flows.corpBondDefaultLoss - flows.bfgLevy - flows.polishBankLevyTax - flows.unrealizedBondLoss - flows.htmRealizedLoss -
         flows.interbankContagionLoss - flows.bankCapitalDestruction +
-        (flows.interestIncome + flows.bankBondIncome + flows.mortgageInterestIncome
-          + (flows.consumerDebtService - flows.consumerPrincipalRepaid) + flows.corpBondCouponIncome
-          - flows.depositInterestPaid
-          + flows.reserveInterest + flows.standingFacilityIncome + flows.interbankInterest) * Share.decimal(3, 1)
+        flows.bankRetainedIncome
       val expectedDepChange      = flows.totalIncome - flows.totalConsumption + flows.investNetDepositFlow +
         flows.jstDepositChange +
         flows.dividendIncome - flows.foreignDividendOutflow - flows.remittanceOutflow + flows.diasporaInflow +

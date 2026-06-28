@@ -76,7 +76,7 @@ Central-government budget revenue uses the fiscal net NBP remittance:
 
 ```text
 NbpBondIncome_tau =
-  NbpGovBondHoldings_t * BondYield_tau / 12
+  NbpGovBondHoldings_t * GovBondMarketYield_tau / 12
 
 NbpFiscalRemittance_tau =
   NbpBondIncome_tau
@@ -340,7 +340,7 @@ ReferenceRate_tau =
 The sovereign yield is:
 
 ```text
-BondYield_tau =
+GovBondMarketYield_tau =
   max(ReferenceRate_tau + TermPremium, BundYield + TermPremium)
   + FiscalRisk(DebtToGdp_tau)
   - QeCompression(NbpQeCumulative_t / AnnualGDP_tau)
@@ -357,9 +357,9 @@ FreshShare_tau =
       + max(Deficit_t, 0) / GovBondOutstanding_t,
       1)
 
-WeightedCoupon_tau =
-  WeightedCoupon_t * (1 - FreshShare_tau)
-  + BondYield_tau * FreshShare_tau
+GovDebtWeightedCoupon_tau =
+  GovDebtWeightedCoupon_t * (1 - FreshShare_tau)
+  + GovBondMarketYield_tau * FreshShare_tau
 ```
 
 Government debt service is computed from ledger-owned government-bond
@@ -368,7 +368,7 @@ same-month GDP:
 
 ```text
 DebtService_tau =
-  min(GovBondOutstanding_t * WeightedCoupon_tau / 12,
+  min(GovBondOutstanding_t * GovDebtWeightedCoupon_tau / 12,
       GDP_tau * maxDebtServiceGdpShare)
 ```
 
@@ -563,7 +563,7 @@ Investment income is:
 
 ```text
 InsuranceInvestmentIncome_tau =
-  InsGovBondHoldings_t * BondYield_tau / 12
+  InsGovBondHoldings_t * GovBondMarketYield_tau / 12
   + InsCorpBondHoldings_t * CorpBondYield_tau / 12
   + InsEquityHoldings_t * EquityReturn_tau
   - InsCorpBondDefaultLoss_tau
@@ -602,9 +602,9 @@ BaseTfiInflow_tau =
   Employed_tau * Wage_tau * tfiInflowRate
 
 FundReturn_tau =
-  GovBondYield_tau * tfiGovBondShare
+  GovBondMarketYield_tau * tfiGovBondShare
   + EquityReturnAnnualized_tau * tfiEquityShare
-  + GovBondYield_tau * tfiCorpBondShare
+  + GovBondMarketYield_tau * tfiCorpBondShare
 
 TfiNetInflow_tau =
   BaseTfiInflow_tau
@@ -613,14 +613,14 @@ TfiNetInflow_tau =
 ```
 
 The TFI inflow signal currently proxies the corporate-bond expected-return leg
-with `GovBondYield_tau`, matching `Nbfi.tfiInflow`. Realized TFI investment
+with `GovBondMarketYield_tau`, matching `Nbfi.tfiInflow`. Realized TFI investment
 income below uses the ledger-owned corporate-bond stock and `CorpBondYield_tau`.
 
 TFI AUM and allocations are:
 
 ```text
 TfiInvestmentIncome_tau =
-  TfiGovBondHoldings_t * GovBondYield_tau / 12
+  TfiGovBondHoldings_t * GovBondMarketYield_tau / 12
   + TfiCorpBondHoldings_t * CorpBondYield_tau / 12
   + TfiEquityHoldings_t * EquityReturn_tau
   - TfiCorpBondDefaultLoss_tau
@@ -799,7 +799,7 @@ Representative output columns include:
 | Surface | Columns |
 | --- | --- |
 | Fiscal stance | `GovCurrentSpend`, `GovCapitalSpendDomestic`, `DebtService`, `GovPrimaryDeficitToGdp`, `DebtToGdp`, `DeficitToGdp`, `FiscalRuleBinding`, `GovSpendingCutRatio`, `PublicCapitalStock` |
-| Government bonds and NBP | `RefRate`, `BondYield`, `WeightedCoupon`, `BondsOutstanding`, `ForeignBondHoldings`, `NbpBondHoldings`, `QeActive`, `NbpRemittance`, `NbpBondIncome`, `FxReserves`, `FxInterventionAmt` |
+| Government bonds and NBP | `RefRate`, `GovBondMarketYield`, `GovDebtWeightedCoupon`, `BondsOutstanding`, `ForeignBondHoldings`, `NbpBondHoldings`, `QeActive`, `NbpRemittance`, `NbpBondIncome`, `FxReserves`, `FxInterventionAmt` |
 | Social funds and JST | `ZusContributions`, `ZusPensionPayments`, `ZusGovSubvention`, `NfzContributions`, `NfzSpending`, `NfzBalance`, `NfzGovSubvention`, `PpkContributions`, `PpkBondHoldings`, `FpBalance`, `FpContributions`, `PfronBalance`, `FgspBalance`, `FgspSpending`, `JstRevenue`, `JstSpending`, `JstDebt`, `JstDeposits`, `JstDeficit` |
 | External sector | `NFA`, `CurrentAccount`, `CurrentAccountToGdp`, `CurrentAccountPrimaryIncome`, `CurrentAccountSecondaryIncome`, `CurrentAccountClosureResidual`, `CapitalAccount`, `CapitalAccountToGdp`, `TradeBalance_OE`, `Exports_OE`, `TotalImports_OE`, `FDI`, `RemittanceOutflow`, `DiasporaRemittanceInflow`, `NetRemittances`, `TourismExport`, `TourismImport`, `NetTourismBalance`, `TourismSeasonalFactor` |
 | Insurance | `InsLifeReserves`, `InsNonLifeReserves`, `InsGovBondHoldings`, `InsLifePremium`, `InsNonLifePremium`, `InsLifeClaims`, `InsNonLifeClaims` |

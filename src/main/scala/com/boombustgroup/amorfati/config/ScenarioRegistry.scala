@@ -317,7 +317,7 @@ object ScenarioRegistry:
         label = "FX and capital-flight stress",
         category = "external financial shock",
         purpose = "Risk-off and carry-unwind stress for exchange rate, reserves, current account, and bond demand.",
-        expectedChannels = Vector("ExRate", "FxReserves", "FxInterventionAmt", "CurrentAccount", "ForeignBondHoldings", "BondYield"),
+        expectedChannels = Vector("ExRate", "FxReserves", "FxInterventionAmt", "CurrentAccount", "ForeignBondHoldings", "GovBondMarketYield"),
         recommendedMonths = 60,
         seedPolicy = "Compare on the same seed band as baseline; shock starts at month 6.",
         outputFolder = "<out>/<run-id>/fx-capital-flight",

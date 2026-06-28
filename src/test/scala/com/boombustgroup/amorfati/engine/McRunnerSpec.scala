@@ -110,10 +110,10 @@ class McRunnerSpec extends AnyFlatSpec with Matchers:
 
   // --- Bond market ---
 
-  it should "keep BondYield non-negative after month 1" in {
+  it should "keep GovBondMarketYield non-negative after month 1" in {
     for t <- 1 until duration do
       withClue(s"Month ${t + 1}: ") {
-        decimal(row(t)(Col.BondYield.ordinal)) should be >= BigDecimal("0.0")
+        decimal(row(t)(Col.GovBondMarketYield.ordinal)) should be >= BigDecimal("0.0")
       }
   }
 

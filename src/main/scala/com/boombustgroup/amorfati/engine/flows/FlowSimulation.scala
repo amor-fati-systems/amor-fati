@@ -129,6 +129,7 @@ object FlowSimulation:
         interbankContagionLoss: PLN,
         htmRealizedLoss: PLN,
         eclProvisionChange: PLN,
+        retainedIncome: PLN,
     )
 
     def fromExecution(execution: MonthExecution): SemanticFlowInputs =
@@ -146,6 +147,7 @@ object FlowSimulation:
           interbankContagionLoss = execution.banking.interbankContagionLoss,
           htmRealizedLoss = execution.banking.htmRealizedLoss,
           eclProvisionChange = execution.banking.eclProvisionChange,
+          retainedIncome = execution.banking.bankCapitalDiagnostics.retainedIncome,
         ),
       )
 

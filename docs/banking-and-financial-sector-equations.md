@@ -160,7 +160,7 @@ r^{loan,RA}_{b,tau}(q, A) =
   - polishBankLevyCost_b(q, A)
 
 r^{bond,RA}_{b,tau} =
-  govBondYield_tau
+  govBondMarketYield_tau
 
 wedge_b(q, A) =
   r^{loan,RA}_{b,tau}(q, A) - r^{bond,RA}_{b,tau}
@@ -497,7 +497,7 @@ computes yield, coupon, amortization, default, and issuance:
 
 ```text
 CorpBondYield_tau =
-  max(GovBondYield_tau + creditSpread_tau,
+  max(GovBondMarketYield_tau + creditSpread_tau,
       MinCorpBondYield)
 
 creditSpread_tau =
@@ -584,7 +584,11 @@ RealizedCreditLoss =
 `WaterfallResidual` should remain near zero. A material value means the bank
 capital diagnostic surface is missing an explanatory term. `ReconciliationResidual`
 is the named exactness patch distributed across live banks after aggregate bank
-stocks are reconciled.
+stocks are reconciled. `PreReconciliationResidual` is the signed capital gap
+before that patch. The Monte Carlo `BankCapital_PreRecon*` columns are signed
+diagnostic slots for that gap; because ordinary bank-capital terms are sourced
+from the executed per-bank update, any remaining gap should normally appear in
+`BankCapital_PreReconUnexplained`.
 
 `DepositBailInLoss` is carried beside bank-capital diagnostics for resolution
 analysis, but it is not an equity-capital P&L term. It is a depositor-side

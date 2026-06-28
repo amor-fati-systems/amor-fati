@@ -303,6 +303,7 @@ class ConsumerCreditSpec extends AnyFlatSpec with Matchers:
     reserveInterest = PLN.Zero,
     standingFacilityIncome = PLN.Zero,
     interbankInterest = PLN.Zero,
+    bankRetainedIncome = PLN.Zero,
     jstDepositChange = PLN.Zero,
     jstSpending = PLN.Zero,
     jstRevenue = PLN.Zero,

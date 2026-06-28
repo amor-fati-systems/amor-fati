@@ -110,12 +110,14 @@ object WorldInit:
     val initEquityMarket      = EquityMarket.initial
 
     // --- Steady-state gross investment ---
-    val initGrossInvestment = PLN.fromRaw(firms.map(f => (f.capitalStock * p.capital.depRates(f.sector.toInt).monthly).toLong).sum)
-    val initGreenInvestment = PLN.fromRaw(firms.map(f => (f.greenCapital * p.climate.greenDepRate.monthly).toLong).sum)
-    val initMonthlyGdp      = (p.pop.realGdp * p.gdpRatio.toMultiplier) / 12
-    val initFiscalDeficit   = initMonthlyGdp * p.fiscal.sgpDeficitLimit
-    val initGovCurrentSpend = p.fiscal.govBaseSpending * (Share.One - p.fiscal.govInvestShare)
-    val initGovCapitalSpend = p.fiscal.govBaseSpending * p.fiscal.govInvestShare
+    val initGrossInvestment    = PLN.fromRaw(firms.map(f => (f.capitalStock * p.capital.depRates(f.sector.toInt).monthly).toLong).sum)
+    val initGreenInvestment    = PLN.fromRaw(firms.map(f => (f.greenCapital * p.climate.greenDepRate.monthly).toLong).sum)
+    val initAnnualGdp          = p.pop.realGdp * p.gdpRatio.toMultiplier
+    val initMonthlyGdp         = initAnnualGdp / 12
+    val initFiscalDeficit      = initMonthlyGdp * p.fiscal.sgpDeficitLimit
+    val initGovCurrentSpend    = p.fiscal.govBaseSpending * (Share.One - p.fiscal.govInvestShare)
+    val initGovCapitalSpend    = p.fiscal.govBaseSpending * p.fiscal.govInvestShare
+    val initGovBondMarketYield = openingGovBondMarketYield(initAnnualGdp, initExpectations)
 
     // --- Initial world construction ---
     val initHhAgg = Household.Aggregates(
@@ -172,7 +174,8 @@ object WorldInit:
         deficit = initFiscalDeficit,
         cumulativeDebt = p.fiscal.initGovDebt,
         unempBenefitSpend = PLN.Zero,
-        weightedCoupon = p.fiscal.govInitialWeightedCoupon,
+        govBondMarketYield = initGovBondMarketYield,
+        govDebtWeightedCoupon = p.fiscal.govInitialDebtWeightedCoupon,
         publicCapitalStock = p.fiscal.govInitCapital,
         govCurrentSpend = initGovCurrentSpend,
         govCapitalSpend = initGovCapitalSpend,
@@ -270,6 +273,17 @@ object WorldInit:
     )
 
     InitResult(world, firms, households, initBankingSector.banks, initHhAgg, ledgerFinancialState)
+
+  private def openingGovBondMarketYield(initAnnualGdp: PLN, expectations: com.boombustgroup.amorfati.engine.mechanisms.Expectations.State)(using
+      p: SimParams,
+  ): Rate =
+    val debtToGdp       = if initAnnualGdp > PLN.Zero then (p.fiscal.initGovDebt / initAnnualGdp).toShare else Share.Zero
+    val qeToGdp         = Share.Zero
+    val credibilityPrem =
+      val deAnchor = (Share.One - expectations.credibility) *
+        (expectations.expectedInflation - p.monetary.targetInfl).abs.toScalar.toShare
+      (deAnchor * p.labor.expBondSensitivity).toRate
+    Nbp.govBondMarketYield(p.monetary.initialRate, debtToGdp, qeToGdp, OpenEconomy.BopState.zero.nfa, credibilityPrem)
 
   private def normalizeHouseholdOpeningDeposits(
       householdStocks: Vector[Household.FinancialStocks],

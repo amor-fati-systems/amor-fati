@@ -228,6 +228,7 @@ class SfcSpec extends AnyFlatSpec with Matchers:
     reserveInterest = PLN.Zero,
     standingFacilityIncome = PLN.Zero,
     interbankInterest = PLN.Zero,
+    bankRetainedIncome = PLN.Zero,
     jstDepositChange = PLN.Zero,
     jstSpending = PLN.Zero,
     jstRevenue = PLN.Zero,
@@ -405,7 +406,7 @@ class SfcSpec extends AnyFlatSpec with Matchers:
     // nplLoss=7000, intIncome=10000
     // expected change = -7000 + 10000*0.3 = -4000
     val curr   = prev.copy(bankCapital = prev.bankCapital - PLN(4000))
-    val flows  = zeroFlows.copy(nplLoss = PLN(7000), interestIncome = PLN(10000))
+    val flows  = zeroFlows.copy(nplLoss = PLN(7000), interestIncome = PLN(10000), bankRetainedIncome = PLN(3000))
     val result = Sfc.validateStockExactness(prev, curr, flows)
     result shouldBe Right(())
   }
@@ -444,7 +445,7 @@ class SfcSpec extends AnyFlatSpec with Matchers:
       zeroSnap.copy(firmCash = PLN(500000), bankCapital = PLN(200000), bankDeposits = PLN(1000000))
     // Bug: 50% of interest goes to bank instead of 30%
     val curr   = prev.copy(bankCapital = prev.bankCapital + PLN(10000) * Share.decimal(5, 1))
-    val flows  = zeroFlows.copy(interestIncome = PLN(10000))
+    val flows  = zeroFlows.copy(interestIncome = PLN(10000), bankRetainedIncome = PLN(3000))
     val result = Sfc.validateStockExactness(prev, curr, flows)
     // actual change = +5000, expected = +3000, error = 2000
     result shouldBe a[Left[?, ?]]
@@ -456,7 +457,7 @@ class SfcSpec extends AnyFlatSpec with Matchers:
       zeroSnap.copy(firmCash = PLN(500000), bankCapital = PLN(200000), bankDeposits = PLN(1000000), consumerLoans = PLN(100000))
     // consumer instalment=6000, principal=4000 -> interest income=2000 -> retained=600
     val curr   = prev.copy(bankCapital = prev.bankCapital + PLN(600), consumerLoans = prev.consumerLoans - PLN(4000))
-    val flows  = zeroFlows.copy(consumerDebtService = PLN(6000), consumerPrincipalRepaid = PLN(4000))
+    val flows  = zeroFlows.copy(consumerDebtService = PLN(6000), consumerPrincipalRepaid = PLN(4000), bankRetainedIncome = PLN(600))
     val result = Sfc.validateStockExactness(prev, curr, flows)
     result shouldBe Right(())
   }
@@ -577,6 +578,7 @@ class SfcSpec extends AnyFlatSpec with Matchers:
       nplLoss = PLN(2000),
       interestIncome = PLN(6000),
       mortgageInterestIncome = PLN(1000),
+      bankRetainedIncome = PLN(2100),
       totalIncome = PLN(50000),
       totalConsumption = PLN(41000),
     )
@@ -655,7 +657,7 @@ class SfcSpec extends AnyFlatSpec with Matchers:
       zeroSnap.copy(firmCash = PLN(500000), bankCapital = PLN(200000), bankDeposits = PLN(1000000))
     // bankBondIncome=6000 -> 6000*0.3 = 1800 added to bank capital
     val curr   = prev.copy(bankCapital = prev.bankCapital + PLN(1800))
-    val flows  = zeroFlows.copy(bankBondIncome = PLN(6000))
+    val flows  = zeroFlows.copy(bankBondIncome = PLN(6000), bankRetainedIncome = PLN(1800))
     val result = Sfc.validateStockExactness(prev, curr, flows)
     result shouldBe Right(())
   }
@@ -735,7 +737,7 @@ class SfcSpec extends AnyFlatSpec with Matchers:
       zeroSnap.copy(firmCash = PLN(500000), bankCapital = PLN(200000), bankDeposits = PLN(1000000))
     // depositInterestPaid=3000 -> (0 + 0 + 0 - 3000) * 0.3 = -900
     val curr   = prev.copy(bankCapital = prev.bankCapital - PLN(900))
-    val flows  = zeroFlows.copy(depositInterestPaid = PLN(3000))
+    val flows  = zeroFlows.copy(depositInterestPaid = PLN(3000), bankRetainedIncome = PLN(-900))
     val result = Sfc.validateStockExactness(prev, curr, flows)
     result shouldBe Right(())
   }
@@ -751,6 +753,7 @@ class SfcSpec extends AnyFlatSpec with Matchers:
       mortgageInterestIncome = PLN(2000),
       bankBondIncome = PLN(1000),
       depositInterestPaid = PLN(3000),
+      bankRetainedIncome = PLN(3000),
     )
     val result = Sfc.validateStockExactness(prev, curr, flows)
     result shouldBe Right(())
@@ -761,7 +764,7 @@ class SfcSpec extends AnyFlatSpec with Matchers:
       zeroSnap.copy(firmCash = PLN(500000), bankCapital = PLN(200000), bankDeposits = PLN(1000000))
     // Bug: bank capital unchanged despite deposit interest obligation
     val curr   = prev.copy(bankCapital = prev.bankCapital)
-    val flows  = zeroFlows.copy(depositInterestPaid = PLN(5000))
+    val flows  = zeroFlows.copy(depositInterestPaid = PLN(5000), bankRetainedIncome = PLN(-1500))
     val result = Sfc.validateStockExactness(prev, curr, flows)
     // actual=0, expected=-5000*0.3=-1500, error=0-(-1500)=1500
     result shouldBe a[Left[?, ?]]
@@ -824,7 +827,7 @@ class SfcSpec extends AnyFlatSpec with Matchers:
       zeroSnap.copy(firmCash = PLN(500000), bankCapital = PLN(200000), bankDeposits = PLN(1000000))
     // mortgageInterestIncome=9000 -> 9000*0.3 = 2700 added to bank capital
     val curr   = prev.copy(bankCapital = prev.bankCapital + PLN(2700))
-    val flows  = zeroFlows.copy(mortgageInterestIncome = PLN(9000))
+    val flows  = zeroFlows.copy(mortgageInterestIncome = PLN(9000), bankRetainedIncome = PLN(2700))
     val result = Sfc.validateStockExactness(prev, curr, flows)
     result shouldBe Right(())
   }
@@ -844,7 +847,7 @@ class SfcSpec extends AnyFlatSpec with Matchers:
       zeroSnap.copy(firmCash = PLN(500000), bankCapital = PLN(200000), bankDeposits = PLN(1000000))
     // mortgageInterest=10000 -> +3000, mortgageNplLoss=2000 -> -2000, net = +1000
     val curr   = prev.copy(bankCapital = prev.bankCapital + PLN(1000))
-    val flows  = zeroFlows.copy(mortgageInterestIncome = PLN(10000), mortgageNplLoss = PLN(2000))
+    val flows  = zeroFlows.copy(mortgageInterestIncome = PLN(10000), mortgageNplLoss = PLN(2000), bankRetainedIncome = PLN(3000))
     val result = Sfc.validateStockExactness(prev, curr, flows)
     result shouldBe Right(())
   }
@@ -854,7 +857,7 @@ class SfcSpec extends AnyFlatSpec with Matchers:
       zeroSnap.copy(firmCash = PLN(500000), bankCapital = PLN(200000), bankDeposits = PLN(1000000))
     // Bug: bank capital unchanged despite mortgage interest
     val curr   = prev.copy(bankCapital = prev.bankCapital)
-    val flows  = zeroFlows.copy(mortgageInterestIncome = PLN(6000))
+    val flows  = zeroFlows.copy(mortgageInterestIncome = PLN(6000), bankRetainedIncome = PLN(1800))
     val result = Sfc.validateStockExactness(prev, curr, flows)
     // actual=0, expected=+1800, error=-1800
     result shouldBe a[Left[?, ?]]
@@ -942,6 +945,7 @@ class SfcSpec extends AnyFlatSpec with Matchers:
       consumerDebtService = PLN(4000),
       consumerPrincipalRepaid = PLN(3000),
       consumerDefaultAmount = PLN(500),
+      bankRetainedIncome = PLN(300),
     )
     val result = Sfc.validateStockExactness(prev, curr, flows)
     result shouldBe Right(())

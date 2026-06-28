@@ -29,7 +29,7 @@ object InsuranceFlows:
       prevCorpBondHoldings: PLN,
       corpBondDefaultLoss: PLN,
       prevEquityHoldings: PLN,
-      govBondYield: Rate,
+      govBondMarketYield: Rate,
       corpBondYield: Rate,
       equityReturn: Rate,
   )
@@ -44,7 +44,7 @@ object InsuranceFlows:
     val stressAdj   = (stressGap * p.ins.nonLifeUnempSens).toMultiplier
     val nonLifeCl   = nonLifeBase * (Multiplier.One + stressAdj)
 
-    val grossInvestmentIncome = input.prevGovBondHoldings * input.govBondYield.monthly +
+    val grossInvestmentIncome = input.prevGovBondHoldings * input.govBondMarketYield.monthly +
       input.prevCorpBondHoldings * input.corpBondYield.monthly +
       input.prevEquityHoldings * input.equityReturn
     val invIncome             = grossInvestmentIncome - input.corpBondDefaultLoss
@@ -111,7 +111,7 @@ object InsuranceFlows:
     val stressAdj   = (stressGap * p.ins.nonLifeUnempSens).toMultiplier
     val nonLifeCl   = nonLifeBase * (Multiplier.One + stressAdj)
 
-    val grossInvestmentIncome = input.prevGovBondHoldings * input.govBondYield.monthly +
+    val grossInvestmentIncome = input.prevGovBondHoldings * input.govBondMarketYield.monthly +
       input.prevCorpBondHoldings * input.corpBondYield.monthly +
       input.prevEquityHoldings * input.equityReturn
     val invIncome             = grossInvestmentIncome - input.corpBondDefaultLoss

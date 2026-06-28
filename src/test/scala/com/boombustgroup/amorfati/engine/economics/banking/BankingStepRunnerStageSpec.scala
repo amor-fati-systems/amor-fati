@@ -3,7 +3,7 @@ package com.boombustgroup.amorfati.engine.economics.banking
 import com.boombustgroup.amorfati.agents.*
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.SimulationMonth
-import com.boombustgroup.amorfati.engine.diagnostics.banking.BankReconciliationDiagnostics
+import com.boombustgroup.amorfati.engine.diagnostics.banking.{BankCapitalResidualBreakdown, BankReconciliationDiagnostics}
 import com.boombustgroup.amorfati.engine.markets.CorporateBondMarket
 import com.boombustgroup.amorfati.types.*
 import org.scalatest.flatspec.AnyFlatSpec
@@ -60,6 +60,15 @@ class BankingStepRunnerStageSpec extends AnyFlatSpec with Matchers:
 
   private def failureEvent(bankId: BankId): Banking.FailureEvent =
     Banking.FailureEvent(bankId, SimulationMonth.ExecutionMonth.First, Banking.BankFailureReason.NegativeCapital)
+
+  "BankMultiBankStage" should "remove gross firm defaults from the regular firm-loan book" in {
+    BankMultiBankStage.closingFirmLoanBook(
+      openingFirmLoan = PLN(1000),
+      newLoans = PLN(100),
+      principalRepaid = PLN(200),
+      grossDefault = PLN(300),
+    ) shouldBe PLN(600)
+  }
 
   "BankFailurePipeline.runBailIn" should "return an explicit bail-in stage output for eligible failed banks only" in {
     val rows        = Vector(bank(0, failed = true), bank(1))
@@ -118,6 +127,7 @@ class BankingStepRunnerStageSpec extends AnyFlatSpec with Matchers:
       failureEvents = Vector(extraEvent),
       allFailedFallbackUsed = true,
       bankReconciliationDiagnostics = BankReconciliationDiagnostics.zero,
+      capitalResidualBreakdown = BankCapitalResidualBreakdown.zero,
       resolvedBanksDelta = 1,
     )
 

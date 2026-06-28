@@ -488,8 +488,8 @@ object McTimeseriesSchema:
 
   private def bankingMonetaryGroup: Vector[ColumnDef] = Vector(
     // Bond market
-    ColumnDef("BondYield", ctx => ctx.world.gov.bondYield),
-    ColumnDef("WeightedCoupon", ctx => ctx.world.gov.weightedCoupon),
+    ColumnDef("GovBondMarketYield", ctx => ctx.world.gov.govBondMarketYield),
+    ColumnDef("GovDebtWeightedCoupon", ctx => ctx.world.gov.govDebtWeightedCoupon),
     ColumnDef.macroPln("BondsOutstanding", ctx => ctx.ledgerFinancialState.government.govBondOutstanding),
     ColumnDef.macroPln("BankBondHoldings", ctx => ctx.ledgerBankGovBondHoldings),
     ColumnDef.macroPln("ForeignBondHoldings", ctx => ctx.ledgerFinancialState.foreign.govBondHoldings),
@@ -613,7 +613,7 @@ object McTimeseriesSchema:
     ColumnDef.macroPln("FirmCredit_NplLoss", ctx => ctx.world.flows.firmNplLoss),
     ColumnDef.macroPln(
       "FirmCredit_NetStockFlow",
-      ctx => ctx.world.flows.firmNewLoans - ctx.world.flows.firmPrincipalRepaid - ctx.firmDefaultRecovery,
+      ctx => ctx.world.flows.firmNewLoans - ctx.world.flows.firmPrincipalRepaid - ctx.world.flows.firmGrossDefault,
     ),
     ColumnDef.macroPln("FirmCredit_CreditDemand", ctx => ctx.firmCreditDemand),
     ColumnDef.macroPln("FirmCredit_CreditApproved", ctx => ctx.firmCreditApproved),
@@ -831,6 +831,17 @@ object McTimeseriesSchema:
     ColumnDef.macroPln("BankCapital_HtmRealizedLoss", ctx => ctx.bankCapital.htmRealizedLoss),
     ColumnDef.macroPln("BankCapital_EclProvisionChange", ctx => ctx.bankCapital.eclProvisionChange),
     ColumnDef.macroPln("BankCapital_CapitalDestruction", ctx => ctx.bankCapital.capitalDestruction),
+    ColumnDef.macroPln("BankCapital_PreReconciliationResidual", ctx => ctx.bankCapital.preReconciliationResidual),
+    ColumnDef.macroPln("BankCapital_PreReconRetainedIncome", ctx => ctx.bankCapital.preReconciliationBreakdown.retainedIncome),
+    ColumnDef.macroPln("BankCapital_PreReconRealizedCreditLoss", ctx => ctx.bankCapital.preReconciliationBreakdown.realizedCreditLoss),
+    ColumnDef.macroPln("BankCapital_PreReconBfgLevy", ctx => ctx.bankCapital.preReconciliationBreakdown.bfgLevy),
+    ColumnDef.macroPln("BankCapital_PreReconPolishBankLevyTax", ctx => ctx.bankCapital.preReconciliationBreakdown.polishBankLevyTax),
+    ColumnDef.macroPln("BankCapital_PreReconUnrealizedBondLoss", ctx => ctx.bankCapital.preReconciliationBreakdown.unrealizedBondLoss),
+    ColumnDef.macroPln("BankCapital_PreReconHtmRealizedLoss", ctx => ctx.bankCapital.preReconciliationBreakdown.htmRealizedLoss),
+    ColumnDef.macroPln("BankCapital_PreReconEclProvisionChange", ctx => ctx.bankCapital.preReconciliationBreakdown.eclProvisionChange),
+    ColumnDef.macroPln("BankCapital_PreReconInterbankContagionLoss", ctx => ctx.bankCapital.preReconciliationBreakdown.interbankContagionLoss),
+    ColumnDef.macroPln("BankCapital_PreReconCapitalDestruction", ctx => ctx.bankCapital.preReconciliationBreakdown.capitalDestruction),
+    ColumnDef.macroPln("BankCapital_PreReconUnexplained", ctx => ctx.bankCapital.preReconciliationBreakdown.unexplained),
     ColumnDef.macroPln("BankCapital_ReconciliationResidual", ctx => ctx.bankCapital.reconciliationResidual),
     ColumnDef.macroPln("BankCapital_WaterfallResidual", ctx => ctx.bankCapital.waterfallResidual),
     ColumnDef.macroPln("BankCapital_DepositBailInLoss", ctx => ctx.bankCapital.depositBailInLoss),
@@ -1250,7 +1261,7 @@ object McTimeseriesSchema:
     val FDI: Col                                       = lookup("FDI")
     val UnempBenefitSpend: Col                         = lookup("UnempBenefitSpend")
     val OutputGap: Col                                 = lookup("OutputGap")
-    val BondYield: Col                                 = lookup("BondYield")
+    val GovBondMarketYield: Col                        = lookup("GovBondMarketYield")
     val BondsOutstanding: Col                          = lookup("BondsOutstanding")
     val BankBondHoldings: Col                          = lookup("BankBondHoldings")
     val ForeignBondHoldings: Col                       = lookup("ForeignBondHoldings")
@@ -1402,6 +1413,17 @@ object McTimeseriesSchema:
     val BankCapitalHtmRealizedLoss: Col                = lookup("BankCapital_HtmRealizedLoss")
     val BankCapitalEclProvisionChange: Col             = lookup("BankCapital_EclProvisionChange")
     val BankCapitalCapitalDestruction: Col             = lookup("BankCapital_CapitalDestruction")
+    val BankCapitalPreReconciliationResidual: Col      = lookup("BankCapital_PreReconciliationResidual")
+    val BankCapitalPreReconRetainedIncome: Col         = lookup("BankCapital_PreReconRetainedIncome")
+    val BankCapitalPreReconRealizedCreditLoss: Col     = lookup("BankCapital_PreReconRealizedCreditLoss")
+    val BankCapitalPreReconBfgLevy: Col                = lookup("BankCapital_PreReconBfgLevy")
+    val BankCapitalPreReconPolishBankLevyTax: Col      = lookup("BankCapital_PreReconPolishBankLevyTax")
+    val BankCapitalPreReconUnrealizedBondLoss: Col     = lookup("BankCapital_PreReconUnrealizedBondLoss")
+    val BankCapitalPreReconHtmRealizedLoss: Col        = lookup("BankCapital_PreReconHtmRealizedLoss")
+    val BankCapitalPreReconEclProvisionChange: Col     = lookup("BankCapital_PreReconEclProvisionChange")
+    val BankCapitalPreReconInterbankContagionLoss: Col = lookup("BankCapital_PreReconInterbankContagionLoss")
+    val BankCapitalPreReconCapitalDestruction: Col     = lookup("BankCapital_PreReconCapitalDestruction")
+    val BankCapitalPreReconUnexplained: Col            = lookup("BankCapital_PreReconUnexplained")
     val BankCapitalReconciliationResidual: Col         = lookup("BankCapital_ReconciliationResidual")
     val BankCapitalWaterfallResidual: Col              = lookup("BankCapital_WaterfallResidual")
     val BankCapitalDepositBailInLoss: Col              = lookup("BankCapital_DepositBailInLoss")

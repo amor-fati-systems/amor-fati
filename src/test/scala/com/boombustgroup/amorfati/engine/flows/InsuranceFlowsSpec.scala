@@ -23,7 +23,7 @@ class InsuranceFlowsSpec extends AnyFlatSpec with Matchers:
     prevCorpBondHoldings = PLN(20000000),
     corpBondDefaultLoss = PLN.Zero,
     prevEquityHoldings = PLN(10000000),
-    govBondYield = Rate.decimal(6, 2),
+    govBondMarketYield = Rate.decimal(6, 2),
     corpBondYield = Rate.decimal(8, 2),
     equityReturn = Rate.decimal(1, 2),
   )
@@ -61,7 +61,7 @@ class InsuranceFlowsSpec extends AnyFlatSpec with Matchers:
           employed = 80000,
           wage = PLN(7000),
           unempRate = Share.decimal(5, 2),
-          govBondYield = Rate.decimal(6, 2),
+          govBondMarketYield = Rate.decimal(6, 2),
           corpBondYield = Rate.decimal(8, 2),
           equityReturn = Rate.decimal(1, 2),
           corpBondDefaultLoss = PLN.Zero,
@@ -82,7 +82,7 @@ class InsuranceFlowsSpec extends AnyFlatSpec with Matchers:
 
   it should "route investment income through reserve assets rather than cash" in {
     val expectedInvIncome  =
-      baseInput.prevGovBondHoldings * baseInput.govBondYield.monthly +
+      baseInput.prevGovBondHoldings * baseInput.govBondMarketYield.monthly +
         baseInput.prevCorpBondHoldings * baseInput.corpBondYield.monthly +
         baseInput.prevEquityHoldings * baseInput.equityReturn -
         baseInput.corpBondDefaultLoss
@@ -132,7 +132,7 @@ class InsuranceFlowsSpec extends AnyFlatSpec with Matchers:
   it should "route corporate bond default losses as negative reserve investment income" in {
     val lossInput       = baseInput.copy(corpBondDefaultLoss = PLN(2000000))
     val grossInvestment =
-      lossInput.prevGovBondHoldings * lossInput.govBondYield.monthly +
+      lossInput.prevGovBondHoldings * lossInput.govBondMarketYield.monthly +
         lossInput.prevCorpBondHoldings * lossInput.corpBondYield.monthly +
         lossInput.prevEquityHoldings * lossInput.equityReturn
     val expectedLoss    = lossInput.corpBondDefaultLoss - grossInvestment

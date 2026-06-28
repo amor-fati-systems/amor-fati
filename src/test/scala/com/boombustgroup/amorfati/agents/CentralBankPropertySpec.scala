@@ -17,19 +17,19 @@ class CentralBankPropertySpec extends AnyFlatSpec with Matchers with ScalaCheckP
   implicit override val generatorDrivenConfig: PropertyCheckConfiguration =
     PropertyCheckConfiguration(minSuccessful = 200)
 
-  // --- bondYield properties ---
+  // --- govBondMarketYield properties ---
 
-  "Nbp.bondYield" should "be >= 0 for all inputs" in
+  "Nbp.govBondMarketYield" should "be >= 0 for all inputs" in
     forAll(genRate, genDecimal("0.0", "2.0"), genDecimal("0.0", "0.50"), genDecimal("-1e10", "1e10")) {
       (refRate: BigDecimal, debtToGdp: BigDecimal, nbpBondGdpShare: BigDecimal, nfa: BigDecimal) =>
-        val y = Nbp.bondYield(rateBD(refRate), shareBD(debtToGdp), shareBD(nbpBondGdpShare), plnBD(nfa), Rate.Zero)
+        val y = Nbp.govBondMarketYield(rateBD(refRate), shareBD(debtToGdp), shareBD(nbpBondGdpShare), plnBD(nfa), Rate.Zero)
         decimal(y) should be >= BigDecimal("0.0")
     }
 
   it should "cap fiscal risk premium at 10% even at extreme debtToGdp" in
     forAll(genRate, genDecimal("1.0", "100.0"), genDecimal("0.0", "0.50"), genDecimal("-1e10", "1e10")) {
       (refRate: BigDecimal, debtToGdp: BigDecimal, nbpBondGdpShare: BigDecimal, nfa: BigDecimal) =>
-        val y           = Nbp.bondYield(rateBD(refRate), shareBD(debtToGdp), shareBD(nbpBondGdpShare), plnBD(nfa), Rate.Zero)
+        val y           = Nbp.govBondMarketYield(rateBD(refRate), shareBD(debtToGdp), shareBD(nbpBondGdpShare), plnBD(nfa), Rate.Zero)
         val curveAnchor = refRate.max(decimal(p.fiscal.bundYield)) + decimal(p.fiscal.govTermPremium)
         decimal(y) should be <= (curveAnchor + BigDecimal("0.10") + BigDecimal("0.001"))
     }
@@ -37,16 +37,16 @@ class CentralBankPropertySpec extends AnyFlatSpec with Matchers with ScalaCheckP
   it should "be monotonic in debtToGdp (higher debt -> higher yield)" in
     forAll(genRate, genDecimal("0.0", "1.0"), genDecimal("0.0", "0.50"), genDecimal("-1e10", "1e10")) {
       (refRate: BigDecimal, baseDebt: BigDecimal, nbpBondGdpShare: BigDecimal, nfa: BigDecimal) =>
-        val low  = Nbp.bondYield(rateBD(refRate), shareBD(baseDebt), shareBD(nbpBondGdpShare), plnBD(nfa), Rate.Zero)
-        val high = Nbp.bondYield(rateBD(refRate), shareBD(baseDebt + BigDecimal("0.10")), shareBD(nbpBondGdpShare), plnBD(nfa), Rate.Zero)
+        val low  = Nbp.govBondMarketYield(rateBD(refRate), shareBD(baseDebt), shareBD(nbpBondGdpShare), plnBD(nfa), Rate.Zero)
+        val high = Nbp.govBondMarketYield(rateBD(refRate), shareBD(baseDebt + BigDecimal("0.10")), shareBD(nbpBondGdpShare), plnBD(nfa), Rate.Zero)
         decimal(high) should be >= (decimal(low) - BigDecimal("1e-10"))
     }
 
   it should "be monotonically decreasing in nbpBondGdpShare (QE effect)" in
     forAll(genRate, genDecimal("0.0", "1.0"), genDecimal("0.0", "0.30"), genDecimal("-1e10", "1e10")) {
       (refRate: BigDecimal, debtToGdp: BigDecimal, baseQe: BigDecimal, nfa: BigDecimal) =>
-        val low  = Nbp.bondYield(rateBD(refRate), shareBD(debtToGdp), shareBD(baseQe + BigDecimal("0.10")), plnBD(nfa), Rate.Zero)
-        val high = Nbp.bondYield(rateBD(refRate), shareBD(debtToGdp), shareBD(baseQe), plnBD(nfa), Rate.Zero)
+        val low  = Nbp.govBondMarketYield(rateBD(refRate), shareBD(debtToGdp), shareBD(baseQe + BigDecimal("0.10")), plnBD(nfa), Rate.Zero)
+        val high = Nbp.govBondMarketYield(rateBD(refRate), shareBD(debtToGdp), shareBD(baseQe), plnBD(nfa), Rate.Zero)
         decimal(high) should be >= (decimal(low) - BigDecimal("1e-10"))
     }
 

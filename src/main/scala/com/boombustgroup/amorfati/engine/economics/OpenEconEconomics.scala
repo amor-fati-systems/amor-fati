@@ -4,8 +4,8 @@ import com.boombustgroup.amorfati.agents.*
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.World
 import com.boombustgroup.amorfati.engine.ledger.{CorporateBondOwnership, LedgerFinancialState}
-import com.boombustgroup.amorfati.engine.markets.{CorporateBondMarket, GvcTrade, OpenEconomy}
-import com.boombustgroup.amorfati.engine.mechanisms.Expectations
+import com.boombustgroup.amorfati.engine.markets.{CorporateBondMarket, FiscalBudget, GvcTrade, OpenEconomy}
+import com.boombustgroup.amorfati.engine.mechanisms.{Expectations, TaxRevenue}
 import com.boombustgroup.amorfati.types.*
 
 import com.boombustgroup.amorfati.random.RandomStream
@@ -28,8 +28,8 @@ object OpenEconEconomics:
   case class MonetaryPolicy(
       newRefRate: Rate,
       newExp: Expectations.State,
-      newBondYield: Rate,
-      newWeightedCoupon: Rate,
+      newGovBondMarketYield: Rate,
+      newGovDebtWeightedCoupon: Rate,
       qePurchaseAmount: PLN,
       postFxNbp: Nbp.State,
       postFxNbpFinancialStocks: Nbp.FinancialStocks,
@@ -83,9 +83,9 @@ object OpenEconEconomics:
   )
 
   /** Public WAM coupon update — exposed for tests (DebtMaturitySpec). */
-  private[amorfati] def updateWeightedCouponPublic(
+  private[amorfati] def updateGovDebtWeightedCouponPublic(
       prevCoupon: Rate,
-      marketYield: Rate,
+      govBondMarketYield: Rate,
       bondsOutstanding: PLN,
       deficit: PLN,
       avgMaturityMonths: Int,
@@ -95,7 +95,7 @@ object OpenEconEconomics:
       if bondsOutstanding > PLN.Zero then Share(deficit.max(PLN.Zero) / bondsOutstanding)
       else Share.Zero
     val freshFrac: Share    = (rolloverFrac + deficitFrac).min(Share.One)
-    prevCoupon * (Share.One - freshFrac) + marketYield * freshFrac
+    prevCoupon * (Share.One - freshFrac) + govBondMarketYield * freshFrac
 
   // ---------------------------------------------------------------------------
   // runStep — full open economy pipeline (migrated from OpenEconomyStep.run)
@@ -146,9 +146,15 @@ object OpenEconEconomics:
       interbankInterest: PLN,
   )
 
+  private case class CurrentFiscalCouponContext(
+      tax: TaxRevenue.Output,
+      polishBankLevyTax: PLN,
+      nbpRemittance: PLN,
+  )
+
   private case class BondQeResult(
-      marketYield: Rate,
-      newWeightedCoupon: Rate,
+      govBondMarketYield: Rate,
+      newGovDebtWeightedCoupon: Rate,
       bankBondIncome: PLN,
       nbpRemittance: PLN,
       monthlyDebtService: PLN,
@@ -171,11 +177,11 @@ object OpenEconEconomics:
     val external            = runStepExternalSector(in, sectorOutputs)
     val rateAndExp          = runStepRateAndExpectations(in, external.newForex)
     val interbank           = runStepInterbankFlows(in.world, in.banks, bankFinancialStocks)
-    val bondQe              = runStepBondYieldAndQe(in, bankAgg, rateAndExp.refRate, rateAndExp.expectations, external.fxIntervention, interbank)
-    val corpBonds           = runStepCorporateBonds(in, bankAgg, bondQe.marketYield)
+    val bondQe              = runStepGovBondMarketYieldAndQe(in, bankAgg, rateAndExp.refRate, rateAndExp.expectations, external, interbank)
+    val corpBonds           = runStepCorporateBonds(in, bankAgg, bondQe.govBondMarketYield)
     val insurance           = runStepInsurance(
       in,
-      bondQe.marketYield,
+      bondQe.govBondMarketYield,
       corpBonds.newCorpBonds.corpBondYield,
       corpBonds.corpBondInsuranceDefaultLoss,
     )
@@ -183,7 +189,7 @@ object OpenEconEconomics:
       in,
       bankAgg,
       bondQe.postFxNbp,
-      bondQe.marketYield,
+      bondQe.govBondMarketYield,
       corpBonds.newCorpBonds.corpBondYield,
       corpBonds.corpBondNbfiDefaultLoss,
     )
@@ -192,8 +198,8 @@ object OpenEconEconomics:
       monetary = MonetaryPolicy(
         newRefRate = rateAndExp.refRate,
         newExp = rateAndExp.expectations,
-        newBondYield = bondQe.marketYield,
-        newWeightedCoupon = bondQe.newWeightedCoupon,
+        newGovBondMarketYield = bondQe.govBondMarketYield,
+        newGovDebtWeightedCoupon = bondQe.newGovDebtWeightedCoupon,
         qePurchaseAmount = bondQe.qePurchaseAmount,
         postFxNbp = bondQe.postFxNbp,
         postFxNbpFinancialStocks = bondQe.postFxNbpFinancialStocks,
@@ -272,6 +278,7 @@ object OpenEconEconomics:
         diasporaInflow = in.householdFinancial.diasporaInflow,
         tourismExport = in.householdFinancial.tourismExport,
         tourismImport = in.householdFinancial.tourismImport,
+        govBondMarketYield = in.world.gov.govBondMarketYield,
       ),
     )
     ForexResult(oeResult.forex, oeResult.bop, oeResult.valuationEffect, oeResult.fxIntervention)
@@ -340,36 +347,108 @@ object OpenEconEconomics:
       interbankInterest = Banking.interbankInterestFlowsFromBankStocks(banks, bankFinancialStocks, bsec.interbankRate).total,
     )
 
-  private def runStepBondYieldAndQe(
+  private def currentFiscalCouponContext(in: StepInput, external: ExternalResult, nbpRemittance: PLN)(using p: SimParams): CurrentFiscalCouponContext =
+    val tax               =
+      TaxRevenue.compute(
+        TaxRevenue.Input(
+          consumption = in.householdIncome.consumption,
+          pitRevenue = in.householdIncome.pitRevenue,
+          totalImports = external.newBop.totalImports,
+          informalCyclicalAdj = in.world.mechanisms.informalCyclicalAdj,
+        ),
+      )
+    val openingBankStocks = in.ledgerFinancialState.banks.map(LedgerFinancialState.projectBankFinancialStocks)
+    val polishBankLevy    =
+      Banking.computePolishBankLevy(
+        in.banks,
+        openingBankStocks,
+        bankId => CorporateBondOwnership.bankHolderFor(in.ledgerFinancialState, bankId),
+      )
+    CurrentFiscalCouponContext(tax, polishBankLevy.total, nbpRemittance)
+
+  private def currentFiscalDeficit(in: StepInput, context: CurrentFiscalCouponContext, debtService: PLN)(using p: SimParams): PLN =
+    FiscalBudget
+      .update(
+        FiscalBudget.Input(
+          prev = in.world.gov,
+          priceLevel = in.priceEquity.newPrice,
+          citPaid = in.firm.sumTax + in.priceEquity.dividendTax + context.tax.pitAfterEvasion,
+          govDividendRevenue = in.priceEquity.stateOwnedGovDividends,
+          vat = context.tax.vatAfterEvasion,
+          nbpRemittance = context.nbpRemittance,
+          polishBankLevyTax = context.polishBankLevyTax,
+          exciseRevenue = context.tax.exciseAfterEvasion,
+          customsDutyRevenue = context.tax.customsDutyRevenue,
+          unempBenefitSpend = in.householdIncome.hhAgg.totalUnempBenefits,
+          debtService = debtService,
+          zusGovSubvention = in.labor.newZus.govSubvention,
+          nfzGovSubvention = in.labor.newNfz.govSubvention,
+          earmarkedGovSubvention = in.labor.newEarmarked.totalGovSubvention,
+          socialTransferSpend = in.householdIncome.hhAgg.totalSocialTransfers,
+          euCofinancing = in.priceEquity.euCofin,
+          euProjectCapital = in.priceEquity.euProjectCapital,
+          govPurchasesActual = in.demand.govPurchases,
+        ),
+      )
+      .deficit
+
+  private def cappedDebtService(in: StepInput, coupon: Rate): PLN =
+    val rawDebtService = in.ledgerFinancialState.government.govBondOutstanding * coupon.monthly
+    rawDebtService.min(in.priceEquity.gdp * MaxDebtServiceGdpShare)
+
+  private def currentMonthDebtCouponAndService(
+      in: StepInput,
+      govBondMarketYield: Rate,
+      context: CurrentFiscalCouponContext,
+  )(using p: SimParams): (Rate, PLN) =
+    var debtService  = PLN.Zero
+    var coupon       = in.world.gov.govDebtWeightedCoupon
+    var i            = 0
+    while i < 8 do
+      val deficit         = currentFiscalDeficit(in, context, debtService)
+      coupon = updateGovDebtWeightedCouponPublic(
+        prevCoupon = in.world.gov.govDebtWeightedCoupon,
+        govBondMarketYield = govBondMarketYield,
+        bondsOutstanding = in.ledgerFinancialState.government.govBondOutstanding,
+        deficit = deficit,
+        avgMaturityMonths = p.fiscal.govAvgMaturityMonths,
+      )
+      val nextDebtService = cappedDebtService(in, coupon)
+      if nextDebtService == debtService then return (coupon, debtService)
+      debtService = nextDebtService
+      i += 1
+    val finalDeficit = currentFiscalDeficit(in, context, debtService)
+    val finalCoupon  = updateGovDebtWeightedCouponPublic(
+      prevCoupon = in.world.gov.govDebtWeightedCoupon,
+      govBondMarketYield = govBondMarketYield,
+      bondsOutstanding = in.ledgerFinancialState.government.govBondOutstanding,
+      deficit = finalDeficit,
+      avgMaturityMonths = p.fiscal.govAvgMaturityMonths,
+    )
+    (finalCoupon, cappedDebtService(in, finalCoupon))
+
+  private def runStepGovBondMarketYieldAndQe(
       in: StepInput,
       bankAgg: Banking.Aggregate,
       newRefRate: Rate,
       newExp: Expectations.State,
-      fxResult: Nbp.FxInterventionResult,
+      external: ExternalResult,
       interbank: InterbankResult,
   )(using p: SimParams): BondQeResult =
-    val annualGdpForBonds = in.priceEquity.gdp * 12
-    val debtToGdp         = if annualGdpForBonds > PLN.Zero then (in.world.gov.cumulativeDebt / annualGdpForBonds).toShare else Share.Zero
-    val nbpBondGdpShare   = if annualGdpForBonds > PLN.Zero then (in.world.nbp.qeCumulative / annualGdpForBonds).toShare else Share.Zero
-    val credPremium       =
+    val annualGdpForBonds                              = in.priceEquity.gdp * 12
+    val debtToGdp                                      = if annualGdpForBonds > PLN.Zero then (in.world.gov.cumulativeDebt / annualGdpForBonds).toShare else Share.Zero
+    val nbpBondGdpShare                                = if annualGdpForBonds > PLN.Zero then (in.world.nbp.qeCumulative / annualGdpForBonds).toShare else Share.Zero
+    val credPremium                                    =
       val deAnchor = (Share.One - in.world.mechanisms.expectations.credibility) *
         (in.world.mechanisms.expectations.expectedInflation - p.monetary.targetInfl).abs.toScalar.toShare
       (deAnchor * p.labor.expBondSensitivity).toRate
-    val marketYield       = Nbp.bondYield(newRefRate, debtToGdp, nbpBondGdpShare, in.world.bop.nfa, credPremium)
-
-    val newWeightedCoupon = updateWeightedCouponPublic(
-      prevCoupon = in.world.gov.weightedCoupon,
-      marketYield = marketYield,
-      bondsOutstanding = in.ledgerFinancialState.government.govBondOutstanding,
-      deficit = in.world.gov.deficit,
-      avgMaturityMonths = p.fiscal.govAvgMaturityMonths,
-    )
-
-    val rawDebtService     = in.ledgerFinancialState.government.govBondOutstanding * newWeightedCoupon.monthly
-    val monthlyDebtService = rawDebtService.min(in.priceEquity.gdp * MaxDebtServiceGdpShare)
-    val bankBondIncome     = bankAgg.govBondHoldings * marketYield.monthly
-    val nbpBondIncome      = in.ledgerFinancialState.nbp.govBondHoldings * marketYield.monthly
-    val nbpRemittance      = nbpBondIncome - interbank.reserveInterest - interbank.standingFacilityIncome
+    val govBondMarketYield                             = Nbp.govBondMarketYield(newRefRate, debtToGdp, nbpBondGdpShare, in.world.bop.nfa, credPremium)
+    val bankBondIncome                                 = bankAgg.govBondHoldings * govBondMarketYield.monthly
+    val nbpBondIncome                                  = in.ledgerFinancialState.nbp.govBondHoldings * govBondMarketYield.monthly
+    val nbpRemittance                                  = nbpBondIncome - interbank.reserveInterest - interbank.standingFacilityIncome
+    val fiscalContext                                  = currentFiscalCouponContext(in, external, nbpRemittance)
+    val (newGovDebtWeightedCoupon, monthlyDebtService) =
+      currentMonthDebtCouponAndService(in, govBondMarketYield, fiscalContext)
 
     val qeActivate       = Nbp.shouldActivateQe(newRefRate, in.priceEquity.newInfl, newExp.expectedInflation)
     val qeTaper          = Nbp.shouldTaperQe(in.priceEquity.newInfl, newExp.expectedInflation)
@@ -390,14 +469,23 @@ object OpenEconEconomics:
     val qeRequest        =
       Nbp.executeQe(preQeNbp, preQeNbpStocks, bankAgg.govBondHoldings, annualGdpForBonds, in.priceEquity.newInfl, newExp.expectedInflation)
     val qePurchaseAmount = qeRequest.requestedPurchase
-    val postFxNbp        = qeRequest.nbpState.copy(monthly = qeRequest.nbpState.monthly.copy(lastFxTraded = fxResult.eurTraded))
+    val postFxNbp        = qeRequest.nbpState.copy(monthly = qeRequest.nbpState.monthly.copy(lastFxTraded = external.fxIntervention.eurTraded))
     val postFxNbpStocks  = preQeNbpStocks.copy(
-      foreignAssets = fxResult.newReserves,
+      foreignAssets = external.fxIntervention.newReserves,
     )
 
-    BondQeResult(marketYield, newWeightedCoupon, bankBondIncome, nbpRemittance, monthlyDebtService, qePurchaseAmount, postFxNbp, postFxNbpStocks)
+    BondQeResult(
+      govBondMarketYield,
+      newGovDebtWeightedCoupon,
+      bankBondIncome,
+      nbpRemittance,
+      monthlyDebtService,
+      qePurchaseAmount,
+      postFxNbp,
+      postFxNbpStocks,
+    )
 
-  private def runStepCorporateBonds(in: StepInput, bankAgg: Banking.Aggregate, newBondYield: Rate)(using SimParams): CorporateBonds =
+  private def runStepCorporateBonds(in: StepInput, bankAgg: Banking.Aggregate, newGovBondMarketYield: Rate)(using SimParams): CorporateBonds =
     val openingCorpBondProjection = CorporateBondOwnership.stockStateFromLedger(in.ledgerFinancialState)
     val corpBondAmort             = CorporateBondMarket.amortization(openingCorpBondProjection)
     val corpBondStep              = CorporateBondMarket
@@ -405,7 +493,7 @@ object OpenEconEconomics:
         CorporateBondMarket.StepInput(
           prevState = in.world.financialMarkets.corporateBonds,
           prevStock = openingCorpBondProjection,
-          govBondYield = newBondYield,
+          govBondMarketYield = newGovBondMarketYield,
           nplRatio = bankAgg.nplRatio,
           totalBondDefault = in.firm.totalBondDefault,
           totalBondIssuance = in.firm.actualBondIssuance,
@@ -427,7 +515,7 @@ object OpenEconEconomics:
 
   private def runStepInsurance(
       in: StepInput,
-      newBondYield: Rate,
+      newGovBondMarketYield: Rate,
       newCorpBondYield: Rate,
       corpBondDefaultLoss: PLN,
   )(using p: SimParams): InsuranceResult =
@@ -444,7 +532,7 @@ object OpenEconEconomics:
           employed = in.labor.employed,
           wage = in.labor.newWage,
           unempRate = unempRate,
-          govBondYield = newBondYield,
+          govBondMarketYield = newGovBondMarketYield,
           corpBondYield = newCorpBondYield,
           equityReturn = in.priceEquity.equityAfterForeignStock.monthlyReturn,
           corpBondDefaultLoss = corpBondDefaultLoss,
@@ -456,7 +544,7 @@ object OpenEconEconomics:
       in: StepInput,
       bankAgg: Banking.Aggregate,
       postFxNbp: Nbp.State,
-      newBondYield: Rate,
+      newGovBondMarketYield: Rate,
       newCorpBondYield: Rate,
       corpBondDefaultLoss: PLN,
   )(using p: SimParams): NbfiResult =
@@ -471,7 +559,7 @@ object OpenEconEconomics:
           priceLevel = in.world.priceLevel,
           unempRate = nbfiUnempRate,
           bankNplRatio = bankAgg.nplRatio,
-          govBondYield = newBondYield,
+          govBondMarketYield = newGovBondMarketYield,
           corpBondYield = newCorpBondYield,
           equityReturn = in.priceEquity.equityAfterForeignStock.monthlyReturn,
           depositRate = nbfiDepositRate,

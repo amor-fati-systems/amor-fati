@@ -29,6 +29,7 @@ case class BankCapitalDiagnostics(
     eclProvisionChange: PLN = PLN.Zero,       // IFRS 9 provision increase, positive when capital is hit
     capitalDestruction: PLN = PLN.Zero,       // shareholder capital wiped when banks newly fail
     interbankContagionLoss: PLN = PLN.Zero,   // failed-counterparty interbank exposure loss
+    preReconciliationBreakdown: BankCapitalResidualBreakdown = BankCapitalResidualBreakdown.zero,
     reconciliationResidual: PLN = PLN.Zero,   // aggregate exactness patch distributed across bank rows
     depositBailInLoss: PLN = PLN.Zero,        // depositor haircut from resolution, not equity-capital P&L
     newFailures: Int = 0,                     // banks newly marked failed during the month
@@ -45,14 +46,54 @@ case class BankCapitalDiagnostics(
     retainedIncome - realizedCreditLoss - bfgLevy - polishBankLevyTax - unrealizedBondLoss -
       htmRealizedLoss - eclProvisionChange - interbankContagionLoss - capitalDestruction
 
-  /** Unexplained capital delta after ordinary waterfall terms and the aggregate
-    * exactness patch. Values away from zero indicate a missing diagnostic term.
+  /** Capital gap before the aggregate exactness patch is applied.
+    *
+    * This is the pre-patch actual capital movement minus the named waterfall
+    * target. In quiet paths it is usually the opposite sign of
+    * `reconciliationResidual`, because the reconciliation writer closes this
+    * exact gap.
+    */
+  def preReconciliationResidual: PLN =
+    delta - expectedDelta - reconciliationResidual
+
+  /** Remaining unexplained capital delta after ordinary waterfall terms and the
+    * aggregate exactness patch have both been applied. Values away from zero
+    * indicate a missing post-reconciliation diagnostic term.
     */
   def waterfallResidual: PLN =
-    delta - expectedDelta - reconciliationResidual
+    delta - expectedDelta
 
 object BankCapitalDiagnostics:
   val zero: BankCapitalDiagnostics = BankCapitalDiagnostics()
+
+/** Signed contribution breakdown for `BankCapital_PreReconciliationResidual`.
+  *
+  * Named fields are signed diagnostic slots for pre-patch capital gaps. The
+  * reconciliation target currently sources ordinary bank-capital terms from the
+  * executed per-bank update, so any remaining pre-reconciliation gap should
+  * normally appear in `unexplained`.
+  */
+case class BankCapitalResidualBreakdown(
+    retainedIncome: PLN = PLN.Zero,
+    realizedCreditLoss: PLN = PLN.Zero,
+    bfgLevy: PLN = PLN.Zero,
+    polishBankLevyTax: PLN = PLN.Zero,
+    unrealizedBondLoss: PLN = PLN.Zero,
+    htmRealizedLoss: PLN = PLN.Zero,
+    eclProvisionChange: PLN = PLN.Zero,
+    interbankContagionLoss: PLN = PLN.Zero,
+    capitalDestruction: PLN = PLN.Zero,
+    unexplained: PLN = PLN.Zero,
+):
+  def explained: PLN =
+    retainedIncome + realizedCreditLoss + bfgLevy + polishBankLevyTax + unrealizedBondLoss +
+      htmRealizedLoss + eclProvisionChange + interbankContagionLoss + capitalDestruction
+
+  def total: PLN =
+    explained + unexplained
+
+object BankCapitalResidualBreakdown:
+  val zero: BankCapitalResidualBreakdown = BankCapitalResidualBreakdown()
 
 /** Monthly bank-failure trigger diagnostics.
   *

@@ -82,7 +82,7 @@ class HouseholdIncomeEconomicsSpec extends AnyFlatSpec with Matchers:
       ccyb = Multiplier.Zero,
       bankCorpBonds = _ => PLN.Zero,
       lendingBaseRate = Rate.decimal(5, 2),
-      bondYield = Rate.Zero,
+      govBondMarketYield = Rate.Zero,
     )
 
     val first  = supply.approve(BankId(0), Banking.CreditProduct.ConsumerLoan, PLN(1000), RandomStream.seeded(1))

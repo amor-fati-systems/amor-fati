@@ -2,7 +2,6 @@ package com.boombustgroup.amorfati.engine.economics.banking
 
 import com.boombustgroup.amorfati.agents.*
 import com.boombustgroup.amorfati.config.SimParams
-import com.boombustgroup.amorfati.engine.markets.HousingMarket
 import com.boombustgroup.amorfati.types.*
 
 /** Failure detection, depositor bail-in, purchase-and-assumption resolution,
@@ -17,20 +16,17 @@ private[banking] object BankFailurePipeline:
       in: StepInput,
       prevBankAgg: Banking.Aggregate,
       waterfall: BondWaterfallResult,
-      creditLosses: BankCreditLossAccounting.Breakdown,
       settledBankCorpBonds: Vector[PLN],
       jstDepositChange: PLN,
       investNetDepositFlow: PLN,
       quasiFiscalDepositChange: PLN,
-      mortgageFlows: HousingMarket.MortgageFlows,
-      polishBankLevyTax: PLN,
       htmRealizedLoss: PLN,
+      bankCapitalTerms: BankCapitalTerms,
   )(using p: SimParams): FailureResolutionPipelineResult =
     val bankCorpBondHoldingsAfterSettlement = Banking.bankCorpBondHoldingsFromVector(settledBankCorpBonds)
     val failureDetection                    = runFailureDetection(in, waterfall, bankCorpBondHoldingsAfterSettlement)
     val bailIn                              = runBailIn(failureDetection)
     val bankResolution                      = runBankResolution(failureDetection, bailIn, settledBankCorpBonds)
-    val bankCapitalTerms                    = computeBankCapitalTerms(prevBankAgg, waterfall.banks, creditLosses, in, mortgageFlows)
     val aggregateReconciliation             = BankAggregateReconciliation.reconcile(
       banks = bankResolution.banks,
       financialStocks = bankResolution.financialStocks,
@@ -43,7 +39,6 @@ private[banking] object BankFailurePipeline:
       bailInLoss = bailIn.loss,
       multiCapDestruction = failureDetection.capitalDestruction,
       interbankContagionLoss = failureDetection.contagion.totalLoss,
-      polishBankLevyTax = polishBankLevyTax,
       htmRealizedLoss = htmRealizedLoss,
       bankCapitalTerms = bankCapitalTerms,
     )
@@ -176,44 +171,6 @@ private[banking] object BankFailurePipeline:
       resolvedBankCount = resolution.resolvedBankCount + reconciled.resolvedBanksDelta,
       allFailedFallbackUsed = resolution.allFailedFallbackUsed || reconciled.allFailedFallbackUsed,
       bankReconciliationDiagnostics = reconciled.bankReconciliationDiagnostics,
+      capitalResidualBreakdown = reconciled.capitalResidualBreakdown,
       capitalReconciliationResidual = reconciled.capitalResidual,
-    )
-
-  private def computeBankCapitalTerms(
-      prevBankAgg: Banking.Aggregate,
-      bankRows: Vector[Banking.BankState],
-      creditLosses: BankCreditLossAccounting.Breakdown,
-      in: StepInput,
-      mortgageFlows: HousingMarket.MortgageFlows,
-  )(using p: SimParams): BankCapitalTerms =
-    require(
-      bankRows.length == in.banks.length,
-      s"BankFailurePipeline bank-capital terms require aligned bank rows, got ${bankRows.length} post-update banks and ${in.banks.length} opening banks",
-    )
-    val yieldChange        = in.openEconomy.monetary.newBondYield - in.world.gov.bondYield
-    val unrealizedBondLoss =
-      if yieldChange > Rate.Zero then prevBankAgg.afsBonds * yieldChange * p.banking.govBondDuration
-      else PLN.Zero
-    var eclRaw             = 0L
-    var i                  = 0
-    while i < bankRows.length do
-      val curr     = bankRows(i)
-      val prev     = in.banks(i)
-      val currProv = EclStaging.allowance(curr.eclStaging)
-      val prevProv = EclStaging.allowance(prev.eclStaging)
-      eclRaw += (currProv - prevProv).toLong
-      i += 1
-    val eclProvisionChange = PLN.fromRaw(eclRaw)
-    val capitalGrossIncome = in.firm.intIncome +
-      prevBankAgg.govBondHoldings * in.openEconomy.monetary.newBondYield.monthly -
-      in.householdFinancial.depositInterestPaid + in.openEconomy.banking.totalReserveInterest +
-      in.openEconomy.banking.totalStandingFacilityIncome + in.openEconomy.banking.totalInterbankInterest +
-      mortgageFlows.interest + (in.householdFinancial.consumerDebtService - in.householdFinancial.consumerPrincipal) +
-      in.openEconomy.corpBonds.corpBondBankCoupon
-    BankCapitalTerms(
-      creditLosses = creditLosses,
-      unrealizedBondLoss = unrealizedBondLoss,
-      eclProvisionChange = eclProvisionChange,
-      capitalGrossIncome = capitalGrossIncome,
-      retainedIncome = capitalGrossIncome * p.banking.profitRetention,
     )

@@ -12,51 +12,51 @@ class CentralBankSpec extends AnyFlatSpec with Matchers:
   private val p: SimParams = summon[SimParams]
   private val zeroStocks   = Nbp.FinancialStocks(PLN.Zero, PLN.Zero)
 
-  // --- bondYield ---
+  // --- govBondMarketYield ---
 
-  "Nbp.bondYield" should "include calibrated fiscal risk premium" in {
-    val y = Nbp.bondYield(Rate.decimal(5, 2), Share.decimal(50, 2), Share.Zero, PLN.Zero, Rate.Zero)
+  "Nbp.govBondMarketYield" should "include calibrated fiscal risk premium" in {
+    val y = Nbp.govBondMarketYield(Rate.decimal(5, 2), Share.decimal(50, 2), Share.Zero, PLN.Zero, Rate.Zero)
     // debtToGdp=0.50 > 0.40 -> fiscalRisk = 0.03 * 0.10 = 0.003
     // yield = max(0.05, 0.025) + 0.005 + 0.003 - 0 - 0 = 0.058
     decimal(y) shouldBe BigDecimal("0.058") +- BigDecimal("0.001")
   }
 
   it should "keep Poland-like debt levels below crisis pricing" in {
-    val y = Nbp.bondYield(Rate.decimal(375, 4), Share.decimal(70, 2), Share.Zero, PLN.Zero, Rate.Zero)
+    val y = Nbp.govBondMarketYield(Rate.decimal(375, 4), Share.decimal(70, 2), Share.Zero, PLN.Zero, Rate.Zero)
     decimal(y) shouldBe BigDecimal("0.0655") +- BigDecimal("0.001")
   }
 
   it should "use Bund as a floor for the long end of the sovereign curve" in {
-    val y = Nbp.bondYield(Rate.decimal(1, 2), Share.decimal(35, 2), Share.Zero, PLN.Zero, Rate.Zero)
+    val y = Nbp.govBondMarketYield(Rate.decimal(1, 2), Share.decimal(35, 2), Share.Zero, PLN.Zero, Rate.Zero)
     decimal(y) shouldBe BigDecimal("0.030") +- BigDecimal("0.001")
   }
 
   it should "increase with debtToGdp (fiscal risk premium)" in {
-    val low  = Nbp.bondYield(Rate.decimal(5, 2), Share.decimal(30, 2), Share.Zero, PLN.Zero, Rate.Zero)
-    val high = Nbp.bondYield(Rate.decimal(5, 2), Share.decimal(70, 2), Share.Zero, PLN.Zero, Rate.Zero)
+    val low  = Nbp.govBondMarketYield(Rate.decimal(5, 2), Share.decimal(30, 2), Share.Zero, PLN.Zero, Rate.Zero)
+    val high = Nbp.govBondMarketYield(Rate.decimal(5, 2), Share.decimal(70, 2), Share.Zero, PLN.Zero, Rate.Zero)
     decimal(high) should be > decimal(low)
   }
 
   it should "decrease with nbpBondGdpShare (QE compression)" in {
-    val noQe   = Nbp.bondYield(Rate.decimal(5, 2), Share.decimal(50, 2), Share.Zero, PLN.Zero, Rate.Zero)
-    val withQe = Nbp.bondYield(Rate.decimal(5, 2), Share.decimal(50, 2), Share.decimal(20, 2), PLN.Zero, Rate.Zero)
+    val noQe   = Nbp.govBondMarketYield(Rate.decimal(5, 2), Share.decimal(50, 2), Share.Zero, PLN.Zero, Rate.Zero)
+    val withQe = Nbp.govBondMarketYield(Rate.decimal(5, 2), Share.decimal(50, 2), Share.decimal(20, 2), PLN.Zero, Rate.Zero)
     decimal(withQe) should be < decimal(noQe)
   }
 
   it should "apply foreign demand discount when NFA > 0" in {
-    val nfaNeg = Nbp.bondYield(Rate.decimal(5, 2), Share.decimal(50, 2), Share.Zero, PLN(-1000), Rate.Zero)
-    val nfaPos = Nbp.bondYield(Rate.decimal(5, 2), Share.decimal(50, 2), Share.Zero, PLN(1000), Rate.Zero)
+    val nfaNeg = Nbp.govBondMarketYield(Rate.decimal(5, 2), Share.decimal(50, 2), Share.Zero, PLN(-1000), Rate.Zero)
+    val nfaPos = Nbp.govBondMarketYield(Rate.decimal(5, 2), Share.decimal(50, 2), Share.Zero, PLN(1000), Rate.Zero)
     decimal(nfaPos) should be < decimal(nfaNeg)
   }
 
   it should "have a floor at 0" in {
-    val y = Nbp.bondYield(Rate.decimal(1, 2), Share.decimal(30, 2), Share.decimal(50, 2), PLN(1000), Rate.Zero)
+    val y = Nbp.govBondMarketYield(Rate.decimal(1, 2), Share.decimal(30, 2), Share.decimal(50, 2), PLN(1000), Rate.Zero)
     decimal(y) should be >= BigDecimal("0.0")
   }
 
   it should "have zero fiscal risk when debtToGdp <= 0.40" in {
-    val y1 = Nbp.bondYield(Rate.decimal(5, 2), Share.decimal(30, 2), Share.Zero, PLN.Zero, Rate.Zero)
-    val y2 = Nbp.bondYield(Rate.decimal(5, 2), Share.decimal(40, 2), Share.Zero, PLN.Zero, Rate.Zero)
+    val y1 = Nbp.govBondMarketYield(Rate.decimal(5, 2), Share.decimal(30, 2), Share.Zero, PLN.Zero, Rate.Zero)
+    val y2 = Nbp.govBondMarketYield(Rate.decimal(5, 2), Share.decimal(40, 2), Share.Zero, PLN.Zero, Rate.Zero)
     // Both below threshold -> same yield (only termPremium differs)
     y1 shouldBe y2
   }

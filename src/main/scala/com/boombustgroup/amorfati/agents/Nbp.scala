@@ -15,7 +15,7 @@ object Nbp:
   private val DebtThreshold         = Share.decimal(40, 2)      // debt-to-GDP threshold for fiscal risk premium
   private val FiscalRiskCap         = Rate.decimal(10, 2)       // maximum fiscal risk premium
   private val CredPremiumCap        = Rate.decimal(5, 2)        // max credibility premium (5pp, ~Turkey 2018)
-  private val BondYieldCap          = Rate.decimal(20, 2)       // absolute yield ceiling (20%, beyond any EM precedent)
+  private val GovBondMarketYieldCap = Rate.decimal(20, 2)       // absolute yield ceiling (20%, beyond any EM precedent)
   private val QeCompressionCoeff    = Rate.decimal(5, 1)        // yield compression per unit of NBP bond/GDP share
   private val ForeignDemandDiscount = Rate.decimal(5, 3)        // yield discount when NFA > 0
   private val QeActivationSlack     = Rate.decimal(25, 4)       // rate proximity to floor for QE activation
@@ -158,7 +158,7 @@ object Nbp:
   /** Bond yield = long-rate anchor + fiscalRisk − qeCompression − foreignDemand
     * + credibilityPremium.
     */
-  def bondYield(
+  def govBondMarketYield(
       refRate: Rate,
       debtToGdp: Share,
       nbpBondGdpShare: Share,
@@ -170,7 +170,7 @@ object Nbp:
     val qeCompress     = QeCompressionCoeff * nbpBondGdpShare
     val foreignDemand  = if nfa > PLN.Zero then ForeignDemandDiscount else Rate.Zero
     val cappedCredPrem = credibilityPremium.min(CredPremiumCap)
-    (curveAnchor + fiscalRisk - qeCompress - foreignDemand + cappedCredPrem).max(Rate.Zero).min(BondYieldCap)
+    (curveAnchor + fiscalRisk - qeCompress - foreignDemand + cappedCredPrem).max(Rate.Zero).min(GovBondMarketYieldCap)
 
   /** Domestic policy-rate anchor with a Bund floor for the long end of the
     * sovereign curve.

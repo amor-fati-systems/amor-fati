@@ -80,6 +80,7 @@ private[banking] object BankingLedgerClosing:
       eclProvisionChange = bankCapitalTerms.eclProvisionChange,
       capitalDestruction = multi.multiCapDestruction,
       interbankContagionLoss = multi.interbankContagionLoss,
+      preReconciliationBreakdown = multi.capitalResidualBreakdown,
       reconciliationResidual = multi.capitalReconciliationResidual,
       depositBailInLoss = multi.bailInLoss,
       newFailures = multi.newFailures,

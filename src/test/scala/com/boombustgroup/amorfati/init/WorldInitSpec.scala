@@ -1,7 +1,7 @@
 package com.boombustgroup.amorfati.init
 
 import com.boombustgroup.amorfati.FixedPointSpecSupport.*
-import com.boombustgroup.amorfati.agents.{Banking, EclStaging}
+import com.boombustgroup.amorfati.agents.{Banking, EclStaging, Nbp}
 import com.boombustgroup.amorfati.config.{OpeningBankBalanceProfileBridge, SimParams}
 import com.boombustgroup.amorfati.engine.ledger.LedgerFinancialState
 import com.boombustgroup.amorfati.engine.mechanisms.Macroprudential
@@ -32,6 +32,16 @@ class WorldInitSpec extends AnyFlatSpec with Matchers:
     world.mechanisms.macropru.ccyb shouldBe p.banking.initialCcyb
     world.mechanisms.expectations.expectedInflation shouldBe p.monetary.initialExpectedInflation
     world.mechanisms.expectations.expectedRate shouldBe p.monetary.initialExpectedRate
+
+    val annualGdp       = p.pop.realGdp * p.gdpRatio.toMultiplier
+    val debtToGdp       = if annualGdp > PLN.Zero then (p.fiscal.initGovDebt / annualGdp).toShare else Share.Zero
+    val credibilityPrem =
+      val deAnchor = (Share.One - world.mechanisms.expectations.credibility) *
+        (world.mechanisms.expectations.expectedInflation - p.monetary.targetInfl).abs.toScalar.toShare
+      (deAnchor * p.labor.expBondSensitivity).toRate
+    world.gov.govBondMarketYield shouldBe Nbp.govBondMarketYield(p.monetary.initialRate, debtToGdp, Share.Zero, PLN.Zero, credibilityPrem)
+    world.gov.govBondMarketYield should be > Rate.Zero
+    world.gov.govDebtWeightedCoupon shouldBe p.fiscal.govInitialDebtWeightedCoupon
   }
 
   it should "initialize unemployment and GDP scale from the production baseline" in {

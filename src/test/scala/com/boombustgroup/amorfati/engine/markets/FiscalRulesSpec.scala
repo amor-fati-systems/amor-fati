@@ -145,16 +145,16 @@ class FiscalRulesSpec extends AnyWordSpec with Matchers:
     }
   }
 
-  "Nbp.piecewiseFiscalRisk (via bondYield)" should {
+  "Nbp.piecewiseFiscalRisk (via govBondMarketYield)" should {
 
     "have zero fiscal risk at 35% debt/GDP" in {
-      val y        = Nbp.bondYield(Rate.decimal(5, 2), Share.decimal(35, 2), Share.Zero, PLN.Zero, Rate.Zero)
+      val y        = Nbp.govBondMarketYield(Rate.decimal(5, 2), Share.decimal(35, 2), Share.Zero, PLN.Zero, Rate.Zero)
       val expected = BigDecimal("0.05") + BigDecimal("0.005") // ref + termPremium
       decimal(y) shouldBe expected +- BigDecimal("0.001")
     }
 
     "have base-only risk at 45% debt/GDP" in {
-      val y        = Nbp.bondYield(Rate.decimal(5, 2), Share.decimal(45, 2), Share.Zero, PLN.Zero, Rate.Zero)
+      val y        = Nbp.govBondMarketYield(Rate.decimal(5, 2), Share.decimal(45, 2), Share.Zero, PLN.Zero, Rate.Zero)
       val baseRisk = BigDecimal("0.03") * BigDecimal("0.05")
       val expected = BigDecimal("0.05") + BigDecimal("0.005") + baseRisk
       decimal(y) shouldBe expected +- BigDecimal("0.001")
@@ -175,18 +175,18 @@ class FiscalRulesSpec extends AnyWordSpec with Matchers:
         BigDecimal("0.70"),
         BigDecimal("0.90"),
       )
-      val yields     = debtLevels.map(d => decimal(Nbp.bondYield(Rate.decimal(5, 2), shareBD(d), Share.Zero, PLN.Zero, Rate.Zero)))
+      val yields     = debtLevels.map(d => decimal(Nbp.govBondMarketYield(Rate.decimal(5, 2), shareBD(d), Share.Zero, PLN.Zero, Rate.Zero)))
       for (y1, y2) <- yields.zip(yields.tail) do y2 should be >= y1
     }
 
     "increase above 40% threshold" in {
-      val yBelow = Nbp.bondYield(Rate.decimal(5, 2), Share.decimal(39, 2), Share.Zero, PLN.Zero, Rate.Zero)
-      val yAbove = Nbp.bondYield(Rate.decimal(5, 2), Share.decimal(42, 2), Share.Zero, PLN.Zero, Rate.Zero)
+      val yBelow = Nbp.govBondMarketYield(Rate.decimal(5, 2), Share.decimal(39, 2), Share.Zero, PLN.Zero, Rate.Zero)
+      val yAbove = Nbp.govBondMarketYield(Rate.decimal(5, 2), Share.decimal(42, 2), Share.Zero, PLN.Zero, Rate.Zero)
       decimal(yAbove) should be > decimal(yBelow)
     }
 
     "never exceed FiscalRiskCap (10%)" in {
-      val y = Nbp.bondYield(Rate.decimal(5, 2), Share.decimal(90, 2), Share.Zero, PLN.Zero, Rate.Zero)
+      val y = Nbp.govBondMarketYield(Rate.decimal(5, 2), Share.decimal(90, 2), Share.Zero, PLN.Zero, Rate.Zero)
       decimal(y) should be <= BigDecimal("0.05") + BigDecimal("0.005") + BigDecimal("0.10") + BigDecimal("0.001")
     }
   }

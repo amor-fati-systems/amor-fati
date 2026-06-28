@@ -44,6 +44,7 @@ object SfcSemanticProjection:
       reserveInterest = evidence.amount(FlowMechanism.BankReserveInterest),
       standingFacilityIncome = evidence.signedAmount(FlowMechanism.BankStandingFacility),
       interbankInterest = evidence.signedAmount(FlowMechanism.BankInterbankInterest),
+      bankRetainedIncome = banking.retainedIncome,
       jstDepositChange = evidence.jstDepositChange,
       jstSpending = evidence.amount(FlowMechanism.JstSpending),
       jstRevenue = evidence.jstRevenue,
@@ -109,7 +110,7 @@ object SfcSemanticProjection:
       flows: Sfc.SemanticFlows,
       batches: Vector[BatchedFlow],
       execution: RuntimeFlowExecutor.Result,
-  )(using SimParams): Sfc.SfcResult =
+  ): Sfc.SfcResult =
     Sfc.validate(
       prev = runtimeState(stateIn),
       curr = runtimeState(nextState),

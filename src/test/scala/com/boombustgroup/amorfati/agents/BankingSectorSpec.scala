@@ -84,10 +84,10 @@ class BankingSectorSpec extends AnyFlatSpec with Matchers:
       corpBondHoldings: PLN = PLN.Zero,
       cfg: Banking.Config = configs(0),
       refRate: Rate = Rate.decimal(5, 2),
-      bondYield: Rate = Rate.Zero,
+      govBondMarketYield: Rate = Rate.Zero,
   )(using SimParams): Banking.CreditApproval =
     Banking.creditApproval(
-      Banking.CreditApprovalContext(row.bank, ccyb, corpBondHoldings, Banking.CreditPortfolioContext(cfg, refRate, bondYield)),
+      Banking.CreditApprovalContext(row.bank, ccyb, corpBondHoldings, Banking.CreditPortfolioContext(cfg, refRate, govBondMarketYield)),
       row.stocks,
       product,
       amount,
@@ -103,10 +103,10 @@ class BankingSectorSpec extends AnyFlatSpec with Matchers:
       corpBondHoldings: PLN = PLN.Zero,
       cfg: Banking.Config = configs(0),
       refRate: Rate = Rate.decimal(5, 2),
-      bondYield: Rate = Rate.Zero,
+      govBondMarketYield: Rate = Rate.Zero,
   )(using SimParams): Boolean =
     Banking.canLend(
-      Banking.CreditApprovalContext(row.bank, ccyb, corpBondHoldings, Banking.CreditPortfolioContext(cfg, refRate, bondYield)),
+      Banking.CreditApprovalContext(row.bank, ccyb, corpBondHoldings, Banking.CreditPortfolioContext(cfg, refRate, govBondMarketYield)),
       row.stocks,
       product,
       amount,
@@ -349,7 +349,7 @@ class BankingSectorSpec extends AnyFlatSpec with Matchers:
       Banking.CreditProduct.FirmLoan,
       PLN(1000),
       RandomStream.seeded(1L),
-      bondYield = Rate(1),
+      govBondMarketYield = Rate(1),
     )
 
     decision.approved shouldBe false
@@ -365,7 +365,7 @@ class BankingSectorSpec extends AnyFlatSpec with Matchers:
     given SimParams = SimParamsTestOverrides.bankPortfolioChoice(Share.One, Multiplier(20))
     val row         = mkBankRow(loans = PLN(1000000), capital = PLN(1000000))
 
-    val decision = approval(row, Banking.CreditProduct.FirmLoan, PLN(1000), bondYield = Rate(1))
+    val decision = approval(row, Banking.CreditProduct.FirmLoan, PLN(1000), govBondMarketYield = Rate(1))
 
     decision.approved shouldBe true
     decision.approvalProbability shouldBe Some(Share.One)
@@ -376,8 +376,8 @@ class BankingSectorSpec extends AnyFlatSpec with Matchers:
     val loanFocused = mkBankRow(deposits = PLN(1000000), loans = PLN(800000), capital = PLN(500000), govBondHoldings = PLN.Zero)
     val bondHeavy   = mkBankRow(deposits = PLN(1000000), loans = PLN(800000), capital = PLN(500000), govBondHoldings = PLN(10000000))
 
-    val loanFocusedApproval = approval(loanFocused, Banking.CreditProduct.FirmLoan, PLN(100000), bondYield = Rate.Zero)
-    val bondHeavyApproval   = approval(bondHeavy, Banking.CreditProduct.FirmLoan, PLN(100000), bondYield = Rate.Zero)
+    val loanFocusedApproval = approval(loanFocused, Banking.CreditProduct.FirmLoan, PLN(100000), govBondMarketYield = Rate.Zero)
+    val bondHeavyApproval   = approval(bondHeavy, Banking.CreditProduct.FirmLoan, PLN(100000), govBondMarketYield = Rate.Zero)
 
     loanFocusedApproval.approvalProbability shouldBe Some(Share.One)
     bondHeavyApproval.approvalProbability shouldBe Some(Share.One)

@@ -86,11 +86,11 @@ object CorporateBondMarket:
   /** Compute current corporate bond yield = gov bond yield + credit spread.
     * Spread widens with system NPL (credit risk channel).
     */
-  def computeYield(govBondYield: Rate, nplRatio: Share)(using p: SimParams): Rate =
+  def computeYield(govBondMarketYield: Rate, nplRatio: Share)(using p: SimParams): Rate =
     val nplMult        = Multiplier.One + (nplRatio * NplSensitivity) // Share × Multiplier → Multiplier
     val cyclicalSpread = p.corpBond.spread * nplMult                  // Rate × Multiplier → Rate
     val spread         = cyclicalSpread.min(MaxSpread)
-    (govBondYield + spread).max(MinYield)
+    (govBondMarketYield + spread).max(MinYield)
 
   /** Monthly coupon income split across concrete holder buckets. */
   case class CouponResult(
@@ -206,14 +206,14 @@ object CorporateBondMarket:
   case class StepInput(
       prevState: State,
       prevStock: StockState,
-      govBondYield: Rate,
+      govBondMarketYield: Rate,
       nplRatio: Share,
       totalBondDefault: PLN,
       totalBondIssuance: PLN,
   )
 
   def step(in: StepInput)(using p: SimParams): StepResult =
-    val newYield        = computeYield(in.govBondYield, in.nplRatio)
+    val newYield        = computeYield(in.govBondMarketYield, in.nplRatio)
     val coupon          = computeCoupon(in.prevState, in.prevStock)
     val amort           = amortization(in.prevStock)
     val defaults        = processDefaults(in.prevStock, in.totalBondDefault)
@@ -242,7 +242,7 @@ object CorporateBondMarket:
     )
     val newState        = in.prevState.copy(
       corpBondYield = newYield,
-      creditSpread = (newYield - in.govBondYield).max(Rate.Zero),
+      creditSpread = (newYield - in.govBondMarketYield).max(Rate.Zero),
       lastIssuance = in.totalBondIssuance.max(PLN.Zero),
       lastAmortization = amort,
       lastDefaultAmount = defaults.grossDefault,

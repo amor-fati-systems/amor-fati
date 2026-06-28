@@ -47,6 +47,7 @@ class SfcPropertySpec extends AnyFlatSpec with Matchers with ScalaCheckPropertyC
         reserveInterest = PLN.Zero,
         standingFacilityIncome = PLN.Zero,
         interbankInterest = PLN.Zero,
+        bankRetainedIncome = PLN.Zero,
         jstDepositChange = PLN.Zero,
         jstSpending = PLN.Zero,
         jstRevenue = PLN.Zero,

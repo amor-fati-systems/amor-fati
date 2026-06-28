@@ -37,7 +37,7 @@ private[agents] object BankPortfolioChoice:
       product: CreditProduct,
       amount: PLN,
       loanRateBeforePortfolio: Rate,
-      bondYield: Rate,
+      govBondMarketYield: Rate,
       corpBondHoldings: PLN,
       ccyb: Multiplier,
   )(using p: SimParams): BankPortfolioChoiceAudit =
@@ -45,7 +45,7 @@ private[agents] object BankPortfolioChoice:
     val capitalCharge          = capitalCostRate(bank.id.toInt, product, ccyb)
     val levyCost               = marginalPolishBankLevyRate(bank, stocks, product, amount, corpBondHoldings)
     val riskAdjustedLoanReturn = loanRateBeforePortfolio - expectedLoss - capitalCharge - levyCost
-    val riskAdjustedBondReturn = bondYield
+    val riskAdjustedBondReturn = govBondMarketYield
     val wedge                  = riskAdjustedLoanReturn - riskAdjustedBondReturn
     val negativeWedge          = (Rate.Zero - wedge).max(Rate.Zero)
     val priceShare             = p.banking.portfolioWedgePriceShare
