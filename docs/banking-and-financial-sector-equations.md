@@ -585,8 +585,10 @@ RealizedCreditLoss =
 capital diagnostic surface is missing an explanatory term. `ReconciliationResidual`
 is the named exactness patch distributed across live banks after aggregate bank
 stocks are reconciled. `PreReconciliationResidual` is the signed capital gap
-before that patch, and the Monte Carlo `BankCapital_PreRecon*` columns decompose
-that gap into named target-vs-actual differences plus an unexplained remainder.
+before that patch. The Monte Carlo `BankCapital_PreRecon*` columns are signed
+diagnostic slots for that gap; because ordinary bank-capital terms are sourced
+from the executed per-bank update, any remaining gap should normally appear in
+`BankCapital_PreReconUnexplained`.
 
 `DepositBailInLoss` is carried beside bank-capital diagnostics for resolution
 analysis, but it is not an equity-capital P&L term. It is a depositor-side

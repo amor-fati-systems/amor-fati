@@ -146,7 +146,6 @@ private[banking] final case class PerBankHhFlows(
 private[banking] final case class SingleBankUpdate(
     bank: Banking.BankState,
     financialStocks: Banking.BankFinancialStocks,
-    creditLosses: BankCreditLossAccounting.Breakdown = BankCreditLossAccounting.Breakdown.zero,
     bankCapitalTerms: BankCapitalTerms = BankCapitalTerms.zero,
 )
 

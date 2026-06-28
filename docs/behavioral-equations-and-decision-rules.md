@@ -840,11 +840,12 @@ secondary failure checks. It is not routed through
 
 `BankCapital_ReconciliationResidual` is reported separately as an exactness
 correction to the per-bank allocation. `BankCapital_PreReconciliationResidual`
-is the signed capital gap before that correction, and `BankCapital_PreRecon*`
-columns decompose it into named target-vs-actual differences plus an unexplained
-remainder. `BankCapital_WaterfallResidual` is the remaining unexplained capital
-delta after that correction and should remain near zero unless a diagnostic term
-is missing.
+is the signed capital gap before that correction. `BankCapital_PreRecon*`
+columns are signed diagnostic slots for that gap; because ordinary bank-capital
+terms are sourced from the executed per-bank update, any remaining gap should
+normally appear in `BankCapital_PreReconUnexplained`. `BankCapital_WaterfallResidual`
+is the remaining unexplained capital delta after that correction and should
+remain near zero unless a diagnostic term is missing.
 `BankReconciliation_*` columns then inspect the most impacted bank row after the
 sector residual is distributed across live banks. They report the target bank id,
 capital before/after, CAR before/after, the allocated residual as a share of

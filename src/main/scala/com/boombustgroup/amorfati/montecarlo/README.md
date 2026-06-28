@@ -275,9 +275,10 @@ monthly Polish financial-institutions tax paid by active bank rows to central
 government. `BankCapital_PreReconciliationResidual` reports the capital gap
 before the aggregate exactness patch: positive values mean pre-patch bank
 capital was above the named waterfall target, and negative values mean it was
-below. The `BankCapital_PreRecon*` columns decompose that signed gap into named
-target-vs-actual differences; `BankCapital_PreReconUnexplained` is what remains
-after those named differences are accounted for. `BankCapital_ReconciliationResidual`
+below. The `BankCapital_PreRecon*` columns are signed slots for diagnosing that
+gap. Ordinary bank-capital terms are sourced from the executed per-bank update,
+so any remaining pre-reconciliation gap should normally appear in
+`BankCapital_PreReconUnexplained`. `BankCapital_ReconciliationResidual`
 reports the aggregate exactness correction applied after the normal bank update.
 Positive values mean the patch
 added capital, and negative values mean it removed capital. It is a diagnostic

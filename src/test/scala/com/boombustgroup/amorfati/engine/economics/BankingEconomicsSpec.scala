@@ -158,14 +158,14 @@ class BankingEconomicsSpec extends AnyFlatSpec with Matchers:
     LedgerFinancialState.projectBankFinancialStocks(result.ledgerFinancialState.banks.head) shouldBe alignedOpeningStocks
   }
 
-  it should "distribute aggregate capital reconciliation without creating a single-bank failure sink" in {
+  it should "ignore diagnostic-only aggregate NPL shocks when per-bank capital terms are unchanged" in {
     val prepared                = preparedBankingStep()
     val survivableResidualShock = PLN(500000000L)
     val stressedFirm            = prepared.firm.copy(nplLoss = prepared.firm.nplLoss + survivableResidualShock)
 
     val result = prepared.run(firmOverride = stressedFirm)
 
-    result.bankReconciliationDiagnostics.materialResidual shouldBe 1
+    result.bankReconciliationDiagnostics.materialResidual shouldBe 0
     result.bankReconciliationDiagnostics.crossedFailureThreshold shouldBe 0
     result.bankReconciliationDiagnostics.postResidualReasonCode shouldBe 0
     result.banks.foreach(_.failed shouldBe false)

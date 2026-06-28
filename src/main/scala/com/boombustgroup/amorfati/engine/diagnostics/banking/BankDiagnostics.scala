@@ -68,10 +68,10 @@ object BankCapitalDiagnostics:
 
 /** Signed contribution breakdown for `BankCapital_PreReconciliationResidual`.
   *
-  * Positive values mean the actual pre-patch bank capital was higher than the
-  * aggregate waterfall target because of that line; negative values mean it was
-  * lower. `unexplained` is the residual after named target-vs-actual
-  * differences are accounted for.
+  * Named fields are signed diagnostic slots for pre-patch capital gaps. The
+  * reconciliation target currently sources ordinary bank-capital terms from the
+  * executed per-bank update, so any remaining pre-reconciliation gap should
+  * normally appear in `unexplained`.
   */
 case class BankCapitalResidualBreakdown(
     retainedIncome: PLN = PLN.Zero,

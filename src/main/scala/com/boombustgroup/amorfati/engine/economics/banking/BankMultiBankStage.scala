@@ -6,6 +6,7 @@ import com.boombustgroup.amorfati.engine.diagnostics.banking.{BankEclDiagnostics
 import com.boombustgroup.amorfati.engine.ledger.{CorporateBondOwnership, LedgerFinancialState}
 import com.boombustgroup.amorfati.engine.markets.HousingMarket
 import com.boombustgroup.amorfati.types.*
+import com.boombustgroup.ledger.Distribute
 
 /** Multi-bank monthly balance-sheet stage: per-bank P&L updates, market
   * settlement, failure pipeline, client reassignment, and closing bank rows.
@@ -60,16 +61,25 @@ private[banking] object BankMultiBankStage:
         val last = Share.One - raw.foldLeft(Share.Zero)(_ + _)
         raw :+ last
 
+    val openingBankCorpBonds     = CorporateBondOwnership.bankHolderBalances(in.ledgerFinancialState)
+    require(
+      openingBankCorpBonds.length == banks.length,
+      s"BankMultiBankStage requires ${banks.length} bank corporate-bond rows, got ${openingBankCorpBonds.length}",
+    )
+    val bankCorpBondCoupons      = distributeByPositiveHoldings(in.openEconomy.corpBonds.corpBondBankCoupon, openingBankCorpBonds)
+    val bankCorpBondLosses       = distributeByPositiveHoldings(in.openEconomy.corpBonds.corpBondBankDefaultLoss, openingBankCorpBonds)
+    val bankMortgageInterestIncs = distributeByPositiveHoldings(mortgageFlows.interest, bankStocks.map(_.mortgageLoan))
+
     val settledBankCorpBonds = BankBondWaterfall.settleCorpBondHoldings(
-      previous = CorporateBondOwnership.bankHolderBalances(in.ledgerFinancialState),
+      previous = openingBankCorpBonds,
       previousAggregateStock = CorporateBondOwnership.stockStateFromLedger(in.ledgerFinancialState),
       nextAggregateStock = in.openEconomy.corpBonds.closingCorpBondProjection,
       totalBondIssuance = in.firm.actualBondIssuance,
       perBankWorkers = in.firm.perBankWorkers,
     )
 
-    val updatedRows           = new Array[SingleBankUpdate](banks.length)
-    var bankIndex             = 0
+    val updatedRows                 = new Array[SingleBankUpdate](banks.length)
+    var bankIndex                   = 0
     while bankIndex < banks.length do
       val b           = banks(bankIndex)
       val stocks      = bankStocks(bankIndex)
@@ -89,30 +99,43 @@ private[banking] object BankMultiBankStage:
         jstDepositChange,
         investNetDepositFlow,
         quasiFiscalDepositChange,
+        bankMortgageInterestIncs(bankIndex),
+        bankCorpBondCoupons(bankIndex),
+        bankCorpBondLosses(bankIndex),
         in,
       )
       bankIndex += 1
-    val updatedBanks          = new Array[Banking.BankState](updatedRows.length)
-    val updatedBankStocks     = new Array[Banking.BankFinancialStocks](updatedRows.length)
-    var creditLosses          = BankCreditLossAccounting.Breakdown.zero
-    var actualCapitalTerms    = BankCapitalTerms.zero
-    var updatedIndex          = 0
+    var bankCapitalTerms            = BankCapitalTerms.zero
+    var termsIndex                  = 0
+    while termsIndex < updatedRows.length do
+      bankCapitalTerms = bankCapitalTerms + updatedRows(termsIndex).bankCapitalTerms
+      termsIndex += 1
+    val retainedIncomeRoundingDelta =
+      bankCapitalTerms.capitalGrossIncome * p.banking.profitRetention - bankCapitalTerms.retainedIncome
+    if retainedIncomeRoundingDelta != PLN.Zero then
+      // SFC validates sector gross income × retention; per-bank rounding can differ by a few PLN.
+      val recipientIndex = updatedRows.indexWhere(row => !row.bank.failed)
+      require(
+        recipientIndex >= 0,
+        s"BankMultiBankStage cannot allocate retained-income rounding delta $retainedIncomeRoundingDelta without an active bank",
+      )
+      val recipient      = updatedRows(recipientIndex)
+      updatedRows(recipientIndex) = recipient.copy(bank = recipient.bank.copy(capital = recipient.bank.capital + retainedIncomeRoundingDelta))
+      bankCapitalTerms = bankCapitalTerms.copy(retainedIncome = bankCapitalTerms.retainedIncome + retainedIncomeRoundingDelta)
+
+    val updatedBanks      = new Array[Banking.BankState](updatedRows.length)
+    val updatedBankStocks = new Array[Banking.BankFinancialStocks](updatedRows.length)
+    var updatedIndex      = 0
     while updatedIndex < updatedRows.length do
       val updated = updatedRows(updatedIndex)
       updatedBanks(updatedIndex) = updated.bank
       updatedBankStocks(updatedIndex) = updated.financialStocks
-      creditLosses = creditLosses + updated.creditLosses
-      actualCapitalTerms = actualCapitalTerms + updated.bankCapitalTerms
       updatedIndex += 1
-    val aggregateCreditLosses = creditLosses.copy(
-      corpBondDefaultLoss = in.openEconomy.corpBonds.corpBondBankDefaultLoss,
-    )
 
     runSettlementBoundary(
       in,
       updatedBanks.toVector,
       updatedBankStocks.toVector,
-      aggregateCreditLosses,
       in.world.bankingSector.configs,
       wf,
       perBankReserveInt,
@@ -121,10 +144,9 @@ private[banking] object BankMultiBankStage:
       jstDepositChange,
       investNetDepositFlow,
       quasiFiscalDepositChange,
-      mortgageFlows,
       perBankPolishLevy.total,
       settledBankCorpBonds,
-      actualCapitalTerms,
+      bankCapitalTerms,
     )
 
   /** Runs the multi-bank settlement and resolution boundary after per-bank
@@ -134,7 +156,6 @@ private[banking] object BankMultiBankStage:
       in: StepInput,
       updatedBanks: Vector[Banking.BankState],
       updatedBankStocks: Vector[Banking.BankFinancialStocks],
-      creditLosses: BankCreditLossAccounting.Breakdown,
       bankConfigs: Vector[Banking.Config],
       wf: BondWaterfallInputs,
       perBankReserveInt: Banking.PerBankAmounts,
@@ -143,10 +164,9 @@ private[banking] object BankMultiBankStage:
       jstDepositChange: PLN,
       investNetDepositFlow: PLN,
       quasiFiscalDepositChange: PLN,
-      mortgageFlows: HousingMarket.MortgageFlows,
       polishBankLevyTax: PLN,
       settledBankCorpBonds: Vector[PLN],
-      actualCapitalTerms: BankCapitalTerms,
+      bankCapitalTerms: BankCapitalTerms,
   )(using p: SimParams): MultiBankResult =
     val prevBankAgg =
       Banking.aggregateFromBankStocks(
@@ -171,15 +191,12 @@ private[banking] object BankMultiBankStage:
       in = in,
       prevBankAgg = prevBankAgg,
       waterfall = waterfall,
-      creditLosses = creditLosses,
       settledBankCorpBonds = settledBankCorpBonds,
       jstDepositChange = jstDepositChange,
       investNetDepositFlow = investNetDepositFlow,
       quasiFiscalDepositChange = quasiFiscalDepositChange,
-      mortgageFlows = mortgageFlows,
-      polishBankLevyTax = polishBankLevyTax,
       htmRealizedLoss = settlement.htmRealizedLoss,
-      actualCapitalTerms = actualCapitalTerms,
+      bankCapitalTerms = bankCapitalTerms,
     )
     val finalResolution       = resolved.finalResolution
     val failureDetection      = resolved.failureDetection
@@ -329,6 +346,9 @@ private[banking] object BankMultiBankStage:
       jstDepositChange: PLN,
       investNetDepositFlow: PLN,
       quasiFiscalDepositChange: PLN,
+      bankMortgageInterestIncome: PLN,
+      bankCorpBondCoupon: PLN,
+      bankCorpBondDefaultLoss: PLN,
       in: StepInput,
   )(using p: SimParams): SingleBankUpdate =
     if b.failed then
@@ -369,7 +389,7 @@ private[banking] object BankMultiBankStage:
       in.openEconomy.nonBank.insNetDepositChange * workerShare +
       in.openEconomy.nonBank.nbfiDepositDrain * workerShare
 
-    val bankMortgageIntIncome     = hhFlows.mortgageInterest
+    val bankMortgageIntIncome     = bankMortgageInterestIncome
     val mortgageLoss              = BankCreditLossAccounting.mortgage(mortgageFlows.defaultAmount * workerShare)
     val bankMortgageNplLoss       = mortgageLoss.netCapitalLoss
     val consumerBridgeChargeOff   = hhFlows.ccDefault - hhFlows.ccLoanDefault
@@ -380,8 +400,6 @@ private[banking] object BankMultiBankStage:
       case Some(pbf) => pbf(bId).consumerPrincipal
       case _         => hhFlows.ccPrincipal
     val bankCcInterestIncome      = hhFlows.ccDebtService - hhFlows.ccPrincipal
-    val bankCorpBondCoupon        = in.openEconomy.corpBonds.corpBondBankCoupon * workerShare
-    val bankCorpBondDefaultLoss   = in.openEconomy.corpBonds.corpBondBankDefaultLoss * workerShare
     val creditLosses              = BankCreditLossAccounting.Breakdown(
       firm = firmLoss,
       mortgage = mortgageLoss,
@@ -447,7 +465,6 @@ private[banking] object BankMultiBankStage:
         termDeposit = newDep * p.banking.termDepositFrac,
         consumerLoan = (stocks.consumerLoan + hhFlows.ccOrigination - bankCcStockReduction - hhFlows.ccDefault).max(PLN.Zero),
       ),
-      creditLosses = creditLosses,
       bankCapitalTerms = BankCapitalTerms(
         creditLosses = creditLosses,
         unrealizedBondLoss = bankUnrealizedLoss,
@@ -458,6 +475,15 @@ private[banking] object BankMultiBankStage:
         polishBankLevyTax = bankPolishLevyTax,
       ),
     )
+
+  private def distributeByPositiveHoldings(total: PLN, holdings: Vector[PLN]): Vector[PLN] =
+    if holdings.isEmpty then Vector.empty
+    else if total == PLN.Zero then Vector.fill(holdings.length)(PLN.Zero)
+    else
+      val weights =
+        val raw = holdings.map(_.distributeRaw.max(0L)).toArray
+        if raw.exists(_ > 0L) then raw else Array.fill(holdings.length)(1L)
+      Distribute.distribute(total.distributeRaw, weights).map(PLN.fromRaw).toVector
 
   private def eclGdpGrowth(in: StepInput): Coefficient =
     val prevGdp = in.world.cachedMonthlyGdpProxy

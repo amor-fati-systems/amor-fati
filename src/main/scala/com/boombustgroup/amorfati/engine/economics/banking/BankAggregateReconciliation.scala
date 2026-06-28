@@ -3,7 +3,6 @@ package com.boombustgroup.amorfati.engine.economics.banking
 import com.boombustgroup.amorfati.agents.*
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.diagnostics.banking.{BankCapitalResidualBreakdown, BankReconciliationDiagnostics}
-import com.boombustgroup.amorfati.engine.ledger.LedgerFinancialState
 import com.boombustgroup.amorfati.types.*
 import com.boombustgroup.ledger.Distribute
 
@@ -31,10 +30,8 @@ private[banking] object BankAggregateReconciliation:
       bailInLoss: PLN,
       multiCapDestruction: PLN,
       interbankContagionLoss: PLN,
-      polishBankLevyTax: PLN,
       htmRealizedLoss: PLN,
       bankCapitalTerms: BankCapitalTerms,
-      actualCapitalTerms: BankCapitalTerms,
   )(using p: SimParams): AggregateReconciliationResult =
     require(
       bankCorpBondHoldings.length == banks.length,
@@ -65,7 +62,6 @@ private[banking] object BankAggregateReconciliation:
         bailInLoss = bailInLoss,
         multiCapDestruction = multiCapDestruction,
         interbankContagionLoss = interbankContagionLoss,
-        polishBankLevyTax = polishBankLevyTax,
         htmRealizedLoss = htmRealizedLoss,
         bankCapitalTerms = bankCapitalTerms,
       )
@@ -75,8 +71,6 @@ private[banking] object BankAggregateReconciliation:
       val capResidual    = target.capitalResidual - actualCapital
       val breakdown      = capitalResidualBreakdown(
         preReconciliationResidual = actualCapital - target.capitalResidual,
-        actualTerms = actualCapitalTerms,
-        targetTerms = bankCapitalTerms,
       )
       if depResidual == PLN.Zero && capResidual == PLN.Zero then
         AggregateReconciliationResult(
@@ -282,13 +276,11 @@ private[banking] object BankAggregateReconciliation:
       bailInLoss: PLN,
       multiCapDestruction: PLN,
       interbankContagionLoss: PLN,
-      polishBankLevyTax: PLN,
       htmRealizedLoss: PLN,
       bankCapitalTerms: BankCapitalTerms,
-  )(using p: SimParams): AggregateReconciliation =
-    val capitalLosses  = bankCapitalTerms.realizedCreditLoss +
-      Banking.computeBfgLevy(in.banks, in.ledgerFinancialState.banks.map(LedgerFinancialState.projectBankFinancialStocks)).total +
-      polishBankLevyTax + interbankContagionLoss + bankCapitalTerms.unrealizedBondLoss + htmRealizedLoss +
+  ): AggregateReconciliation =
+    val capitalLosses  = bankCapitalTerms.realizedCreditLoss + bankCapitalTerms.bfgLevy +
+      bankCapitalTerms.polishBankLevyTax + interbankContagionLoss + bankCapitalTerms.unrealizedBondLoss + htmRealizedLoss +
       bankCapitalTerms.eclProvisionChange + multiCapDestruction
     val targetCapital  = prevBankAgg.capital - capitalLosses + bankCapitalTerms.retainedIncome
     val targetDeposits = prevBankAgg.deposits + in.householdIncome.totalIncome - in.householdIncome.consumption +
@@ -304,18 +296,5 @@ private[banking] object BankAggregateReconciliation:
 
   private def capitalResidualBreakdown(
       preReconciliationResidual: PLN,
-      actualTerms: BankCapitalTerms,
-      targetTerms: BankCapitalTerms,
   ): BankCapitalResidualBreakdown =
-    val breakdownWithoutUnexplained = BankCapitalResidualBreakdown(
-      retainedIncome = actualTerms.retainedIncome - targetTerms.retainedIncome,
-      realizedCreditLoss = targetTerms.realizedCreditLoss - actualTerms.realizedCreditLoss,
-      bfgLevy = targetTerms.bfgLevy - actualTerms.bfgLevy,
-      polishBankLevyTax = targetTerms.polishBankLevyTax - actualTerms.polishBankLevyTax,
-      unrealizedBondLoss = targetTerms.unrealizedBondLoss - actualTerms.unrealizedBondLoss,
-      htmRealizedLoss = PLN.Zero,
-      eclProvisionChange = targetTerms.eclProvisionChange - actualTerms.eclProvisionChange,
-      interbankContagionLoss = PLN.Zero,
-      capitalDestruction = PLN.Zero,
-    )
-    breakdownWithoutUnexplained.copy(unexplained = preReconciliationResidual - breakdownWithoutUnexplained.explained)
+    BankCapitalResidualBreakdown(unexplained = preReconciliationResidual)
