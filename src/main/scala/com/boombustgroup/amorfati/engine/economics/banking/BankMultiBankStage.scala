@@ -16,6 +16,9 @@ private[banking] object BankMultiBankStage:
   private val MediumLoanFrac: Share     = Share.decimal(30, 2) // fraction of loans in medium-term maturity bucket
   private val LongLoanFrac: Share       = Share.decimal(50, 2) // fraction of loans in long-term maturity bucket
 
+  private[banking] def closingFirmLoanBook(openingFirmLoan: PLN, newLoans: PLN, principalRepaid: PLN, grossDefault: PLN): PLN =
+    (openingFirmLoan + newLoans - principalRepaid - grossDefault).max(PLN.Zero)
+
   /** Multi-bank update: per-bank loop, interbank clearing, bond allocation,
     * failure resolution.
     */
@@ -336,7 +339,12 @@ private[banking] object BankMultiBankStage:
     val bankSfInc     = perBankStandingFac.perBank(bId)
     val bankIbInt     = perBankInterbankInt.perBank(bId)
     val newLoansTotal =
-      (stocks.firmLoan + in.firm.perBankNewLoans(bId) - in.firm.perBankFirmPrincipal(bId) - bankNplNew * p.banking.loanRecovery).max(PLN.Zero)
+      closingFirmLoanBook(
+        openingFirmLoan = stocks.firmLoan,
+        newLoans = in.firm.perBankNewLoans(bId),
+        principalRepaid = in.firm.perBankFirmPrincipal(bId),
+        grossDefault = bankNplNew,
+      )
 
     val newDep = stocks.totalDeposits +
       hhFlows.incomeShare - hhFlows.consShare +

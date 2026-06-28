@@ -1012,7 +1012,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     valueAt(row, "FirmCredit_GrossDefault") shouldBe polandScale(firmDefault)
     valueAt(row, "FirmCredit_NplRecovery") shouldBe polandScale(firmRecovery)
     valueAt(row, "FirmCredit_NplLoss") shouldBe polandScale(PLN(4))
-    valueAt(row, "FirmCredit_NetStockFlow") shouldBe polandScale(PLN(20) - PLN(6) - firmRecovery)
+    valueAt(row, "FirmCredit_NetStockFlow") shouldBe polandScale(PLN(20) - PLN(6) - firmDefault)
     valueAt(row, "FirmCredit_CreditDemand") shouldBe polandScale(PLN(20))
     valueAt(row, "FirmCredit_CreditApproved") shouldBe polandScale(PLN(8))
     valueAt(row, "FirmCredit_BankRejected") shouldBe polandScale(PLN(12))

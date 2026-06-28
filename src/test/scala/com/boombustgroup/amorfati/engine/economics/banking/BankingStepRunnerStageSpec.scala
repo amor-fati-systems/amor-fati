@@ -61,6 +61,15 @@ class BankingStepRunnerStageSpec extends AnyFlatSpec with Matchers:
   private def failureEvent(bankId: BankId): Banking.FailureEvent =
     Banking.FailureEvent(bankId, SimulationMonth.ExecutionMonth.First, Banking.BankFailureReason.NegativeCapital)
 
+  "BankMultiBankStage" should "remove gross firm defaults from the regular firm-loan book" in {
+    BankMultiBankStage.closingFirmLoanBook(
+      openingFirmLoan = PLN(1000),
+      newLoans = PLN(100),
+      principalRepaid = PLN(200),
+      grossDefault = PLN(300),
+    ) shouldBe PLN(600)
+  }
+
   "BankFailurePipeline.runBailIn" should "return an explicit bail-in stage output for eligible failed banks only" in {
     val rows        = Vector(bank(0, failed = true), bank(1))
     val stockRows   = Vector(stocks(PLN(1000000)), stocks(PLN(1000000)))

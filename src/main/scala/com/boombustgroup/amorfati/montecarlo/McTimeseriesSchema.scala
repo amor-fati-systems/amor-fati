@@ -613,7 +613,7 @@ object McTimeseriesSchema:
     ColumnDef.macroPln("FirmCredit_NplLoss", ctx => ctx.world.flows.firmNplLoss),
     ColumnDef.macroPln(
       "FirmCredit_NetStockFlow",
-      ctx => ctx.world.flows.firmNewLoans - ctx.world.flows.firmPrincipalRepaid - ctx.firmDefaultRecovery,
+      ctx => ctx.world.flows.firmNewLoans - ctx.world.flows.firmPrincipalRepaid - ctx.world.flows.firmGrossDefault,
     ),
     ColumnDef.macroPln("FirmCredit_CreditDemand", ctx => ctx.firmCreditDemand),
     ColumnDef.macroPln("FirmCredit_CreditApproved", ctx => ctx.firmCreditApproved),
