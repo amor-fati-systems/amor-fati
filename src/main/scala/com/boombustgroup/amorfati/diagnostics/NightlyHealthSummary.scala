@@ -40,6 +40,7 @@ private[diagnostics] object NightlyHealthSummary:
     "BankResolution_AllFailedFallback",
     "BankResolution_InvalidActiveBankInvariant",
     "BankCapital_WaterfallResidual",
+    "BankCapital_PreReconciliationResidual",
     "BankCapital_ReconciliationResidual",
     "FofResidual",
     "BankCreditLoss_FirmDefaultRate",
@@ -278,19 +279,22 @@ private[diagnostics] object NightlyHealthSummary:
 
   private def residualMetric(series: BaselineSeries): Metric =
     val waterfallMax = series.maxAbs("BankCapital_WaterfallResidual")
+    val preReconMax  = series.maxAbs("BankCapital_PreReconciliationResidual")
     val reconMax     = series.maxAbs("BankCapital_ReconciliationResidual")
     val fofMax       = series.maxAbs("FofResidual")
     val waterfallGdp = series.maxAbsRatio("BankCapital_WaterfallResidual", "AnnualizedGdpProxy")
+    val preReconGdp  = series.maxAbsRatio("BankCapital_PreReconciliationResidual", "AnnualizedGdpProxy")
     val reconGdp     = series.maxAbsRatio("BankCapital_ReconciliationResidual", "AnnualizedGdpProxy")
     val fofGdp       = series.maxAbsRatio("FofResidual", "AnnualizedGdpProxy")
-    val failed       = waterfallGdp > ResidualToGdpUpperBound || reconGdp > ResidualToGdpUpperBound || fofGdp > ResidualToGdpUpperBound
+    val failed       =
+      waterfallGdp > ResidualToGdpUpperBound || preReconGdp > ResidualToGdpUpperBound || reconGdp > ResidualToGdpUpperBound || fofGdp > ResidualToGdpUpperBound
     metric(
       id = "normal.accounting_residuals",
       label = "SFC/accounting residual guard",
       status = if failed then MetricStatus.Fail else MetricStatus.Pass,
       hard = true,
       observed =
-        s"bank_capital_waterfall_abs_max=$waterfallMax; bank_capital_waterfall_to_gdp_max=$waterfallGdp; bank_reconciliation_abs_max=$reconMax; bank_reconciliation_to_gdp_max=$reconGdp; fof_abs_max=$fofMax; fof_to_gdp_max=$fofGdp",
+        s"bank_capital_waterfall_abs_max=$waterfallMax; bank_capital_waterfall_to_gdp_max=$waterfallGdp; bank_capital_pre_reconciliation_abs_max=$preReconMax; bank_capital_pre_reconciliation_to_gdp_max=$preReconGdp; bank_reconciliation_abs_max=$reconMax; bank_reconciliation_to_gdp_max=$reconGdp; fof_abs_max=$fofMax; fof_to_gdp_max=$fofGdp",
       threshold = s"Runtime SFC exactness must complete; exported residuals must remain <= $ResidualToGdpUpperBound of annualized GDP.",
       source = "baseline Monte Carlo seed TSVs and runtime SFC completion",
       details = "Runtime SFC exactness failures stop the baseline step; exported residual columns catch material accounting drift at macro scale.",

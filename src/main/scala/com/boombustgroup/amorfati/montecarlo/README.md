@@ -236,6 +236,7 @@ BankCapital_UnrealizedBondLoss
 BankCapital_HtmRealizedLoss
 BankCapital_EclProvisionChange
 BankCapital_CapitalDestruction
+BankCapital_PreReconciliationResidual
 BankCapital_ReconciliationResidual
 BankCapital_WaterfallResidual
 BankCapital_DepositBailInLoss
@@ -261,16 +262,17 @@ the sum of firm-loan, mortgage, consumer-credit, and bank-held corporate-bond
 losses. `BankCapital_InterbankContagionLoss` is the separate counterparty loss
 from failed-bank interbank exposures. `BankCapital_PolishBankLevyTax` is the
 monthly Polish financial-institutions tax paid by active bank rows to central
-government. `BankCapital_WaterfallResidual` reports
-the remaining unexplained capital delta after the ordinary waterfall terms and
-the exactness patch. It should stay close to zero; non-zero values indicate a
-missing diagnostic term.
-
-`BankCapital_ReconciliationResidual` reports the exactness correction applied
-to one per-bank capital row after the normal bank update. Positive values mean
-the patch added capital, and negative values mean it removed capital. It is a
-diagnostic for per-bank allocation artifacts, not a standalone economic loss
-channel.
+government. `BankCapital_PreReconciliationResidual` reports the capital gap
+before the aggregate exactness patch: positive values mean pre-patch bank
+capital was above the named waterfall target, and negative values mean it was
+below. `BankCapital_ReconciliationResidual` reports the aggregate exactness
+correction applied after the normal bank update. Positive values mean the patch
+added capital, and negative values mean it removed capital. It is a diagnostic
+for per-bank allocation artifacts, not a standalone economic loss channel.
+`BankCapital_WaterfallResidual` reports the remaining unexplained capital delta
+after ordinary waterfall terms and the exactness patch have both been applied.
+It should stay close to zero; non-zero values indicate a missing post-patch
+diagnostic term.
 `BankCapital_DepositBailInLoss` mirrors the existing `BailInLoss` column inside
 the bank-capital diagnostic block; it is a resolution-adjacent depositor haircut
 on newly processed deposits and is not included in the equity-capital waterfall

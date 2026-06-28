@@ -831,6 +831,7 @@ object McTimeseriesSchema:
     ColumnDef.macroPln("BankCapital_HtmRealizedLoss", ctx => ctx.bankCapital.htmRealizedLoss),
     ColumnDef.macroPln("BankCapital_EclProvisionChange", ctx => ctx.bankCapital.eclProvisionChange),
     ColumnDef.macroPln("BankCapital_CapitalDestruction", ctx => ctx.bankCapital.capitalDestruction),
+    ColumnDef.macroPln("BankCapital_PreReconciliationResidual", ctx => ctx.bankCapital.preReconciliationResidual),
     ColumnDef.macroPln("BankCapital_ReconciliationResidual", ctx => ctx.bankCapital.reconciliationResidual),
     ColumnDef.macroPln("BankCapital_WaterfallResidual", ctx => ctx.bankCapital.waterfallResidual),
     ColumnDef.macroPln("BankCapital_DepositBailInLoss", ctx => ctx.bankCapital.depositBailInLoss),
@@ -1402,6 +1403,7 @@ object McTimeseriesSchema:
     val BankCapitalHtmRealizedLoss: Col                = lookup("BankCapital_HtmRealizedLoss")
     val BankCapitalEclProvisionChange: Col             = lookup("BankCapital_EclProvisionChange")
     val BankCapitalCapitalDestruction: Col             = lookup("BankCapital_CapitalDestruction")
+    val BankCapitalPreReconciliationResidual: Col      = lookup("BankCapital_PreReconciliationResidual")
     val BankCapitalReconciliationResidual: Col         = lookup("BankCapital_ReconciliationResidual")
     val BankCapitalWaterfallResidual: Col              = lookup("BankCapital_WaterfallResidual")
     val BankCapitalDepositBailInLoss: Col              = lookup("BankCapital_DepositBailInLoss")

@@ -406,6 +406,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     "BankCapital_HtmRealizedLoss",
     "BankCapital_EclProvisionChange",
     "BankCapital_CapitalDestruction",
+    "BankCapital_PreReconciliationResidual",
     "BankCapital_ReconciliationResidual",
     "BankCapital_WaterfallResidual",
     "BankCapital_DepositBailInLoss",
@@ -591,7 +592,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     MetricValue.fromRaw(numerator.ratioTo(denominator).toLong)
 
   "McTimeseriesSchema" should "expose the stable schema contract" in {
-    McTimeseriesSchema.nCols shouldBe 525
+    McTimeseriesSchema.nCols shouldBe 526
     McTimeseriesSchema.colNames.toVector shouldBe expectedColNames
   }
 
@@ -1171,6 +1172,26 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     valueAt(row, "BankEcl_ExcessAllowanceShare") shouldBe MetricValue.fromRaw(0)
     valueAt(row, "BankEcl_ProvisionChangeToOpeningCapital") shouldBe MetricValue.fromRaw(0)
     valueAt(row, "BankEcl_ProvisionChangeToRealizedLoss") shouldBe MetricValue.fromRaw(0)
+  }
+
+  it should "separate pre-reconciliation and post-reconciliation bank capital residuals" in {
+    val bankCapital = BankCapitalDiagnostics(
+      openingCapital = PLN(100),
+      closingCapital = PLN(120),
+      retainedIncome = PLN(20),
+      reconciliationResidual = PLN(5),
+    )
+    val world       = init.world.copy(
+      flows = init.world.flows.copy(
+        sectorOutputs = Vector.fill(summon[SimParams].sectorDefs.length)(PLN.Zero),
+        bankCapital = bankCapital,
+      ),
+    )
+    val row         = computeRow(world)
+
+    valueAt(row, "BankCapital_PreReconciliationResidual") shouldBe polandScale(PLN(-5))
+    valueAt(row, "BankCapital_ReconciliationResidual") shouldBe polandScale(PLN(5))
+    valueAt(row, "BankCapital_WaterfallResidual") shouldBe polandScale(PLN.Zero)
   }
 
   it should "emit household bankruptcy validation fields alongside firm and bank failures" in {

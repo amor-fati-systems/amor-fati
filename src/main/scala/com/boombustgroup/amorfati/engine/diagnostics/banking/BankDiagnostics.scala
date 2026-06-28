@@ -45,11 +45,22 @@ case class BankCapitalDiagnostics(
     retainedIncome - realizedCreditLoss - bfgLevy - polishBankLevyTax - unrealizedBondLoss -
       htmRealizedLoss - eclProvisionChange - interbankContagionLoss - capitalDestruction
 
-  /** Unexplained capital delta after ordinary waterfall terms and the aggregate
-    * exactness patch. Values away from zero indicate a missing diagnostic term.
+  /** Capital gap before the aggregate exactness patch is applied.
+    *
+    * This is the pre-patch actual capital movement minus the named waterfall
+    * target. In quiet paths it is usually the opposite sign of
+    * `reconciliationResidual`, because the reconciliation writer closes this
+    * exact gap.
+    */
+  def preReconciliationResidual: PLN =
+    delta - expectedDelta - reconciliationResidual
+
+  /** Remaining unexplained capital delta after ordinary waterfall terms and the
+    * aggregate exactness patch have both been applied. Values away from zero
+    * indicate a missing post-reconciliation diagnostic term.
     */
   def waterfallResidual: PLN =
-    delta - expectedDelta - reconciliationResidual
+    delta - expectedDelta
 
 object BankCapitalDiagnostics:
   val zero: BankCapitalDiagnostics = BankCapitalDiagnostics()
