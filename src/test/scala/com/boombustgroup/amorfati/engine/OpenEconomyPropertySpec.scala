@@ -65,6 +65,7 @@ class OpenEconomyPropertySpec extends AnyFlatSpec with Matchers with ScalaCheckP
     sectorOutputs = defaultSectorOutputs,
     month = ExecutionMonth(month),
     nbpFxReserves = prevBop.reserves,
+    govBondMarketYield = rateBD(rate),
   )
 
   // Combined generator for OE step inputs (avoids >6 forAll limit)

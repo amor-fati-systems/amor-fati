@@ -109,7 +109,7 @@ object OpenEconomy:
       diasporaInflow: PLN = PLN.Zero,
       tourismExport: PLN = PLN.Zero,
       tourismImport: PLN = PLN.Zero,
-      govBondMarketYield: Rate = Rate.Zero,
+      govBondMarketYield: Rate,
       prevBidToCover: Multiplier = Multiplier(2),
   )
 

@@ -293,7 +293,7 @@ class MonetaryPlumbingSpec extends AnyFlatSpec with Matchers:
     val reserveInt        = PLN(100000)
     val expectedCapChange = reserveInt * Share.decimal(3, 1)
     val curr              = prev.copy(bankCapital = prev.bankCapital + expectedCapChange)
-    val flows             = zeroFlows.copy(reserveInterest = reserveInt)
+    val flows             = zeroFlows.copy(reserveInterest = reserveInt, bankRetainedIncome = expectedCapChange)
     val result            = Sfc.validateStockExactness(prev, curr, flows)
     result shouldBe Right(())
   }
@@ -303,7 +303,7 @@ class MonetaryPlumbingSpec extends AnyFlatSpec with Matchers:
     val sfIncome          = PLN(50000)
     val expectedCapChange = sfIncome * Share.decimal(3, 1)
     val curr              = prev.copy(bankCapital = prev.bankCapital + expectedCapChange)
-    val flows             = zeroFlows.copy(standingFacilityIncome = sfIncome)
+    val flows             = zeroFlows.copy(standingFacilityIncome = sfIncome, bankRetainedIncome = expectedCapChange)
     val result            = Sfc.validateStockExactness(prev, curr, flows)
     result shouldBe Right(())
   }
@@ -340,6 +340,7 @@ class MonetaryPlumbingSpec extends AnyFlatSpec with Matchers:
       reserveInterest = resInt,
       standingFacilityIncome = sfInc,
       interbankInterest = ibInt,
+      bankRetainedIncome = expectedCapChange,
     )
     val result            = Sfc.validateStockExactness(prev, curr, flows)
     result shouldBe Right(())

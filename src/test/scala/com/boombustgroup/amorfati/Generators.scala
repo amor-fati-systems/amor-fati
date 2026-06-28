@@ -327,6 +327,7 @@ object Generators:
     cumDebt            <- genDecimal("0.0", "10000000000.0")
     unempBen           <- genDecimal("0.0", "100000000.0")
     govBondMarketYield <- genDecimal("0.0", "0.15")
+    govDebtCoupon      <- genDecimal("0.0", "0.15")
     debtService        <- genDecimal("0.0", "100000000.0")
   yield FiscalBudget.GovState(
     plnBD(taxRev),
@@ -334,7 +335,7 @@ object Generators:
     plnBD(cumDebt),
     plnBD(unempBen),
     rateBD(govBondMarketYield),
-    rateBD(govBondMarketYield), // govDebtWeightedCoupon starts at market yield
+    rateBD(govDebtCoupon),
     plnBD(debtService),
   )
 
@@ -532,6 +533,7 @@ object Generators:
     resInt       <- genDecimal("0.0", "10000000.0")
     sfIncome     <- genDecimal("-1000000.0", "10000000.0")
     ibInterest   <- genDecimal("-10000000.0", "10000000.0")
+    retained     <- genDecimal("-100000000.0", "100000000.0")
     jstDepChg    <- genDecimal("-10000000.0", "10000000.0")
     jstSpend     <- genDecimal("0.0", "100000000.0")
     jstRev       <- genDecimal("0.0", "100000000.0")
@@ -565,8 +567,7 @@ object Generators:
     reserveInterest = plnBD(resInt),
     standingFacilityIncome = plnBD(sfIncome),
     interbankInterest = plnBD(ibInterest),
-    bankRetainedIncome = (plnBD(intIncome) + plnBD(bankBondInc) + plnBD(mortIntInc) - plnBD(depIntPaid) + plnBD(resInt) + plnBD(sfIncome) +
-      plnBD(ibInterest)) * Share.decimal(3, 1),
+    bankRetainedIncome = plnBD(retained),
     jstDepositChange = plnBD(jstDepChg),
     jstSpending = plnBD(jstSpend),
     jstRevenue = plnBD(jstRev),

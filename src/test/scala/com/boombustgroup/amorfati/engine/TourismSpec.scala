@@ -205,6 +205,7 @@ class TourismSpec extends AnyFlatSpec with Matchers:
       sectorOutputs = Vector.fill(p.sectorDefs.length)(PLN(100000000)),
       month = ExecutionMonth(1),
       nbpFxReserves = prevBop.reserves,
+      govBondMarketYield = Rate.decimal(5, 2),
     )
     val resultWith    = OpenEconomy.step(base.copy(tourismExport = PLN(1000)))
     val resultWithout = OpenEconomy.step(base.copy(tourismExport = PLN.Zero))
@@ -228,6 +229,7 @@ class TourismSpec extends AnyFlatSpec with Matchers:
       sectorOutputs = Vector.fill(p.sectorDefs.length)(PLN(100000000)),
       month = ExecutionMonth(1),
       nbpFxReserves = prevBop.reserves,
+      govBondMarketYield = Rate.decimal(5, 2),
     )
     val resultWith    = OpenEconomy.step(base.copy(tourismImport = PLN(500)))
     val resultWithout = OpenEconomy.step(base.copy(tourismImport = PLN.Zero))

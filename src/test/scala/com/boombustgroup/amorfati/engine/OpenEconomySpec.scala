@@ -37,6 +37,7 @@ class OpenEconomySpec extends AnyFlatSpec with Matchers:
     sectorOutputs = baseSectorOutputs,
     month = ExecutionMonth(month),
     nbpFxReserves = prevBop.reserves,
+    govBondMarketYield = p.monetary.initialRate,
   )
 
   // ---- Export tests ----

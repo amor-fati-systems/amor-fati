@@ -61,14 +61,16 @@ private[banking] object BankMultiBankStage:
         val last = Share.One - raw.foldLeft(Share.Zero)(_ + _)
         raw :+ last
 
-    val openingBankCorpBonds     = CorporateBondOwnership.bankHolderBalances(in.ledgerFinancialState)
+    val openingBankCorpBonds       = CorporateBondOwnership.bankHolderBalances(in.ledgerFinancialState)
     require(
       openingBankCorpBonds.length == banks.length,
       s"BankMultiBankStage requires ${banks.length} bank corporate-bond rows, got ${openingBankCorpBonds.length}",
     )
-    val bankCorpBondCoupons      = distributeByPositiveHoldings(in.openEconomy.corpBonds.corpBondBankCoupon, openingBankCorpBonds)
-    val bankCorpBondLosses       = distributeByPositiveHoldings(in.openEconomy.corpBonds.corpBondBankDefaultLoss, openingBankCorpBonds)
-    val bankMortgageInterestIncs = distributeByPositiveHoldings(mortgageFlows.interest, bankStocks.map(_.mortgageLoan))
+    val bankCorpBondCoupons        = distributeByPositiveHoldings(in.openEconomy.corpBonds.corpBondBankCoupon, openingBankCorpBonds)
+    val bankCorpBondLosses         = distributeByPositiveHoldings(in.openEconomy.corpBonds.corpBondBankDefaultLoss, openingBankCorpBonds)
+    val bankMortgageBasis          = bankStocks.map(_.mortgageLoan)
+    val bankMortgageInterestIncs   = distributeByPositiveHoldings(mortgageFlows.interest, bankMortgageBasis)
+    val bankMortgageDefaultAmounts = distributeByPositiveHoldings(mortgageFlows.defaultAmount, bankMortgageBasis)
 
     val settledBankCorpBonds = BankBondWaterfall.settleCorpBondHoldings(
       previous = openingBankCorpBonds,
@@ -91,7 +93,7 @@ private[banking] object BankMultiBankStage:
         stocks,
         hhFlows,
         workerShare,
-        mortgageFlows,
+        bankMortgageDefaultAmounts(bankIndex),
         perBankReserveInt,
         perBankStandingFac,
         perBankInterbankInt,
@@ -338,7 +340,7 @@ private[banking] object BankMultiBankStage:
       stocks: Banking.BankFinancialStocks,
       hhFlows: PerBankHhFlows,
       workerShare: Share,
-      mortgageFlows: HousingMarket.MortgageFlows,
+      bankMortgageDefaultAmount: PLN,
       perBankReserveInt: Banking.PerBankAmounts,
       perBankStandingFac: Banking.PerBankAmounts,
       perBankInterbankInt: Banking.PerBankAmounts,
@@ -390,7 +392,7 @@ private[banking] object BankMultiBankStage:
       in.openEconomy.nonBank.nbfiDepositDrain * workerShare
 
     val bankMortgageIntIncome     = bankMortgageInterestIncome
-    val mortgageLoss              = BankCreditLossAccounting.mortgage(mortgageFlows.defaultAmount * workerShare)
+    val mortgageLoss              = BankCreditLossAccounting.mortgage(bankMortgageDefaultAmount)
     val bankMortgageNplLoss       = mortgageLoss.netCapitalLoss
     val consumerBridgeChargeOff   = hhFlows.ccDefault - hhFlows.ccLoanDefault
     require(consumerBridgeChargeOff >= PLN.Zero, s"Consumer default ${hhFlows.ccDefault} must cover consumer-loan default ${hhFlows.ccLoanDefault}")
