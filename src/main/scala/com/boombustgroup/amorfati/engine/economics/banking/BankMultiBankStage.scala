@@ -304,6 +304,7 @@ private[banking] object BankMultiBankStage:
           ccDebtService = f.consumerDebtService,
           ccPrincipal = f.consumerPrincipal,
           ccOrigination = f.consumerOrigination,
+          liquidityShortfallFinancing = f.liquidityShortfallFinancing,
           ccDefault = f.consumerDefault,
           ccLoanDefault = f.consumerLoanDefault,
         )
@@ -317,6 +318,7 @@ private[banking] object BankMultiBankStage:
           ccDebtService = in.householdFinancial.consumerDebtService * ws,
           ccPrincipal = in.householdFinancial.consumerPrincipal * ws,
           ccOrigination = in.householdFinancial.consumerOrigination * ws,
+          liquidityShortfallFinancing = in.householdFinancial.liquidityShortfallFinancing * ws,
           ccDefault = in.householdFinancial.consumerDefaultAmt * ws,
           ccLoanDefault = in.householdFinancial.consumerLoanDefaultAmt * ws,
         )
@@ -374,15 +376,14 @@ private[banking] object BankMultiBankStage:
       in.householdFinancial.tourismImport * workerShare +
       in.firm.perBankNewLoans(bId) -
       in.firm.perBankFirmPrincipal(bId) +
-      hhFlows.ccOrigination +
+      hhFlows.ccOrigination + hhFlows.liquidityShortfallFinancing +
       in.openEconomy.nonBank.insNetDepositChange * workerShare +
       in.openEconomy.nonBank.nbfiDepositDrain * workerShare
 
     val bankMortgageIntIncome     = bankMortgageInterestIncome
     val mortgageLoss              = BankCreditLossAccounting.mortgage(bankMortgageDefaultAmount)
     val bankMortgageNplLoss       = mortgageLoss.netCapitalLoss
-    val consumerBridgeChargeOff   = hhFlows.ccDefault - hhFlows.ccLoanDefault
-    require(consumerBridgeChargeOff >= PLN.Zero, s"Consumer default ${hhFlows.ccDefault} must cover consumer-loan default ${hhFlows.ccLoanDefault}")
+    require(hhFlows.ccDefault == hhFlows.ccLoanDefault, s"Consumer default ${hhFlows.ccDefault} must equal consumer-loan default ${hhFlows.ccLoanDefault}")
     val consumerLoss              = BankCreditLossAccounting.consumer(hhFlows.ccLoanDefault)
     val bankCcNplLoss             = consumerLoss.netCapitalLoss
     val bankCcStockReduction: PLN = in.householdIncome.perBankHhFlowsOpt match

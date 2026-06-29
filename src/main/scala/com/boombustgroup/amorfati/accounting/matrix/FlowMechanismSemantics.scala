@@ -120,12 +120,13 @@ object FlowMechanismSemantics:
     family(
       "Household consumer credit and liquidity shortfall",
       "Household aggregate borrower shell against bank loan/cash shells.",
-      "ConsumerLoan stock evidence plus cash execution deltas for origination, repayment, interest, default, and bridge financing.",
-      "Feeds consumer-loan stock-flow rows, default/write-off channels, bank loss recognition, and household credit stress diagnostics.",
+      "ConsumerLoan stock evidence plus cash execution deltas for underwritten origination, repayment, interest, ordinary default, and separate bridge financing/charge-off.",
+      "Feeds consumer-loan stock-flow rows, bridge write-off channels, bank loss recognition, and household credit stress diagnostics.",
       "ConsumerCreditSpec, HouseholdFlowsSpec, HouseholdStepDsl aggregation checks, McTimeseriesSchemaSpec, HH-bank lead-lag and loan-origination diagnostics.",
     )(
       FlowMechanism.HhCcOrigination,
       FlowMechanism.HhLiquidityShortfallFinancing,
+      FlowMechanism.HhLiquidityBridgeChargeOff,
       FlowMechanism.HhCcDebtService,
       FlowMechanism.HhCcInterest,
       FlowMechanism.HhCcDefault,

@@ -221,7 +221,7 @@ class BankingEconomicsSpec extends AnyFlatSpec with Matchers:
     )
     val bridgeOnlyFlow            = zeroHhBankFlow.copy(
       liquidityShortfallFinancing = PLN(1000),
-      consumerDefault = PLN(1000),
+      consumerDefault = PLN.Zero,
       consumerLoanDefault = PLN.Zero,
     )
     val householdIncomeWithBridge = prepared.householdIncome.copy(

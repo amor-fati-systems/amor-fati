@@ -110,7 +110,7 @@ object HouseholdCreditStressCalibrationExport:
     "MortgageInterestToIncome",
     "ConsumerDefaultToConsumerLoans",
     "LiquidityBridgeChargeOffToConsumerLoans",
-    "LiquidityBridgeChargeOffShareOfConsumerDefault",
+    "LiquidityBridgeChargeOffShareOfHouseholdCreditWriteOff",
     "MortgageDefaultToMortgageLoans",
     "PositiveDepositsToMonthlyIncome",
     "MedianDepositToMeanMonthlyIncome",
@@ -216,15 +216,16 @@ object HouseholdCreditStressCalibrationExport:
       interpretation = "Identifies whether the old combined consumer-default stress ratio was driven by non-underwritten bridge settlements.",
     ),
     TargetBand(
-      id = "LiquidityBridgeChargeOffShareOfConsumerDefault",
-      label = "Liquidity-bridge charge-offs / combined consumer default flow",
+      id = "LiquidityBridgeChargeOffShareOfHouseholdCreditWriteOff",
+      label = "Liquidity-bridge charge-offs / household credit write-offs",
       unit = "share",
       guardrailClass = GuardrailClass.ExploratoryDiagnostic,
       vintage = BaselineVintage,
       lower = Some(BigDecimal("0.00")),
       upper = Some(BigDecimal("1.00")),
-      sourceNote = "Issue #536 attribution check over the combined ConsumerDefault SFC flow.",
-      interpretation = "Shows the share of combined consumer-default flow that is actually same-month liquidity bridge write-off.",
+      sourceNote = "Issue #867 attribution check after ConsumerDefault was narrowed to ordinary consumer-loan principal default.",
+      interpretation =
+        "Shows the share of household credit write-offs that is same-month liquidity bridge charge-off rather than ordinary consumer-loan default.",
     ),
     TargetBand(
       id = "MortgageDefaultToMortgageLoans",
@@ -367,7 +368,10 @@ object HouseholdCreditStressCalibrationExport:
     ),
     metric("ConsumerDefaultToConsumerLoans")(ctx => ctx.ratioColumn("ConsumerLoanDefault", "ConsumerLoans")),
     metric("LiquidityBridgeChargeOffToConsumerLoans")(ctx => ctx.ratioColumn("LiquidityBridgeChargeOff", "ConsumerLoans")),
-    metric("LiquidityBridgeChargeOffShareOfConsumerDefault")(ctx => ctx.ratioColumn("LiquidityBridgeChargeOff", "ConsumerDefault")),
+    metric("LiquidityBridgeChargeOffShareOfHouseholdCreditWriteOff")(ctx =>
+      val bridge = ctx.col("LiquidityBridgeChargeOff")
+      ratioRaw(bridge, bridge + ctx.col("ConsumerLoanDefault")),
+    ),
     metric("MortgageDefaultToMortgageLoans")(ctx => ctx.ratioColumn("MortgageDefault", "MortgageStock")),
     metric("PositiveDepositsToMonthlyIncome")(ctx =>
       ctx.householdRatio(

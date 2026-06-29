@@ -45,11 +45,11 @@ case class PerBankFlow(
     mortgageInterest: PLN,                // mortgage interest routed to this bank
     depositInterest: PLN,                 // total deposit interest paid
     consumerDebtService: PLN,             // consumer (unsecured) debt service
-    consumerOrigination: PLN,             // gross underwritten loan plus same-month bridge origination
+    consumerOrigination: PLN,             // underwritten consumer-credit origination only
     consumerApprovedOrigination: PLN,     // underwritten consumer credit originated by the DTI rule
     consumerBankRejectedOrigination: PLN, // underwritten consumer-credit demand rejected by bank supply
     liquidityShortfallFinancing: PLN,     // same-month bridge/write-off preventing negative deposits
-    consumerDefault: PLN,                 // consumer defaults plus same-month bridge charge-offs
+    consumerDefault: PLN,                 // ordinary consumer-loan principal default
     consumerLoanDefault: PLN,             // default of ordinary outstanding consumer-loan principal
     consumerPrincipal: PLN,               // consumer loan principal repaid
 )
@@ -187,10 +187,10 @@ object Household:
       totalPit: PLN,                                            // aggregate PIT paid
       totalSocialTransfers: PLN,                                // aggregate 800+ social transfers
       totalConsumerDebtService: PLN,                            // aggregate consumer debt service
-      totalConsumerOrigination: PLN,                            // aggregate gross consumer-loan and bridge origination
+      totalConsumerOrigination: PLN,                            // aggregate underwritten consumer-credit origination only
       totalConsumerApprovedOrigination: PLN,                    // aggregate underwritten consumer-credit origination
       totalLiquidityShortfallFinancing: PLN,                    // aggregate same-month bridge/write-off for liquidity gaps
-      totalConsumerDefault: PLN,                                // aggregate consumer defaults plus bridge charge-offs
+      totalConsumerDefault: PLN,                                // aggregate ordinary consumer-loan principal defaults
       totalConsumerPrincipal: PLN,                              // aggregate consumer loan principal repaid
       totalConsumerCreditDemand: PLN = PLN.Zero,                // aggregate underwritten consumer-credit demand before eligibility denial
       totalConsumerRejectedOrigination: PLN = PLN.Zero,         // aggregate consumer-credit demand rejected by borrower or bank rules
@@ -298,7 +298,7 @@ object Household:
       consumerCreditAccessEligible: Boolean,                        // whether stochastic access allowed underwritten credit
       liquidityShortfallFinancing: PLN,                             // same-month bridge/write-off preventing negative closing deposits
       consumerDebtService: PLN,                                     // monthly unsecured consumer-credit debt service
-      consumerDefault: PLN,                                         // gross consumer default plus bridge charge-off this month
+      consumerDefault: PLN,                                         // ordinary consumer-loan principal default this month
       consumerPrincipal: PLN,                                       // principal component of consumer debt service
       closingConsumerLoan: PLN,                                     // closing unsecured consumer-loan principal
       consumerLoanDefault: PLN,                                     // default of ordinary outstanding consumer-loan principal

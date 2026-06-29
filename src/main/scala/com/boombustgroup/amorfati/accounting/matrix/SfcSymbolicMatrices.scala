@@ -260,6 +260,7 @@ object SfcSymbolicMatrices:
           mechanisms = Vector(
             FlowMechanism.HhCcDebtService,
             FlowMechanism.HhCcDefault,
+            FlowMechanism.HhLiquidityBridgeChargeOff,
             FlowMechanism.FirmLoanRepayment,
             FlowMechanism.FirmNplDefault,
             FlowMechanism.MortgageRepayment,

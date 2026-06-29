@@ -1004,14 +1004,14 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
       ),
     )
     val hhAgg               = init.householdAggregates.copy(
-      totalConsumerOrigination = PLN(12),
+      totalConsumerOrigination = PLN(8),
       totalConsumerApprovedOrigination = PLN(8),
       totalConsumerCreditDemand = PLN(20),
       totalConsumerRejectedOrigination = PLN(12),
       totalConsumerBankRejectedOrigination = PLN(6),
       totalConsumerBankPortfolioRejected = PLN(2),
       totalConsumerPrincipal = PLN(5),
-      totalConsumerDefault = PLN(7),
+      totalConsumerDefault = PLN(3),
       totalConsumerLoanDefault = PLN(3),
       totalLiquidityShortfallFinancing = PLN(4),
       totalLiquidityBridgeChargeOff = PLN(4),
@@ -1055,14 +1055,14 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     valueAt(row, "FirmCredit_TechCandidateApprovalRate") shouldBe MetricValue.fromRaw((PLN(16) / PLN(20)).toLong)
     valueAt(row, "ConsumerLoans") shouldBe polandScale(consumerLoans)
     valueAt(row, "ConsumerNplRatio") shouldBe MetricValue.fromRaw((consumerNpl / consumerLoans).toLong)
-    valueAt(row, "ConsumerOrigination") shouldBe polandScale(PLN(12))
+    valueAt(row, "ConsumerOrigination") shouldBe polandScale(PLN(8))
     valueAt(row, "ConsumerApprovedOrigination") shouldBe polandScale(PLN(8))
     valueAt(row, "ConsumerCreditDemand") shouldBe polandScale(PLN(20))
     valueAt(row, "ConsumerRejectedOrigination") shouldBe polandScale(PLN(12))
     valueAt(row, "ConsumerBankRejectedOrigination") shouldBe polandScale(PLN(6))
     valueAt(row, "ConsumerCredit_RejectedPortfolioPreference") shouldBe polandScale(PLN(2))
     valueAt(row, "ConsumerPrincipal") shouldBe polandScale(PLN(5))
-    valueAt(row, "ConsumerDefault") shouldBe polandScale(PLN(7))
+    valueAt(row, "ConsumerDefault") shouldBe polandScale(PLN(3))
     valueAt(row, "ConsumerLoanDefault") shouldBe polandScale(PLN(3))
     valueAt(row, "LiquidityBridgeChargeOff") shouldBe polandScale(PLN(4))
     valueAt(row, "ConsumerCredit_NetStockFlow") shouldBe polandScale(PLN.Zero)

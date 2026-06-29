@@ -119,6 +119,7 @@ object RuntimeMechanismSurvivability:
       FlowMechanism.HhRemittance,
       FlowMechanism.HhCcOrigination,
       FlowMechanism.HhLiquidityShortfallFinancing,
+      FlowMechanism.HhLiquidityBridgeChargeOff,
       FlowMechanism.HhCcDebtService,
       FlowMechanism.HhCcInterest,
       FlowMechanism.HhCcDefault,

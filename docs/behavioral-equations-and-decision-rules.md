@@ -255,25 +255,26 @@ absorbs stress before `liquidityShortfallFinancing_h` is created:
 liquidityShortfallFinancing_h = max(-rawLiquidBalance'_h, 0)
 demandDeposit'_h = max(rawLiquidBalance'_h, 0)
 consumerLoan'_h =
-  consumerLoanAfterScheduledCredit_h + liquidityShortfallFinancing_h
+  consumerLoanAfterScheduledCredit_h
 totalConsumerOrigination_h =
-  approvedConsumerLoan_h + liquidityShortfallFinancing_h
+  approvedConsumerLoan_h
 ```
 
 If the household crosses the persistent distress threshold in the same month,
-the shortfall-financing leg is included in the consumer-credit default amount.
+ordinary remaining unsecured consumer-loan principal is included in the
+consumer-credit default amount; the shortfall-financing leg remains a separate
+same-month bridge charge-off.
 `HhCcOrigination` carries only the underwritten loan; `HhLiquidityShortfallFinancing`
-carries the residual settlement leg. SFC consumer-credit stock identities use
-the sum of both mechanisms.
+carries the residual settlement leg.
 
-For diagnostics, `ConsumerDefault` remains the combined SFC default/write-off
-flow. `ConsumerLoanDefault` isolates default of ordinary outstanding consumer
-loan principal, while `LiquidityBridgeChargeOff` isolates the same-month bridge
+For diagnostics, `ConsumerDefault` reports ordinary outstanding consumer-loan
+principal default. `LiquidityBridgeChargeOff` isolates the same-month bridge
 write-off used to keep demand deposits non-negative.
 The timeseries also exposes `ConsumerPrincipal` plus `ConsumerCredit_*`
 stock-flow diagnostics so the monthly consumer-loan stock delta can be separated
-into approved origination, principal repayment, ordinary default, and same-month
-liquidity bridge charge-off. `ConsumerNplRatio` keeps the legacy performing-loan
+into approved origination, principal repayment, and ordinary default, with the
+same-month liquidity bridge reported as a zero-net bridge channel.
+`ConsumerNplRatio` keeps the legacy performing-loan
 denominator, while `ConsumerCredit_NplRatioGross` reports the same NPL stock
 against a gross-book denominator. `ConsumerCredit_RejectedPortfolioPreference*`
 isolates the bank-side rejection share attributable to the loan-vs-sovereign

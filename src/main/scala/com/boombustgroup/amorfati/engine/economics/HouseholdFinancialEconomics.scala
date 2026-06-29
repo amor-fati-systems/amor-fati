@@ -32,10 +32,10 @@ object HouseholdFinancialEconomics:
       tourismExport: PLN,               // inbound tourism receipts
       tourismImport: PLN,               // outbound tourism expenditure
       consumerDebtService: PLN,         // total consumer credit debt service
-      consumerOrigination: PLN,         // gross underwritten loan plus same-month bridge origination
+      consumerOrigination: PLN,         // underwritten consumer-credit origination only
       consumerApprovedOrigination: PLN, // underwritten consumer credit originated by the DTI rule
       liquidityShortfallFinancing: PLN, // same-month bridge/write-off preventing negative demand deposits
-      consumerDefaultAmt: PLN,          // combined SFC default: loan defaults plus bridge charge-offs
+      consumerDefaultAmt: PLN,          // ordinary consumer-loan principal default
       consumerLoanDefaultAmt: PLN,      // ordinary consumer-loan default, excluding same-month bridge charge-offs
       consumerNplLoss: PLN,             // ordinary consumer-loan NPL loss net of recovery
       consumerPrincipal: PLN,           // consumer loan principal repayment

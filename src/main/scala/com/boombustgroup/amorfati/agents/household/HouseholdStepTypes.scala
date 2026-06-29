@@ -24,8 +24,8 @@ private[household] object HouseholdStepTypes:
   ):
     def liquidityShortfallFinancing: PLN = liquidityShortfall.total
     def liquidityBridgeChargeOff: PLN    = liquidityShortfallFinancing
-    def consumerLoanDefault: PLN         = (defaultAmt - liquidityBridgeChargeOff).max(PLN.Zero)
-    def totalOrigination: PLN            = newLoan + liquidityShortfallFinancing
+    def consumerLoanDefault: PLN         = defaultAmt
+    def totalOrigination: PLN            = newLoan
 
   /** Cash-priority result before residual liquidity settlement. */
   final case class ConsumptionWaterfall(

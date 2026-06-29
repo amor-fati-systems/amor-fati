@@ -139,6 +139,7 @@ private[banking] final case class PerBankHhFlows(
     ccDebtService: PLN,
     ccPrincipal: PLN,
     ccOrigination: PLN,
+    liquidityShortfallFinancing: PLN,
     ccDefault: PLN,
     ccLoanDefault: PLN,
 )

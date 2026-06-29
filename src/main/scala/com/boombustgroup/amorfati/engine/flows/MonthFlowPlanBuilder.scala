@@ -81,6 +81,7 @@ private[flows] object MonthFlowPlanBuilder:
         totalCcOrigination = agg.totalConsumerOrigination,
         approvedCcOrigination = agg.totalConsumerApprovedOrigination,
         liquidityShortfallFinancing = agg.totalLiquidityShortfallFinancing,
+        liquidityBridgeChargeOff = agg.totalLiquidityBridgeChargeOff,
         totalCcDebtService = agg.totalConsumerDebtService,
         totalCcPrincipal = agg.totalConsumerPrincipal,
         totalCcDefault = agg.totalConsumerDefault,

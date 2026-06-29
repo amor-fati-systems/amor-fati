@@ -30,6 +30,7 @@ object MonthFlowEmitter:
           c.totalRemittances,
           c.approvedCcOrigination,
           c.liquidityShortfallFinancing,
+          c.liquidityBridgeChargeOff,
           c.totalCcPrincipal,
           (c.totalCcDebtService - c.totalCcPrincipal).max(PLN.Zero),
           c.totalCcDefault,

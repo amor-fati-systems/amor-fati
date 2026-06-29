@@ -252,6 +252,7 @@ class SfcSpec extends AnyFlatSpec with Matchers:
     consumerNplLoss = PLN.Zero,
     consumerOrigination = PLN.Zero,
     consumerLiquidityShortfallFinancing = PLN.Zero,
+    consumerLiquidityBridgeChargeOff = PLN.Zero,
     consumerPrincipalRepaid = PLN.Zero,
     consumerDefaultAmount = PLN.Zero,
     corpBondCouponIncome = PLN.Zero,
@@ -947,6 +948,18 @@ class SfcSpec extends AnyFlatSpec with Matchers:
       consumerDefaultAmount = PLN(500),
       bankRetainedIncome = PLN(300),
     )
+    val result = Sfc.validateStockExactness(prev, curr, flows)
+    result shouldBe Right(())
+  }
+
+  it should "keep liquidity bridge financing out of the consumer-loan stock identity" in {
+    val prev  = zeroSnap.copy(bankDeposits = PLN(1000000), consumerLoans = PLN(100000))
+    val curr  = prev.copy(bankDeposits = prev.bankDeposits + PLN(7000), consumerLoans = prev.consumerLoans)
+    val flows = zeroFlows.copy(
+      consumerLiquidityShortfallFinancing = PLN(7000),
+      consumerLiquidityBridgeChargeOff = PLN(7000),
+    )
+
     val result = Sfc.validateStockExactness(prev, curr, flows)
     result shouldBe Right(())
   }

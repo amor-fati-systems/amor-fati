@@ -287,8 +287,8 @@ private[banking] object BankAggregateReconciliation:
       investNetDepositFlow + jstDepositChange + quasiFiscalDepositChange + in.priceEquity.netDomesticDividends -
       in.priceEquity.foreignDividendOutflow - in.householdFinancial.remittanceOutflow + in.householdFinancial.diasporaInflow +
       in.householdFinancial.tourismExport - in.householdFinancial.tourismImport - bailInLoss + in.firm.sumNewLoans -
-      in.firm.sumFirmPrincipal + in.householdFinancial.consumerOrigination + in.openEconomy.nonBank.insNetDepositChange +
-      in.openEconomy.nonBank.nbfiDepositDrain
+      in.firm.sumFirmPrincipal + in.householdFinancial.consumerOrigination + in.householdFinancial.liquidityShortfallFinancing +
+      in.openEconomy.nonBank.insNetDepositChange + in.openEconomy.nonBank.nbfiDepositDrain
     AggregateReconciliation(
       depositsResidual = targetDeposits,
       capitalResidual = targetCapital,

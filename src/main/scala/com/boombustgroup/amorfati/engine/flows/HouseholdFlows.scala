@@ -35,6 +35,7 @@ object HouseholdFlows:
       remittances: PLN,
       approvedCcOrigination: PLN,
       liquidityShortfallFinancing: PLN,
+      liquidityBridgeChargeOff: PLN,
       ccPrincipalRepayment: PLN,
       ccInterest: PLN,
       ccDefault: PLN,
@@ -110,6 +111,15 @@ object HouseholdFlows:
         topology.households.aggregate,
         EntitySector.Banks,
         topology.banks.aggregate,
+        input.liquidityBridgeChargeOff,
+        AssetType.ConsumerLoan,
+        FlowMechanism.HhLiquidityBridgeChargeOff,
+      ),
+      AggregateBatchedEmission.transfer(
+        EntitySector.Households,
+        topology.households.aggregate,
+        EntitySector.Banks,
+        topology.banks.aggregate,
         input.ccPrincipalRepayment,
         AssetType.ConsumerLoan,
         FlowMechanism.HhCcDebtService,
@@ -146,6 +156,8 @@ object HouseholdFlows:
       flows += Flow(BANK_ACCOUNT, HH_ACCOUNT, input.approvedCcOrigination.toLong, FlowMechanism.HhCcOrigination.toInt)
     if input.liquidityShortfallFinancing > PLN.Zero then
       flows += Flow(BANK_ACCOUNT, HH_ACCOUNT, input.liquidityShortfallFinancing.toLong, FlowMechanism.HhLiquidityShortfallFinancing.toInt)
+    if input.liquidityBridgeChargeOff > PLN.Zero then
+      flows += Flow(HH_ACCOUNT, BANK_ACCOUNT, input.liquidityBridgeChargeOff.toLong, FlowMechanism.HhLiquidityBridgeChargeOff.toInt)
     if input.ccPrincipalRepayment > PLN.Zero then
       flows += Flow(HH_ACCOUNT, BANK_ACCOUNT, input.ccPrincipalRepayment.toLong, FlowMechanism.HhCcDebtService.toInt)
     if input.ccInterest > PLN.Zero then flows += Flow(HH_ACCOUNT, BANK_ACCOUNT, input.ccInterest.toLong, FlowMechanism.HhCcInterest.toInt)

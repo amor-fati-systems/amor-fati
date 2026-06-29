@@ -572,9 +572,15 @@ object SfcMatrixEvidence:
         case ConsumerCredit              =>
           rowMetadata(
             "Consumer credit",
-            "Actual delta from consumer loan stocks; expected delta from origination minus principal repayment and defaults.",
+            "Actual delta from ordinary consumer-loan stocks; expected delta from underwritten origination minus principal repayment and ordinary defaults. Same-month liquidity bridge financing and charge-off are listed separately for audit evidence and net to zero outside ordinary consumer default.",
             Vector(AssetType.ConsumerLoan),
-            Vector(FlowMechanism.HhCcOrigination, FlowMechanism.HhLiquidityShortfallFinancing, FlowMechanism.HhCcDebtService, FlowMechanism.HhCcDefault),
+            Vector(
+              FlowMechanism.HhCcOrigination,
+              FlowMechanism.HhLiquidityShortfallFinancing,
+              FlowMechanism.HhLiquidityBridgeChargeOff,
+              FlowMechanism.HhCcDebtService,
+              FlowMechanism.HhCcDefault,
+            ),
             "Bank loss recognition is separately included in the bank-capital identity.",
           )
         case CorpBondStock               =>
