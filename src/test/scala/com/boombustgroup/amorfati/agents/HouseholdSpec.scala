@@ -262,7 +262,7 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
     updated(0).financialDistressState shouldBe HhFinancialDistressState.Arrears
   }
 
-  it should "enter default at the distress threshold before personal insolvency write-off" in {
+  it should "enter default at the distress threshold before personal-insolvency filing" in {
     val rng     = RandomStream.seeded(42)
     val hh      = mkHousehold(
       0,
@@ -276,7 +276,7 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
     updated(0).financialDistressState shouldBe HhFinancialDistressState.Defaulted
   }
 
-  it should "stay defaulted before the personal insolvency write-off threshold" in {
+  it should "stay defaulted before personal-insolvency hazard filing" in {
     val rng     = RandomStream.seeded(42)
     val hh      = mkHousehold(
       0,

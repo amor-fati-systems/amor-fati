@@ -28,8 +28,8 @@ enum HhFinancialDistressState:
   case LiquidityStress // first active liquidity stress month
   case Arrears         // repeated unpaid obligations or residual shortfall
   case Restructuring   // post-arrears workout / constrained recovery
-  case Defaulted       // persistent distress before personal-insolvency write-off
-  case Bankruptcy // personal insolvency / write-off state
+  case Defaulted       // persistent distress before personal-insolvency filing
+  case Bankruptcy // personal-insolvency filing/workout state
 
 /** Per-bank lending and deposit rates for individual HH mode. */
 case class BankRates(
@@ -211,8 +211,8 @@ object Household:
       distressLiquidityStress: Int = 0,                         // count of HH in first-month liquidity stress
       distressArrears: Int = 0,                                 // count of HH with repeated arrears/shortfall stress
       distressRestructuring: Int = 0,                           // count of HH in post-arrears restructuring/recovery
-      distressDefaulted: Int = 0,                               // count of HH in persistent default before write-off
-      distressBankruptcy: Int = 0,                              // count of HH in personal-insolvency/write-off state
+      distressDefaulted: Int = 0,                               // count of HH in persistent default before personal-insolvency filing
+      distressBankruptcy: Int = 0,                              // count of HH in personal-insolvency filing/workout state
   ):
     def totalLiquidityShortfallComponents: PLN =
       totalConsumptionShortfall + totalRentArrears + totalMortgageArrears + totalConsumerDebtArrears + totalTemporaryOverdraft
