@@ -19,13 +19,13 @@ private[household] object HouseholdStepTypes:
       creditAccessEligible: Boolean,
       bankApproval: Option[Banking.CreditApproval],
       liquidityShortfall: Household.LiquidityShortfallComponents,
+      liquidityBridgeChargeOff: PLN,
       defaultAmt: PLN,
       updatedDebt: PLN,
   ):
     def liquidityShortfallFinancing: PLN = liquidityShortfall.total
-    def liquidityBridgeChargeOff: PLN    = liquidityShortfallFinancing
-    def consumerLoanDefault: PLN         = (defaultAmt - liquidityBridgeChargeOff).max(PLN.Zero)
-    def totalOrigination: PLN            = newLoan + liquidityShortfallFinancing
+    def consumerLoanDefault: PLN         = defaultAmt
+    def totalOrigination: PLN            = newLoan
 
   /** Cash-priority result before residual liquidity settlement. */
   final case class ConsumptionWaterfall(

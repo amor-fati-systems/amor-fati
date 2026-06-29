@@ -588,11 +588,10 @@ older `HouseholdBankruptcies`, `HouseholdBankruptcyRate`, and terminal
 `HhStatus.Bankrupt` path.
 
 The timeseries also includes residual shortfall settlement and its component
-attribution. `ConsumerDefault` is the matching same-month default/write-off
-diagnostic for the combined consumer-credit stock identity. `ConsumerPrincipal`
-reports principal repayment and is not part of the default/write-off flow;
-`ConsumerLoanDefault` and `LiquidityBridgeChargeOff` split the write-off flow
-into ordinary consumer-loan default and same-month bridge charge-off:
+attribution. `ConsumerDefault` and `ConsumerLoanDefault` report ordinary
+consumer-loan principal default. `ConsumerPrincipal` reports principal
+repayment and is not part of the default flow; `LiquidityBridgeChargeOff`
+reports the separate same-month bridge charge-off:
 
 ```text
 HouseholdLiquidity_ShortfallFinancing
@@ -618,11 +617,12 @@ compresses discretionary consumption. `HouseholdLiquidity_UnmetBasicConsumption`
 records basic consumption need that was not covered by cash, and
 `HouseholdLiquidity_DiscretionaryConsumptionCompression` records spending that
 was cut before arrears/default settlement. The bridge is separate from
-`ConsumerApprovedOrigination` and is
-charged off through `ConsumerDefault` in the same month, so it does not survive
+`ConsumerApprovedOrigination` and is charged off through
+`LiquidityBridgeChargeOff` in the same month, so it does not survive
 as ordinary household consumer-loan stock and does not bypass DTI underwriting.
-`ConsumerOrigination` remains the gross SFC bridge plus approved-origination
-flow, while `ConsumerApprovedOrigination` is the underwritten credit channel.
+`ConsumerOrigination` is the underwritten credit channel and matches
+`ConsumerApprovedOrigination`; bridge financing is reported through
+`HouseholdLiquidity_ShortfallFinancing`.
 `ConsumerCreditDemand` records stressed households' DTI-based requested
 principal before eligibility denial, and `ConsumerRejectedOrigination` records
 the requested principal not approved by borrower-side or bank-side rules.
@@ -635,7 +635,7 @@ available.
 `ConsumerLoanDefault` reports only default of ordinary outstanding consumer-loan
 principal; `LiquidityBridgeChargeOff` reports the same-month bridge write-off.
 For the bridge component, the stock effect is zero because
-`HouseholdLiquidity_ShortfallFinancing` is offset by `ConsumerDefault`.
+`HouseholdLiquidity_ShortfallFinancing` is offset by `LiquidityBridgeChargeOff`.
 `ConsumerCredit_NetStockFlow` reconciles the total monthly consumer-loan stock
 flow as origination minus principal repayment minus default. The
 `ConsumerCredit_UnderwrittenNetFlow` and `ConsumerCredit_BridgeNetFlow` columns

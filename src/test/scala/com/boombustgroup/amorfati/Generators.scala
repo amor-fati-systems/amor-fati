@@ -591,6 +591,7 @@ object Generators:
     consumerNplLoss = PLN.Zero,
     consumerOrigination = PLN.Zero,
     consumerLiquidityShortfallFinancing = PLN.Zero,
+    consumerLiquidityBridgeChargeOff = PLN.Zero,
     consumerPrincipalRepaid = PLN.Zero,
     consumerDefaultAmount = PLN.Zero,
     corpBondCouponIncome = PLN.Zero,
@@ -642,7 +643,8 @@ object Generators:
         flows.dividendIncome - flows.foreignDividendOutflow - flows.remittanceOutflow + flows.diasporaInflow +
         flows.tourismExport - flows.tourismImport - flows.bailInLoss +
         flows.newLoans - flows.firmPrincipalRepaid +
-        flows.consumerOrigination + flows.insNetDepositChange + flows.nbfiDepositDrain +
+        flows.consumerOrigination + flows.consumerLiquidityShortfallFinancing +
+        flows.insNetDepositChange + flows.nbfiDepositDrain +
         flows.quasiFiscalDepositChange
       val expectedGovDebtChange  = flows.govSpending - flows.govRevenue
       val expectedNfaChange      = flows.currentAccount + flows.valuationEffect

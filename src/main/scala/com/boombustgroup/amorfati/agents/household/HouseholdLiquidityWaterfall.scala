@@ -72,7 +72,8 @@ private[agents] object HouseholdLiquidityWaterfall:
       components
 
   /** Converts any residual negative demand-deposit settlement into explicit
-    * same-month bridge charge-off/default diagnostics.
+    * same-month bridge charge-off diagnostics without treating it as ordinary
+    * consumer-loan principal default.
     */
   def settleLiquidityShortfall(rawDemandDeposit: PLN, credit: CreditResult, components: Household.LiquidityShortfallComponents): (PLN, CreditResult) =
     if rawDemandDeposit >= PLN.Zero then (rawDemandDeposit, credit)
@@ -86,6 +87,6 @@ private[agents] object HouseholdLiquidityWaterfall:
         PLN.Zero,
         credit.copy(
           liquidityShortfall = credit.liquidityShortfall + components,
-          defaultAmt = credit.defaultAmt + shortfall,
+          liquidityBridgeChargeOff = credit.liquidityBridgeChargeOff + shortfall,
         ),
       )

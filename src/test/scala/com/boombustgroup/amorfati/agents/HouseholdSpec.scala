@@ -310,14 +310,13 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
     result.financialStocks.head.demandDeposit shouldBe PLN.Zero
     result.financialStocks.head.consumerLoan shouldBe PLN.Zero
     result.aggregates.totalConsumerDebtService shouldBe expectedDebtService
-    result.aggregates.totalConsumerOrigination should be > PLN.Zero
+    result.aggregates.totalConsumerOrigination shouldBe PLN.Zero
     result.aggregates.totalConsumerApprovedOrigination shouldBe PLN.Zero
-    result.aggregates.totalLiquidityShortfallFinancing shouldBe result.aggregates.totalConsumerOrigination
     result.aggregates.totalLiquidityShortfallComponents shouldBe result.aggregates.totalLiquidityShortfallFinancing
-    result.aggregates.totalConsumerDefault shouldBe expectedDefault + result.aggregates.totalConsumerOrigination
+    result.aggregates.totalConsumerDefault shouldBe expectedDefault
     result.aggregates.totalConsumerLoanDefault shouldBe expectedDefault
-    result.aggregates.totalLiquidityBridgeChargeOff shouldBe result.aggregates.totalLiquidityShortfallFinancing
-    result.aggregates.totalConsumerPrincipal + result.aggregates.totalConsumerDefault shouldBe openingLoan + result.aggregates.totalConsumerOrigination
+    result.aggregates.totalLiquidityBridgeChargeOff shouldBe result.monthlyFlows.head.liquidityBridgeChargeOff
+    result.aggregates.totalConsumerPrincipal + result.aggregates.totalConsumerDefault shouldBe openingLoan
   }
 
   it should "reset financial distress months after recovery" in {
@@ -617,17 +616,40 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
 
     stocks.demandDeposit shouldBe PLN.Zero
     stocks.consumerLoan shouldBe PLN.Zero
-    result.aggregates.totalConsumerOrigination shouldBe result.aggregates.totalLiquidityShortfallFinancing
+    result.aggregates.totalConsumerOrigination shouldBe PLN.Zero
     result.aggregates.totalConsumerApprovedOrigination shouldBe PLN.Zero
-    result.aggregates.totalConsumerDefault shouldBe result.aggregates.totalLiquidityShortfallFinancing
+    result.aggregates.totalConsumerDefault shouldBe PLN.Zero
     result.aggregates.totalConsumerLoanDefault shouldBe PLN.Zero
-    result.aggregates.totalLiquidityBridgeChargeOff shouldBe result.aggregates.totalLiquidityShortfallFinancing
+    result.aggregates.totalLiquidityBridgeChargeOff shouldBe result.monthlyFlows.head.liquidityBridgeChargeOff
     result.aggregates.totalLiquidityShortfallComponents shouldBe result.aggregates.totalLiquidityShortfallFinancing
     result.monthlyFlows.head.rentArrears + result.monthlyFlows.head.temporaryOverdraft should be > PLN.Zero
     result.aggregates.meanSavings shouldBe PLN.Zero
   }
 
-  it should "route residual consumer-debt-service financing through same-month default" in {
+  it should "route mortgage arrears through shortfall components without consumer-credit origination or default" in {
+    val rng = RandomStream.seeded(42)
+    val hh  = mkHousehold(
+      0,
+      HhStatus.Unemployed(10),
+      savings = PLN.Zero,
+      debt = PLN(120000),
+      rent = PLN.Zero,
+      mpc = BigDecimal("0.50"),
+      mortgageRemainingMonths = 1,
+    )
+
+    val result = step(Vector(hh), mkWorld(), PLN(8000), PLN(4666), Share.decimal(4, 1), rng)
+    val flow   = result.monthlyFlows.head
+
+    flow.mortgageArrears should be > PLN.Zero
+    result.aggregates.totalMortgageArrears shouldBe flow.mortgageArrears
+    result.aggregates.totalConsumerOrigination shouldBe PLN.Zero
+    result.aggregates.totalConsumerDefault shouldBe PLN.Zero
+    result.aggregates.totalConsumerLoanDefault shouldBe PLN.Zero
+    result.aggregates.totalLiquidityBridgeChargeOff shouldBe flow.liquidityBridgeChargeOff
+  }
+
+  it should "route residual consumer-debt-service financing through bridge charge-off" in {
     val rng         = RandomStream.seeded(42)
     val openingLoan = PLN(12000)
     val hh          = mkHousehold(0, HhStatus.Unemployed(10), savings = PLN.Zero, rent = PLN.Zero, mpc = BigDecimal("0.50"))
@@ -640,9 +662,9 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
     val flow   = result.monthlyFlows.head
 
     flow.consumerDebtArrears shouldBe flow.consumerDebtService
-    flow.consumerDefault shouldBe flow.consumerDebtArrears
+    flow.consumerDefault shouldBe PLN.Zero
     flow.consumerLoanDefault shouldBe PLN.Zero
-    flow.liquidityBridgeChargeOff shouldBe flow.consumerDefault
+    flow.liquidityBridgeChargeOff shouldBe flow.consumerDebtArrears
     flow.consumerDebtService should be > flow.consumerPrincipal
     flow.closingConsumerLoan shouldBe (openingLoan - flow.consumerPrincipal).max(PLN.Zero)
     result.financialStocks.head.consumerLoan shouldBe flow.closingConsumerLoan

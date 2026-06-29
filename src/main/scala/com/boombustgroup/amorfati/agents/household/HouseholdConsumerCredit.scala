@@ -119,6 +119,7 @@ private[agents] object HouseholdConsumerCredit:
       creditAccessEligible = creditAccessEligible,
       bankApproval = bankApproval,
       liquidityShortfall = Household.LiquidityShortfallComponents.Zero,
+      liquidityBridgeChargeOff = PLN.Zero,
       defaultAmt = PLN.Zero,
       updatedDebt = updatedDebt,
     )

@@ -732,8 +732,8 @@ class McRunnerTsvIntegrationSpec extends AnyFlatSpec with Matchers:
         BigDecimal(row(consumerBankRejectedOriginationIdx)) should be <= BigDecimal(row(consumerRejectedOriginationIdx))
         BigDecimal(row(unmetBasicConsumptionIdx)) should be >= BigDecimal(0)
         BigDecimal(row(discretionaryCompressionIdx)) should be >= BigDecimal(0)
-        BigDecimal(row(consumerDefaultIdx)) shouldBe
-          BigDecimal(row(consumerLoanDefaultIdx)) + BigDecimal(row(liquidityBridgeChargeOffIdx)) +- BigDecimal("0.05")
+        BigDecimal(row(consumerDefaultIdx)) shouldBe BigDecimal(row(consumerLoanDefaultIdx)) +- BigDecimal("0.05")
+        BigDecimal(row(liquidityBridgeChargeOffIdx)) should be >= BigDecimal(0)
         val componentSum =
           BigDecimal(row(consumptionShortfallIdx)) +
             BigDecimal(row(rentArrearsIdx)) +

@@ -55,7 +55,7 @@ outside the reference band is still reported as `WARN`, but the warning means
 | `MortgageInterestToIncome` | `EXPLORATORY_DIAGNOSTIC` | `2026-04-30 model-start baseline` | `0.00` to n/a | ratio | Shows the rate-sensitive part of mortgage debt service separately from scheduled principal repayment. |
 | `ConsumerDefaultToConsumerLoans` | `EXPLORATORY_DIAGNOSTIC` | `2026-04-30 model-start baseline` | `0.00` to `0.03` | monthly ratio | Ordinary consumer-loan default flow relative to consumer-loan stock, excluding same-month liquidity bridge write-offs. |
 | `LiquidityBridgeChargeOffToConsumerLoans` | `EXPLORATORY_DIAGNOSTIC` | `2026-04-30 model-start baseline` | `0.00` to n/a | monthly ratio | Same-month liquidity bridge write-offs relative to consumer-loan stock. |
-| `LiquidityBridgeChargeOffShareOfConsumerDefault` | `EXPLORATORY_DIAGNOSTIC` | `2026-04-30 model-start baseline` | `0.00` to `1.00` | share | Share of the combined SFC `ConsumerDefault` flow that is actually liquidity bridge write-off. |
+| `LiquidityBridgeChargeOffShareOfHouseholdCreditWriteOff` | `EXPLORATORY_DIAGNOSTIC` | `2026-04-30 model-start baseline` | `0.00` to `1.00` | share | Share of household credit write-offs that is same-month liquidity bridge charge-off rather than ordinary consumer-loan default. |
 | `MortgageDefaultToMortgageLoans` | `EXPLORATORY_DIAGNOSTIC` | `2026-04-30 model-start baseline` | `0.00` to `0.01` | monthly ratio | Flow/stock stress ratio for mortgage stress; this should later be mapped to arrears/default definitions. |
 | `PositiveDepositsToMonthlyIncome` | `SOFT_CALIBRATION_WARNING` | `2026-04-30 model-start baseline` | `1.00` to `8.00` | months of income | Aggregate liquid buffers should be neither exhausted nor implausibly huge relative to household income. |
 | `MedianDepositToMeanMonthlyIncome` | `SOFT_CALIBRATION_WARNING` | `2026-04-30 model-start baseline` | `0.20` to `6.00` | months of mean income | The median household should have some liquidity, but not years of income in demand deposits. |
@@ -91,9 +91,9 @@ reduces the consumer-loan stock, while only the interest component enters bank
 income. The consumer-credit,
 household DSR, arrears/default and liquidity-buffer ranges are deliberately
 documented as guardrails, not final empirical pass/fail tests. `ConsumerDefault`
-remains the combined SFC flow used for stock closure and bank losses, while
-`ConsumerDefaultToConsumerLoans` now uses only ordinary consumer-loan principal
-default; liquidity bridge write-offs are reported separately. The #528 budget
+now reports ordinary consumer-loan principal default only; liquidity bridge
+write-offs are reported separately and no longer enter bank consumer NPL loss
+recognition. The #528 budget
 waterfall additionally reports unmet basic consumption and discretionary
 consumption compression so shortfall financing is not the only visible stress
 absorber. The #534 consumer-credit diagnostics report stressed borrower demand

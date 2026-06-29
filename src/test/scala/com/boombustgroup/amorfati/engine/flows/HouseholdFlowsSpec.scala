@@ -15,6 +15,7 @@ class HouseholdFlowsSpec extends AnyFlatSpec with Matchers:
     remittances = PLN(500000),
     approvedCcOrigination = PLN(2000000),
     liquidityShortfallFinancing = PLN(300000),
+    liquidityBridgeChargeOff = PLN(300000),
     ccPrincipalRepayment = PLN(1100000),
     ccInterest = PLN(400000),
     ccDefault = PLN(200000),
@@ -31,7 +32,7 @@ class HouseholdFlowsSpec extends AnyFlatSpec with Matchers:
     val balances = Interpreter.applyAll(Map.empty[Int, Long], flows)
 
     val outflows = baseInput.consumption + baseInput.rent + baseInput.pit +
-      baseInput.remittances + baseInput.ccPrincipalRepayment + baseInput.ccInterest + baseInput.ccDefault
+      baseInput.remittances + baseInput.liquidityBridgeChargeOff + baseInput.ccPrincipalRepayment + baseInput.ccInterest + baseInput.ccDefault
     val inflows  = baseInput.depositInterest + baseInput.approvedCcOrigination + baseInput.liquidityShortfallFinancing
 
     balances(HouseholdFlows.HH_ACCOUNT) shouldBe (inflows - outflows).toLong
@@ -41,14 +42,15 @@ class HouseholdFlowsSpec extends AnyFlatSpec with Matchers:
     val flows    = HouseholdFlows.emit(baseInput)
     val balances = Interpreter.applyAll(Map.empty[Int, Long], flows)
 
-    val bankNet = baseInput.ccPrincipalRepayment + baseInput.ccInterest + baseInput.ccDefault -
+    val bankNet = baseInput.liquidityBridgeChargeOff + baseInput.ccPrincipalRepayment + baseInput.ccInterest + baseInput.ccDefault -
       baseInput.depositInterest - baseInput.approvedCcOrigination - baseInput.liquidityShortfallFinancing
 
     balances(HouseholdFlows.BANK_ACCOUNT) shouldBe bankNet.toLong
   }
 
   it should "skip zero-amount flows" in {
-    val minimal = HouseholdFlows.Input(PLN(1000000), PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero)
+    val minimal =
+      HouseholdFlows.Input(PLN(1000000), PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero)
     val flows   = HouseholdFlows.emit(minimal)
     flows.length shouldBe 1
     flows.head.mechanism shouldBe FlowMechanism.HhConsumption.toInt

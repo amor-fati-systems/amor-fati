@@ -18,7 +18,7 @@ class HouseholdFinancialEconomicsSpec extends AnyFlatSpec with Matchers:
       .testHouseholdAggregates()
       .copy(
         totalLiquidityShortfallFinancing = PLN(1000),
-        totalConsumerDefault = PLN(1000),
+        totalConsumerDefault = PLN.Zero,
         totalConsumerLoanDefault = PLN.Zero,
         totalLiquidityBridgeChargeOff = PLN(1000),
       )
@@ -31,7 +31,7 @@ class HouseholdFinancialEconomicsSpec extends AnyFlatSpec with Matchers:
       rng = RandomStream.seeded(42),
     )
 
-    result.consumerDefaultAmt shouldBe PLN(1000)
+    result.consumerDefaultAmt shouldBe PLN.Zero
     result.consumerLoanDefaultAmt shouldBe PLN.Zero
     result.consumerNplLoss shouldBe PLN.Zero
   }
@@ -41,7 +41,7 @@ class HouseholdFinancialEconomicsSpec extends AnyFlatSpec with Matchers:
       .testHouseholdAggregates()
       .copy(
         totalLiquidityShortfallFinancing = PLN(800),
-        totalConsumerDefault = PLN(1000),
+        totalConsumerDefault = PLN(200),
         totalConsumerLoanDefault = PLN(200),
         totalLiquidityBridgeChargeOff = PLN(800),
       )
@@ -54,7 +54,7 @@ class HouseholdFinancialEconomicsSpec extends AnyFlatSpec with Matchers:
       rng = RandomStream.seeded(42),
     )
 
-    result.consumerDefaultAmt shouldBe PLN(1000)
+    result.consumerDefaultAmt shouldBe PLN(200)
     result.consumerLoanDefaultAmt shouldBe PLN(200)
     result.consumerNplLoss shouldBe PLN(170)
   }

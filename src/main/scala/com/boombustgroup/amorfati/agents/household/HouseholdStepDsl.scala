@@ -36,7 +36,7 @@ private[household] object HouseholdStepDsl:
     while stockCheck < financialStocks.length do
       require(
         financialStocks(stockCheck).demandDeposit >= PLN.Zero,
-        "Household.step requires non-negative opening demandDeposit balances; liquidity shortfalls must enter as consumer-loan stocks",
+        "Household.step requires non-negative opening demandDeposit balances; liquidity shortfalls must be settled through explicit shortfall channels",
       )
       stockCheck += 1
 
@@ -205,8 +205,8 @@ private[household] object HouseholdStepDsl:
       "Household.step shortfall components must reconcile to aggregate liquidity shortfall financing",
     )
     require(
-      agg.totalConsumerLoanDefault + agg.totalLiquidityBridgeChargeOff == agg.totalConsumerDefault,
-      "Household.step consumer default components must reconcile to aggregate consumer default",
+      agg.totalConsumerLoanDefault == agg.totalConsumerDefault,
+      "Household.step consumer default must equal ordinary consumer-loan default",
     )
     MonthWorkflow.pure(HouseholdStepSemantics.validatedHouseholds(rows))
 

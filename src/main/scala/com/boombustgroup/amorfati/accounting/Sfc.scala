@@ -168,10 +168,11 @@ object Sfc:
       fofResidual: PLN,                         // flow-of-funds residual (Σ firmRevenue - Σ sectorDemand)
       consumerDebtService: PLN,                 // consumer credit: monthly instalment burden (principal + interest)
       consumerNplLoss: PLN,                     // ordinary consumer-loan NPL loss (after recovery)
-      consumerOrigination: PLN,                 // consumer credit: total new loan origination
-      consumerLiquidityShortfallFinancing: PLN, // consumer credit: residual shortfall settlement
+      consumerOrigination: PLN,                 // consumer credit: underwritten new loan origination
+      consumerLiquidityShortfallFinancing: PLN, // liquidity bridge: residual shortfall settlement
+      consumerLiquidityBridgeChargeOff: PLN,    // liquidity bridge: same-month charge-off outside consumer default
       consumerPrincipalRepaid: PLN,             // consumer credit: principal portion of debt service
-      consumerDefaultAmount: PLN,               // consumer credit: gross default amount (before recovery)
+      consumerDefaultAmount: PLN,               // consumer credit: ordinary gross default amount (before recovery)
       corpBondCouponIncome: PLN,                // bank coupon income from corp bonds
       corpBondDefaultLoss: PLN,                 // bank loss from corp bond defaults
       corpBondIssuance: PLN,                    // new corp bonds issued this month
@@ -338,7 +339,8 @@ object Sfc:
     *      investNetDepositFlow + jstDepositChange + dividendIncome -
     *      foreignDividendOutflow - remittanceOutflow + diasporaInflow +
     *      tourismExport - tourismImport - bailInLoss + consumerOrigination +
-    *      insNetDepositChange + nbfiDepositDrain + quasiFiscalDepositChange
+    *      consumerLiquidityShortfallFinancing + insNetDepositChange +
+    *      nbfiDepositDrain + quasiFiscalDepositChange
     *   3. NFA: Δ = currentAccount + valuationEffect (currentAccount includes
     *      -foreignDividendOutflow, -fdiProfitShifting, -fdiRepatriation,
     *      +diasporaInflow)
@@ -436,7 +438,8 @@ object Sfc:
           flows.jstDepositChange + flows.dividendIncome - flows.foreignDividendOutflow -
           flows.remittanceOutflow + flows.diasporaInflow + flows.tourismExport -
           flows.tourismImport - flows.bailInLoss + flows.newLoans - flows.firmPrincipalRepaid +
-          flows.consumerOrigination + flows.insNetDepositChange + flows.nbfiDepositDrain +
+          flows.consumerOrigination + flows.consumerLiquidityShortfallFinancing +
+          flows.insNetDepositChange + flows.nbfiDepositDrain +
           flows.quasiFiscalDepositChange,
         actual = curr.bankDeposits - prev.bankDeposits,
       ),
