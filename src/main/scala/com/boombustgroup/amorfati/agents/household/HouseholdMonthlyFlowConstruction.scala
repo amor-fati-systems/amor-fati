@@ -120,10 +120,13 @@ private[agents] object HouseholdMonthlyFlowConstruction:
       distressedIds: java.util.BitSet,
       bankCreditSupply: Option[Household.BankCreditSupply],
   )(using p: SimParams): HhMonthlyResult =
-    val f              = computeMonthlyFlows(hh, financialStocks, world, rng, bankRates, equityIndexReturn, distressedIds, bankCreditSupply)
-    val distressMonths =
+    val f               = computeMonthlyFlows(hh, financialStocks, world, rng, bankRates, equityIndexReturn, distressedIds, bankCreditSupply)
+    val distressMonths  =
       if HouseholdDistressMachine.financialDistressTriggered(f) then hh.financialDistressMonths + 1 else 0
-    if distressMonths > p.household.personalInsolvencyDistressMonths then resolveBankruptcy(f, distressMonths)
+    val filingShortfall =
+      if distressMonths > 0 then HouseholdLiquidityWaterfall.attributeLiquidityShortfall(f, f.newSavings, temporaryOutflow = PLN.Zero)
+      else Household.LiquidityShortfallComponents.Zero
+    if HouseholdDistressMachine.personalInsolvencyFires(f, distressMonths, filingShortfall, rng) then resolveBankruptcy(f, distressMonths, filingShortfall)
     else resolveSurvival(f, laborContext, rng, distressMonths)
 
   /** Builds the public monthly diagnostic row from a finalized household
@@ -173,16 +176,23 @@ private[agents] object HouseholdMonthlyFlowConstruction:
       consumerBankPortfolioChoice = portfolio,
     )
 
-  /** Resolves personal insolvency by writing off unsecured debt and equity. */
-  private def resolveBankruptcy(f: MonthlyFlows, distressMonths: Int)(using p: SimParams): HhMonthlyResult =
-    val liquidityShortfall                  = HouseholdLiquidityWaterfall.attributeLiquidityShortfall(f, f.newSavings, temporaryOutflow = PLN.Zero)
+  /** Resolves a personal-insolvency filing through bounded unsecured default
+    * and equity write-off while leaving remaining consumer debt in workout.
+    */
+  private def resolveBankruptcy(
+      f: MonthlyFlows,
+      distressMonths: Int,
+      liquidityShortfall: Household.LiquidityShortfallComponents,
+  )(using p: SimParams): HhMonthlyResult =
     val (finalDemandDeposit, settledCredit) = HouseholdLiquidityWaterfall.settleLiquidityShortfall(f.newSavings, f.credit, liquidityShortfall)
-    val ccDefaultAmt                        = settledCredit.defaultAmt + settledCredit.updatedDebt
-    val creditWithDef                       = settledCredit.copy(defaultAmt = ccDefaultAmt, updatedDebt = PLN.Zero)
+    val ccDefaultAmt                        =
+      HouseholdDistressMachine.boundedConsumerLoanDefault(settledCredit, liquidityShortfall, distressMonths, personalInsolvency = true)
+    val creditWithDef                       =
+      settledCredit.copy(defaultAmt = settledCredit.defaultAmt + ccDefaultAmt, updatedDebt = (settledCredit.updatedDebt - ccDefaultAmt).max(PLN.Zero))
     val financial                           = Household.FinancialStocks(
       demandDeposit = finalDemandDeposit,
       mortgageLoan = f.newDebt,
-      consumerLoan = PLN.Zero,
+      consumerLoan = creditWithDef.updatedDebt,
       equity = PLN.Zero,
       mortgageRemainingMonths = f.newMortgageRemainingMonths,
     )
@@ -247,10 +257,14 @@ private[agents] object HouseholdMonthlyFlowConstruction:
     val liquidityShortfall                  = HouseholdLiquidityWaterfall.attributeLiquidityShortfall(f, rawFinalDemandDeposit, temporaryOutflow = retrainingCostThisMonth)
     val (finalDemandDeposit, settledCredit) =
       HouseholdLiquidityWaterfall.settleLiquidityShortfall(rawFinalDemandDeposit, f.credit, liquidityShortfall)
+    val stagedDefault                       =
+      HouseholdDistressMachine.boundedConsumerLoanDefault(settledCredit, liquidityShortfall, distressMonths, personalInsolvency = false)
+    val creditAfterWorkout                  =
+      settledCredit.copy(defaultAmt = settledCredit.defaultAmt + stagedDefault, updatedDebt = (settledCredit.updatedDebt - stagedDefault).max(PLN.Zero))
     val financial                           = Household.FinancialStocks(
       demandDeposit = finalDemandDeposit,
       mortgageLoan = f.newDebt,
-      consumerLoan = settledCredit.updatedDebt,
+      consumerLoan = creditAfterWorkout.updatedDebt,
       equity = f.newEquityWealth,
       mortgageRemainingMonths = f.newMortgageRemainingMonths,
     )
@@ -275,7 +289,7 @@ private[agents] object HouseholdMonthlyFlowConstruction:
       remittance = f.remittance,
       pitTax = f.pitTax,
       socialTransfer = f.socialTransfer,
-      credit = settledCredit,
+      credit = creditAfterWorkout,
       voluntaryQuit = vQuit,
       retrainingAttempt = rAttempt,
       retrainingSuccess = rSuccess,

@@ -464,19 +464,46 @@ If distressMonths = 0:
   Current, LiquidityStress, Restructuring -> Current
 ```
 
-Personal insolvency fires when consecutive distress exceeds
-`personalInsolvencyDistressMonths`. It writes off unsecured consumer-loan debt
-and listed equity:
+Personal insolvency is a stochastic filing hazard, not a deterministic counter
+cliff. The hazard is zero before `personalInsolvencyMinDistressMonths`, then
+rises with distress duration toward `personalInsolvencyDistressMonths` and with
+arrears/debt-service burden:
 
 ```text
-CL^H_{h,tau} = 0
+durationRamp_h =
+  clamp((distressMonths_h - personalInsolvencyMinDistressMonths)
+        / max(1, personalInsolvencyDistressMonths - personalInsolvencyMinDistressMonths), 0, 1)
+
+burden_h =
+  clamp((LiquidityShortfall_h + ConsumerDebtService_h) / Income_h, 0, 1)
+
+piInsolvency_h =
+  min(personalInsolvencyMaxHazard,
+      personalInsolvencyBaseHazard
+      + (personalInsolvencyMaxHazard - personalInsolvencyBaseHazard)
+        * durationRamp_h
+      + personalInsolvencyBurdenHazardWeight * burden_h)
+```
+
+Distressed workout and filing defaults are bounded by current consumer-debt
+arrears, multiples of consumer-debt service, and a share of outstanding
+principal:
+
+```text
+DefaultCap_h =
+  min(CL^H_{h,tau-pre},
+      max(ConsumerDebtArrears_h, ConsumerDebtService_h * debtServiceMonthsCap),
+      CL^H_{h,tau-pre} * outstandingShareCap)
+
+CL^H_{h,tau} = CL^H_{h,tau-pre} - DefaultCap_h
 E^H_{h,tau} = 0
 distressState_{h,tau} = Bankruptcy
 ```
 
 The mortgage stock is not written off by this household personal-insolvency
 branch. Mortgage default is an aggregate housing/banking flow, while household
-personal insolvency is an unsecured consumer-credit/equity write-off.
+personal insolvency is an unsecured consumer-credit workout/default and equity
+write-off state.
 
 Long unemployment creates labor-market scarring:
 
@@ -627,10 +654,11 @@ between household credit stress and bank balance-sheet stress.
   The household step models scheduled household-side mortgage service and
   burden, not micro-level mortgage application, collateral liquidation, or
   foreclosure resolution.
-- Personal insolvency writes off unsecured consumer debt and listed equity but
-  does not remove the household from the labor force. This is intentional in
-  the current implementation and should be read as a financial-distress state,
-  not demographic exit.
+- Personal insolvency writes off listed equity and records a bounded unsecured
+  consumer-loan default, but it does not remove the household from the labor
+  force or automatically erase all remaining unsecured principal. This is
+  intentional in the current implementation and should be read as a
+  financial-distress state, not demographic exit.
 - Liquidity-shortfall financing is an accounting settlement mechanism for
   non-negative deposits. It is not discretionary consumption credit and should
   be interpreted together with the shortfall-component diagnostics.

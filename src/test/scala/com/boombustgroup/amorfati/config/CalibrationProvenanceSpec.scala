@@ -39,15 +39,42 @@ class CalibrationProvenanceSpec extends AnyFlatSpec with Matchers:
 
   "Baseline calibration provenance" should "preserve the active default inventory status counts in code" in {
     CalibrationProvenance.Baseline.parseErrors shouldBe empty
-    CalibrationProvenance.Baseline.parameters should have size 248
+    CalibrationProvenance.Baseline.parameters should have size 250
     CalibrationProvenance.Baseline.statusCounts should contain(Empirical -> 37)
     CalibrationProvenance.Baseline.statusCounts should contain(EmpiricalTransformed -> 19)
     CalibrationProvenance.Baseline.statusCounts should contain(CodeNoteEmpirical -> 62)
     CalibrationProvenance.Baseline.statusCounts should contain(TunedNeedsValidation -> 88)
     CalibrationProvenance.Baseline.statusCounts.getOrElse(UnknownSource, 0) shouldBe 0
     CalibrationProvenance.Baseline.statusCounts should contain(Placeholder -> 1)
-    CalibrationProvenance.Baseline.statusCounts should contain(Assumed -> 34)
+    CalibrationProvenance.Baseline.statusCounts should contain(Assumed -> 36)
     CalibrationProvenance.Baseline.statusCounts should contain(PolicyScenario -> 7)
+  }
+
+  it should "map household personal-insolvency and workout parameters directly" in {
+    val insolvencyHorizon = baselineParameter("household.personalInsolvencyDistressMonths")
+    insolvencyHorizon.parameterIds shouldBe Vector("household.personalInsolvencyDistressMonths")
+    insolvencyHorizon.status shouldBe Assumed
+    insolvencyHorizon.ownerModules shouldBe Vector("HouseholdConfig")
+
+    val filingHazard = baselineParameter("household.personalInsolvencyMinDistressMonths")
+    filingHazard.parameterIds shouldBe Vector(
+      "household.personalInsolvencyMinDistressMonths",
+      "household.personalInsolvencyBaseHazard",
+      "household.personalInsolvencyMaxHazard",
+      "household.personalInsolvencyBurdenHazardWeight",
+    )
+    filingHazard.status shouldBe Assumed
+    filingHazard.ownerModules shouldBe Vector("HouseholdConfig")
+
+    val workoutCaps = baselineParameter("household.ccRestructuringDefaultDebtServiceMonths")
+    workoutCaps.parameterIds shouldBe Vector(
+      "household.ccRestructuringDefaultDebtServiceMonths",
+      "household.ccRestructuringDefaultOutstandingShare",
+      "household.ccBankruptcyDefaultDebtServiceMonths",
+      "household.ccBankruptcyDefaultOutstandingShare",
+    )
+    workoutCaps.status shouldBe Assumed
+    workoutCaps.ownerModules shouldBe Vector("HouseholdConfig")
   }
 
   it should "report remaining statuses from the typed registry" in {

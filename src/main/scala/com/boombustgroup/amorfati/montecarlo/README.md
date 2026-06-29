@@ -582,7 +582,7 @@ HouseholdDistress_BankruptcyShare
 HouseholdDistress_ActiveShare
 ```
 
-`HouseholdDistress_Bankruptcy` is the personal-insolvency/write-off state. The
+`HouseholdDistress_Bankruptcy` is the personal-insolvency filing/workout state. The
 older `HouseholdBankruptcies`, `HouseholdBankruptcyRate`, and terminal
 `HH_Bankrupt` fields remain activity-status counts for the legacy absorbing
 `HhStatus.Bankrupt` path.

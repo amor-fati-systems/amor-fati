@@ -39,7 +39,7 @@ These counts are rendered from `CalibrationProvenance.Baseline` at generation ti
 | `EMPIRICAL` | 37 |
 | `EMPIRICAL_TRANSFORMED` | 19 |
 | `CODE_NOTE_EMPIRICAL` | 62 |
-| `ASSUMED` | 34 |
+| `ASSUMED` | 36 |
 | `TUNED_NEEDS_VALIDATION` | 88 |
 | `POLICY_SCENARIO` | 7 |
 | `PLACEHOLDER` | 1 |
@@ -242,7 +242,9 @@ a concrete diagnostic artifact path.
 | `household.retrainingCost`, `retrainingDuration` | `5000, 6` | PLN/months | Structural labor-reskilling program prior | Retraining cost and duration | Direct | `HouseholdConfig` | `ASSUMED` |
 | `household.retrainingBaseSuccess`, `retrainingProb` | `0.60, 0.15` | share | UNKNOWN_SOURCE | Retraining success/enrollment | Direct | `HouseholdConfig` | `TUNED_NEEDS_VALIDATION` |
 | `household.bankruptcyDistressMonths` | `3` | months | ASSUMED | Distress persistence threshold before entering the household default state | Direct | `HouseholdConfig` | `ASSUMED` |
-| `household.personalInsolvencyDistressMonths` | `12` | months | ASSUMED | Persistent-distress threshold before legal personal-insolvency write-off clears remaining unsecured consumer debt | Direct | `HouseholdConfig` | `ASSUMED` |
+| `household.personalInsolvencyDistressMonths` | `12` | months | ASSUMED | Distress-duration horizon where personal-insolvency duration hazard reaches its configured maximum | Direct | `HouseholdConfig` | `ASSUMED` |
+| `household.personalInsolvencyMinDistressMonths`, `personalInsolvencyBaseHazard`, `personalInsolvencyMaxHazard`, `personalInsolvencyBurdenHazardWeight` | `6, 0.01, 0.20, 0.10` | months/share | Structural personal-insolvency filing prior | Minimum filing-hazard activation, base/max monthly hazard, and arrears/debt-service burden add-on | Direct | `HouseholdConfig` | `ASSUMED` |
+| `household.ccRestructuringDefaultDebtServiceMonths`, `ccRestructuringDefaultOutstandingShare`, `ccBankruptcyDefaultDebtServiceMonths`, `ccBankruptcyDefaultOutstandingShare` | `3, 0.08, 6, 0.25` | months/share | Structural distressed-consumer-credit workout prior | Caps ordinary consumer-loan principal default in restructuring and personal-insolvency filing paths | Direct | `HouseholdConfig` | `ASSUMED` |
 | `household.depositSpread` | `0.02` | annual rate | Structural retail-deposit spread prior | Deposit rate below policy rate | Direct | `HouseholdConfig` | `ASSUMED` |
 | `household.ccSpread` | `0.04` | annual rate | Code note bridge: NBP MIR bridge prior | Consumer credit spread | Direct | `HouseholdConfig` | `CODE_NOTE_EMPIRICAL` |
 | `household.ccMaxDti` | `0.40` | share | Code note bridge: KNF Recommendation T | Consumer credit DTI cap | Direct | `HouseholdConfig` | `CODE_NOTE_EMPIRICAL` |

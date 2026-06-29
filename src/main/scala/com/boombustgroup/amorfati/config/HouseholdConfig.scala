@@ -72,8 +72,28 @@ import com.boombustgroup.amorfati.types.*
   * @param bankruptcyDistressMonths
   *   consecutive distressed months before the household enters default
   * @param personalInsolvencyDistressMonths
-  *   consecutive distressed months before legal personal-insolvency write-off
-  *   clears remaining unsecured consumer debt
+  *   distress-duration horizon where personal-insolvency duration risk reaches
+  *   its configured maximum; this is not a deterministic filing trigger
+  * @param personalInsolvencyMinDistressMonths
+  *   minimum consecutive distressed months before personal-insolvency hazard
+  *   can activate
+  * @param personalInsolvencyBaseHazard
+  *   monthly personal-insolvency filing hazard at activation
+  * @param personalInsolvencyMaxHazard
+  *   maximum monthly personal-insolvency filing hazard
+  * @param personalInsolvencyBurdenHazardWeight
+  *   maximum hazard add-on from arrears and consumer-debt-service burden
+  * @param ccRestructuringDefaultDebtServiceMonths
+  *   monthly consumer-loan workout default cap as a multiple of debt service
+  * @param ccRestructuringDefaultOutstandingShare
+  *   monthly consumer-loan workout default cap as a share of outstanding
+  *   principal
+  * @param ccBankruptcyDefaultDebtServiceMonths
+  *   personal-insolvency consumer-loan default cap as a multiple of debt
+  *   service
+  * @param ccBankruptcyDefaultOutstandingShare
+  *   personal-insolvency consumer-loan default cap as a share of outstanding
+  *   principal
   * @param socialK
   *   Watts-Strogatz degree for household social network
   * @param socialP
@@ -143,6 +163,14 @@ case class HouseholdConfig(
     bankruptcyThreshold: Coefficient = Coefficient(-3),
     bankruptcyDistressMonths: Int = 3,
     personalInsolvencyDistressMonths: Int = 12,
+    personalInsolvencyMinDistressMonths: Int = 6,
+    personalInsolvencyBaseHazard: Share = Share.decimal(1, 2),
+    personalInsolvencyMaxHazard: Share = Share.decimal(20, 2),
+    personalInsolvencyBurdenHazardWeight: Share = Share.decimal(10, 2),
+    ccRestructuringDefaultDebtServiceMonths: Int = 3,
+    ccRestructuringDefaultOutstandingShare: Share = Share.decimal(8, 2),
+    ccBankruptcyDefaultDebtServiceMonths: Int = 6,
+    ccBankruptcyDefaultOutstandingShare: Share = Share.decimal(25, 2),
     // Social network
     socialK: Int = 10,
     socialP: Share = Share.decimal(15, 2),
@@ -158,6 +186,42 @@ case class HouseholdConfig(
 ):
   require(bankruptcyDistressMonths > 0, s"bankruptcyDistressMonths must be positive: $bankruptcyDistressMonths")
   require(
-    personalInsolvencyDistressMonths > bankruptcyDistressMonths,
-    s"personalInsolvencyDistressMonths must exceed bankruptcyDistressMonths: $personalInsolvencyDistressMonths <= $bankruptcyDistressMonths",
+    personalInsolvencyMinDistressMonths > bankruptcyDistressMonths,
+    s"personalInsolvencyMinDistressMonths must exceed bankruptcyDistressMonths: $personalInsolvencyMinDistressMonths <= $bankruptcyDistressMonths",
+  )
+  require(
+    personalInsolvencyDistressMonths >= personalInsolvencyMinDistressMonths,
+    s"personalInsolvencyDistressMonths must be at least personalInsolvencyMinDistressMonths: $personalInsolvencyDistressMonths < $personalInsolvencyMinDistressMonths",
+  )
+  require(
+    personalInsolvencyBaseHazard >= Share.Zero && personalInsolvencyBaseHazard <= personalInsolvencyMaxHazard,
+    s"personalInsolvencyBaseHazard must be in [0, maxHazard], got $personalInsolvencyBaseHazard and $personalInsolvencyMaxHazard",
+  )
+  require(
+    personalInsolvencyMaxHazard <= Share.One,
+    s"personalInsolvencyMaxHazard must be <= 1, got $personalInsolvencyMaxHazard",
+  )
+  require(
+    personalInsolvencyBurdenHazardWeight >= Share.Zero && personalInsolvencyBurdenHazardWeight <= Share.One,
+    s"personalInsolvencyBurdenHazardWeight must be in [0, 1], got $personalInsolvencyBurdenHazardWeight",
+  )
+  require(
+    ccRestructuringDefaultDebtServiceMonths >= 0,
+    s"ccRestructuringDefaultDebtServiceMonths must be non-negative: $ccRestructuringDefaultDebtServiceMonths",
+  )
+  require(
+    ccBankruptcyDefaultDebtServiceMonths >= 0,
+    s"ccBankruptcyDefaultDebtServiceMonths must be non-negative: $ccBankruptcyDefaultDebtServiceMonths",
+  )
+  require(
+    ccBankruptcyDefaultDebtServiceMonths >= ccRestructuringDefaultDebtServiceMonths,
+    s"ccBankruptcyDefaultDebtServiceMonths must be >= ccRestructuringDefaultDebtServiceMonths, got $ccBankruptcyDefaultDebtServiceMonths < $ccRestructuringDefaultDebtServiceMonths",
+  )
+  require(
+    ccRestructuringDefaultOutstandingShare >= Share.Zero && ccRestructuringDefaultOutstandingShare <= Share.One,
+    s"ccRestructuringDefaultOutstandingShare must be in [0, 1], got $ccRestructuringDefaultOutstandingShare",
+  )
+  require(
+    ccBankruptcyDefaultOutstandingShare >= ccRestructuringDefaultOutstandingShare && ccBankruptcyDefaultOutstandingShare <= Share.One,
+    s"ccBankruptcyDefaultOutstandingShare must be in [ccRestructuringDefaultOutstandingShare, 1], got $ccBankruptcyDefaultOutstandingShare",
   )

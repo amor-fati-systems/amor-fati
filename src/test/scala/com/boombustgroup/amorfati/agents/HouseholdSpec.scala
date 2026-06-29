@@ -23,6 +23,35 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
   private inline def shareValue(s: Share): BigDecimal =
     decimal(s)
 
+  private def insolvencyHazardParams(
+      baseHazard: Share,
+      maxHazard: Share,
+      burdenWeight: Share = Share.Zero,
+      minDistressMonths: Int = SimParams.defaults.household.personalInsolvencyMinDistressMonths,
+      distressHorizonMonths: Int = SimParams.defaults.household.personalInsolvencyDistressMonths,
+      restructuringDebtServiceMonths: Int = SimParams.defaults.household.ccRestructuringDefaultDebtServiceMonths,
+      bankruptcyDebtServiceMonths: Int = SimParams.defaults.household.ccBankruptcyDefaultDebtServiceMonths,
+      restructuringOutstandingShare: Share = SimParams.defaults.household.ccRestructuringDefaultOutstandingShare,
+      bankruptcyOutstandingShare: Share = SimParams.defaults.household.ccBankruptcyDefaultOutstandingShare,
+  ): SimParams =
+    SimParamsTestOverrides.personalInsolvencyHazard(
+      baseHazard = baseHazard,
+      maxHazard = maxHazard,
+      burdenWeight = burdenWeight,
+      minDistressMonths = minDistressMonths,
+      distressHorizonMonths = distressHorizonMonths,
+      restructuringDebtServiceMonths = restructuringDebtServiceMonths,
+      bankruptcyDebtServiceMonths = bankruptcyDebtServiceMonths,
+      restructuringOutstandingShare = restructuringOutstandingShare,
+      bankruptcyOutstandingShare = bankruptcyOutstandingShare,
+    )
+
+  private val noInsolvencyHazard: SimParams =
+    insolvencyHazardParams(Share.Zero, Share.Zero)
+
+  private val certainInsolvencyHazard: SimParams =
+    insolvencyHazardParams(Share.One, Share.One)
+
   private val financialById = scala.collection.mutable.Map.empty[Int, Household.FinancialStocks]
 
   extension (hh: Household.State)
@@ -33,6 +62,23 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
 
   private def stockOf(hh: Household.State): Household.FinancialStocks =
     financialById.getOrElse(hh.id.toInt, Household.FinancialStocks(PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero))
+
+  private def stepWithParams(
+      households: Vector[Household.State],
+      stocks: Vector[Household.FinancialStocks],
+      world: World,
+      rng: RandomStream,
+      params: SimParams,
+  ): Household.StepResult =
+    Household.step(
+      households,
+      stocks,
+      world,
+      PLN(8000),
+      PLN(4666),
+      Share.decimal(4, 1),
+      rng,
+    )(using params)
 
   private def step(
       households: Vector[Household.State],
@@ -220,7 +266,7 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
     updated(0).financialDistressState shouldBe HhFinancialDistressState.Arrears
   }
 
-  it should "enter default at the distress threshold before personal insolvency write-off" in {
+  it should "enter default at the distress threshold before personal-insolvency filing" in {
     val rng     = RandomStream.seeded(42)
     val hh      = mkHousehold(
       0,
@@ -234,7 +280,7 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
     updated(0).financialDistressState shouldBe HhFinancialDistressState.Defaulted
   }
 
-  it should "stay defaulted before the personal insolvency write-off threshold" in {
+  it should "stay defaulted before personal-insolvency hazard filing" in {
     val rng     = RandomStream.seeded(42)
     val hh      = mkHousehold(
       0,
@@ -248,37 +294,50 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
     updated(0).financialDistressState shouldBe HhFinancialDistressState.Defaulted
   }
 
-  it should "resolve persistent deep distress without removing the household from the labor force" in {
+  it should "keep persistent deep distress in default workout when insolvency hazard does not file" in {
     val rng     = RandomStream.seeded(42)
     val hh      = mkHousehold(
       0,
       HhStatus.Unemployed(1),
       savings = PLN.Zero,
       rent = PLN(10000),
-    ).copy(financialDistressMonths = p.household.personalInsolvencyDistressMonths, financialDistressState = HhFinancialDistressState.Defaulted)
-    val updated = step(Vector(hh), mkLiquidityShockWorld(), PLN(8000), PLN(4666), Share.decimal(4, 1), rng).households
+    ).copy(financialDistressMonths = noInsolvencyHazard.household.personalInsolvencyDistressMonths, financialDistressState = HhFinancialDistressState.Defaulted)
+    val updated = stepWithParams(
+      Vector(hh),
+      Vector(TestHouseholdState.financial(savings = PLN.Zero, debt = PLN.Zero, consumerDebt = PLN.Zero, equityWealth = PLN.Zero)),
+      mkLiquidityShockWorld(),
+      rng,
+      noInsolvencyHazard,
+    ).households
+
     updated(0).status shouldBe HhStatus.Unemployed(2)
-    updated(0).financialDistressMonths shouldBe 0
-    updated(0).financialDistressState shouldBe HhFinancialDistressState.Bankruptcy
+    updated(0).financialDistressMonths shouldBe noInsolvencyHazard.household.personalInsolvencyDistressMonths + 1
+    updated(0).financialDistressState shouldBe HhFinancialDistressState.Defaulted
   }
 
-  it should "preserve employment when resolving household financial insolvency" in {
+  it should "preserve employment while persistent distress stays in workout before hazard filing" in {
     val rng = RandomStream.seeded(42)
     val hh  = mkHousehold(
       0,
       HhStatus.Employed(FirmId(0), SectorIdx(0), PLN(8000)),
       savings = PLN.Zero,
       rent = PLN(200000),
-    ).copy(financialDistressMonths = p.household.personalInsolvencyDistressMonths, financialDistressState = HhFinancialDistressState.Defaulted)
+    ).copy(financialDistressMonths = noInsolvencyHazard.household.personalInsolvencyDistressMonths, financialDistressState = HhFinancialDistressState.Defaulted)
 
-    val updated = step(Vector(hh), mkLiquidityShockWorld(), PLN(8000), PLN(4666), Share.decimal(4, 1), rng).households
+    val updated = stepWithParams(
+      Vector(hh),
+      Vector(TestHouseholdState.financial(savings = PLN.Zero, debt = PLN.Zero, consumerDebt = PLN.Zero, equityWealth = PLN.Zero)),
+      mkLiquidityShockWorld(),
+      rng,
+      noInsolvencyHazard,
+    ).households
 
     updated(0).status shouldBe a[HhStatus.Employed]
-    updated(0).financialDistressMonths shouldBe 0
-    updated(0).financialDistressState shouldBe HhFinancialDistressState.Bankruptcy
+    updated(0).financialDistressMonths shouldBe noInsolvencyHazard.household.personalInsolvencyDistressMonths + 1
+    updated(0).financialDistressState shouldBe HhFinancialDistressState.Defaulted
   }
 
-  it should "default the remaining consumer credit balance after same-month debt service on bankruptcy" in {
+  it should "stage consumer-loan default without erasing the remaining balance in workout" in {
     val rng                 = RandomStream.seeded(42)
     val world               = mkLiquidityShockWorld()
     val openingLoan         = PLN(12000)
@@ -287,28 +346,30 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
       HhStatus.Unemployed(1),
       savings = PLN.Zero,
       rent = PLN(10000),
-    ).copy(financialDistressMonths = p.household.personalInsolvencyDistressMonths, financialDistressState = HhFinancialDistressState.Defaulted)
-    val totalRate           = p.household.ccAmortRate + (world.nbp.referenceRate + p.household.ccSpread).monthly
+    ).copy(financialDistressMonths = noInsolvencyHazard.household.personalInsolvencyDistressMonths, financialDistressState = HhFinancialDistressState.Defaulted)
+    val totalRate           = noInsolvencyHazard.household.ccAmortRate + (world.nbp.referenceRate + noInsolvencyHazard.household.ccSpread).monthly
     val expectedDebtService = openingLoan * totalRate
-    val expectedPrincipal   = openingLoan * p.household.ccAmortRate
-    val expectedDefault     = openingLoan - expectedPrincipal
+    val expectedPrincipal   = openingLoan * noInsolvencyHazard.household.ccAmortRate
+    val postPrincipalLoan   = openingLoan - expectedPrincipal
+    val expectedDefault     =
+      (expectedDebtService * noInsolvencyHazard.household.ccRestructuringDefaultDebtServiceMonths)
+        .min(postPrincipalLoan * noInsolvencyHazard.household.ccRestructuringDefaultOutstandingShare)
+        .min(postPrincipalLoan)
 
-    financialById.update(
-      hh.id.toInt,
-      TestHouseholdState.financial(
-        savings = PLN.Zero,
-        debt = PLN.Zero,
-        consumerDebt = openingLoan,
-        equityWealth = PLN.Zero,
-      ),
+    val result = stepWithParams(
+      Vector(hh),
+      Vector(TestHouseholdState.financial(savings = PLN.Zero, debt = PLN.Zero, consumerDebt = openingLoan, equityWealth = PLN.Zero)),
+      world,
+      rng,
+      noInsolvencyHazard,
     )
 
-    val result = step(Vector(hh), world, PLN(8000), PLN(4666), Share.decimal(4, 1), rng)
-
     result.households.head.status shouldBe HhStatus.Unemployed(2)
-    result.households.head.financialDistressMonths shouldBe 0
+    result.households.head.financialDistressMonths shouldBe noInsolvencyHazard.household.personalInsolvencyDistressMonths + 1
+    result.households.head.financialDistressState shouldBe HhFinancialDistressState.Defaulted
     result.financialStocks.head.demandDeposit shouldBe PLN.Zero
-    result.financialStocks.head.consumerLoan shouldBe PLN.Zero
+    result.financialStocks.head.consumerLoan shouldBe postPrincipalLoan - expectedDefault
+    result.financialStocks.head.consumerLoan should be > PLN.Zero
     result.aggregates.totalConsumerDebtService shouldBe expectedDebtService
     result.aggregates.totalConsumerOrigination shouldBe PLN.Zero
     result.aggregates.totalConsumerApprovedOrigination shouldBe PLN.Zero
@@ -316,7 +377,191 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
     result.aggregates.totalConsumerDefault shouldBe expectedDefault
     result.aggregates.totalConsumerLoanDefault shouldBe expectedDefault
     result.aggregates.totalLiquidityBridgeChargeOff shouldBe result.monthlyFlows.head.liquidityBridgeChargeOff
-    result.aggregates.totalConsumerPrincipal + result.aggregates.totalConsumerDefault shouldBe openingLoan
+    result.aggregates.totalConsumerPrincipal + result.aggregates.totalConsumerDefault should be < openingLoan
+  }
+
+  it should "activate personal-insolvency hazard only after the minimum distress duration" in {
+    val world         = mkLiquidityShockWorld()
+    val beforeMinimum = mkHousehold(
+      10,
+      HhStatus.Unemployed(1),
+      savings = PLN.Zero,
+      rent = PLN(10000),
+    ).copy(
+      financialDistressMonths = certainInsolvencyHazard.household.personalInsolvencyMinDistressMonths - 2,
+      financialDistressState = HhFinancialDistressState.Defaulted,
+    )
+    val atMinimum     = mkHousehold(
+      11,
+      HhStatus.Unemployed(1),
+      savings = PLN.Zero,
+      rent = PLN(10000),
+    ).copy(
+      financialDistressMonths = certainInsolvencyHazard.household.personalInsolvencyMinDistressMonths - 1,
+      financialDistressState = HhFinancialDistressState.Defaulted,
+    )
+
+    val beforeResult = stepWithParams(
+      Vector(beforeMinimum),
+      Vector(TestHouseholdState.financial(savings = PLN.Zero, debt = PLN.Zero, consumerDebt = PLN.Zero, equityWealth = PLN.Zero)),
+      world,
+      RandomStream.seeded(42),
+      certainInsolvencyHazard,
+    )
+    val filedResult  = stepWithParams(
+      Vector(atMinimum),
+      Vector(TestHouseholdState.financial(savings = PLN.Zero, debt = PLN.Zero, consumerDebt = PLN.Zero, equityWealth = PLN.Zero)),
+      world,
+      RandomStream.seeded(42),
+      certainInsolvencyHazard,
+    )
+
+    beforeResult.households.head.financialDistressMonths shouldBe certainInsolvencyHazard.household.personalInsolvencyMinDistressMonths - 1
+    beforeResult.households.head.financialDistressState shouldBe HhFinancialDistressState.Defaulted
+    filedResult.households.head.financialDistressMonths shouldBe 0
+    filedResult.households.head.financialDistressState shouldBe HhFinancialDistressState.Bankruptcy
+  }
+
+  it should "let arrears burden trigger personal-insolvency filing when duration hazard is zero" in {
+    val world            = mkLiquidityShockWorld()
+    val burdenOnlyParams = insolvencyHazardParams(
+      baseHazard = Share.Zero,
+      maxHazard = Share.One,
+      burdenWeight = Share.One,
+    )
+    val noBurdenParams   = insolvencyHazardParams(
+      baseHazard = Share.Zero,
+      maxHazard = Share.One,
+      burdenWeight = Share.Zero,
+    )
+    val hh               = mkHousehold(
+      12,
+      HhStatus.Unemployed(1),
+      savings = PLN.Zero,
+      rent = PLN(100000),
+    ).copy(
+      financialDistressMonths = burdenOnlyParams.household.personalInsolvencyMinDistressMonths - 1,
+      financialDistressState = HhFinancialDistressState.Defaulted,
+    )
+    val stocks           = Vector(TestHouseholdState.financial(savings = PLN.Zero, debt = PLN.Zero, consumerDebt = PLN.Zero, equityWealth = PLN.Zero))
+
+    val withoutBurden = stepWithParams(Vector(hh), stocks, world, RandomStream.seeded(42), noBurdenParams)
+    val withBurden    = stepWithParams(Vector(hh), stocks, world, RandomStream.seeded(42), burdenOnlyParams)
+
+    withoutBurden.households.head.financialDistressState shouldBe HhFinancialDistressState.Defaulted
+    withoutBurden.households.head.financialDistressMonths shouldBe noBurdenParams.household.personalInsolvencyMinDistressMonths
+    withBurden.monthlyFlows.head.liquidityShortfallFinancing should be > PLN.Zero
+    withBurden.households.head.financialDistressMonths shouldBe 0
+    withBurden.households.head.financialDistressState shouldBe HhFinancialDistressState.Bankruptcy
+  }
+
+  it should "use bankruptcy default caps after personal-insolvency filing" in {
+    val world                = mkLiquidityShockWorld()
+    val openingLoan          = PLN(20000)
+    val params               = insolvencyHazardParams(
+      baseHazard = Share.One,
+      maxHazard = Share.One,
+      restructuringDebtServiceMonths = 1,
+      bankruptcyDebtServiceMonths = 4,
+      restructuringOutstandingShare = Share.decimal(5, 2),
+      bankruptcyOutstandingShare = Share.decimal(50, 2),
+    )
+    val hh                   = mkHousehold(
+      13,
+      HhStatus.Unemployed(1),
+      savings = PLN.Zero,
+      rent = PLN(10000),
+    ).copy(
+      financialDistressMonths = params.household.personalInsolvencyMinDistressMonths - 1,
+      financialDistressState = HhFinancialDistressState.Defaulted,
+    )
+    val totalRate            = params.household.ccAmortRate + (world.nbp.referenceRate + params.household.ccSpread).monthly
+    val debtService          = openingLoan * totalRate
+    val principal            = openingLoan * params.household.ccAmortRate
+    val postPrincipalLoan    = openingLoan - principal
+    val restructuringDefault =
+      (debtService * params.household.ccRestructuringDefaultDebtServiceMonths)
+        .min(postPrincipalLoan * params.household.ccRestructuringDefaultOutstandingShare)
+        .min(postPrincipalLoan)
+    val bankruptcyDefault    =
+      (debtService * params.household.ccBankruptcyDefaultDebtServiceMonths)
+        .min(postPrincipalLoan * params.household.ccBankruptcyDefaultOutstandingShare)
+        .min(postPrincipalLoan)
+
+    val result = stepWithParams(
+      Vector(hh),
+      Vector(TestHouseholdState.financial(savings = PLN.Zero, debt = PLN.Zero, consumerDebt = openingLoan, equityWealth = PLN(5000))),
+      world,
+      RandomStream.seeded(42),
+      params,
+    )
+
+    bankruptcyDefault should be > restructuringDefault
+    result.households.head.financialDistressState shouldBe HhFinancialDistressState.Bankruptcy
+    result.households.head.financialDistressMonths shouldBe 0
+    result.financialStocks.head.equity shouldBe PLN.Zero
+    result.financialStocks.head.consumerLoan shouldBe postPrincipalLoan - bankruptcyDefault
+    result.aggregates.totalConsumerDefault shouldBe bankruptcyDefault
+    result.aggregates.totalConsumerLoanDefault shouldBe bankruptcyDefault
+  }
+
+  it should "preserve deterministic replay for personal-insolvency hazard draws" in {
+    val world       = mkLiquidityShockWorld()
+    val openingLoan = PLN(20000)
+    val hh          = mkHousehold(
+      12,
+      HhStatus.Unemployed(1),
+      savings = PLN.Zero,
+      rent = PLN(10000),
+    ).copy(
+      financialDistressMonths = p.household.personalInsolvencyMinDistressMonths,
+      financialDistressState = HhFinancialDistressState.Defaulted,
+    )
+    val stocks      = Vector(TestHouseholdState.financial(savings = PLN.Zero, debt = PLN.Zero, consumerDebt = openingLoan, equityWealth = PLN(5000)))
+    val params      = insolvencyHazardParams(Share.decimal(50, 2), Share.decimal(50, 2))
+
+    val first  = stepWithParams(Vector(hh), stocks, world, RandomStream.seeded(12345), params)
+    val second = stepWithParams(Vector(hh), stocks, world, RandomStream.seeded(12345), params)
+
+    second.households shouldBe first.households
+    second.financialStocks shouldBe first.financialStocks
+    second.aggregates shouldBe first.aggregates
+    second.monthlyFlows shouldBe first.monthlyFlows
+  }
+
+  it should "carry restructured consumer debt across months instead of full one-shot write-off" in {
+    val world       = mkLiquidityShockWorld()
+    val openingLoan = PLN(20000)
+    val hh          = mkHousehold(
+      13,
+      HhStatus.Unemployed(1),
+      savings = PLN.Zero,
+      rent = PLN(10000),
+    ).copy(
+      financialDistressMonths = noInsolvencyHazard.household.personalInsolvencyDistressMonths,
+      financialDistressState = HhFinancialDistressState.Defaulted,
+    )
+
+    val month1 = stepWithParams(
+      Vector(hh),
+      Vector(TestHouseholdState.financial(savings = PLN.Zero, debt = PLN.Zero, consumerDebt = openingLoan, equityWealth = PLN.Zero)),
+      world,
+      RandomStream.seeded(101),
+      noInsolvencyHazard,
+    )
+    val month2 = stepWithParams(
+      month1.households,
+      month1.financialStocks,
+      world,
+      RandomStream.seeded(102),
+      noInsolvencyHazard,
+    )
+
+    month1.aggregates.totalConsumerLoanDefault should be > PLN.Zero
+    month1.financialStocks.head.consumerLoan should be > PLN.Zero
+    month2.aggregates.totalConsumerLoanDefault should be > PLN.Zero
+    month2.financialStocks.head.consumerLoan should be < month1.financialStocks.head.consumerLoan
+    month2.financialStocks.head.consumerLoan should be > PLN.Zero
   }
 
   it should "reset financial distress months after recovery" in {

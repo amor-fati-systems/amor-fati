@@ -260,10 +260,11 @@ totalConsumerOrigination_h =
   approvedConsumerLoan_h
 ```
 
-If the household crosses the persistent distress threshold in the same month,
-ordinary remaining unsecured consumer-loan principal is included in the
-consumer-credit default amount; the shortfall-financing leg remains a separate
-same-month bridge charge-off.
+If the household enters persistent default or a personal-insolvency filing,
+ordinary unsecured consumer-loan principal default is capped by current
+consumer-debt arrears, debt-service multiples, and an outstanding-principal
+share. The shortfall-financing leg remains a separate same-month bridge
+charge-off.
 `HhCcOrigination` carries only the underwritten loan; `HhLiquidityShortfallFinancing`
 carries the residual settlement leg.
 
@@ -355,8 +356,10 @@ consumerLoan'_h = max(consumerLoan_h + approvedConsumerLoan_h - consumerPrincipa
 liquidity stress diagnostics. Only `consumerInterest_h` is bank income;
 `consumerPrincipal_h` reduces the consumer-loan stock.
 
-Household bankruptcy writes off the remaining unsecured consumer loan stock and
-sets household equity to zero.
+Household bankruptcy sets household equity to zero and records a bounded
+ordinary consumer-loan principal default; remaining unsecured principal stays in
+the consumer-loan stock for subsequent workout rather than being fully erased in
+one month.
 
 ### Labor Mobility, Retraining, And Bankruptcy
 
@@ -394,7 +397,7 @@ Current
   -> LiquidityStress       after first active distress month
   -> Arrears               after repeated distress
   -> Defaulted             at bankruptcyDistressMonths
-  -> Bankruptcy            at personalInsolvencyDistressMonths + 1, with write-off
+  -> Bankruptcy            only when the personal-insolvency hazard files
 
 Arrears/Defaulted/Bankruptcy with no new distress -> Restructuring
 Restructuring with no new distress                -> Current
@@ -405,10 +408,16 @@ The state affects behavior before the next monthly budget is closed. Non-current
 states apply precautionary consumption compression, bounded by the basic
 consumption floor. `Arrears`, `Restructuring`, `Defaulted`, and `Bankruptcy`
 also block new underwritten consumer credit. `Bankruptcy` is a personal
-insolvency/write-off state: remaining unsecured consumer credit and listed
-equity are written off, but the household is not removed from the labor force.
-The write-off remains SFC-consistent through `ConsumerDefault`,
-`ConsumerLoanDefault`, and `LiquidityBridgeChargeOff`.
+insolvency/write-off state reached by a household-level hazard after
+`personalInsolvencyMinDistressMonths`. The hazard rises with distress duration
+toward `personalInsolvencyDistressMonths` and with arrears/debt-service burden.
+Distressed workout and personal-insolvency defaults are capped by debt-service
+multiples and outstanding-principal shares, so remaining unsecured consumer
+credit stays in stock instead of being erased solely because a counter crossed
+12 months. Listed equity is still written off on a personal-insolvency filing,
+but the household is not removed from the labor force. The write-off remains
+SFC-consistent through `ConsumerDefault`, `ConsumerLoanDefault`, and
+`LiquidityBridgeChargeOff`.
 
 ## Labor, Demographics, And Social Funds
 
