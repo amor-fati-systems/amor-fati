@@ -39,6 +39,8 @@ object SimParamsTestOverrides:
       burdenWeight: Share = Share.Zero,
       minDistressMonths: Int = SimParams.defaults.household.personalInsolvencyMinDistressMonths,
       distressHorizonMonths: Int = SimParams.defaults.household.personalInsolvencyDistressMonths,
+      restructuringDebtServiceMonths: Int = SimParams.defaults.household.ccRestructuringDefaultDebtServiceMonths,
+      bankruptcyDebtServiceMonths: Int = SimParams.defaults.household.ccBankruptcyDefaultDebtServiceMonths,
       restructuringOutstandingShare: Share = SimParams.defaults.household.ccRestructuringDefaultOutstandingShare,
       bankruptcyOutstandingShare: Share = SimParams.defaults.household.ccBankruptcyDefaultOutstandingShare,
   ): SimParams =
@@ -49,6 +51,8 @@ object SimParamsTestOverrides:
         personalInsolvencyBaseHazard = baseHazard,
         personalInsolvencyMaxHazard = maxHazard,
         personalInsolvencyBurdenHazardWeight = burdenWeight,
+        ccRestructuringDefaultDebtServiceMonths = restructuringDebtServiceMonths,
+        ccBankruptcyDefaultDebtServiceMonths = bankruptcyDebtServiceMonths,
         ccRestructuringDefaultOutstandingShare = restructuringOutstandingShare,
         ccBankruptcyDefaultOutstandingShare = bankruptcyOutstandingShare,
       ),

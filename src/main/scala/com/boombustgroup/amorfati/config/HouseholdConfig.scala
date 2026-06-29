@@ -214,6 +214,10 @@ case class HouseholdConfig(
     s"ccBankruptcyDefaultDebtServiceMonths must be non-negative: $ccBankruptcyDefaultDebtServiceMonths",
   )
   require(
+    ccBankruptcyDefaultDebtServiceMonths >= ccRestructuringDefaultDebtServiceMonths,
+    s"ccBankruptcyDefaultDebtServiceMonths must be >= ccRestructuringDefaultDebtServiceMonths, got $ccBankruptcyDefaultDebtServiceMonths < $ccRestructuringDefaultDebtServiceMonths",
+  )
+  require(
     ccRestructuringDefaultOutstandingShare >= Share.Zero && ccRestructuringDefaultOutstandingShare <= Share.One,
     s"ccRestructuringDefaultOutstandingShare must be in [0, 1], got $ccRestructuringDefaultOutstandingShare",
   )
