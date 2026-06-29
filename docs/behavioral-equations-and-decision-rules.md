@@ -272,8 +272,12 @@ principal default. `LiquidityBridgeChargeOff` isolates the same-month bridge
 write-off used to keep demand deposits non-negative.
 The timeseries also exposes `ConsumerPrincipal` plus `ConsumerCredit_*`
 stock-flow diagnostics so the monthly consumer-loan stock delta can be separated
-into approved origination, principal repayment, and ordinary default, with the
-same-month liquidity bridge reported as a zero-net bridge channel.
+into approved origination, principal repayment, and ordinary default.
+`HhCcOrigination` is the underwritten consumer-loan origination channel,
+`HhLiquidityShortfallFinancing` is the non-underwritten settlement channel for
+residual liquidity gaps, and `LiquidityBridgeChargeOff` reports the separate
+non-underwritten bridge charge-off. The bridge is excluded from the persisted
+consumer-loan stock and from ordinary consumer-credit default diagnostics.
 `ConsumerNplRatio` keeps the legacy performing-loan
 denominator, while `ConsumerCredit_NplRatioGross` reports the same NPL stock
 against a gross-book denominator. `ConsumerCredit_RejectedPortfolioPreference*`

@@ -208,10 +208,6 @@ private[household] object HouseholdStepDsl:
       agg.totalConsumerLoanDefault == agg.totalConsumerDefault,
       "Household.step consumer default must equal ordinary consumer-loan default",
     )
-    require(
-      agg.totalLiquidityBridgeChargeOff == agg.totalLiquidityShortfallFinancing,
-      "Household.step liquidity bridge charge-off must reconcile to aggregate shortfall financing",
-    )
     MonthWorkflow.pure(HouseholdStepSemantics.validatedHouseholds(rows))
 
   /** Closes the household batch into the public `Household.StepResult`. */

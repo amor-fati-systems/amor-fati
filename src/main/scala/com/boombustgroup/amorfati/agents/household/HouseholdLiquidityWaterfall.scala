@@ -87,5 +87,6 @@ private[agents] object HouseholdLiquidityWaterfall:
         PLN.Zero,
         credit.copy(
           liquidityShortfall = credit.liquidityShortfall + components,
+          liquidityBridgeChargeOff = credit.liquidityBridgeChargeOff + shortfall,
         ),
       )

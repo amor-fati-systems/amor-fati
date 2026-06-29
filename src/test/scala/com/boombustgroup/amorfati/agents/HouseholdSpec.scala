@@ -315,7 +315,7 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
     result.aggregates.totalLiquidityShortfallComponents shouldBe result.aggregates.totalLiquidityShortfallFinancing
     result.aggregates.totalConsumerDefault shouldBe expectedDefault
     result.aggregates.totalConsumerLoanDefault shouldBe expectedDefault
-    result.aggregates.totalLiquidityBridgeChargeOff shouldBe result.aggregates.totalLiquidityShortfallFinancing
+    result.aggregates.totalLiquidityBridgeChargeOff shouldBe result.monthlyFlows.head.liquidityBridgeChargeOff
     result.aggregates.totalConsumerPrincipal + result.aggregates.totalConsumerDefault shouldBe openingLoan
   }
 
@@ -620,7 +620,7 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
     result.aggregates.totalConsumerApprovedOrigination shouldBe PLN.Zero
     result.aggregates.totalConsumerDefault shouldBe PLN.Zero
     result.aggregates.totalConsumerLoanDefault shouldBe PLN.Zero
-    result.aggregates.totalLiquidityBridgeChargeOff shouldBe result.aggregates.totalLiquidityShortfallFinancing
+    result.aggregates.totalLiquidityBridgeChargeOff shouldBe result.monthlyFlows.head.liquidityBridgeChargeOff
     result.aggregates.totalLiquidityShortfallComponents shouldBe result.aggregates.totalLiquidityShortfallFinancing
     result.monthlyFlows.head.rentArrears + result.monthlyFlows.head.temporaryOverdraft should be > PLN.Zero
     result.aggregates.meanSavings shouldBe PLN.Zero
@@ -646,7 +646,7 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
     result.aggregates.totalConsumerOrigination shouldBe PLN.Zero
     result.aggregates.totalConsumerDefault shouldBe PLN.Zero
     result.aggregates.totalConsumerLoanDefault shouldBe PLN.Zero
-    result.aggregates.totalLiquidityBridgeChargeOff shouldBe result.aggregates.totalLiquidityShortfallFinancing
+    result.aggregates.totalLiquidityBridgeChargeOff shouldBe flow.liquidityBridgeChargeOff
   }
 
   it should "route residual consumer-debt-service financing through bridge charge-off" in {

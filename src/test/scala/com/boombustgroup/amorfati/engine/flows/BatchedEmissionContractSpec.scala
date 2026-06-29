@@ -36,17 +36,17 @@ class BatchedEmissionContractSpec extends AnyFlatSpec with Matchers:
     val earmarkedInput = EarmarkedFlows.Input(80000, PLN(7000), PLN(1000000), 10, 15)
     val jstInput       = JstFlows.Input(PLN(5000000), PLN(50000000), PLN(100000000), 9000, PLN(3000000))
     val householdInput = HouseholdFlows.Input(
-      PLN(40000000),
-      PLN(8000000),
-      PLN(5000000),
-      PLN(1000000),
-      PLN(500000),
-      PLN(2000000),
-      PLN(300000),
-      PLN(300000),
-      PLN(1100000),
-      PLN(400000),
-      PLN(200000),
+      consumption = PLN(40000000),
+      rent = PLN(8000000),
+      pit = PLN(5000000),
+      depositInterest = PLN(1000000),
+      remittances = PLN(500000),
+      approvedCcOrigination = PLN(2000000),
+      liquidityShortfallFinancing = PLN(300000),
+      liquidityBridgeChargeOff = PLN(300000),
+      ccPrincipalRepayment = PLN(1100000),
+      ccInterest = PLN(400000),
+      ccDefault = PLN(200000),
     )
     val firmInput      = FirmFlows.Input(
       PLN(50000000),

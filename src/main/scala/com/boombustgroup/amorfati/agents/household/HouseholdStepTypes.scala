@@ -19,11 +19,11 @@ private[household] object HouseholdStepTypes:
       creditAccessEligible: Boolean,
       bankApproval: Option[Banking.CreditApproval],
       liquidityShortfall: Household.LiquidityShortfallComponents,
+      liquidityBridgeChargeOff: PLN,
       defaultAmt: PLN,
       updatedDebt: PLN,
   ):
     def liquidityShortfallFinancing: PLN = liquidityShortfall.total
-    def liquidityBridgeChargeOff: PLN    = liquidityShortfallFinancing
     def consumerLoanDefault: PLN         = defaultAmt
     def totalOrigination: PLN            = newLoan
 
