@@ -4,6 +4,7 @@ import com.boombustgroup.amorfati.agents.{HhFinancialDistressState, HhStatus, Ho
 import com.boombustgroup.amorfati.agents.household.HouseholdParameters.*
 import com.boombustgroup.amorfati.agents.household.HouseholdStepTypes.*
 import com.boombustgroup.amorfati.config.SimParams
+import com.boombustgroup.amorfati.random.RandomStream
 import com.boombustgroup.amorfati.types.*
 
 /** Financial-distress, scarring, MPC, and social-neighbor state machine for
@@ -60,6 +61,72 @@ private[agents] object HouseholdDistressMachine:
     val essentialOutflows = (f.hh.monthlyRent + f.debtService + f.credit.debtService).max(f.hh.monthlyRent)
     val configuredFloor   = essentialOutflows * p.household.bankruptcyThreshold.toMultiplier
     f.newSavings < PLN.Zero || f.unmetBasicConsumption > PLN.Zero || f.newSavings < configuredFloor
+
+  /** Computes the monthly personal-insolvency filing hazard from distress
+    * duration and current arrears/debt-service burden.
+    */
+  def personalInsolvencyHazard(
+      f: MonthlyFlows,
+      distressMonths: Int,
+      liquidityShortfall: Household.LiquidityShortfallComponents,
+  )(using p: SimParams): Share =
+    val minMonths = p.household.personalInsolvencyMinDistressMonths
+    if distressMonths < minMonths then Share.Zero
+    else
+      val durationSpan   = (p.household.personalInsolvencyDistressMonths - minMonths).max(1)
+      val rampMonths     = (distressMonths - minMonths).max(0).min(durationSpan)
+      val durationRamp   = Share.fraction(rampMonths, durationSpan)
+      val hazardRange    = p.household.personalInsolvencyMaxHazard - p.household.personalInsolvencyBaseHazard
+      val durationHazard =
+        p.household.personalInsolvencyBaseHazard + (hazardRange * durationRamp)
+      val burdenHazard   =
+        p.household.personalInsolvencyBurdenHazardWeight * distressBurden(f, liquidityShortfall)
+      (durationHazard + burdenHazard).min(p.household.personalInsolvencyMaxHazard)
+
+  /** Draws the personal-insolvency hazard using the household step random
+    * stream. No draw is consumed before hazard activation.
+    */
+  def personalInsolvencyFires(
+      f: MonthlyFlows,
+      distressMonths: Int,
+      liquidityShortfall: Household.LiquidityShortfallComponents,
+      rng: RandomStream,
+  )(using p: SimParams): Boolean =
+    val hazard = personalInsolvencyHazard(f, distressMonths, liquidityShortfall)
+    hazard > Share.Zero && hazard.sampleBelow(rng)
+
+  /** Bounded ordinary consumer-loan default for distressed restructuring or
+    * personal-insolvency filing. Remaining principal stays in the consumer-loan
+    * stock rather than being erased by a duration counter.
+    */
+  def boundedConsumerLoanDefault(
+      credit: CreditResult,
+      liquidityShortfall: Household.LiquidityShortfallComponents,
+      distressMonths: Int,
+      personalInsolvency: Boolean,
+  )(using p: SimParams): PLN =
+    val eligibleForWorkout = personalInsolvency || distressMonths >= p.household.bankruptcyDistressMonths
+    val outstanding        = credit.updatedDebt.max(PLN.Zero)
+    if !eligibleForWorkout || outstanding <= PLN.Zero then PLN.Zero
+    else
+      val debtServiceMonths =
+        if personalInsolvency then p.household.ccBankruptcyDefaultDebtServiceMonths
+        else p.household.ccRestructuringDefaultDebtServiceMonths
+      val outstandingShare  =
+        if personalInsolvency then p.household.ccBankruptcyDefaultOutstandingShare
+        else p.household.ccRestructuringDefaultOutstandingShare
+      val obligationCap     = credit.debtService * debtServiceMonths
+      val arrearsCap        = liquidityShortfall.consumerDebtArrears
+      val burdenCap         = obligationCap.max(arrearsCap)
+      val stockCap          = outstanding * outstandingShare
+      burdenCap.min(stockCap).min(outstanding)
+
+  private def distressBurden(f: MonthlyFlows, liquidityShortfall: Household.LiquidityShortfallComponents): Share =
+    if f.income <= PLN.Zero then Share.One
+    else
+      val arrearsToIncome     = liquidityShortfall.total.ratioTo(f.income).clampToShare
+      val debtServiceToIncome = f.credit.debtService.ratioTo(f.income).clampToShare
+      (arrearsToIncome + debtServiceToIncome).min(Share.One)
 
   /** Builds an O(1) lookup set of households whose state can affect social
     * neighbor distress.

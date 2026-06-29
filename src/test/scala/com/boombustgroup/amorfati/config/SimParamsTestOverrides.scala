@@ -33,6 +33,27 @@ object SimParamsTestOverrides:
       ),
     )
 
+  def personalInsolvencyHazard(
+      baseHazard: Share,
+      maxHazard: Share,
+      burdenWeight: Share = Share.Zero,
+      minDistressMonths: Int = SimParams.defaults.household.personalInsolvencyMinDistressMonths,
+      distressHorizonMonths: Int = SimParams.defaults.household.personalInsolvencyDistressMonths,
+      restructuringOutstandingShare: Share = SimParams.defaults.household.ccRestructuringDefaultOutstandingShare,
+      bankruptcyOutstandingShare: Share = SimParams.defaults.household.ccBankruptcyDefaultOutstandingShare,
+  ): SimParams =
+    SimParams.defaults.copy(
+      household = SimParams.defaults.household.copy(
+        personalInsolvencyMinDistressMonths = minDistressMonths,
+        personalInsolvencyDistressMonths = distressHorizonMonths,
+        personalInsolvencyBaseHazard = baseHazard,
+        personalInsolvencyMaxHazard = maxHazard,
+        personalInsolvencyBurdenHazardWeight = burdenWeight,
+        ccRestructuringDefaultOutstandingShare = restructuringOutstandingShare,
+        ccBankruptcyDefaultOutstandingShare = bankruptcyOutstandingShare,
+      ),
+    )
+
   def bankRiskWeights(firmLoan: Share, consumerLoan: Share): SimParams =
     SimParams.defaults.copy(
       banking = SimParams.defaults.banking.copy(
