@@ -11,6 +11,7 @@ import org.scalatest.matchers.should.Matchers
 import com.boombustgroup.amorfati.config.{SimParams, SimParamsTestOverrides}
 import com.boombustgroup.amorfati.engine.World
 import com.boombustgroup.amorfati.engine.markets.OpenEconomy
+import com.boombustgroup.amorfati.init.InitRandomness
 import com.boombustgroup.amorfati.types.*
 
 import com.boombustgroup.amorfati.random.RandomStream
@@ -197,6 +198,30 @@ class HouseholdSpec extends AnyFlatSpec with Matchers:
     val network = Array.fill(500)(Array.empty[Int])
     val hhs     = Household.Init.initialize(500, firms, network, rng).households
     hhs.foreach(_.monthlyRent should be >= p.household.rentFloor)
+  }
+
+  "Household.Init.create" should "calibrate initial unemployed opening runway after loan stock scaling" in {
+    val firms      = mkFirms(200)
+    val randomness = InitRandomness.Contract.fromSeed(42L).households.newStreams()
+    val population = Household.Init.create(randomness, firms)
+    val unemployed = population.households
+      .zip(population.financialStocks)
+      .collect:
+        case (hh, stocks) if hh.status.isInstanceOf[HhStatus.Unemployed] => (hh, stocks)
+
+    unemployed should not be empty
+    population.financialStocks.map(_.consumerLoan).sumPln shouldBe p.banking.initConsumerLoans
+    population.financialStocks.map(_.mortgageLoan).sumPln shouldBe p.housing.initMortgage
+
+    val openingSpells = unemployed.map(_._1.status.asInstanceOf[HhStatus.Unemployed].monthsUnemployed)
+    openingSpells.distinct.size should be > 1
+    openingSpells.foreach: months =>
+      months should be >= 0
+      months should be <= p.household.initialUnemployedMaxMonths
+
+    val runwayMonths = unemployed.map((hh, stocks) => Household.Init.initialUnemployedRunwayMonths(hh, stocks)).sorted
+    val p10Runway    = runwayMonths((runwayMonths.length / 10).min(runwayMonths.length - 1))
+    p10Runway should be >= p.household.initialUnemployedRunwayMonths
   }
 
   // --- Household.step ---

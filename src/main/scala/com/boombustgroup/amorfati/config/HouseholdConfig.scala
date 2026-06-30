@@ -48,6 +48,11 @@ import com.boombustgroup.amorfati.types.*
   * @param basicConsumptionFloor
   *   monthly non-discretionary consumption floor protected before discretionary
   *   consumption is allowed (PLN)
+  * @param initialUnemployedMaxMonths
+  *   maximum opening unemployment spell assigned to initial unemployed workers
+  * @param initialUnemployedRunwayMonths
+  *   minimum opening cashflow runway for initial unemployed workers, measured
+  *   against benefits, transfers, rent, basic consumption, and debt service
   * @param skillDecayRate
   *   monthly skill depreciation rate while unemployed
   * @param scarringRate
@@ -144,6 +149,9 @@ case class HouseholdConfig(
     bufferExcessDrawdownRate: Share = Share.decimal(20, 2),     // monthly drawdown rate for savings above target buffer
     bufferStressDrawdownRate: Share = Share.decimal(35, 2),     // monthly drawdown rate for savings above protected buffer under stress
     basicConsumptionFloor: PLN = PLN(1500),                     // non-discretionary monthly consumption floor
+    // Opening unemployed calibration
+    initialUnemployedMaxMonths: Int = 6,
+    initialUnemployedRunwayMonths: Int = 2,
     // Skill decay & scarring
     skillDecayRate: Share = Share.decimal(2, 2),
     scarringRate: Share = Share.decimal(2, 2),
@@ -184,6 +192,8 @@ case class HouseholdConfig(
     ccNplRecovery: Share = Share.decimal(15, 2),
     ccEligRate: Share = Share.decimal(85, 2),
 ):
+  require(initialUnemployedMaxMonths >= 0, s"initialUnemployedMaxMonths must be non-negative: $initialUnemployedMaxMonths")
+  require(initialUnemployedRunwayMonths >= 0, s"initialUnemployedRunwayMonths must be non-negative: $initialUnemployedRunwayMonths")
   require(bankruptcyDistressMonths > 0, s"bankruptcyDistressMonths must be positive: $bankruptcyDistressMonths")
   require(
     personalInsolvencyMinDistressMonths > bankruptcyDistressMonths,

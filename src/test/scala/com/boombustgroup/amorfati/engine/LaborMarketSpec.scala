@@ -265,6 +265,18 @@ class LaborMarketSpec extends AnyFlatSpec with Matchers:
     hiredContracts.toSet.size should be > 1
   }
 
+  it should "compute reemployment wages from current market state without hidden unemployment wage memory" in {
+    val rng        = RandomStream.seeded(42)
+    val marketWage = PLN(8000)
+    val firms      = Vector(mkFirms(1)(0).copy(tech = TechState.Traditional(1), sector = SectorIdx(2), initialSize = 1))
+    val hhs        = Vector(mkHousehold(0, HhStatus.Unemployed(4), skill = BigDecimal("0.7")))
+
+    val hired = LaborMarket.jobSearch(hhs, firms, marketWage, rng).households.head
+    val wage  = hired.status.asInstanceOf[HhStatus.Employed].wage
+
+    wage shouldBe marketWage * Firm.effectiveWageMult(SectorIdx(2)) * Share.decimal(7, 1)
+  }
+
   // --- updateWages ---
 
   "LaborMarket.updateWages" should "produce mean wage = marketWage for employed" in {

@@ -18,7 +18,7 @@ import com.boombustgroup.amorfati.fp.FixedPointBase
 /** Employment/activity status of an individual household. */
 enum HhStatus:
   case Employed(firmId: FirmId, sectorIdx: SectorIdx, wage: PLN)       // employed at firm, earning wage
-  case Unemployed(monthsUnemployed: Int)                               // unemployed for N months (zasilek eligible)
+  case Unemployed(monthsUnemployed: Int)                               // no wage memory; rehire wage is recomputed by LaborMarket
   case Retraining(monthsLeft: Int, targetSector: SectorIdx, cost: PLN) // transitioning to target sector
   case Bankrupt // absorbing barrier
 
@@ -400,7 +400,7 @@ object Household:
       val financialStocks  = initialized.financialStocks ++ unemployed.map(_.financialStocks)
       val mortgageStocks   = calibrateMortgageLoans(financialStocks)
       val calibratedStocks = calibrateConsumerLoans(mortgageStocks)
-      Population(households, calibratedStocks)
+      calibrateInitialUnemployedRunway(Population(households, calibratedStocks))
 
     private def initialUnemployedCount(employedSlots: Int)(using p: SimParams): Int =
       if employedSlots <= 0 || p.pop.initialUnemploymentRate <= Share.Zero then 0
@@ -426,14 +426,19 @@ object Household:
           .map: offset =>
             val firm    = living(sectorRng.nextInt(living.length))
             val sampled = sampleHousehold(startId + offset, firm, firm.sector, socialNetwork, attributeRng)
+            val months  = sampleInitialUnemployedMonths(sectorRng)
             sampled.copy(
               state = sampled.state.copy(
-                status = HhStatus.Unemployed(0),
+                status = HhStatus.Unemployed(months),
                 bankId = firm.bankId,
                 lastSectorIdx = firm.sector,
               ),
             )
           .toVector
+
+    private def sampleInitialUnemployedMonths(rng: RandomStream)(using p: SimParams): Int =
+      if p.household.initialUnemployedMaxMonths <= 0 then 0
+      else rng.nextInt(p.household.initialUnemployedMaxMonths + 1)
 
     /** Initialize households, all employed, assigned proportionally to firm
       * sizes.
@@ -490,6 +495,188 @@ object Household:
               else p.housing.mortgageMaturity
             stock.copy(mortgageLoan = mortgageLoan, mortgageRemainingMonths = remaining)
           }
+
+    private case class RunwayCalibrationResult(
+        state: State,
+        financialStocks: FinancialStocks,
+        consumerLoanReduction: PLN,
+        mortgageLoanReduction: PLN,
+    )
+
+    private def calibrateInitialUnemployedRunway(population: Population)(using p: SimParams): Population =
+      if p.household.initialUnemployedRunwayMonths <= 0 || population.households.isEmpty then population
+      else
+        val households             = population.households.toArray
+        val stocks                 = population.financialStocks.toArray
+        var consumerLoanReductions = PLN.Zero
+        var mortgageLoanReductions = PLN.Zero
+        var i                      = 0
+        while i < households.length do
+          households(i).status match
+            case _: HhStatus.Unemployed =>
+              val calibrated = calibrateInitialUnemployedHousehold(households(i), stocks(i))
+              households(i) = calibrated.state
+              stocks(i) = calibrated.financialStocks
+              consumerLoanReductions = consumerLoanReductions + calibrated.consumerLoanReduction
+              mortgageLoanReductions = mortgageLoanReductions + calibrated.mortgageLoanReduction
+            case _                      =>
+          i += 1
+        val calibratedHouseholds   = households.toVector
+        val calibratedStocks       = stocks.toVector
+        val withConsumerRebalanced = redistributeConsumerLoansToEmployed(calibratedHouseholds, calibratedStocks, consumerLoanReductions)
+        val withMortgageRebalanced = redistributeMortgageLoansToEmployed(calibratedHouseholds, withConsumerRebalanced, mortgageLoanReductions)
+        Population(calibratedHouseholds, withMortgageRebalanced)
+
+    private def calibrateInitialUnemployedHousehold(hh: State, stocks: FinancialStocks)(using p: SimParams): RunwayCalibrationResult =
+      val consumerRate             = p.monetary.initialRate + p.household.ccSpread
+      val consumerPaymentFactorRaw = (p.household.ccAmortRate + consumerRate.monthly).toLong
+      val consumerReduction        = principalReductionForRunwayDeficit(runwayDeficit(hh, stocks), consumerPaymentFactorRaw, stocks.consumerLoan)
+      val afterConsumer            =
+        if consumerReduction > PLN.Zero then stocks.copy(consumerLoan = (stocks.consumerLoan - consumerReduction).max(PLN.Zero))
+        else stocks
+      val mortgagePaymentFactor    = mortgagePaymentFactorRaw(afterConsumer)
+      val mortgageReduction        = principalReductionForRunwayDeficit(runwayDeficit(hh, afterConsumer), mortgagePaymentFactor, afterConsumer.mortgageLoan)
+      val afterMortgageLoan        = (afterConsumer.mortgageLoan - mortgageReduction).max(PLN.Zero)
+      val afterMortgage            =
+        if mortgageReduction > PLN.Zero then
+          afterConsumer.copy(
+            mortgageLoan = afterMortgageLoan,
+            mortgageRemainingMonths = if afterMortgageLoan <= PLN.Zero then 0 else afterConsumer.mortgageRemainingMonths,
+          )
+        else afterConsumer
+      val rentReduction            = rentReductionForRunwayDeficit(runwayDeficit(hh, afterMortgage))
+      val afterRent                =
+        if rentReduction > PLN.Zero then hh.copy(monthlyRent = (hh.monthlyRent - rentReduction).max(p.household.rentFloor))
+        else hh
+      RunwayCalibrationResult(afterRent, afterMortgage, consumerReduction, mortgageReduction)
+
+    private def runwayDeficit(hh: State, stocks: FinancialStocks)(using p: SimParams): PLN =
+      val surplus = initialUnemployedRunwaySurplus(hh, stocks)
+      (PLN.Zero - surplus).max(PLN.Zero)
+
+    private[amorfati] def initialUnemployedRunwaySurplus(hh: State, stocks: FinancialStocks)(using p: SimParams): PLN =
+      initialUnemployedLiquidResources(hh, stocks) - initialUnemployedEssentialOutflows(hh, stocks)
+
+    private[amorfati] def initialUnemployedRunwayMonths(hh: State, stocks: FinancialStocks)(using p: SimParams): Int =
+      val startingMonths  = hh.status match
+        case HhStatus.Unemployed(months) => months
+        case _                           => 0
+      val monthlyOutflows = initialUnemployedMonthlyEssentialOutflows(stocks) + hh.monthlyRent + p.household.basicConsumptionFloor
+      var liquid          = stocks.demandDeposit
+      var month           = 0
+      while month < p.household.initialUnemployedRunwayMonths do
+        val income = HouseholdIncomeConstruction.computeBenefit(startingMonths + month) + (p.fiscal.social800 * hh.numDependentChildren)
+        if liquid + income < monthlyOutflows then return month
+        liquid = liquid + income - monthlyOutflows
+        month += 1
+      month
+
+    private def initialUnemployedLiquidResources(hh: State, stocks: FinancialStocks)(using p: SimParams): PLN =
+      stocks.demandDeposit + expectedInitialUnemployedBenefits(hh) + expectedInitialUnemployedSocialTransfers(hh)
+
+    private def expectedInitialUnemployedBenefits(hh: State)(using p: SimParams): PLN =
+      val startingMonths = hh.status match
+        case HhStatus.Unemployed(months) => months
+        case _                           => 0
+      (0 until p.household.initialUnemployedRunwayMonths)
+        .map(offset => HouseholdIncomeConstruction.computeBenefit(startingMonths + offset))
+        .sumPln
+
+    private def expectedInitialUnemployedSocialTransfers(hh: State)(using p: SimParams): PLN =
+      if hh.numDependentChildren <= 0 then PLN.Zero
+      else p.fiscal.social800 * hh.numDependentChildren * p.household.initialUnemployedRunwayMonths
+
+    private def initialUnemployedEssentialOutflows(hh: State, stocks: FinancialStocks)(using p: SimParams): PLN =
+      (initialUnemployedMonthlyEssentialOutflows(stocks) + hh.monthlyRent + p.household.basicConsumptionFloor) * p.household.initialUnemployedRunwayMonths
+
+    private def initialUnemployedMonthlyEssentialOutflows(stocks: FinancialStocks)(using p: SimParams): PLN =
+      scheduledOpeningMortgageDebtService(stocks) + scheduledOpeningConsumerDebtService(stocks)
+
+    private def scheduledOpeningMortgageDebtService(stocks: FinancialStocks)(using p: SimParams): PLN =
+      val mortgageRate = p.monetary.initialRate + p.housing.mortgageSpread
+      HouseholdMortgageSchedule.scheduledMortgagePrincipal(stocks) + (stocks.mortgageLoan * mortgageRate.monthly)
+
+    private def scheduledOpeningConsumerDebtService(stocks: FinancialStocks)(using p: SimParams): PLN =
+      val consumerRate = p.monetary.initialRate + p.household.ccSpread
+      val factor       = p.household.ccAmortRate + consumerRate.monthly
+      stocks.consumerLoan * factor
+
+    private def mortgagePaymentFactorRaw(stocks: FinancialStocks)(using p: SimParams): Long =
+      if stocks.mortgageLoan <= PLN.Zero then 0L
+      else
+        val remainingMonths = HouseholdMortgageSchedule.activeMortgageRemainingMonths(stocks).max(1)
+        val principalRaw    = FixedPointBase.divideRaw(FixedPointBase.Scale, remainingMonths.toLong)
+        val mortgageRate    = p.monetary.initialRate + p.housing.mortgageSpread
+        principalRaw + mortgageRate.monthly.toLong
+
+    private def principalReductionForRunwayDeficit(deficit: PLN, monthlyPaymentFactorRaw: Long, principal: PLN)(using p: SimParams): PLN =
+      val horizon = p.household.initialUnemployedRunwayMonths
+      if deficit <= PLN.Zero || monthlyPaymentFactorRaw <= 0L || principal <= PLN.Zero || horizon <= 0 then PLN.Zero
+      else
+        val denominator = BigInt(monthlyPaymentFactorRaw) * BigInt(horizon)
+        val requiredRaw = ((BigInt(deficit.toLong) * BigInt(FixedPointBase.Scale)) + denominator - 1) / denominator
+        PLN.fromRaw(requiredRaw.min(BigInt(principal.toLong)).toLong)
+
+    private def rentReductionForRunwayDeficit(deficit: PLN)(using p: SimParams): PLN =
+      val horizon = p.household.initialUnemployedRunwayMonths
+      if deficit <= PLN.Zero || horizon <= 0 then PLN.Zero
+      else
+        val requiredRaw = (BigInt(deficit.toLong) + BigInt(horizon - 1)) / BigInt(horizon)
+        PLN.fromRaw(requiredRaw.toLong)
+
+    private def redistributeConsumerLoansToEmployed(households: Vector[State], stocks: Vector[FinancialStocks], amount: PLN): Vector[FinancialStocks] =
+      redistributeLoansToEmployed(
+        households,
+        stocks,
+        amount,
+        _.consumerLoan.distributeRaw,
+        (stock, allocation) => stock.copy(consumerLoan = stock.consumerLoan + allocation),
+      )
+
+    private def redistributeMortgageLoansToEmployed(households: Vector[State], stocks: Vector[FinancialStocks], amount: PLN)(using
+        p: SimParams,
+    ): Vector[FinancialStocks] =
+      redistributeLoansToEmployed(
+        households,
+        stocks,
+        amount,
+        _.mortgageLoan.distributeRaw,
+        (stock, allocation) =>
+          val mortgageLoan = stock.mortgageLoan + allocation
+          val remaining    =
+            if mortgageLoan <= PLN.Zero then 0
+            else if stock.mortgageRemainingMonths > 0 then stock.mortgageRemainingMonths
+            else p.housing.mortgageMaturity
+          stock.copy(mortgageLoan = mortgageLoan, mortgageRemainingMonths = remaining),
+      )
+
+    private def redistributeLoansToEmployed(
+        households: Vector[State],
+        stocks: Vector[FinancialStocks],
+        amount: PLN,
+        weight: FinancialStocks => Long,
+        update: (FinancialStocks, PLN) => FinancialStocks,
+    ): Vector[FinancialStocks] =
+      if amount <= PLN.Zero then stocks
+      else
+        val recipients = employedRecipientIndices(households)
+        if recipients.isEmpty then stocks
+        else
+          val weights     = positiveOrEqualWeights(recipients.map(idx => weight(stocks(idx))))
+          val allocations = com.boombustgroup.ledger.Distribute.distribute(amount.toLong, weights)
+          recipients.zip(allocations).foldLeft(stocks) { case (updated, (idx, rawAmount)) =>
+            if rawAmount <= 0L then updated
+            else
+              val stock = updated(idx)
+              updated.updated(idx, update(stock, PLN.fromRaw(rawAmount)))
+          }
+
+    private def employedRecipientIndices(households: Vector[State]): Vector[Int] =
+      households.indices.filter(idx => households(idx).status.isInstanceOf[HhStatus.Employed]).toVector
+
+    private def positiveOrEqualWeights(weights: Vector[Long]): Array[Long] =
+      if weights.exists(_ > 0L) then weights.toArray
+      else Array.fill(weights.length)(1L)
 
     private case class SampledHousehold(
         state: State,
