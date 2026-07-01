@@ -201,63 +201,87 @@ object HhBankLeadLagDiagnosticsExport:
   private final case class ConcentrationMetric(
       id: String,
       amount: BankMonthRow => BigDecimal,
-      share: BankMonthRow => BigDecimal,
+      share: (BankMonthRow, BigDecimal) => BigDecimal,
       interpretation: String,
   )
+
+  private def observedShare(accessor: BankMonthRow => BigDecimal): (BankMonthRow, BigDecimal) => BigDecimal =
+    (row, _) => accessor(row)
+
+  private def denominatorShare(amount: BankMonthRow => BigDecimal): (BankMonthRow, BigDecimal) => BigDecimal =
+    (row, denominator) => if denominator > BigDecimal(0) then amount(row) / denominator else BigDecimal(0)
 
   private val ConcentrationMetrics: Vector[ConcentrationMetric] = Vector(
     ConcentrationMetric(
       id = "HouseholdRoutingShare",
       amount = row => BigDecimal(row.householdCount),
-      share = _.householdShare,
+      share = observedShare(_.householdShare),
       interpretation = "Share of household-stage routed households assigned to the top bank.",
+    ),
+    ConcentrationMetric(
+      id = "ClosingHouseholdRoutingShare",
+      amount = row => BigDecimal(row.closingHouseholdCount),
+      share = observedShare(_.closingHouseholdShare),
+      interpretation = "Share of post-banking closing household assignments carried by the top bank.",
     ),
     ConcentrationMetric(
       id = "ConsumerLoanExposureShare",
       amount = _.bankConsumerLoanStock,
-      share = _.bankConsumerLoanShare,
+      share = observedShare(_.bankConsumerLoanShare),
       interpretation = "Share of closing unsecured consumer-loan stock held by the top bank.",
     ),
     ConcentrationMetric(
       id = "MortgageExposureShare",
       amount = _.bankMortgageLoanStock,
-      share = _.bankMortgageLoanShare,
+      share = observedShare(_.bankMortgageLoanShare),
       interpretation = "Share of closing mortgage-loan stock mirrored to the top bank.",
     ),
     ConcentrationMetric(
       id = "DepositShare",
       amount = _.bankDeposits,
-      share = _.bankDepositShare,
+      share = observedShare(_.bankDepositShare),
       interpretation = "Share of closing customer deposits assigned to the top bank.",
     ),
     ConcentrationMetric(
       id = "ConsumerLoanDefaultFlowShare",
       amount = _.hhConsumerLoanDefault,
-      share = _.hhConsumerLoanDefaultShare,
+      share = observedShare(_.hhConsumerLoanDefaultShare),
       interpretation = "Share of ordinary consumer-loan default flow routed to the top bank.",
     ),
     ConcentrationMetric(
       id = "ConsumerInsolvencyDefaultFlowShare",
       amount = _.hhConsumerInsolvencyDefault,
-      share = _.hhConsumerInsolvencyDefaultShare,
+      share = observedShare(_.hhConsumerInsolvencyDefaultShare),
       interpretation = "Share of personal-insolvency consumer default flow routed to the top bank.",
     ),
     ConcentrationMetric(
       id = "LiquidityBridgeChargeOffFlowShare",
       amount = _.hhLiquidityBridgeChargeOff,
-      share = _.hhLiquidityBridgeChargeOffShare,
+      share = observedShare(_.hhLiquidityBridgeChargeOffShare),
       interpretation = "Share of same-month liquidity-bridge charge-off flow routed to the top bank.",
     ),
     ConcentrationMetric(
       id = "LiquidityShortfallFinancingFlowShare",
       amount = _.hhLiquidityShortfallFinancing,
-      share = _.hhLiquidityShortfallFinancingShare,
+      share = observedShare(_.hhLiquidityShortfallFinancingShare),
       interpretation = "Share of same-month liquidity shortfall financing routed to the top bank.",
+    ),
+    ConcentrationMetric(
+      id = "CapitalShare",
+      amount = _.bankCapital,
+      share = observedShare(_.bankCapitalShare),
+      interpretation = "Share of closing bank capital carried by the top bank.",
+    ),
+    ConcentrationMetric(
+      id = "CapitalBufferShare",
+      amount = _.bankCapitalBuffer,
+      share = denominatorShare(_.bankCapitalBuffer),
+      interpretation = "Share of aggregate capital buffer carried by the top bank.",
     ),
     ConcentrationMetric(
       id = "RwaShare",
       amount = _.bankRwa,
-      share = _.bankRwaShare,
+      share = observedShare(_.bankRwaShare),
       interpretation = "Share of inferred bank RWA denominator carried by the top bank.",
     ),
   )
@@ -568,7 +592,7 @@ object HhBankLeadLagDiagnosticsExport:
               peakMonth = row.month,
               bankId = row.bankId,
               bankName = row.bankName,
-              topShare = metric.share(row),
+              topShare = metric.share(row, denominator),
               amount = amount,
               denominator = denominator,
               bankConsumerLoanShare = row.bankConsumerLoanShare,
@@ -591,10 +615,11 @@ object HhBankLeadLagDiagnosticsExport:
       .toVector
       .flatMap: (_, monthRows) =>
         val denominator = monthRows.map(metric.amount).sum
-        monthRows.map(row => (row, metric.amount(row), denominator))
+        if denominator > BigDecimal(0) then monthRows.map(row => (row, metric.amount(row), denominator))
+        else Vector.empty
 
-    candidates.maxByOption: (row, amount, _) =>
-      (metric.share(row), amount, -row.month, -row.bankId)
+    candidates.maxByOption: (row, amount, denominator) =>
+      (metric.share(row, denominator), amount, -row.month, -row.bankId)
 
   private[diagnostics] def pearson(pairs: Vector[(BigDecimal, BigDecimal)]): Option[BigDecimal] =
     if pairs.length < 2 then None
@@ -937,7 +962,7 @@ object HhBankLeadLagDiagnosticsExport:
     if rows.isEmpty then "No baseline first-failure rows in the observed horizon."
     else
       val header =
-        "| Seed | Month | Bank | Reason | Consumer Default Share | Bridge Charge-Off Share | Consumer Loan Share | RWA Share | CAR | Min CAR | Capital Buffer / RWA |"
+        "| Seed | Month | Bank | Reason | HhConsumerLoanDefaultShare | Bridge Charge-Off Share | Consumer Loan Share | RWA Share | CAR | Min CAR | Capital Buffer / RWA |"
       val sep    = "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |"
       val body   = rows.map: row =>
         s"| ${row.seed} | ${row.month} | ${row.bankId} ${row.bankName} | ${row.bankFailureReasonCode} | ${renderDecimal(row.hhConsumerLoanDefaultShare)} | ${renderDecimal(row.hhLiquidityBridgeChargeOffShare)} | ${renderDecimal(row.bankConsumerLoanShare)} | ${renderDecimal(row.bankRwaShare)} | ${renderDecimal(row.bankCar)} | ${renderDecimal(row.bankEffectiveMinCar)} | ${renderDecimal(row.bankCapitalBufferToRwa)} |"

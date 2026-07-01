@@ -85,12 +85,14 @@ routing separately.
 one top-bank row per scenario, seed, and concentration metric. It reports the
 peak month, top bank, top share, amount, denominator, consumer-loan exposure
 share, household routing share, RWA share, CAR, effective minimum CAR, and
-capital buffer to RWA.
+capital buffer to RWA. Months with a zero metric denominator are skipped for
+that metric.
 
-Baseline peak metrics include household routing, consumer-loan exposure,
-mortgage exposure, deposits, ordinary consumer-loan default flow, insolvency
-default flow, liquidity-bridge charge-off flow, liquidity shortfall financing
-flow, and RWA share. These are the product-specific inputs needed by baseline
+Baseline peak metrics include household-stage routing, closing household
+routing, consumer-loan exposure, mortgage exposure, deposits, ordinary
+consumer-loan default flow, insolvency default flow, liquidity-bridge charge-off
+flow, liquidity shortfall financing flow, bank capital, bank capital buffer,
+and RWA share. These are the product-specific inputs needed by baseline
 concentration guardrails without mixing bridge/write-off channels into ordinary
 consumer-loan default.
 
