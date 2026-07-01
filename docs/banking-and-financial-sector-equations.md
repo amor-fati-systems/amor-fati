@@ -410,8 +410,16 @@ S1_{b,tau} = max(TotalCoveredLoans_{b,tau} - S2_{b,tau} - S3_{b,tau}, 0)
 ```
 
 In the current runtime, `newDefaults_b` is the bank's new firm-loan NPL flow.
-Consumer-credit defaults do not enter `S2ToS3_b`; they are realized separately
-as consumer-credit loss terms in the bank-capital waterfall.
+Consumer-credit, personal-insolvency, liquidity-bridge, and mortgage defaults
+do not enter `S2ToS3_b`; they are tracked separately as product-specific
+diagnostics and, for ordinary consumer-loan, personal-insolvency, and mortgage
+defaults, realized loss terms in the bank-capital waterfall. Liquidity-bridge
+charge-off is a same-month bridge settlement product by default, so it has gross
+and recovery diagnostics but no capital loss unless a future calibration lowers
+the bridge settlement/recovery share. These household-credit products do not
+draw ECL allowance until a corresponding product-level allowance stock exists.
+This keeps the macro ECL provision change separate from realized default loss
+and prevents double counting.
 
 The provision change is:
 
@@ -580,6 +588,30 @@ RealizedCreditLoss =
   + ConsumerNplLoss
   + BankHeldCorporateBondDefaultLoss
 ```
+
+`ConsumerNplLoss` is an aggregate household-credit loss diagnostic:
+
+```text
+ConsumerNplLoss =
+  ConsumerLoanNetCapitalLoss
+  + ConsumerInsolvencyNetCapitalLoss
+  + LiquidityBridgeNetCapitalLoss
+```
+
+For each product channel, diagnostics expose:
+
+```text
+GrossDefault
+Recovery
+ExpectedLoss = GrossDefault - Recovery
+AllowanceDraw
+NetCapitalLoss = ExpectedLoss - AllowanceDraw
+```
+
+Current household-credit and mortgage product channels set `AllowanceDraw = 0`
+by contract because no matching product-level allowance stock is built. Firm
+defaults may draw the Stage 3 ECL allowance because the firm default flow is the
+runtime `EclStaging.step` Stage 3 input.
 
 `WaterfallResidual` should remain near zero. A material value means the bank
 capital diagnostic surface is missing an explanatory term. `ReconciliationResidual`

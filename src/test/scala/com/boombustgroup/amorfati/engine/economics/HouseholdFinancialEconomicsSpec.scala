@@ -36,13 +36,14 @@ class HouseholdFinancialEconomicsSpec extends AnyFlatSpec with Matchers:
     result.consumerNplLoss shouldBe PLN.Zero
   }
 
-  it should "apply recovery only to ordinary consumer-loan defaults" in {
+  it should "apply distinct recoveries to ordinary and insolvency consumer-loan defaults" in {
     val hhAgg = Generators
       .testHouseholdAggregates()
       .copy(
         totalLiquidityShortfallFinancing = PLN(800),
-        totalConsumerDefault = PLN(200),
-        totalConsumerLoanDefault = PLN(200),
+        totalConsumerDefault = PLN(120),
+        totalConsumerLoanDefault = PLN(120),
+        totalConsumerInsolvencyDefault = PLN(20),
         totalLiquidityBridgeChargeOff = PLN(800),
       )
 
@@ -54,7 +55,8 @@ class HouseholdFinancialEconomicsSpec extends AnyFlatSpec with Matchers:
       rng = RandomStream.seeded(42),
     )
 
-    result.consumerDefaultAmt shouldBe PLN(200)
-    result.consumerLoanDefaultAmt shouldBe PLN(200)
-    result.consumerNplLoss shouldBe PLN(170)
+    result.consumerDefaultAmt shouldBe PLN(120)
+    result.consumerLoanDefaultAmt shouldBe PLN(120)
+    result.consumerInsolvencyDefaultAmt shouldBe PLN(20)
+    result.consumerNplLoss shouldBe PLN(104)
   }

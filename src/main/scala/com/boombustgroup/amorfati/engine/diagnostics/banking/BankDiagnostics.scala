@@ -12,27 +12,42 @@ import com.boombustgroup.amorfati.types.*
   * than equity capital.
   */
 case class BankCapitalDiagnostics(
-    openingCapital: PLN = PLN.Zero,           // aggregate bank capital at the start of the month
-    closingCapital: PLN = PLN.Zero,           // aggregate bank capital after monthly banking settlement
-    retainedIncome: PLN = PLN.Zero,           // retained ordinary bank income after profit-retention rule
-    firmNplLoss: PLN = PLN.Zero,              // realized firm-loan capital loss net of recovery and ECL allowance draw
-    mortgageNplLoss: PLN = PLN.Zero,          // realized mortgage capital loss net of recovery; product-level ECL draw is not modeled yet
-    consumerNplLoss: PLN = PLN.Zero,          // realized consumer-loan capital loss net of recovery; product-level ECL draw is not modeled yet
-    corpBondDefaultLoss: PLN = PLN.Zero,      // bank-held corporate-bond default loss
-    firmNplAllowanceDraw: PLN = PLN.Zero,     // firm-loan default loss covered by existing/new ECL allowance instead of capital loss
-    mortgageNplAllowanceDraw: PLN = PLN.Zero, // currently zero until mortgage product-level ECL staging is modeled
-    consumerNplAllowanceDraw: PLN = PLN.Zero, // currently zero until consumer product-level ECL staging is modeled
-    bfgLevy: PLN = PLN.Zero,                  // monthly BFG levy paid by active banks
-    polishBankLevyTax: PLN = PLN.Zero,        // monthly Polish bank tax paid by active banks
-    unrealizedBondLoss: PLN = PLN.Zero,       // AFS government-bond mark-to-market capital hit
-    htmRealizedLoss: PLN = PLN.Zero,          // HTM forced-reclassification realized loss
-    eclProvisionChange: PLN = PLN.Zero,       // IFRS 9 provision increase, positive when capital is hit
-    capitalDestruction: PLN = PLN.Zero,       // shareholder capital wiped when banks newly fail
-    interbankContagionLoss: PLN = PLN.Zero,   // failed-counterparty interbank exposure loss
+    openingCapital: PLN = PLN.Zero,                     // aggregate bank capital at the start of the month
+    closingCapital: PLN = PLN.Zero,                     // aggregate bank capital after monthly banking settlement
+    retainedIncome: PLN = PLN.Zero,                     // retained ordinary bank income after profit-retention rule
+    firmNplLoss: PLN = PLN.Zero,                        // realized firm-loan capital loss net of recovery and ECL allowance draw
+    mortgageNplLoss: PLN = PLN.Zero,                    // realized mortgage capital loss net of recovery; product-level ECL draw is not modeled yet
+    consumerNplLoss: PLN = PLN.Zero,                    // realized household-credit capital loss net of recovery and any product allowance draw
+    consumerLoanGrossDefault: PLN = PLN.Zero,           // ordinary consumer-loan gross default excluding insolvency and bridge
+    consumerLoanRecovery: PLN = PLN.Zero,               // ordinary consumer-loan recovery flow
+    consumerLoanExpectedLoss: PLN = PLN.Zero,           // ordinary consumer-loan expected loss after recovery
+    consumerLoanNplAllowanceDraw: PLN = PLN.Zero,       // ordinary consumer-loan allowance draw
+    consumerLoanNplLoss: PLN = PLN.Zero,                // ordinary consumer-loan net capital loss
+    consumerInsolvencyGrossDefault: PLN = PLN.Zero,     // personal-insolvency consumer-loan gross default
+    consumerInsolvencyRecovery: PLN = PLN.Zero,         // personal-insolvency recovery flow
+    consumerInsolvencyExpectedLoss: PLN = PLN.Zero,     // personal-insolvency expected loss after recovery
+    consumerInsolvencyNplAllowanceDraw: PLN = PLN.Zero, // personal-insolvency allowance draw
+    consumerInsolvencyNplLoss: PLN = PLN.Zero,          // personal-insolvency net capital loss
+    liquidityBridgeGrossDefault: PLN = PLN.Zero,        // bridge/overdraft gross charge-off default
+    liquidityBridgeRecovery: PLN = PLN.Zero,            // bridge/overdraft recovery flow
+    liquidityBridgeExpectedLoss: PLN = PLN.Zero,        // bridge/overdraft expected loss after recovery
+    liquidityBridgeNplAllowanceDraw: PLN = PLN.Zero,    // bridge/overdraft allowance draw
+    liquidityBridgeNplLoss: PLN = PLN.Zero,             // bridge/overdraft net capital loss, normally zero after same-month settlement
+    corpBondDefaultLoss: PLN = PLN.Zero,                // bank-held corporate-bond default loss
+    firmNplAllowanceDraw: PLN = PLN.Zero,               // firm-loan default loss covered by existing/new ECL allowance instead of capital loss
+    mortgageNplAllowanceDraw: PLN = PLN.Zero,           // currently zero until mortgage product-level ECL staging is modeled
+    consumerNplAllowanceDraw: PLN = PLN.Zero,           // currently zero until consumer product-level ECL staging is modeled
+    bfgLevy: PLN = PLN.Zero,                            // monthly BFG levy paid by active banks
+    polishBankLevyTax: PLN = PLN.Zero,                  // monthly Polish bank tax paid by active banks
+    unrealizedBondLoss: PLN = PLN.Zero,                 // AFS government-bond mark-to-market capital hit
+    htmRealizedLoss: PLN = PLN.Zero,                    // HTM forced-reclassification realized loss
+    eclProvisionChange: PLN = PLN.Zero,                 // IFRS 9 provision increase, positive when capital is hit
+    capitalDestruction: PLN = PLN.Zero,                 // shareholder capital wiped when banks newly fail
+    interbankContagionLoss: PLN = PLN.Zero,             // failed-counterparty interbank exposure loss
     preReconciliationBreakdown: BankCapitalResidualBreakdown = BankCapitalResidualBreakdown.zero,
-    reconciliationResidual: PLN = PLN.Zero,   // aggregate exactness patch distributed across bank rows
-    depositBailInLoss: PLN = PLN.Zero,        // depositor haircut from resolution, not equity-capital P&L
-    newFailures: Int = 0,                     // banks newly marked failed during the month
+    reconciliationResidual: PLN = PLN.Zero,             // aggregate exactness patch distributed across bank rows
+    depositBailInLoss: PLN = PLN.Zero,                  // depositor haircut from resolution, not equity-capital P&L
+    newFailures: Int = 0,                               // banks newly marked failed during the month
 ):
   def delta: PLN = closingCapital - openingCapital
 

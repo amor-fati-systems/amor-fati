@@ -37,6 +37,8 @@ bank referenced by the household during the household stage of that month.
 Key household-side columns:
 
 - `HhConsumerLoanDefault`: ordinary unsecured consumer-loan default.
+- `HhConsumerInsolvencyDefault`: subset of consumer-loan default produced by
+  personal-insolvency filing/workout.
 - `HhLiquidityBridgeChargeOff`: same-month liquidity bridge/write-off,
   separate from ordinary consumer-loan default.
 - `HhLiquidityShortfallFinancing`: residual monthly liquidity gap closed by the
@@ -48,8 +50,11 @@ Key household-side columns:
 
 Key bank-side columns:
 
-- `BankConsumerNplLoss`: realized ordinary consumer-loan capital loss net of
-  recovery, aligned with #582 semantics.
+- `BankConsumerNplLoss`: aggregate realized household-credit capital loss net of
+  recovery and any product allowance draw for ordinary consumer-loan and
+  personal-insolvency channels. Liquidity-bridge charge-off is exported as a
+  separate HH metric and as `BankCreditLoss_*` product diagnostics, but the
+  same-month bridge settlement does not add a capital loss by default.
 - `BankConsumerNplStock`: closing consumer NPL stock.
 - `BankCapital`, `BankCapitalDelta`, `BankCar`, `BankLcr`: closing bank stress
   state.
@@ -73,8 +78,8 @@ compares:
 
 - `baseline`: production configuration.
 - `no-consumer-npl-capital-hit`: household consumer defaults remain visible,
-  but unsecured consumer-credit recovery is set to 100%, removing the direct
-  consumer NPL capital hit.
+  but unsecured consumer-credit recovery and personal-insolvency recovery are
+  set to 100%, removing the direct consumer NPL capital hit.
 
 If failures materially fall in the counterfactual while household default flows
 remain visible, the direct consumer NPL capital-hit channel is necessary for

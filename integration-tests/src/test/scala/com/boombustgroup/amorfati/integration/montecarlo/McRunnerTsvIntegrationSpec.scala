@@ -220,6 +220,7 @@ class McRunnerTsvIntegrationSpec extends AnyFlatSpec with Matchers:
         ConsumerDebtService
         ConsumerDefault
         ConsumerLoanDefault
+        ConsumerInsolvencyDefault
         LiquidityBridgeChargeOff
         ConsumerPrincipal
         ClosingConsumerLoan
@@ -250,6 +251,7 @@ class McRunnerTsvIntegrationSpec extends AnyFlatSpec with Matchers:
       ConsumerDebtService
       ConsumerDefault
       ConsumerLoanDefault
+      ConsumerInsolvencyDefault
       LiquidityBridgeChargeOff
       ConsumerPrincipal
       OpeningDemandDeposit
@@ -695,6 +697,7 @@ class McRunnerTsvIntegrationSpec extends AnyFlatSpec with Matchers:
       val discretionaryCompressionIdx = cohortHeader.indexOf("DiscretionaryConsumptionCompression")
       val consumerDefaultIdx = cohortHeader.indexOf("ConsumerDefault")
       val consumerLoanDefaultIdx = cohortHeader.indexOf("ConsumerLoanDefault")
+      val consumerInsolvencyDefaultIdx = cohortHeader.indexOf("ConsumerInsolvencyDefault")
       val liquidityBridgeChargeOffIdx = cohortHeader.indexOf("LiquidityBridgeChargeOff")
       dimensionIdx should be >= 0
       cohortIdx should be >= 0
@@ -713,6 +716,7 @@ class McRunnerTsvIntegrationSpec extends AnyFlatSpec with Matchers:
       discretionaryCompressionIdx should be >= 0
       consumerDefaultIdx should be >= 0
       consumerLoanDefaultIdx should be >= 0
+      consumerInsolvencyDefaultIdx should be >= 0
       liquidityBridgeChargeOffIdx should be >= 0
 
       val allRows = cohortLines.tail.map(splitTsv).filter(row => row(dimensionIdx) == "All")

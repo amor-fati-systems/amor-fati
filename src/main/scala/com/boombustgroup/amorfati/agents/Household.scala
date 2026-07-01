@@ -51,12 +51,30 @@ case class PerBankFlow(
     liquidityShortfallFinancing: PLN,     // same-month bridge/write-off preventing negative deposits
     consumerDefault: PLN,                 // ordinary consumer-loan principal default
     consumerLoanDefault: PLN,             // default of ordinary outstanding consumer-loan principal
+    consumerInsolvencyDefault: PLN,       // subset of consumer-loan default from personal-insolvency filing
+    liquidityBridgeChargeOff: PLN,        // same-month bridge charge-off, not ordinary consumer-loan default
     consumerPrincipal: PLN,               // consumer loan principal repaid
 )
 
 object PerBankFlow:
   val zero: PerBankFlow =
-    PerBankFlow(PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero, PLN.Zero)
+    PerBankFlow(
+      income = PLN.Zero,
+      consumption = PLN.Zero,
+      debtService = PLN.Zero,
+      mortgageInterest = PLN.Zero,
+      depositInterest = PLN.Zero,
+      consumerDebtService = PLN.Zero,
+      consumerOrigination = PLN.Zero,
+      consumerApprovedOrigination = PLN.Zero,
+      consumerBankRejectedOrigination = PLN.Zero,
+      liquidityShortfallFinancing = PLN.Zero,
+      consumerDefault = PLN.Zero,
+      consumerLoanDefault = PLN.Zero,
+      consumerInsolvencyDefault = PLN.Zero,
+      liquidityBridgeChargeOff = PLN.Zero,
+      consumerPrincipal = PLN.Zero,
+    )
 
 /** Public household-agent contract. Heavy monthly transition logic lives under
   * `agents.household`; this object keeps the stable API used by the engine,
@@ -197,6 +215,7 @@ object Household:
       totalConsumerBankRejectedOrigination: PLN = PLN.Zero,     // aggregate consumer-credit demand rejected by bank supply
       totalConsumerBankPortfolioRejected: PLN = PLN.Zero,       // bank-supply rejection explained by loan-vs-sovereign portfolio preference
       totalConsumerLoanDefault: PLN = PLN.Zero,                 // default of ordinary outstanding consumer-loan principal
+      totalConsumerInsolvencyDefault: PLN = PLN.Zero,           // subset of consumer-loan default from personal-insolvency filing
       totalLiquidityBridgeChargeOff: PLN = PLN.Zero,            // same-month bridge charge-off, not ordinary consumer-loan default
       totalUnmetBasicConsumption: PLN = PLN.Zero,               // basic consumption need not covered by cash before arrears/default
       totalDiscretionaryConsumptionCompression: PLN = PLN.Zero, // discretionary consumption cut before bridge/default
@@ -251,6 +270,7 @@ object Household:
         totalConsumerBankRejectedOrigination = flowTotals.totalConsumerBankRejectedOrigination,
         totalConsumerBankPortfolioRejected = flowTotals.totalConsumerBankPortfolioRejected,
         totalConsumerLoanDefault = flowTotals.totalConsumerLoanDefault,
+        totalConsumerInsolvencyDefault = flowTotals.totalConsumerInsolvencyDefault,
         totalLiquidityBridgeChargeOff = flowTotals.totalLiquidityBridgeChargeOff,
         totalUnmetBasicConsumption = flowTotals.totalUnmetBasicConsumption,
         totalDiscretionaryConsumptionCompression = flowTotals.totalDiscretionaryConsumptionCompression,
@@ -302,6 +322,7 @@ object Household:
       consumerPrincipal: PLN,                                       // principal component of consumer debt service
       closingConsumerLoan: PLN,                                     // closing unsecured consumer-loan principal
       consumerLoanDefault: PLN,                                     // default of ordinary outstanding consumer-loan principal
+      consumerInsolvencyDefault: PLN,                               // subset of consumer-loan default from personal-insolvency filing
       liquidityBridgeChargeOff: PLN,                                // same-month bridge charge-off, not ordinary consumer-loan default
       unmetBasicConsumption: PLN,                                   // non-discretionary consumption need not covered by cash
       discretionaryConsumptionCompression: PLN,                     // discretionary consumption cut before bridge/default
@@ -345,6 +366,7 @@ object Household:
         consumerPrincipal = PLN.Zero,
         closingConsumerLoan = stocks.consumerLoan,
         consumerLoanDefault = PLN.Zero,
+        consumerInsolvencyDefault = PLN.Zero,
         liquidityBridgeChargeOff = PLN.Zero,
         unmetBasicConsumption = PLN.Zero,
         discretionaryConsumptionCompression = PLN.Zero,

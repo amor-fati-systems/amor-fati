@@ -42,6 +42,7 @@ object HhBankLeadLagDiagnosticsExport:
       householdCount: Int,
       hhMonthlyIncome: BigDecimal,
       hhConsumerLoanDefault: BigDecimal,
+      hhConsumerInsolvencyDefault: BigDecimal,
       hhLiquidityBridgeChargeOff: BigDecimal,
       hhLiquidityShortfallFinancing: BigDecimal,
       hhConsumerDefault: BigDecimal,
@@ -105,6 +106,7 @@ object HhBankLeadLagDiagnosticsExport:
     var householdCount: Int                  = 0
     var monthlyIncome: PLN                   = PLN.Zero
     var consumerLoanDefault: PLN             = PLN.Zero
+    var consumerInsolvencyDefault: PLN       = PLN.Zero
     var liquidityBridgeChargeOff: PLN        = PLN.Zero
     var liquidityShortfallFinancing: PLN     = PLN.Zero
     var consumerDefault: PLN                 = PLN.Zero
@@ -119,6 +121,7 @@ object HhBankLeadLagDiagnosticsExport:
       householdCount += 1
       monthlyIncome = monthlyIncome + flow.monthlyIncome
       consumerLoanDefault = consumerLoanDefault + flow.consumerLoanDefault
+      consumerInsolvencyDefault = consumerInsolvencyDefault + flow.consumerInsolvencyDefault
       liquidityBridgeChargeOff = liquidityBridgeChargeOff + flow.liquidityBridgeChargeOff
       liquidityShortfallFinancing = liquidityShortfallFinancing + flow.liquidityShortfallFinancing
       consumerDefault = consumerDefault + flow.consumerDefault
@@ -134,6 +137,7 @@ object HhBankLeadLagDiagnosticsExport:
 
   private val HhMetricAccessors: Vector[(String, BankMonthRow => BigDecimal)] = Vector(
     "HhConsumerLoanDefault"             -> (_.hhConsumerLoanDefault),
+    "HhConsumerInsolvencyDefault"       -> (_.hhConsumerInsolvencyDefault),
     "HhLiquidityBridgeChargeOff"        -> (_.hhLiquidityBridgeChargeOff),
     "HhLiquidityShortfallFinancing"     -> (_.hhLiquidityShortfallFinancing),
     "HhConsumerDebtArrears"             -> (_.hhConsumerDebtArrears),
@@ -226,6 +230,14 @@ object HhBankLeadLagDiagnosticsExport:
       .flatMap(valid => Either.cond(valid.lagMax >= 0, valid, "--lag-max must be >= 0"))
       .flatMap(valid => Either.cond(valid.runId.trim.nonEmpty, valid, "--run-id must be non-empty"))
 
+  private[diagnostics] def consumerNplLoss(
+      consumerLoanDefault: PLN,
+      consumerInsolvencyDefault: PLN,
+  )(using p: SimParams): PLN =
+    val ordinaryDefault = (consumerLoanDefault - consumerInsolvencyDefault).max(PLN.Zero)
+    ordinaryDefault * (Share.One - p.household.ccNplRecovery) +
+      consumerInsolvencyDefault * (Share.One - p.household.ccInsolvencyRecovery)
+
   private[diagnostics] def computeBankRows(
       config: Config,
       scenario: HhBankLeadLagScenarios.Spec,
@@ -284,7 +296,7 @@ object HhBankLeadLagDiagnosticsExport:
       val openingBank       = seedMonth.openingState.banks(idx)
       val corpBondHoldings  = CorporateBondOwnership.bankHolderFor(seedMonth.state.ledgerFinancialState, bank.id)
       val totals            = hhTotals(idx)
-      val consumerNplLoss   = totals.consumerLoanDefault * (Share.One - p.household.ccNplRecovery)
+      val bankConsumerLoss  = consumerNplLoss(totals.consumerLoanDefault, totals.consumerInsolvencyDefault)
       val newFailure        = if !openingBank.failed && bank.failed then 1 else 0
       val failureReasonCode =
         if newFailure == 1 && failureDiagnostic.firstNewBankId == bank.id.toInt then failureDiagnostic.firstNewReasonCode
@@ -300,6 +312,7 @@ object HhBankLeadLagDiagnosticsExport:
         householdCount = totals.householdCount,
         hhMonthlyIncome = pln(totals.monthlyIncome),
         hhConsumerLoanDefault = pln(totals.consumerLoanDefault),
+        hhConsumerInsolvencyDefault = pln(totals.consumerInsolvencyDefault),
         hhLiquidityBridgeChargeOff = pln(totals.liquidityBridgeChargeOff),
         hhLiquidityShortfallFinancing = pln(totals.liquidityShortfallFinancing),
         hhConsumerDefault = pln(totals.consumerDefault),
@@ -311,7 +324,7 @@ object HhBankLeadLagDiagnosticsExport:
         hhMortgageArrears = pln(totals.mortgageArrears),
         bankConsumerLoanStock = pln(stocks.consumerLoan),
         bankConsumerNplStock = pln(bank.consumerNpl),
-        bankConsumerNplLoss = pln(consumerNplLoss),
+        bankConsumerNplLoss = pln(bankConsumerLoss),
         bankCapital = pln(bank.capital),
         bankCapitalDelta = pln(bank.capital - openingBank.capital),
         bankCar = fixed(Banking.car(bank, stocks, corpBondHoldings).toLong),
@@ -424,6 +437,7 @@ object HhBankLeadLagDiagnosticsExport:
       "HouseholdCount",
       "HhMonthlyIncome",
       "HhConsumerLoanDefault",
+      "HhConsumerInsolvencyDefault",
       "HhLiquidityBridgeChargeOff",
       "HhLiquidityShortfallFinancing",
       "HhConsumerDefault",
@@ -516,6 +530,7 @@ object HhBankLeadLagDiagnosticsExport:
       row.householdCount.toString,
       renderDecimal(row.hhMonthlyIncome),
       renderDecimal(row.hhConsumerLoanDefault),
+      renderDecimal(row.hhConsumerInsolvencyDefault),
       renderDecimal(row.hhLiquidityBridgeChargeOff),
       renderDecimal(row.hhLiquidityShortfallFinancing),
       renderDecimal(row.hhConsumerDefault),

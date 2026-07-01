@@ -29,6 +29,8 @@ private[agents] object HouseholdPerBankFlowAggregation:
         liquidityShortfallFinancing = cur.liquidityShortfallFinancing + r.credit.liquidityShortfallFinancing,
         consumerDefault = cur.consumerDefault + r.credit.defaultAmt,
         consumerLoanDefault = cur.consumerLoanDefault + r.credit.consumerLoanDefault,
+        consumerInsolvencyDefault = cur.consumerInsolvencyDefault + r.credit.insolvencyDefaultAmt,
+        liquidityBridgeChargeOff = cur.liquidityBridgeChargeOff + r.credit.liquidityBridgeChargeOff,
         consumerPrincipal = cur.consumerPrincipal + r.credit.principal,
       )
       i += 1

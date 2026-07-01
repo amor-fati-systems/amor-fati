@@ -259,6 +259,21 @@ BankCreditLoss_MortgageLossRate
 BankCreditLoss_ConsumerLoanDefaultRate
 BankCreditLoss_LiquidityBridgeChargeOffRate
 BankCreditLoss_ConsumerLossRate
+BankCreditLoss_ConsumerLoanGrossDefault
+BankCreditLoss_ConsumerLoanRecovery
+BankCreditLoss_ConsumerLoanExpectedLoss
+BankCreditLoss_ConsumerLoanAllowanceDraw
+BankCreditLoss_ConsumerLoanNetCapitalLoss
+BankCreditLoss_ConsumerInsolvencyGrossDefault
+BankCreditLoss_ConsumerInsolvencyRecovery
+BankCreditLoss_ConsumerInsolvencyExpectedLoss
+BankCreditLoss_ConsumerInsolvencyAllowanceDraw
+BankCreditLoss_ConsumerInsolvencyNetCapitalLoss
+BankCreditLoss_LiquidityBridgeGrossDefault
+BankCreditLoss_LiquidityBridgeRecovery
+BankCreditLoss_LiquidityBridgeExpectedLoss
+BankCreditLoss_LiquidityBridgeAllowanceDraw
+BankCreditLoss_LiquidityBridgeNetCapitalLoss
 BankCreditLoss_CorpBondDefaultRate
 BankCreditLoss_CorpBondLossRate
 ```
@@ -299,7 +314,8 @@ the total realized credit-loss hit against opening bank capital. Firm and
 corporate-bond default rates reverse the configured recovery rate to estimate
 gross default flow from net loss. Consumer diagnostics separate ordinary
 consumer-loan default from liquidity-bridge charge-off; `ConsumerLossRate`
-tracks the ordinary consumer-loan capital loss used by the bank waterfall.
+tracks the consumer-loan and personal-insolvency capital loss used by the bank
+waterfall.
 
 ## Bank Failure Diagnostics
 
@@ -549,6 +565,7 @@ ConsumerDebtService
 ConsumerPrincipal
 ConsumerDefault
 ConsumerLoanDefault
+ConsumerInsolvencyDefault
 LiquidityBridgeChargeOff
 ConsumerCredit_NetStockFlow
 ConsumerCredit_UnderwrittenNetFlow
@@ -588,8 +605,9 @@ older `HouseholdBankruptcies`, `HouseholdBankruptcyRate`, and terminal
 `HhStatus.Bankrupt` path.
 
 The timeseries also includes residual shortfall settlement and its component
-attribution. `ConsumerDefault` and `ConsumerLoanDefault` report ordinary
-consumer-loan principal default. `ConsumerPrincipal` reports principal
+attribution. `ConsumerDefault` and `ConsumerLoanDefault` report consumer-loan
+principal default. `ConsumerInsolvencyDefault` is the subset tied to
+personal-insolvency filing/workout. `ConsumerPrincipal` reports principal
 repayment and is not part of the default flow; `LiquidityBridgeChargeOff`
 reports the separate same-month bridge charge-off:
 
@@ -632,8 +650,19 @@ bank-side supply gate or is already failed. Household snapshots also expose the
 bank approval product, rejection reason, approval probability/roll, prudential
 audit ratios, and loan-vs-sovereign portfolio-choice audit for this gate when
 available.
-`ConsumerLoanDefault` reports only default of ordinary outstanding consumer-loan
-principal; `LiquidityBridgeChargeOff` reports the same-month bridge write-off.
+`ConsumerLoanDefault` reports default of outstanding consumer-loan principal,
+with `ConsumerInsolvencyDefault` exposing the personal-insolvency subset.
+`LiquidityBridgeChargeOff` reports the same-month bridge write-off and is not
+part of ordinary consumer-loan default. Bank loss diagnostics split the
+household-credit capital loss into ordinary consumer-loan, personal-insolvency,
+and liquidity-bridge product rows with gross default, recovery, expected loss,
+allowance draw, and net capital loss fields. Household-credit and mortgage
+product rows currently have zero allowance draw until product-level allowance
+stocks are modeled; this keeps realized losses separate from aggregate ECL
+provision changes.
+By default the liquidity-bridge product is fully settled in the same month, so
+its gross and recovery diagnostics are visible while its net capital loss is
+zero.
 For the bridge component, the stock effect is zero because
 `HouseholdLiquidity_ShortfallFinancing` is offset by `LiquidityBridgeChargeOff`.
 `ConsumerCredit_NetStockFlow` reconciles the total monthly consumer-loan stock
