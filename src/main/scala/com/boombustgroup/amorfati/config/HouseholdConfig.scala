@@ -120,7 +120,7 @@ import com.boombustgroup.amorfati.types.*
   *   recovery rate on consumer-loan principal default in personal-insolvency
   *   filings
   * @param liquidityBridgeRecovery
-  *   recovery rate on same-month bridge/overdraft charge-offs
+  *   same-month bridge/overdraft settlement share before any capital loss
   * @param ccEligRate
   *   fraction of employed households eligible for consumer credit each month
   */
@@ -196,7 +196,7 @@ case class HouseholdConfig(
     ccAmortRate: Rate = Rate.decimal(25, 3),
     ccNplRecovery: Share = Share.decimal(15, 2),
     ccInsolvencyRecovery: Share = Share.decimal(5, 2),
-    liquidityBridgeRecovery: Share = Share.Zero,
+    liquidityBridgeRecovery: Share = Share.One,
     ccEligRate: Share = Share.decimal(85, 2),
 ):
   require(initialUnemployedMaxMonths >= 0, s"initialUnemployedMaxMonths must be non-negative: $initialUnemployedMaxMonths")

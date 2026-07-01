@@ -291,8 +291,7 @@ object HhBankLeadLagDiagnosticsExport:
       val ordinaryDefault   = (totals.consumerLoanDefault - totals.consumerInsolvencyDefault).max(PLN.Zero)
       val consumerNplLoss   =
         ordinaryDefault * (Share.One - p.household.ccNplRecovery) +
-          totals.consumerInsolvencyDefault * (Share.One - p.household.ccInsolvencyRecovery) +
-          totals.liquidityBridgeChargeOff * (Share.One - p.household.liquidityBridgeRecovery)
+          totals.consumerInsolvencyDefault * (Share.One - p.household.ccInsolvencyRecovery)
       val newFailure        = if !openingBank.failed && bank.failed then 1 else 0
       val failureReasonCode =
         if newFailure == 1 && failureDiagnostic.firstNewBankId == bank.id.toInt then failureDiagnostic.firstNewReasonCode

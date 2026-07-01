@@ -411,11 +411,15 @@ S1_{b,tau} = max(TotalCoveredLoans_{b,tau} - S2_{b,tau} - S3_{b,tau}, 0)
 
 In the current runtime, `newDefaults_b` is the bank's new firm-loan NPL flow.
 Consumer-credit, personal-insolvency, liquidity-bridge, and mortgage defaults
-do not enter `S2ToS3_b`; they are realized separately as product-specific loss
-terms in the bank-capital waterfall. These household-credit products do not draw
-ECL allowance until a corresponding product-level allowance stock exists. This
-keeps the macro ECL provision change separate from realized default loss and
-prevents double counting.
+do not enter `S2ToS3_b`; they are tracked separately as product-specific
+diagnostics and, for ordinary consumer-loan, personal-insolvency, and mortgage
+defaults, realized loss terms in the bank-capital waterfall. Liquidity-bridge
+charge-off is a same-month bridge settlement product by default, so it has gross
+and recovery diagnostics but no capital loss unless a future calibration lowers
+the bridge settlement/recovery share. These household-credit products do not
+draw ECL allowance until a corresponding product-level allowance stock exists.
+This keeps the macro ECL provision change separate from realized default loss
+and prevents double counting.
 
 The provision change is:
 

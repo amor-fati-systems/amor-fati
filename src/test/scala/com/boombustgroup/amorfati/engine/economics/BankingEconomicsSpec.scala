@@ -202,7 +202,7 @@ class BankingEconomicsSpec extends AnyFlatSpec with Matchers:
     aligned(2).consumerLoan shouldBe PLN(80)
   }
 
-  it should "recognize liquidity-bridge charge-offs separately from ordinary consumer-loan NPL loss" in {
+  it should "record liquidity-bridge charge-offs without ordinary consumer-loan NPL loss" in {
     val prepared                  = preparedBankingStep()
     val zeroHhBankFlow            = PerBankFlow(
       income = PLN.Zero,
@@ -235,8 +235,10 @@ class BankingEconomicsSpec extends AnyFlatSpec with Matchers:
 
     result.bankCapitalDiagnostics.consumerLoanNplLoss shouldBe PLN.Zero
     result.bankCapitalDiagnostics.consumerInsolvencyNplLoss shouldBe PLN.Zero
-    result.bankCapitalDiagnostics.liquidityBridgeNplLoss shouldBe PLN(1000)
-    result.bankCapitalDiagnostics.consumerNplLoss shouldBe PLN(1000)
+    result.bankCapitalDiagnostics.liquidityBridgeGrossDefault shouldBe PLN(1000)
+    result.bankCapitalDiagnostics.liquidityBridgeRecovery shouldBe PLN(1000)
+    result.bankCapitalDiagnostics.liquidityBridgeNplLoss shouldBe PLN.Zero
+    result.bankCapitalDiagnostics.consumerNplLoss shouldBe PLN.Zero
   }
 
   it should "preserve aggregate corporate-bond default loss through bank-capital diagnostics" in {

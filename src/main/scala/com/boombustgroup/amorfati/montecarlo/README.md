@@ -314,7 +314,8 @@ the total realized credit-loss hit against opening bank capital. Firm and
 corporate-bond default rates reverse the configured recovery rate to estimate
 gross default flow from net loss. Consumer diagnostics separate ordinary
 consumer-loan default from liquidity-bridge charge-off; `ConsumerLossRate`
-tracks the ordinary consumer-loan capital loss used by the bank waterfall.
+tracks the consumer-loan and personal-insolvency capital loss used by the bank
+waterfall.
 
 ## Bank Failure Diagnostics
 
@@ -659,6 +660,9 @@ allowance draw, and net capital loss fields. Household-credit and mortgage
 product rows currently have zero allowance draw until product-level allowance
 stocks are modeled; this keeps realized losses separate from aggregate ECL
 provision changes.
+By default the liquidity-bridge product is fully settled in the same month, so
+its gross and recovery diagnostics are visible while its net capital loss is
+zero.
 For the bridge component, the stock effect is zero because
 `HouseholdLiquidity_ShortfallFinancing` is offset by `LiquidityBridgeChargeOff`.
 `ConsumerCredit_NetStockFlow` reconciles the total monthly consumer-loan stock

@@ -38,13 +38,13 @@ class BankCreditLossAccountingSpec extends AnyFlatSpec with Matchers:
     loss.netCapitalLoss shouldBe PLN(95)
   }
 
-  it should "recognize bridge charge-offs as their own household-credit product" in {
+  it should "record bridge charge-offs as their own settled household-credit product" in {
     val loss = BankCreditLossAccounting.liquidityBridge(PLN(100))
 
-    loss.recoveryFlow shouldBe PLN.Zero
-    loss.expectedLoss shouldBe PLN(100)
+    loss.recoveryFlow shouldBe PLN(100)
+    loss.expectedLoss shouldBe PLN.Zero
     loss.allowanceDraw shouldBe PLN.Zero
-    loss.netCapitalLoss shouldBe PLN(100)
+    loss.netCapitalLoss shouldBe PLN.Zero
   }
 
   it should "keep mortgage losses product-specific without drawing aggregate ECL allowance" in {
@@ -64,9 +64,9 @@ class BankCreditLossAccountingSpec extends AnyFlatSpec with Matchers:
     )
 
     breakdown.consumer.grossDefault shouldBe PLN(130)
-    breakdown.consumer.recoveryFlow shouldBe PLN(16)
-    breakdown.consumer.expectedLoss shouldBe PLN(114)
+    breakdown.consumer.recoveryFlow shouldBe PLN(26)
+    breakdown.consumer.expectedLoss shouldBe PLN(104)
     breakdown.consumer.allowanceDraw shouldBe PLN.Zero
-    breakdown.consumer.netCapitalLoss shouldBe PLN(114)
+    breakdown.consumer.netCapitalLoss shouldBe PLN(104)
     breakdown.allowanceDraw shouldBe PLN.Zero
   }

@@ -32,7 +32,7 @@ case class BankCapitalDiagnostics(
     liquidityBridgeRecovery: PLN = PLN.Zero,            // bridge/overdraft recovery flow
     liquidityBridgeExpectedLoss: PLN = PLN.Zero,        // bridge/overdraft expected loss after recovery
     liquidityBridgeNplAllowanceDraw: PLN = PLN.Zero,    // bridge/overdraft allowance draw
-    liquidityBridgeNplLoss: PLN = PLN.Zero,             // bridge/overdraft net capital loss
+    liquidityBridgeNplLoss: PLN = PLN.Zero,             // bridge/overdraft net capital loss, normally zero after same-month settlement
     corpBondDefaultLoss: PLN = PLN.Zero,                // bank-held corporate-bond default loss
     firmNplAllowanceDraw: PLN = PLN.Zero,               // firm-loan default loss covered by existing/new ECL allowance instead of capital loss
     mortgageNplAllowanceDraw: PLN = PLN.Zero,           // currently zero until mortgage product-level ECL staging is modeled

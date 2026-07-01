@@ -51,9 +51,10 @@ Key household-side columns:
 Key bank-side columns:
 
 - `BankConsumerNplLoss`: aggregate realized household-credit capital loss net of
-  recovery and any product allowance draw. The timeseries `BankCreditLoss_*`
-  product columns split this into ordinary consumer-loan, personal-insolvency,
-  and liquidity-bridge channels.
+  recovery and any product allowance draw for ordinary consumer-loan and
+  personal-insolvency channels. Liquidity-bridge charge-off is exported as a
+  separate HH metric and as `BankCreditLoss_*` product diagnostics, but the
+  same-month bridge settlement does not add a capital loss by default.
 - `BankConsumerNplStock`: closing consumer NPL stock.
 - `BankCapital`, `BankCapitalDelta`, `BankCar`, `BankLcr`: closing bank stress
   state.
