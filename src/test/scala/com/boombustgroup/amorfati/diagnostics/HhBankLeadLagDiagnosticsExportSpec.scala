@@ -1,10 +1,14 @@
 package com.boombustgroup.amorfati.diagnostics
 
+import com.boombustgroup.amorfati.config.SimParams
+import com.boombustgroup.amorfati.types.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.OptionValues
 
 class HhBankLeadLagDiagnosticsExportSpec extends AnyFlatSpec with Matchers with OptionValues:
+
+  private given SimParams = SimParams.defaults
 
   "HhBankLeadLagDiagnosticsExport.parseArgs" should "parse run controls" in {
     val parsed = HhBankLeadLagDiagnosticsExport.parseArgs(
@@ -26,6 +30,13 @@ class HhBankLeadLagDiagnosticsExportSpec extends AnyFlatSpec with Matchers with 
 
   it should "return None when a side is constant" in {
     HhBankLeadLagDiagnosticsExport.pearson(Vector(BigDecimal(1) -> BigDecimal(2), BigDecimal(1) -> BigDecimal(4))) shouldBe None
+  }
+
+  "HhBankLeadLagDiagnosticsExport.consumerNplLoss" should "weight ordinary defaults and insolvencies with distinct recoveries" in {
+    HhBankLeadLagDiagnosticsExport.consumerNplLoss(
+      consumerLoanDefault = PLN(120),
+      consumerInsolvencyDefault = PLN(20),
+    ) shouldBe PLN(104)
   }
 
   "HhBankLeadLagDiagnosticsExport.computeCorrelations" should "join household metrics at t-lag to bank outcomes at t" in {

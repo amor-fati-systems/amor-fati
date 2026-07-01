@@ -230,6 +230,14 @@ object HhBankLeadLagDiagnosticsExport:
       .flatMap(valid => Either.cond(valid.lagMax >= 0, valid, "--lag-max must be >= 0"))
       .flatMap(valid => Either.cond(valid.runId.trim.nonEmpty, valid, "--run-id must be non-empty"))
 
+  private[diagnostics] def consumerNplLoss(
+      consumerLoanDefault: PLN,
+      consumerInsolvencyDefault: PLN,
+  )(using p: SimParams): PLN =
+    val ordinaryDefault = (consumerLoanDefault - consumerInsolvencyDefault).max(PLN.Zero)
+    ordinaryDefault * (Share.One - p.household.ccNplRecovery) +
+      consumerInsolvencyDefault * (Share.One - p.household.ccInsolvencyRecovery)
+
   private[diagnostics] def computeBankRows(
       config: Config,
       scenario: HhBankLeadLagScenarios.Spec,
@@ -288,10 +296,7 @@ object HhBankLeadLagDiagnosticsExport:
       val openingBank       = seedMonth.openingState.banks(idx)
       val corpBondHoldings  = CorporateBondOwnership.bankHolderFor(seedMonth.state.ledgerFinancialState, bank.id)
       val totals            = hhTotals(idx)
-      val ordinaryDefault   = (totals.consumerLoanDefault - totals.consumerInsolvencyDefault).max(PLN.Zero)
-      val consumerNplLoss   =
-        ordinaryDefault * (Share.One - p.household.ccNplRecovery) +
-          totals.consumerInsolvencyDefault * (Share.One - p.household.ccInsolvencyRecovery)
+      val bankConsumerLoss  = consumerNplLoss(totals.consumerLoanDefault, totals.consumerInsolvencyDefault)
       val newFailure        = if !openingBank.failed && bank.failed then 1 else 0
       val failureReasonCode =
         if newFailure == 1 && failureDiagnostic.firstNewBankId == bank.id.toInt then failureDiagnostic.firstNewReasonCode
@@ -319,7 +324,7 @@ object HhBankLeadLagDiagnosticsExport:
         hhMortgageArrears = pln(totals.mortgageArrears),
         bankConsumerLoanStock = pln(stocks.consumerLoan),
         bankConsumerNplStock = pln(bank.consumerNpl),
-        bankConsumerNplLoss = pln(consumerNplLoss),
+        bankConsumerNplLoss = pln(bankConsumerLoss),
         bankCapital = pln(bank.capital),
         bankCapitalDelta = pln(bank.capital - openingBank.capital),
         bankCar = fixed(Banking.car(bank, stocks, corpBondHoldings).toLong),

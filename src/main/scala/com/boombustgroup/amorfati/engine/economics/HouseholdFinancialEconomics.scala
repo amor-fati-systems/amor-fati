@@ -39,7 +39,7 @@ object HouseholdFinancialEconomics:
       consumerLoanDefaultAmt: PLN,       // ordinary consumer-loan default, excluding same-month bridge charge-offs
       consumerInsolvencyDefaultAmt: PLN, // subset of consumer-loan default from personal-insolvency filing
       liquidityBridgeChargeOff: PLN,     // same-month bridge charge-off, not ordinary consumer-loan default
-      consumerNplLoss: PLN,              // ordinary consumer-loan NPL loss net of recovery
+      consumerNplLoss: PLN,              // consumer-loan NPL loss net of ordinary and insolvency recoveries
       consumerPrincipal: PLN,            // consumer loan principal repayment
   )
 
@@ -97,23 +97,26 @@ object HouseholdFinancialEconomics:
     val consumerLoanDefaultAmt       = hhAgg.totalConsumerLoanDefault
     val consumerInsolvencyDefaultAmt = hhAgg.totalConsumerInsolvencyDefault
     val liquidityBridgeChargeOff     = hhAgg.totalLiquidityBridgeChargeOff
-    val consumerNplLoss              = consumerLoanDefaultAmt * (Share.One - p.household.ccNplRecovery)
+    val ordinaryConsumerDefaultAmt   = (consumerLoanDefaultAmt - consumerInsolvencyDefaultAmt).max(PLN.Zero)
+    val consumerNplLoss              =
+      ordinaryConsumerDefaultAmt * (Share.One - p.household.ccNplRecovery) +
+        consumerInsolvencyDefaultAmt * (Share.One - p.household.ccInsolvencyRecovery)
     val consumerPrincipal            = hhAgg.totalConsumerPrincipal
 
     StepOutput(
-      depositInterestPaid,
-      remittanceOutflow,
-      diasporaInflow,
-      tourismExport,
-      tourismImport,
-      consumerDebtService,
-      consumerOrigination,
-      consumerApprovedOrigination,
-      liquidityShortfallFinancing,
-      consumerDefaultAmt,
-      consumerLoanDefaultAmt,
-      consumerInsolvencyDefaultAmt,
-      liquidityBridgeChargeOff,
-      consumerNplLoss,
-      consumerPrincipal,
+      depositInterestPaid = depositInterestPaid,
+      remittanceOutflow = remittanceOutflow,
+      diasporaInflow = diasporaInflow,
+      tourismExport = tourismExport,
+      tourismImport = tourismImport,
+      consumerDebtService = consumerDebtService,
+      consumerOrigination = consumerOrigination,
+      consumerApprovedOrigination = consumerApprovedOrigination,
+      liquidityShortfallFinancing = liquidityShortfallFinancing,
+      consumerDefaultAmt = consumerDefaultAmt,
+      consumerLoanDefaultAmt = consumerLoanDefaultAmt,
+      consumerInsolvencyDefaultAmt = consumerInsolvencyDefaultAmt,
+      liquidityBridgeChargeOff = liquidityBridgeChargeOff,
+      consumerNplLoss = consumerNplLoss,
+      consumerPrincipal = consumerPrincipal,
     )

@@ -28,7 +28,13 @@ object HhBankLeadLagScenarios:
     Spec(
       id = "no-consumer-npl-capital-hit",
       label = "No consumer NPL capital hit",
-      interpretation = "Sets unsecured consumer-credit recovery to 100%, leaving household default and bridge diagnostics visible.",
-      params = Baseline.copy(household = Baseline.household.copy(ccNplRecovery = Share.One)),
+      interpretation =
+        "Sets unsecured consumer-credit and personal-insolvency recoveries to 100%, leaving household default and bridge diagnostics visible.",
+      params = Baseline.copy(
+        household = Baseline.household.copy(
+          ccNplRecovery = Share.One,
+          ccInsolvencyRecovery = Share.One,
+        ),
+      ),
     ),
   )

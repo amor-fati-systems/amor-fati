@@ -59,21 +59,21 @@ case class PerBankFlow(
 object PerBankFlow:
   val zero: PerBankFlow =
     PerBankFlow(
-      PLN.Zero,
-      PLN.Zero,
-      PLN.Zero,
-      PLN.Zero,
-      PLN.Zero,
-      PLN.Zero,
-      PLN.Zero,
-      PLN.Zero,
-      PLN.Zero,
-      PLN.Zero,
-      PLN.Zero,
-      PLN.Zero,
-      PLN.Zero,
-      PLN.Zero,
-      PLN.Zero,
+      income = PLN.Zero,
+      consumption = PLN.Zero,
+      debtService = PLN.Zero,
+      mortgageInterest = PLN.Zero,
+      depositInterest = PLN.Zero,
+      consumerDebtService = PLN.Zero,
+      consumerOrigination = PLN.Zero,
+      consumerApprovedOrigination = PLN.Zero,
+      consumerBankRejectedOrigination = PLN.Zero,
+      liquidityShortfallFinancing = PLN.Zero,
+      consumerDefault = PLN.Zero,
+      consumerLoanDefault = PLN.Zero,
+      consumerInsolvencyDefault = PLN.Zero,
+      liquidityBridgeChargeOff = PLN.Zero,
+      consumerPrincipal = PLN.Zero,
     )
 
 /** Public household-agent contract. Heavy monthly transition logic lives under

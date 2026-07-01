@@ -400,12 +400,6 @@ private[banking] object BankMultiBankStage:
     val consumerLoanLoss          = BankCreditLossAccounting.consumerLoan(ordinaryConsumerDefault)
     val consumerInsolvencyLoss    = BankCreditLossAccounting.consumerInsolvency(hhFlows.ccInsolvencyDefault)
     val liquidityBridgeLoss       = BankCreditLossAccounting.liquidityBridge(hhFlows.liquidityBridgeChargeOff)
-    val bankCcNplLoss             =
-      consumerLoanLoss.netCapitalLoss + consumerInsolvencyLoss.netCapitalLoss + liquidityBridgeLoss.netCapitalLoss
-    val bankCcStockReduction: PLN = in.householdIncome.perBankHhFlowsOpt match
-      case Some(pbf) => pbf(bId).consumerPrincipal
-      case _         => hhFlows.ccPrincipal
-    val bankCcInterestIncome      = hhFlows.ccDebtService - hhFlows.ccPrincipal
     val creditLosses              = BankCreditLossAccounting.Breakdown(
       firm = firmLoss,
       mortgage = mortgageLoss,
@@ -414,6 +408,11 @@ private[banking] object BankMultiBankStage:
       liquidityBridge = liquidityBridgeLoss,
       corpBondDefaultLoss = bankCorpBondDefaultLoss,
     )
+    val bankCcNplLoss             = creditLosses.consumer.netCapitalLoss
+    val bankCcStockReduction: PLN = in.householdIncome.perBankHhFlowsOpt match
+      case Some(pbf) => pbf(bId).consumerPrincipal
+      case _         => hhFlows.ccPrincipal
+    val bankCcInterestIncome      = hhFlows.ccDebtService - hhFlows.ccPrincipal
     val bankBfgLevy               =
       if !b.failed then stocks.totalDeposits * p.banking.bfgLevyRate.monthly
       else PLN.Zero

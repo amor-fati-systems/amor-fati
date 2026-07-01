@@ -78,8 +78,8 @@ compares:
 
 - `baseline`: production configuration.
 - `no-consumer-npl-capital-hit`: household consumer defaults remain visible,
-  but unsecured consumer-credit recovery is set to 100%, removing the direct
-  consumer NPL capital hit.
+  but unsecured consumer-credit recovery and personal-insolvency recovery are
+  set to 100%, removing the direct consumer NPL capital hit.
 
 If failures materially fall in the counterfactual while household default flows
 remain visible, the direct consumer NPL capital-hit channel is necessary for
