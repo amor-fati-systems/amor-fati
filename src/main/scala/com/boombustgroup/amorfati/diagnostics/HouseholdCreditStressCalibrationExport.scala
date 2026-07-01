@@ -36,6 +36,11 @@ object HouseholdCreditStressCalibrationExport:
     case Fail extends Status("FAIL")
     case Info extends Status("INFO")
 
+  enum ObservationWindow(val token: String):
+    case Terminal     extends ObservationWindow("TERMINAL")
+    case PeakMonthly  extends ObservationWindow("PEAK_MONTHLY")
+    case PeakRolling3 extends ObservationWindow("PEAK_ROLLING_3")
+
   enum ObservedValue:
     case Finite(value: BigDecimal)
     case PositiveInfinity
@@ -62,6 +67,8 @@ object HouseholdCreditStressCalibrationExport:
       runId: String,
       seed: Long,
       months: Int,
+      observationWindow: ObservationWindow,
+      observationMonth: Int,
       target: TargetBand,
       value: ObservedValue,
       status: Status,
@@ -71,6 +78,7 @@ object HouseholdCreditStressCalibrationExport:
       runId: String,
       months: Int,
       seeds: Int,
+      observationWindow: ObservationWindow,
       target: TargetBand,
       mean: ObservedValue,
       min: Option[BigDecimal],
@@ -80,15 +88,16 @@ object HouseholdCreditStressCalibrationExport:
 
   final case class ExportResult(paths: Vector[Path], seedMetrics: Vector[SeedMetric], summary: Vector[SummaryMetric])
 
-  private final case class SeedContext(terminal: McSeedMonth):
-    val terminalRow: Array[MetricValue] = terminal.row
-    val terminalState                   = terminal.state
-    val householdCount: Int             = terminalState.households.size
+  private final case class SeedContext(month: McSeedMonth):
+    val monthlyRow: Array[MetricValue] = month.row
+    val monthlyState                   = month.state
+    val householdCount: Int            = monthlyState.households.size
+    val monthNumber: Int               = month.executionMonth.toInt
 
     def col(name: String): BigDecimal =
       decimal(McTimeseriesSchema.colNames.indexOf(name) match
         case -1      => throw new IllegalArgumentException(s"Missing Monte Carlo column: $name")
-        case ordinal => terminalRow(ordinal).toLong)
+        case ordinal => monthlyRow(ordinal).toLong)
 
     def ratioColumn(numerator: String, denominator: String): ObservedValue =
       ratio(col(numerator), col(denominator))
@@ -100,6 +109,7 @@ object HouseholdCreditStressCalibrationExport:
       ratioRaw(BigDecimal(numerator.toLong), denominatorRaw)
 
   private final case class MetricDef(target: TargetBand, compute: SeedContext => ObservedValue)
+  private final case class MetricObservation(month: Int, value: ObservedValue)
 
   private val RequiredMetricIds: Set[String] = Set(
     "ConsumerLoansToGdp",
@@ -112,6 +122,7 @@ object HouseholdCreditStressCalibrationExport:
     "LiquidityBridgeChargeOffToConsumerLoans",
     "LiquidityBridgeChargeOffShareOfHouseholdCreditWriteOff",
     "MortgageDefaultToMortgageLoans",
+    "HouseholdBankruptcyShare",
     "PositiveDepositsToMonthlyIncome",
     "MedianDepositToMeanMonthlyIncome",
     "NegativeDepositShare",
@@ -239,6 +250,18 @@ object HouseholdCreditStressCalibrationExport:
       interpretation = "Mortgage stress should be rarer than unsecured consumer-credit stress in the baseline.",
     ),
     TargetBand(
+      id = "HouseholdBankruptcyShare",
+      label = "Personal insolvencies / households",
+      unit = "monthly share",
+      guardrailClass = GuardrailClass.SoftCalibrationWarning,
+      vintage = BaselineVintage,
+      lower = Some(BigDecimal("0.00")),
+      upper = Some(BigDecimal("0.01")),
+      sourceNote =
+        "Issue #871 stylized baseline path cap for monthly household personal-insolvency incidence after replacing the deterministic insolvency cliff.",
+      interpretation = "Baseline personal insolvency can occur, but should not synchronize into monthly waves across a material household share.",
+    ),
+    TargetBand(
       id = "PositiveDepositsToMonthlyIncome",
       label = "Positive demand deposits / monthly household income",
       unit = "months of income",
@@ -355,16 +378,16 @@ object HouseholdCreditStressCalibrationExport:
     metric("ConsumerLoansToGdp")(ctx => ObservedValue.Finite(ctx.col("ConsumerLoansToGdp"))),
     metric("MortgageLoansToGdp")(ctx => ObservedValue.Finite(ctx.col("MortgageToGdp"))),
     metric("ConsumerDebtServiceToIncome")(ctx =>
-      ctx.householdRatio(ctx.terminalState.householdAggregates.totalConsumerDebtService, ctx.terminalState.householdAggregates.totalIncome),
+      ctx.householdRatio(ctx.monthlyState.householdAggregates.totalConsumerDebtService, ctx.monthlyState.householdAggregates.totalIncome),
     ),
     metric("MortgageDebtServiceToIncome")(ctx =>
-      ctx.householdRatio(ctx.terminalState.householdAggregates.totalDebtService, ctx.terminalState.householdAggregates.totalIncome),
+      ctx.householdRatio(ctx.monthlyState.householdAggregates.totalDebtService, ctx.monthlyState.householdAggregates.totalIncome),
     ),
     metric("MortgagePrincipalToIncome")(ctx =>
-      ctx.householdRatio(ctx.terminalState.householdAggregates.totalMortgagePrincipal, ctx.terminalState.householdAggregates.totalIncome),
+      ctx.householdRatio(ctx.monthlyState.householdAggregates.totalMortgagePrincipal, ctx.monthlyState.householdAggregates.totalIncome),
     ),
     metric("MortgageInterestToIncome")(ctx =>
-      ctx.householdRatio(ctx.terminalState.householdAggregates.totalMortgageInterest, ctx.terminalState.householdAggregates.totalIncome),
+      ctx.householdRatio(ctx.monthlyState.householdAggregates.totalMortgageInterest, ctx.monthlyState.householdAggregates.totalIncome),
     ),
     metric("ConsumerDefaultToConsumerLoans")(ctx => ctx.ratioColumn("ConsumerLoanDefault", "ConsumerLoans")),
     metric("LiquidityBridgeChargeOffToConsumerLoans")(ctx => ctx.ratioColumn("LiquidityBridgeChargeOff", "ConsumerLoans")),
@@ -373,47 +396,48 @@ object HouseholdCreditStressCalibrationExport:
       ratioRaw(bridge, bridge + ctx.col("ConsumerLoanDefault")),
     ),
     metric("MortgageDefaultToMortgageLoans")(ctx => ctx.ratioColumn("MortgageDefault", "MortgageStock")),
+    metric("HouseholdBankruptcyShare")(ctx => ObservedValue.Finite(ctx.col("HouseholdDistress_BankruptcyShare"))),
     metric("PositiveDepositsToMonthlyIncome")(ctx =>
       ctx.householdRatio(
-        ctx.terminalState.ledgerFinancialState.households.map(h => h.demandDeposit).sumPln,
-        ctx.terminalState.householdAggregates.totalIncome,
+        ctx.monthlyState.ledgerFinancialState.households.map(h => h.demandDeposit).sumPln,
+        ctx.monthlyState.householdAggregates.totalIncome,
       ),
     ),
     metric("MedianDepositToMeanMonthlyIncome")(ctx =>
-      val agg = ctx.terminalState.householdAggregates
+      val agg = ctx.monthlyState.householdAggregates
       if ctx.householdCount <= 0 then ObservedValue.NotAvailable
       else ctx.householdRatio(agg.medianSavings, BigDecimal(agg.totalIncome.toLong) / BigDecimal(ctx.householdCount)),
     ),
     metric("NegativeDepositShare")(ctx => ObservedValue.Finite(ctx.col("HouseholdLiquidity_NegativeDepositShare"))),
     metric("DebtArrearsToShortfall")(ctx =>
-      val agg = ctx.terminalState.householdAggregates
+      val agg = ctx.monthlyState.householdAggregates
       ctx.householdRatio(
         agg.totalRentArrears + agg.totalMortgageArrears + agg.totalConsumerDebtArrears,
         agg.totalLiquidityShortfallFinancing,
       ),
     ),
     metric("UnmetBasicConsumptionToIncome")(ctx =>
-      val agg = ctx.terminalState.householdAggregates
+      val agg = ctx.monthlyState.householdAggregates
       ctx.householdRatio(agg.totalUnmetBasicConsumption, agg.totalIncome),
     ),
     metric("DiscretionaryConsumptionCompressionToIncome")(ctx =>
-      val agg = ctx.terminalState.householdAggregates
+      val agg = ctx.monthlyState.householdAggregates
       ctx.householdRatio(agg.totalDiscretionaryConsumptionCompression, agg.totalIncome),
     ),
     metric("ShortfallToIncome")(ctx =>
-      val agg = ctx.terminalState.householdAggregates
+      val agg = ctx.monthlyState.householdAggregates
       ctx.householdRatio(agg.totalLiquidityShortfallFinancing, agg.totalIncome),
     ),
     metric("ShortfallToApprovedOrigination")(ctx =>
-      val agg = ctx.terminalState.householdAggregates
+      val agg = ctx.monthlyState.householdAggregates
       ctx.householdRatio(agg.totalLiquidityShortfallFinancing, agg.totalConsumerApprovedOrigination),
     ),
     metric("RejectedConsumerCreditDemandToApprovedOrigination")(ctx =>
-      val agg = ctx.terminalState.householdAggregates
+      val agg = ctx.monthlyState.householdAggregates
       ctx.householdRatio(agg.totalConsumerRejectedOrigination, agg.totalConsumerApprovedOrigination),
     ),
     metric("RejectedConsumerCreditDemandToShortfall")(ctx =>
-      val agg = ctx.terminalState.householdAggregates
+      val agg = ctx.monthlyState.householdAggregates
       ctx.householdRatio(agg.totalConsumerRejectedOrigination, agg.totalLiquidityShortfallFinancing),
     ),
   )
@@ -509,34 +533,63 @@ object HouseholdCreditStressCalibrationExport:
           case GuardrailClass.ExploratoryDiagnostic  => Status.Warn
 
   private def computeSeedMetricsZIO(config: Config, seed: Long, months: ZStream[Any, String, McSeedMonth]): ZIO[Any, String, Vector[SeedMetric]] =
-    months.runLast.flatMap:
-      case Some(terminal) => ZIO.succeed(computeSeedMetrics(config, seed, terminal))
-      case None           => ZIO.fail("household credit-stress run produced no monthly rows")
+    months.runCollect.flatMap: collected =>
+      val monthly = collected.toVector
+      if monthly.nonEmpty then ZIO.succeed(computeSeedMetrics(config, seed, monthly))
+      else ZIO.fail("household credit-stress run produced no monthly rows")
 
-  private def computeSeedMetrics(config: Config, seed: Long, terminal: McSeedMonth): Vector[SeedMetric] =
-    val context = SeedContext(terminal)
-    Metrics.map: metric =>
-      val value = metric.compute(context)
-      SeedMetric(config.runId, seed, config.months, metric.target, value, evaluate(value, metric.target))
+  private def computeSeedMetrics(config: Config, seed: Long, months: Vector[McSeedMonth]): Vector[SeedMetric] =
+    Metrics.flatMap: metric =>
+      val observations = months.map: month =>
+        val context = SeedContext(month)
+        MetricObservation(context.monthNumber, metric.compute(context))
+      val terminal     = observations.last
+      val peakMonthly  = peakObservation(observations)
+      val peakRolling3 = peakRollingObservation(observations, windowSize = 3)
+      Vector(
+        seedMetric(config, seed, metric.target, ObservationWindow.Terminal, terminal),
+        seedMetric(config, seed, metric.target, ObservationWindow.PeakMonthly, peakMonthly),
+        seedMetric(config, seed, metric.target, ObservationWindow.PeakRolling3, peakRolling3),
+      )
+
+  private def seedMetric(
+      config: Config,
+      seed: Long,
+      target: TargetBand,
+      window: ObservationWindow,
+      observation: MetricObservation,
+  ): SeedMetric =
+    SeedMetric(
+      runId = config.runId,
+      seed = seed,
+      months = config.months,
+      observationWindow = window,
+      observationMonth = observation.month,
+      target = target,
+      value = observation.value,
+      status = evaluate(observation.value, target),
+    )
 
   private[diagnostics] def summarize(config: Config, rows: Vector[SeedMetric]): Vector[SummaryMetric] =
-    Targets.map: target =>
-      val metricRows = rows.filter(_.target.id == target.id)
-      val finite     = metricRows.flatMap(_.value.finite)
-      val mean       =
-        if metricRows.exists(_.value == ObservedValue.PositiveInfinity) then ObservedValue.PositiveInfinity
-        else if finite.nonEmpty then ObservedValue.Finite(finite.sum / BigDecimal(finite.size))
-        else ObservedValue.NotAvailable
-      SummaryMetric(
-        runId = config.runId,
-        months = config.months,
-        seeds = config.seeds,
-        target = target,
-        mean = mean,
-        min = if finite.nonEmpty then Some(finite.min) else None,
-        max = if finite.nonEmpty then Some(finite.max) else None,
-        status = evaluate(mean, target),
-      )
+    Targets.flatMap: target =>
+      ObservationWindow.values.toVector.map: window =>
+        val metricRows = rows.filter(row => row.target.id == target.id && row.observationWindow == window)
+        val finite     = metricRows.flatMap(_.value.finite)
+        val mean       =
+          if metricRows.exists(_.value == ObservedValue.PositiveInfinity) then ObservedValue.PositiveInfinity
+          else if finite.nonEmpty then ObservedValue.Finite(finite.sum / BigDecimal(finite.size))
+          else ObservedValue.NotAvailable
+        SummaryMetric(
+          runId = config.runId,
+          months = config.months,
+          seeds = config.seeds,
+          observationWindow = window,
+          target = target,
+          mean = mean,
+          min = if finite.nonEmpty then Some(finite.min) else None,
+          max = if finite.nonEmpty then Some(finite.max) else None,
+          status = worstStatus(evaluate(mean, target) +: metricRows.map(_.status)),
+        )
 
   private def writeArtifactsZIO(config: Config, summary: Vector[SummaryMetric]): ZIO[Any, String, Vector[Path]] =
     val seedMetricsPath = config.runRoot.resolve("household-credit-stress-seed-metrics.tsv")
@@ -564,6 +617,8 @@ object HouseholdCreditStressCalibrationExport:
         "RunId",
         "Seed",
         "Months",
+        "ObservationWindow",
+        "ObservationMonth",
         "Metric",
         "Label",
         "Value",
@@ -581,6 +636,8 @@ object HouseholdCreditStressCalibrationExport:
           row.runId,
           row.seed.toString,
           row.months.toString,
+          row.observationWindow.token,
+          row.observationMonth.toString,
           row.target.id,
           row.target.label,
           renderValue(row.value),
@@ -601,6 +658,7 @@ object HouseholdCreditStressCalibrationExport:
         "RunId",
         "Months",
         "Seeds",
+        "ObservationWindow",
         "Metric",
         "Label",
         "Mean",
@@ -620,6 +678,7 @@ object HouseholdCreditStressCalibrationExport:
           row.runId,
           row.months.toString,
           row.seeds.toString,
+          row.observationWindow.token,
           row.target.id,
           row.target.label,
           renderValue(row.mean),
@@ -675,6 +734,7 @@ object HouseholdCreditStressCalibrationExport:
       markdownRow(
         Vector(
           row.target.id,
+          row.observationWindow.token,
           renderValue(row.mean),
           row.min.map(renderDecimal).getOrElse("n/a"),
           row.max.map(renderDecimal).getOrElse("n/a"),
@@ -706,14 +766,45 @@ object HouseholdCreditStressCalibrationExport:
         "",
         "## Summary",
         "",
-        markdownRow(Vector("Metric", "Mean", "Min", "Max", "Status")),
-        markdownRow(Vector("---", "---", "---", "---", "---")),
+        markdownRow(Vector("Metric", "Window", "Mean", "Min", "Max", "Status")),
+        markdownRow(Vector("---", "---", "---", "---", "---", "---")),
       ) ++ summaryRows
     lines.mkString("\n") + "\n"
 
   private def metric(id: String)(compute: SeedContext => ObservedValue): MetricDef =
     val target = Targets.find(_.id == id).getOrElse(throw new IllegalArgumentException(s"Missing target band: $id"))
     MetricDef(target, compute)
+
+  private def peakObservation(observations: Vector[MetricObservation]): MetricObservation =
+    observations.maxBy(observation => (valueRank(observation.value), -observation.month))
+
+  private def peakRollingObservation(observations: Vector[MetricObservation], windowSize: Int): MetricObservation =
+    val windows =
+      if observations.length >= windowSize then observations.sliding(windowSize).toVector
+      else Vector(observations)
+    windows
+      .map(window => MetricObservation(window.last.month, rollingValue(window.map(_.value))))
+      .maxBy(observation => (valueRank(observation.value), -observation.month))
+
+  private def rollingValue(values: Vector[ObservedValue]): ObservedValue =
+    if values.exists(_ == ObservedValue.PositiveInfinity) then ObservedValue.PositiveInfinity
+    else
+      val finite = values.flatMap(_.finite)
+      if finite.length == values.length then ObservedValue.Finite(finite.sum / BigDecimal(finite.length))
+      else ObservedValue.NotAvailable
+
+  private def valueRank(value: ObservedValue): (Int, BigDecimal) =
+    value match
+      case ObservedValue.PositiveInfinity => 2 -> BigDecimal(0)
+      case ObservedValue.Finite(v)        => 1 -> v
+      case ObservedValue.NotAvailable     => 0 -> BigDecimal(0)
+
+  private def worstStatus(statuses: Vector[Status]): Status =
+    statuses.maxBy:
+      case Status.Fail => 3
+      case Status.Warn => 2
+      case Status.Pass => 1
+      case Status.Info => 0
 
   private def ratio(numerator: BigDecimal, denominator: BigDecimal): ObservedValue =
     ratioRaw(numerator, denominator)
