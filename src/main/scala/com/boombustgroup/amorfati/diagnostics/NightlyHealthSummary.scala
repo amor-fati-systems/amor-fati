@@ -23,12 +23,14 @@ private[diagnostics] object NightlyHealthSummary:
   private val HealthJsonName = "health-summary.json"
   private val HealthMdName   = "health-summary.md"
 
-  private val BaselineStepId              = "baseline-monte-carlo"
-  private val NormalCreditToGdpLowerBound = BigDecimal(0)
-  private val NormalCreditToGdpUpperBound = BigDecimal(10)
-  private val ResidualToGdpUpperBound     = BigDecimal("0.001")
-  private val RatioLowerBound             = BigDecimal(0)
-  private val RatioUpperBound             = BigDecimal(1)
+  private val BaselineStepId                        = "baseline-monte-carlo"
+  private val NormalCreditToGdpLowerBound           = BigDecimal(0)
+  private val NormalCreditToGdpUpperBound           = BigDecimal(10)
+  private val ResidualToGdpUpperBound               = BigDecimal("0.001")
+  private val RatioLowerBound                       = BigDecimal(0)
+  private val RatioUpperBound                       = BigDecimal(1)
+  private val BaselineConsumerDefaultPeakUpperBound = BigDecimal("0.03")
+  private val HouseholdStressRollingWindowMonths    = 3
 
   private val RequiredBaselineColumns: Vector[String] = Vector(
     "Month",
@@ -46,8 +48,11 @@ private[diagnostics] object NightlyHealthSummary:
     "BankCreditLoss_FirmDefaultRate",
     "BankCreditLoss_MortgageDefaultRate",
     "BankCreditLoss_ConsumerLoanDefaultRate",
+    "BankCreditLoss_LiquidityBridgeChargeOffRate",
     "BankCreditLoss_CorpBondDefaultRate",
     "ConsumerCredit_NplRatioGross",
+    "HouseholdDistress_BankruptcyShare",
+    "HouseholdDistress_ActiveShare",
     "HouseholdLiquidity_NegativeDepositCount",
     "HouseholdLiquidity_NegativeDepositShare",
   )
@@ -186,6 +191,7 @@ private[diagnostics] object NightlyHealthSummary:
                 gdpMetric(series),
                 creditToGdpMetric(series),
                 lossRatesMetric(series),
+                householdCreditStressPeakMetric(series),
                 residualMetric(series),
                 negativeStockMetric(series),
               )
@@ -275,6 +281,34 @@ private[diagnostics] object NightlyHealthSummary:
       threshold = s"All monitored default/NPL ratios must satisfy $RatioLowerBound <= value <= $RatioUpperBound.",
       source = "baseline Monte Carlo seed TSVs",
       details = "Positive defaults are allowed; impossible negative or above-100% rates are not.",
+    )
+
+  private def householdCreditStressPeakMetric(series: BaselineSeries): Metric =
+    val consumerDefaultPeak  = series.maxLocated("BankCreditLoss_ConsumerLoanDefaultRate")
+    val consumerDefaultRoll3 = series.maxRolling("BankCreditLoss_ConsumerLoanDefaultRate", HouseholdStressRollingWindowMonths)
+    val bridgePeak           = series.maxLocated("BankCreditLoss_LiquidityBridgeChargeOffRate")
+    val insolvencyPeak       = series.maxLocated("HouseholdDistress_BankruptcyShare")
+    val activeDistressPeak   = series.maxLocated("HouseholdDistress_ActiveShare")
+    val failed               =
+      consumerDefaultPeak.value > BaselineConsumerDefaultPeakUpperBound ||
+        consumerDefaultRoll3.exists(_.value > BaselineConsumerDefaultPeakUpperBound)
+    metric(
+      id = "normal.hh_credit_stress_peaks",
+      label = "Household credit-stress path peaks",
+      status = if failed then MetricStatus.Fail else MetricStatus.Pass,
+      hard = true,
+      observed = Vector(
+        s"consumer_loan_default_rate_peak=${renderLocated(consumerDefaultPeak)}",
+        s"consumer_loan_default_rate_rolling_${HouseholdStressRollingWindowMonths}m_peak=${consumerDefaultRoll3.map(renderLocated).getOrElse("n/a")}",
+        s"liquidity_bridge_chargeoff_rate_peak=${renderLocated(bridgePeak)}",
+        s"household_bankruptcy_share_peak=${renderLocated(insolvencyPeak)}",
+        s"household_active_distress_share_peak=${renderLocated(activeDistressPeak)}",
+      ).mkString("; "),
+      threshold =
+        s"Peak and rolling ${HouseholdStressRollingWindowMonths}-month ordinary consumer-loan default rates must be <= $BaselineConsumerDefaultPeakUpperBound on normal baseline paths.",
+      source = "baseline Monte Carlo seed TSVs",
+      details =
+        "This path-aware guard catches damaging household consumer-default spikes that can disappear by the terminal month; bridge charge-off and distress shares are reported for attribution.",
     )
 
   private def residualMetric(series: BaselineSeries): Metric =
@@ -373,9 +407,36 @@ private[diagnostics] object NightlyHealthSummary:
     def countWhere(column: String)(predicate: BigDecimal => Boolean): Int =
       values(column).count(predicate)
 
+    def maxLocated(column: String): LocatedValue =
+      rows
+        .map(row => LocatedValue(row.decimal(column), row.file, row.rowNumber, row.month))
+        .maxBy(value => (value.value, -value.month, value.file.toString, -value.rowNumber))
+
+    def maxRolling(column: String, windowMonths: Int): Option[LocatedValue] =
+      rows
+        .groupBy(_.file)
+        .toVector
+        .sortBy((file, _) => file.toString)
+        .flatMap: (_, fileRows) =>
+          val ordered = fileRows.sortBy(_.rowNumber)
+          val windows =
+            if ordered.length >= windowMonths then ordered.sliding(windowMonths).toVector
+            else Vector(ordered)
+          windows.collect:
+            case window if window.nonEmpty =>
+              val value = window.map(_.decimal(column)).sum / BigDecimal(window.length)
+              val last  = window.last
+              LocatedValue(value, last.file, last.rowNumber, last.month)
+        .maxByOption(value => (value.value, -value.month, value.file.toString, -value.rowNumber))
+
   private final case class BaselineRow(file: Path, rowNumber: Int, values: Map[String, BigDecimal]):
     def decimal(column: String): BigDecimal =
       values.getOrElse(column, throw IllegalStateException(s"Missing parsed column '$column' in ${file.getFileName}:$rowNumber"))
+
+    def month: Int =
+      decimal("Month").toInt
+
+  private final case class LocatedValue(value: BigDecimal, file: Path, rowNumber: Int, month: Int)
 
   private def loadBaseline(step: ManifestStep): Either[String, BaselineSeries] =
     for
@@ -490,6 +551,9 @@ private[diagnostics] object NightlyHealthSummary:
 
   private def markdownCell(value: String): String =
     value.replace("|", "\\|").replace("\n", " ").trim
+
+  private def renderLocated(value: LocatedValue): String =
+    s"${value.value} at month=${value.month}, file=${value.file.getFileName}, row=${value.rowNumber}"
 
   private def renderObject(fields: Vector[(String, String)]): String =
     fields.map((key, value) => s"${json(key)}:$value").mkString("{", ",", "}")

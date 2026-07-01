@@ -26,19 +26,21 @@ object HouseholdFinancialEconomics:
     annualGrowth.monthly.growthMultiplier.pow(Scalar(elapsedMonths))
 
   case class StepOutput(
-      depositInterestPaid: PLN,         // total deposit interest paid to households
-      remittanceOutflow: PLN,           // total household remittance outflow
-      diasporaInflow: PLN,              // diaspora remittance inflow (NBP BoP)
-      tourismExport: PLN,               // inbound tourism receipts
-      tourismImport: PLN,               // outbound tourism expenditure
-      consumerDebtService: PLN,         // total consumer credit debt service
-      consumerOrigination: PLN,         // underwritten consumer-credit origination only
-      consumerApprovedOrigination: PLN, // underwritten consumer credit originated by the DTI rule
-      liquidityShortfallFinancing: PLN, // same-month bridge/write-off preventing negative demand deposits
-      consumerDefaultAmt: PLN,          // ordinary consumer-loan principal default
-      consumerLoanDefaultAmt: PLN,      // ordinary consumer-loan default, excluding same-month bridge charge-offs
-      consumerNplLoss: PLN,             // ordinary consumer-loan NPL loss net of recovery
-      consumerPrincipal: PLN,           // consumer loan principal repayment
+      depositInterestPaid: PLN,          // total deposit interest paid to households
+      remittanceOutflow: PLN,            // total household remittance outflow
+      diasporaInflow: PLN,               // diaspora remittance inflow (NBP BoP)
+      tourismExport: PLN,                // inbound tourism receipts
+      tourismImport: PLN,                // outbound tourism expenditure
+      consumerDebtService: PLN,          // total consumer credit debt service
+      consumerOrigination: PLN,          // underwritten consumer-credit origination only
+      consumerApprovedOrigination: PLN,  // underwritten consumer credit originated by the DTI rule
+      liquidityShortfallFinancing: PLN,  // same-month bridge/write-off preventing negative demand deposits
+      consumerDefaultAmt: PLN,           // ordinary consumer-loan principal default
+      consumerLoanDefaultAmt: PLN,       // ordinary consumer-loan default, excluding same-month bridge charge-offs
+      consumerInsolvencyDefaultAmt: PLN, // subset of consumer-loan default from personal-insolvency filing
+      liquidityBridgeChargeOff: PLN,     // same-month bridge charge-off, not ordinary consumer-loan default
+      consumerNplLoss: PLN,              // consumer-loan NPL loss net of ordinary and insolvency recoveries
+      consumerPrincipal: PLN,            // consumer loan principal repayment
   )
 
   /** Compatibility alias for older type references; new code should use
@@ -87,27 +89,34 @@ object HouseholdFinancialEconomics:
       (inbound.max(PLN.Zero), outbound.max(PLN.Zero))
 
     // Consumer credit flows
-    val consumerDebtService         = hhAgg.totalConsumerDebtService
-    val consumerOrigination         = hhAgg.totalConsumerOrigination
-    val consumerApprovedOrigination = hhAgg.totalConsumerApprovedOrigination
-    val liquidityShortfallFinancing = hhAgg.totalLiquidityShortfallFinancing
-    val consumerDefaultAmt          = hhAgg.totalConsumerDefault
-    val consumerLoanDefaultAmt      = hhAgg.totalConsumerLoanDefault
-    val consumerNplLoss             = consumerLoanDefaultAmt * (Share.One - p.household.ccNplRecovery)
-    val consumerPrincipal           = hhAgg.totalConsumerPrincipal
+    val consumerDebtService          = hhAgg.totalConsumerDebtService
+    val consumerOrigination          = hhAgg.totalConsumerOrigination
+    val consumerApprovedOrigination  = hhAgg.totalConsumerApprovedOrigination
+    val liquidityShortfallFinancing  = hhAgg.totalLiquidityShortfallFinancing
+    val consumerDefaultAmt           = hhAgg.totalConsumerDefault
+    val consumerLoanDefaultAmt       = hhAgg.totalConsumerLoanDefault
+    val consumerInsolvencyDefaultAmt = hhAgg.totalConsumerInsolvencyDefault
+    val liquidityBridgeChargeOff     = hhAgg.totalLiquidityBridgeChargeOff
+    val ordinaryConsumerDefaultAmt   = (consumerLoanDefaultAmt - consumerInsolvencyDefaultAmt).max(PLN.Zero)
+    val consumerNplLoss              =
+      ordinaryConsumerDefaultAmt * (Share.One - p.household.ccNplRecovery) +
+        consumerInsolvencyDefaultAmt * (Share.One - p.household.ccInsolvencyRecovery)
+    val consumerPrincipal            = hhAgg.totalConsumerPrincipal
 
     StepOutput(
-      depositInterestPaid,
-      remittanceOutflow,
-      diasporaInflow,
-      tourismExport,
-      tourismImport,
-      consumerDebtService,
-      consumerOrigination,
-      consumerApprovedOrigination,
-      liquidityShortfallFinancing,
-      consumerDefaultAmt,
-      consumerLoanDefaultAmt,
-      consumerNplLoss,
-      consumerPrincipal,
+      depositInterestPaid = depositInterestPaid,
+      remittanceOutflow = remittanceOutflow,
+      diasporaInflow = diasporaInflow,
+      tourismExport = tourismExport,
+      tourismImport = tourismImport,
+      consumerDebtService = consumerDebtService,
+      consumerOrigination = consumerOrigination,
+      consumerApprovedOrigination = consumerApprovedOrigination,
+      liquidityShortfallFinancing = liquidityShortfallFinancing,
+      consumerDefaultAmt = consumerDefaultAmt,
+      consumerLoanDefaultAmt = consumerLoanDefaultAmt,
+      consumerInsolvencyDefaultAmt = consumerInsolvencyDefaultAmt,
+      liquidityBridgeChargeOff = liquidityBridgeChargeOff,
+      consumerNplLoss = consumerNplLoss,
+      consumerPrincipal = consumerPrincipal,
     )

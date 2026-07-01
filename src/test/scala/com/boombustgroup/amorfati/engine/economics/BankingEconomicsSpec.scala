@@ -202,7 +202,7 @@ class BankingEconomicsSpec extends AnyFlatSpec with Matchers:
     aligned(2).consumerLoan shouldBe PLN(80)
   }
 
-  it should "exclude liquidity-bridge charge-offs from bank consumer NPL capital loss" in {
+  it should "record liquidity-bridge charge-offs without ordinary consumer-loan NPL loss" in {
     val prepared                  = preparedBankingStep()
     val zeroHhBankFlow            = PerBankFlow(
       income = PLN.Zero,
@@ -217,10 +217,13 @@ class BankingEconomicsSpec extends AnyFlatSpec with Matchers:
       liquidityShortfallFinancing = PLN.Zero,
       consumerDefault = PLN.Zero,
       consumerLoanDefault = PLN.Zero,
+      consumerInsolvencyDefault = PLN.Zero,
+      liquidityBridgeChargeOff = PLN.Zero,
       consumerPrincipal = PLN.Zero,
     )
     val bridgeOnlyFlow            = zeroHhBankFlow.copy(
       liquidityShortfallFinancing = PLN(1000),
+      liquidityBridgeChargeOff = PLN(1000),
       consumerDefault = PLN.Zero,
       consumerLoanDefault = PLN.Zero,
     )
@@ -230,6 +233,11 @@ class BankingEconomicsSpec extends AnyFlatSpec with Matchers:
 
     val result = prepared.run(householdIncomeOverride = householdIncomeWithBridge)
 
+    result.bankCapitalDiagnostics.consumerLoanNplLoss shouldBe PLN.Zero
+    result.bankCapitalDiagnostics.consumerInsolvencyNplLoss shouldBe PLN.Zero
+    result.bankCapitalDiagnostics.liquidityBridgeGrossDefault shouldBe PLN(1000)
+    result.bankCapitalDiagnostics.liquidityBridgeRecovery shouldBe PLN(1000)
+    result.bankCapitalDiagnostics.liquidityBridgeNplLoss shouldBe PLN.Zero
     result.bankCapitalDiagnostics.consumerNplLoss shouldBe PLN.Zero
   }
 

@@ -20,8 +20,11 @@ sbt "householdCreditStressCalibration --seeds 5 --months 60 --out target/househo
 The task writes:
 
 - `household-credit-stress-seed-metrics.tsv`: one terminal ratio per seed and
-  metric.
-- `household-credit-stress-summary.tsv`: mean/min/max across seeds, with status.
+  metric, plus path-aware peak monthly and peak rolling 3-month observations.
+  `ObservationMonth` reports the terminal month, peak month, or rolling-window
+  end month.
+- `household-credit-stress-summary.tsv`: mean/min/max across seeds by metric
+  and observation window, with status.
 - `household-credit-stress-targets.tsv`: documented target bands, vintage, and
   semantics.
 - `household-credit-stress-report.md`: human-readable summary.
@@ -43,6 +46,17 @@ ratios are meant to guide follow-up calibration and source-bridge work. A value
 outside the reference band is still reported as `WARN`, but the warning means
 "investigate this channel", not "empirical validation failed".
 
+Seed metrics are long-form by observation window:
+
+- `TERMINAL`: value at the final simulated month for that seed.
+- `PEAK_MONTHLY`: maximum monthly value observed along the simulated path, with
+  the peak month.
+- `PEAK_ROLLING_3`: maximum 3-month rolling average, with the window end month.
+
+The peak rows are path diagnostics. They are especially important for
+consumer-loan defaults and bridge charge-offs because a damaging month can
+capitalise a bank loss before the terminal month ratio returns inside its band.
+
 ## Target Bands
 
 | Metric | Class | Vintage | Band | Unit | Interpretation |
@@ -57,6 +71,7 @@ outside the reference band is still reported as `WARN`, but the warning means
 | `LiquidityBridgeChargeOffToConsumerLoans` | `EXPLORATORY_DIAGNOSTIC` | `2026-04-30 model-start baseline` | `0.00` to n/a | monthly ratio | Same-month liquidity bridge write-offs relative to consumer-loan stock. |
 | `LiquidityBridgeChargeOffShareOfHouseholdCreditWriteOff` | `EXPLORATORY_DIAGNOSTIC` | `2026-04-30 model-start baseline` | `0.00` to `1.00` | share | Share of household credit write-offs that is same-month liquidity bridge charge-off rather than ordinary consumer-loan default. |
 | `MortgageDefaultToMortgageLoans` | `EXPLORATORY_DIAGNOSTIC` | `2026-04-30 model-start baseline` | `0.00` to `0.01` | monthly ratio | Flow/stock stress ratio for mortgage stress; this should later be mapped to arrears/default definitions. |
+| `HouseholdBankruptcyShare` | `SOFT_CALIBRATION_WARNING` | `2026-04-30 model-start baseline` | `0.00` to `0.01` | monthly share | Baseline personal insolvency can occur, but should not synchronize into monthly waves across a material household share. |
 | `PositiveDepositsToMonthlyIncome` | `SOFT_CALIBRATION_WARNING` | `2026-04-30 model-start baseline` | `1.00` to `8.00` | months of income | Aggregate liquid buffers should be neither exhausted nor implausibly huge relative to household income. |
 | `MedianDepositToMeanMonthlyIncome` | `SOFT_CALIBRATION_WARNING` | `2026-04-30 model-start baseline` | `0.20` to `6.00` | months of mean income | The median household should have some liquidity, but not years of income in demand deposits. |
 | `NegativeDepositShare` | `HARD_INVARIANT` | `2026-04-30 model-start baseline` | `0.00` to `0.00` | share | Demand deposits are non-negative bank liabilities. |

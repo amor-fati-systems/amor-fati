@@ -181,6 +181,7 @@ private[agents] object HouseholdAggregateComputation:
       totalConsumerBankRejectedOrigination = t.totalConsumerBankRejectedOrigination,
       totalConsumerBankPortfolioRejected = t.totalConsumerBankRejectedPortfolio,
       totalConsumerLoanDefault = t.consumerLoanDefault,
+      totalConsumerInsolvencyDefault = t.consumerInsolvencyDefault,
       totalLiquidityBridgeChargeOff = t.liquidityBridgeChargeOff,
       totalUnmetBasicConsumption = t.unmetBasicConsumption,
       totalDiscretionaryConsumptionCompression = t.discretionaryConsumptionCut,

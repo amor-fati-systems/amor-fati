@@ -116,6 +116,11 @@ import com.boombustgroup.amorfati.types.*
   *   monthly amortization rate on consumer loans
   * @param ccNplRecovery
   *   recovery rate on defaulted consumer loans (BIK bridge prior)
+  * @param ccInsolvencyRecovery
+  *   recovery rate on consumer-loan principal default in personal-insolvency
+  *   filings
+  * @param liquidityBridgeRecovery
+  *   same-month bridge/overdraft settlement share before any capital loss
   * @param ccEligRate
   *   fraction of employed households eligible for consumer credit each month
   */
@@ -190,6 +195,8 @@ case class HouseholdConfig(
     ccMaxLoan: PLN = PLN(50000),
     ccAmortRate: Rate = Rate.decimal(25, 3),
     ccNplRecovery: Share = Share.decimal(15, 2),
+    ccInsolvencyRecovery: Share = Share.decimal(5, 2),
+    liquidityBridgeRecovery: Share = Share.One,
     ccEligRate: Share = Share.decimal(85, 2),
 ):
   require(initialUnemployedMaxMonths >= 0, s"initialUnemployedMaxMonths must be non-negative: $initialUnemployedMaxMonths")
@@ -234,4 +241,17 @@ case class HouseholdConfig(
   require(
     ccBankruptcyDefaultOutstandingShare >= ccRestructuringDefaultOutstandingShare && ccBankruptcyDefaultOutstandingShare <= Share.One,
     s"ccBankruptcyDefaultOutstandingShare must be in [ccRestructuringDefaultOutstandingShare, 1], got $ccBankruptcyDefaultOutstandingShare",
+  )
+  require(ccNplRecovery >= Share.Zero && ccNplRecovery <= Share.One, s"ccNplRecovery must be in [0,1], got $ccNplRecovery")
+  require(
+    ccInsolvencyRecovery >= Share.Zero && ccInsolvencyRecovery <= Share.One,
+    s"ccInsolvencyRecovery must be in [0,1], got $ccInsolvencyRecovery",
+  )
+  require(
+    ccInsolvencyRecovery <= ccNplRecovery,
+    s"ccInsolvencyRecovery should not exceed ordinary ccNplRecovery: $ccInsolvencyRecovery > $ccNplRecovery",
+  )
+  require(
+    liquidityBridgeRecovery >= Share.Zero && liquidityBridgeRecovery <= Share.One,
+    s"liquidityBridgeRecovery must be in [0,1], got $liquidityBridgeRecovery",
   )

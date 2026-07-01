@@ -384,10 +384,13 @@ The public consumer-credit decomposition is:
 
 ```text
 ConsumerOrigination =
-  ConsumerApprovedOrigination + HouseholdLiquidity_ShortfallFinancing
+  ConsumerApprovedOrigination
 
 ConsumerDefault =
-  ConsumerLoanDefault + LiquidityBridgeChargeOff
+  ConsumerLoanDefault
+
+ConsumerLoanDefault =
+  OrdinaryConsumerLoanDefault + ConsumerInsolvencyDefault
 
 ConsumerCredit_NetStockFlow =
   ConsumerOrigination - ConsumerPrincipal - ConsumerDefault
@@ -400,8 +403,10 @@ ConsumerCredit_BridgeNetFlow =
 ```
 
 This split is central to the accounting semantics: underwritten consumer credit
-and residual liquidity settlement are both SFC-routed consumer-credit mechanisms
-but they are diagnostically separate.
+and residual liquidity settlement are both SFC-routed consumer-credit mechanisms,
+but they are diagnostically separate. `LiquidityBridgeChargeOff` is never part
+of ordinary `ConsumerLoanDefault`; personal-insolvency default is exposed as the
+`ConsumerInsolvencyDefault` subset of `ConsumerLoanDefault`.
 
 ## MPC Adaptation
 
@@ -624,7 +629,7 @@ Representative output columns include:
 | --- | --- |
 | Labor and income | `Unemployment`, `UnemployedShare`, `RetrainingShare`, `MarketWage`, `MeanEmployedWage`, contract-type shares |
 | Consumption and distribution | aggregate consumption, domestic/import consumption, Gini/poverty/savings aggregates in household summaries |
-| Consumer credit | `ConsumerLoans`, `ConsumerOrigination`, `ConsumerApprovedOrigination`, `ConsumerCreditDemand`, `ConsumerRejectedOrigination`, `ConsumerBankRejectedOrigination`, `ConsumerCredit_RejectedPortfolioPreference`, household snapshot bank-audit columns (`ConsumerBankApprovalProduct`, `ConsumerBankRejectionReason`, `ConsumerBankApprovalProbability`, `ConsumerBankApprovalRoll`, `ConsumerBankProjectedCAR`, `ConsumerBankMinCAR`, `ConsumerBankManagementCAR`, `ConsumerBankCapitalThrottle`, `ConsumerBankLCR`, `ConsumerBankNSFR`, `ConsumerBankPortfolio*`), `ConsumerDebtService`, `ConsumerPrincipal`, `ConsumerDefault`, `ConsumerLoanDefault`, `LiquidityBridgeChargeOff`, `ConsumerCredit_NetStockFlow`, `ConsumerCredit_UnderwrittenNetFlow`, `ConsumerCredit_BridgeNetFlow`, `ConsumerCredit_NplStock`, approval/rejection ratios |
+| Consumer credit | `ConsumerLoans`, `ConsumerOrigination`, `ConsumerApprovedOrigination`, `ConsumerCreditDemand`, `ConsumerRejectedOrigination`, `ConsumerBankRejectedOrigination`, `ConsumerCredit_RejectedPortfolioPreference`, household snapshot bank-audit columns (`ConsumerBankApprovalProduct`, `ConsumerBankRejectionReason`, `ConsumerBankApprovalProbability`, `ConsumerBankApprovalRoll`, `ConsumerBankProjectedCAR`, `ConsumerBankMinCAR`, `ConsumerBankManagementCAR`, `ConsumerBankCapitalThrottle`, `ConsumerBankLCR`, `ConsumerBankNSFR`, `ConsumerBankPortfolio*`), `ConsumerDebtService`, `ConsumerPrincipal`, `ConsumerDefault`, `ConsumerLoanDefault`, `ConsumerInsolvencyDefault`, `LiquidityBridgeChargeOff`, `ConsumerCredit_NetStockFlow`, `ConsumerCredit_UnderwrittenNetFlow`, `ConsumerCredit_BridgeNetFlow`, `ConsumerCredit_NplStock`, approval/rejection ratios |
 | Mortgages and housing wealth | `MortgageStock`, `AvgMortgageRate`, `MortgageOrigination`, `MortgageRepayment`, `MortgageDefault`, `MortgageNetStockFlow`, `MortgageToGdp`, mortgage flow-to-stock ratios, `MortgageInterestIncome`, `HhHousingWealth`, `HousingWealthEffect` |
 | Distress and bankruptcy | `HouseholdBankruptcies`, `HouseholdBankruptcyRate`, `HouseholdDistress_Current`, `HouseholdDistress_LiquidityStress`, `HouseholdDistress_Arrears`, `HouseholdDistress_Restructuring`, `HouseholdDistress_Defaulted`, `HouseholdDistress_Bankruptcy`, corresponding shares, `HouseholdDistress_ActiveShare` |
 | Liquidity | `HouseholdLiquidity_NetDemandDeposit`, positive deposits, implicit overdraft diagnostics, deposit percentiles, `HouseholdLiquidity_ShortfallFinancing`, unmet basic consumption, discretionary compression, consumption/rent/mortgage/consumer-debt arrears, temporary overdraft |

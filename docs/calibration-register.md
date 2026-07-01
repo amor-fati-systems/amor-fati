@@ -39,7 +39,7 @@ These counts are rendered from `CalibrationProvenance.Baseline` at generation ti
 | `EMPIRICAL` | 37 |
 | `EMPIRICAL_TRANSFORMED` | 19 |
 | `CODE_NOTE_EMPIRICAL` | 62 |
-| `ASSUMED` | 37 |
+| `ASSUMED` | 39 |
 | `TUNED_NEEDS_VALIDATION` | 88 |
 | `POLICY_SCENARIO` | 7 |
 | `PLACEHOLDER` | 1 |
@@ -252,6 +252,8 @@ a concrete diagnostic artifact path.
 | `household.ccMaxLoan` | `50000` | PLN | Structural unsecured-credit limit prior | Maximum unsecured consumer loan | Direct | `HouseholdConfig` | `ASSUMED` |
 | `household.ccEligRate` | `0.85` | monthly share | #534 credit-access calibration | Stressed-household access to underwritten consumer credit when payment-factor-derived principal capacity allows additional principal | Tuned against ShortfallToApprovedOrigination and rejected-demand diagnostics | `HouseholdConfig` | `TUNED_NEEDS_VALIDATION` |
 | `household.ccNplRecovery` | `0.15` | share | Code note bridge: BIK bridge prior | Consumer loan recovery | Direct | `HouseholdConfig` | `CODE_NOTE_EMPIRICAL` |
+| `household.ccInsolvencyRecovery` | `0.05` | share | Structural personal-insolvency tail recovery prior | Lower recovery on consumer-loan principal default tied to personal-insolvency filing/workout | Direct | `HouseholdConfig` | `ASSUMED` |
+| `household.liquidityBridgeRecovery` | `1.00` | share | Structural same-month bridge settlement prior | Same-month bridge/overdraft financing is settled by the paired charge-off flow before any capital loss is recognized | Direct | `HouseholdConfig` | `ASSUMED` |
 | `labor.frictionMatrix` | `DefaultFrictionMatrix` | 6x6 share | Code note bridge: GUS LFS bridge prior, Shimer 2005 | Cross-sector mobility friction | Direct | `LaborConfig` | `CODE_NOTE_EMPIRICAL` |
 | `labor.voluntarySearchProb` | `0.02` | monthly share | UNKNOWN_SOURCE | Employed voluntary sector search | Direct | `LaborConfig` | `TUNED_NEEDS_VALIDATION` |
 | `labor.voluntaryWageThreshold` | `0.20` | share | UNKNOWN_SOURCE | Required wage gain for voluntary search | Direct | `LaborConfig` | `TUNED_NEEDS_VALIDATION` |

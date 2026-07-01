@@ -305,6 +305,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     "ConsumerPrincipal",
     "ConsumerDefault",
     "ConsumerLoanDefault",
+    "ConsumerInsolvencyDefault",
     "LiquidityBridgeChargeOff",
     "ConsumerCredit_NetStockFlow",
     "ConsumerCredit_UnderwrittenNetFlow",
@@ -430,6 +431,21 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     "BankCreditLoss_ConsumerLoanDefaultRate",
     "BankCreditLoss_LiquidityBridgeChargeOffRate",
     "BankCreditLoss_ConsumerLossRate",
+    "BankCreditLoss_ConsumerLoanGrossDefault",
+    "BankCreditLoss_ConsumerLoanRecovery",
+    "BankCreditLoss_ConsumerLoanExpectedLoss",
+    "BankCreditLoss_ConsumerLoanAllowanceDraw",
+    "BankCreditLoss_ConsumerLoanNetCapitalLoss",
+    "BankCreditLoss_ConsumerInsolvencyGrossDefault",
+    "BankCreditLoss_ConsumerInsolvencyRecovery",
+    "BankCreditLoss_ConsumerInsolvencyExpectedLoss",
+    "BankCreditLoss_ConsumerInsolvencyAllowanceDraw",
+    "BankCreditLoss_ConsumerInsolvencyNetCapitalLoss",
+    "BankCreditLoss_LiquidityBridgeGrossDefault",
+    "BankCreditLoss_LiquidityBridgeRecovery",
+    "BankCreditLoss_LiquidityBridgeExpectedLoss",
+    "BankCreditLoss_LiquidityBridgeAllowanceDraw",
+    "BankCreditLoss_LiquidityBridgeNetCapitalLoss",
     "BankCreditLoss_CorpBondDefaultRate",
     "BankCreditLoss_CorpBondLossRate",
     "HousingPriceIndex",
@@ -603,7 +619,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     MetricValue.fromRaw(numerator.ratioTo(denominator).toLong)
 
   "McTimeseriesSchema" should "expose the stable schema contract" in {
-    McTimeseriesSchema.nCols shouldBe 536
+    McTimeseriesSchema.nCols shouldBe 552
     McTimeseriesSchema.colNames.toVector shouldBe expectedColNames
   }
 
@@ -948,6 +964,21 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
       firmNplLoss = PLN(2),
       mortgageNplLoss = PLN(2),
       consumerNplLoss = PLN(5),
+      consumerLoanGrossDefault = PLN(30),
+      consumerLoanRecovery = PLN(20),
+      consumerLoanExpectedLoss = PLN(10),
+      consumerLoanNplAllowanceDraw = PLN(6),
+      consumerLoanNplLoss = PLN(4),
+      consumerInsolvencyGrossDefault = PLN(10),
+      consumerInsolvencyRecovery = PLN(7),
+      consumerInsolvencyExpectedLoss = PLN(3),
+      consumerInsolvencyNplAllowanceDraw = PLN(2),
+      consumerInsolvencyNplLoss = PLN(1),
+      liquidityBridgeGrossDefault = PLN(4),
+      liquidityBridgeRecovery = PLN(4),
+      liquidityBridgeExpectedLoss = PLN.Zero,
+      liquidityBridgeNplAllowanceDraw = PLN.Zero,
+      liquidityBridgeNplLoss = PLN.Zero,
       corpBondDefaultLoss = PLN(3),
       firmNplAllowanceDraw = PLN(6),
       mortgageNplAllowanceDraw = PLN(7),
@@ -1124,6 +1155,21 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     valueAt(row, "BankCreditLoss_ConsumerLoanDefaultRate") shouldBe MetricValue.fromRaw((PLN(3) / consumerLoans).toLong)
     valueAt(row, "BankCreditLoss_LiquidityBridgeChargeOffRate") shouldBe MetricValue.fromRaw((PLN(4) / consumerLoans).toLong)
     valueAt(row, "BankCreditLoss_ConsumerLossRate") shouldBe MetricValue.fromRaw((bankCapital.consumerNplLoss / consumerLoans).toLong)
+    valueAt(row, "BankCreditLoss_ConsumerLoanGrossDefault") shouldBe polandScale(bankCapital.consumerLoanGrossDefault)
+    valueAt(row, "BankCreditLoss_ConsumerLoanRecovery") shouldBe polandScale(bankCapital.consumerLoanRecovery)
+    valueAt(row, "BankCreditLoss_ConsumerLoanExpectedLoss") shouldBe polandScale(bankCapital.consumerLoanExpectedLoss)
+    valueAt(row, "BankCreditLoss_ConsumerLoanAllowanceDraw") shouldBe polandScale(bankCapital.consumerLoanNplAllowanceDraw)
+    valueAt(row, "BankCreditLoss_ConsumerLoanNetCapitalLoss") shouldBe polandScale(bankCapital.consumerLoanNplLoss)
+    valueAt(row, "BankCreditLoss_ConsumerInsolvencyGrossDefault") shouldBe polandScale(bankCapital.consumerInsolvencyGrossDefault)
+    valueAt(row, "BankCreditLoss_ConsumerInsolvencyRecovery") shouldBe polandScale(bankCapital.consumerInsolvencyRecovery)
+    valueAt(row, "BankCreditLoss_ConsumerInsolvencyExpectedLoss") shouldBe polandScale(bankCapital.consumerInsolvencyExpectedLoss)
+    valueAt(row, "BankCreditLoss_ConsumerInsolvencyAllowanceDraw") shouldBe polandScale(bankCapital.consumerInsolvencyNplAllowanceDraw)
+    valueAt(row, "BankCreditLoss_ConsumerInsolvencyNetCapitalLoss") shouldBe polandScale(bankCapital.consumerInsolvencyNplLoss)
+    valueAt(row, "BankCreditLoss_LiquidityBridgeGrossDefault") shouldBe polandScale(bankCapital.liquidityBridgeGrossDefault)
+    valueAt(row, "BankCreditLoss_LiquidityBridgeRecovery") shouldBe polandScale(bankCapital.liquidityBridgeRecovery)
+    valueAt(row, "BankCreditLoss_LiquidityBridgeExpectedLoss") shouldBe polandScale(bankCapital.liquidityBridgeExpectedLoss)
+    valueAt(row, "BankCreditLoss_LiquidityBridgeAllowanceDraw") shouldBe polandScale(bankCapital.liquidityBridgeNplAllowanceDraw)
+    valueAt(row, "BankCreditLoss_LiquidityBridgeNetCapitalLoss") shouldBe polandScale(bankCapital.liquidityBridgeNplLoss)
     valueAt(row, "BankCreditLoss_CorpBondDefaultRate") shouldBe MetricValue.fromRaw((corpBondGrossDefault / bankCorpBonds).toLong)
     valueAt(row, "BankCreditLoss_CorpBondLossRate") shouldBe MetricValue.fromRaw((bankCapital.corpBondDefaultLoss / bankCorpBonds).toLong)
   }

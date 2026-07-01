@@ -142,6 +142,8 @@ private[banking] final case class PerBankHhFlows(
     liquidityShortfallFinancing: PLN,
     ccDefault: PLN,
     ccLoanDefault: PLN,
+    ccInsolvencyDefault: PLN,
+    liquidityBridgeChargeOff: PLN,
 )
 
 private[banking] final case class SingleBankUpdate(
@@ -228,11 +230,14 @@ private[banking] final case class BankCapitalTerms(
     bfgLevy: PLN = PLN.Zero,
     polishBankLevyTax: PLN = PLN.Zero,
 ):
-  def firmNplLoss: PLN         = creditLosses.firm.netCapitalLoss
-  def mortgageNplLoss: PLN     = creditLosses.mortgage.netCapitalLoss
-  def consumerNplLoss: PLN     = creditLosses.consumer.netCapitalLoss
-  def corpBondDefaultLoss: PLN = creditLosses.corpBondDefaultLoss
-  def realizedCreditLoss: PLN  = creditLosses.realizedCreditLoss
+  def firmNplLoss: PLN               = creditLosses.firm.netCapitalLoss
+  def mortgageNplLoss: PLN           = creditLosses.mortgage.netCapitalLoss
+  def consumerNplLoss: PLN           = creditLosses.consumer.netCapitalLoss
+  def consumerLoanNplLoss: PLN       = creditLosses.consumerLoan.netCapitalLoss
+  def consumerInsolvencyNplLoss: PLN = creditLosses.consumerInsolvency.netCapitalLoss
+  def liquidityBridgeNplLoss: PLN    = creditLosses.liquidityBridge.netCapitalLoss
+  def corpBondDefaultLoss: PLN       = creditLosses.corpBondDefaultLoss
+  def realizedCreditLoss: PLN        = creditLosses.realizedCreditLoss
 
   def +(other: BankCapitalTerms): BankCapitalTerms =
     BankCapitalTerms(

@@ -307,6 +307,8 @@ private[banking] object BankMultiBankStage:
           liquidityShortfallFinancing = f.liquidityShortfallFinancing,
           ccDefault = f.consumerDefault,
           ccLoanDefault = f.consumerLoanDefault,
+          ccInsolvencyDefault = f.consumerInsolvencyDefault,
+          liquidityBridgeChargeOff = f.liquidityBridgeChargeOff,
         )
       case None      =>
         val ws = if totalWorkers > 0 then Share.fraction(perBankWorkers(bId), totalWorkers) else Share.Zero
@@ -321,6 +323,8 @@ private[banking] object BankMultiBankStage:
           liquidityShortfallFinancing = in.householdFinancial.liquidityShortfallFinancing * ws,
           ccDefault = in.householdFinancial.consumerDefaultAmt * ws,
           ccLoanDefault = in.householdFinancial.consumerLoanDefaultAmt * ws,
+          ccInsolvencyDefault = in.householdFinancial.consumerInsolvencyDefaultAmt * ws,
+          liquidityBridgeChargeOff = in.householdFinancial.liquidityBridgeChargeOff * ws,
         )
 
   /** Compute updated state for a single bank in the multi-bank path. */
@@ -384,18 +388,31 @@ private[banking] object BankMultiBankStage:
     val mortgageLoss              = BankCreditLossAccounting.mortgage(bankMortgageDefaultAmount)
     val bankMortgageNplLoss       = mortgageLoss.netCapitalLoss
     require(hhFlows.ccDefault == hhFlows.ccLoanDefault, s"Consumer default ${hhFlows.ccDefault} must equal consumer-loan default ${hhFlows.ccLoanDefault}")
-    val consumerLoss              = BankCreditLossAccounting.consumer(hhFlows.ccLoanDefault)
-    val bankCcNplLoss             = consumerLoss.netCapitalLoss
+    require(
+      hhFlows.ccInsolvencyDefault <= hhFlows.ccLoanDefault,
+      s"Consumer insolvency default ${hhFlows.ccInsolvencyDefault} must be <= consumer-loan default ${hhFlows.ccLoanDefault}",
+    )
+    require(
+      hhFlows.liquidityBridgeChargeOff <= hhFlows.liquidityShortfallFinancing,
+      s"Liquidity bridge charge-off ${hhFlows.liquidityBridgeChargeOff} must be <= shortfall financing ${hhFlows.liquidityShortfallFinancing}",
+    )
+    val ordinaryConsumerDefault   = (hhFlows.ccLoanDefault - hhFlows.ccInsolvencyDefault).max(PLN.Zero)
+    val consumerLoanLoss          = BankCreditLossAccounting.consumerLoan(ordinaryConsumerDefault)
+    val consumerInsolvencyLoss    = BankCreditLossAccounting.consumerInsolvency(hhFlows.ccInsolvencyDefault)
+    val liquidityBridgeLoss       = BankCreditLossAccounting.liquidityBridge(hhFlows.liquidityBridgeChargeOff)
+    val creditLosses              = BankCreditLossAccounting.Breakdown(
+      firm = firmLoss,
+      mortgage = mortgageLoss,
+      consumerLoan = consumerLoanLoss,
+      consumerInsolvency = consumerInsolvencyLoss,
+      liquidityBridge = liquidityBridgeLoss,
+      corpBondDefaultLoss = bankCorpBondDefaultLoss,
+    )
+    val bankCcNplLoss             = creditLosses.consumer.netCapitalLoss
     val bankCcStockReduction: PLN = in.householdIncome.perBankHhFlowsOpt match
       case Some(pbf) => pbf(bId).consumerPrincipal
       case _         => hhFlows.ccPrincipal
     val bankCcInterestIncome      = hhFlows.ccDebtService - hhFlows.ccPrincipal
-    val creditLosses              = BankCreditLossAccounting.Breakdown(
-      firm = firmLoss,
-      mortgage = mortgageLoss,
-      consumer = consumerLoss,
-      corpBondDefaultLoss = bankCorpBondDefaultLoss,
-    )
     val bankBfgLevy               =
       if !b.failed then stocks.totalDeposits * p.banking.bfgLevyRate.monthly
       else PLN.Zero
