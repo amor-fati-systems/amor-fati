@@ -43,9 +43,9 @@ private[agents] object HouseholdStepAccumulator:
     private var unmetBasicConsAcc: PLN       = PLN.Zero // unmet basic consumption
     private var discretionaryCutAcc: PLN     = PLN.Zero // discretionary consumption compression
 
-    var retrainingAttempts: Int              = 0        // retraining attempts count
-    var retrainingSuccesses: Int             = 0        // retraining successes count
-    var voluntaryQuits: Int                  = 0        // voluntary quits count
+    var retrainingAttempts: Int  = 0 // retraining attempts count
+    var retrainingSuccesses: Int = 0 // retraining successes count
+    var voluntaryQuits: Int      = 0 // voluntary quits count
 
     /** Adds one finalized household monthly result to the accumulator. */
     def add(r: HhMonthlyResult): Unit =
