@@ -207,6 +207,23 @@ class NightlyDiagnosticsProfileRunnerSpec extends AnyFlatSpec with Matchers:
     Files.readString(result.jsonPath) should include(""""status":"FAIL"""")
   }
 
+  it should "fail on peak household consumer-default stress even when the terminal month passes" in {
+    val ctx = context("smoke", tempOut("health-hh-peak-fail"), runId = "health-hh-peak-fail")
+    writeBaselineSeedTsv(
+      ctx,
+      seed = 1,
+      rows = healthyRows(months = 12).updated(5, healthyRow(month = 6, consumerLoanDefaultRate = "0.04")),
+    )
+
+    val result = DiagnosticIo.unsafeRun(NightlyHealthSummary.write(ctx, succeededSteps(ctx))).value
+    val json   = Files.readString(result.jsonPath)
+
+    result.status shouldBe NightlyHealthSummary.HealthStatus.Failed
+    result.hardFailureCount should be > 0
+    json should include(""""id":"normal.hh_credit_stress_peaks"""")
+    json should include("consumer_loan_default_rate_peak=0.04 at month=6")
+  }
+
   it should "warn without hard-failing on household negative-deposit diagnostics" in {
     val ctx = context("smoke", tempOut("health-warning"), runId = "health-warning")
     writeBaselineSeedTsv(
@@ -329,6 +346,10 @@ class NightlyDiagnosticsProfileRunnerSpec extends AnyFlatSpec with Matchers:
       month: Int,
       bankFailures: Int = 0,
       newFailures: Int = 0,
+      consumerLoanDefaultRate: String = "0.01",
+      liquidityBridgeChargeOffRate: String = "0",
+      householdBankruptcyShare: String = "0",
+      householdActiveDistressShare: String = "0.01",
       negativeDepositCount: Int = 0,
       negativeDepositShare: String = "0",
   ): String =
@@ -347,9 +368,12 @@ class NightlyDiagnosticsProfileRunnerSpec extends AnyFlatSpec with Matchers:
       "0",
       "0.01",
       "0.02",
-      "0.03",
+      consumerLoanDefaultRate,
+      liquidityBridgeChargeOffRate,
       "0.04",
       "0.05",
+      householdBankruptcyShare,
+      householdActiveDistressShare,
       negativeDepositCount.toString,
       negativeDepositShare,
     ).mkString("\t")
@@ -371,8 +395,11 @@ class NightlyDiagnosticsProfileRunnerSpec extends AnyFlatSpec with Matchers:
       "BankCreditLoss_FirmDefaultRate",
       "BankCreditLoss_MortgageDefaultRate",
       "BankCreditLoss_ConsumerLoanDefaultRate",
+      "BankCreditLoss_LiquidityBridgeChargeOffRate",
       "BankCreditLoss_CorpBondDefaultRate",
       "ConsumerCredit_NplRatioGross",
+      "HouseholdDistress_BankruptcyShare",
+      "HouseholdDistress_ActiveShare",
       "HouseholdLiquidity_NegativeDepositCount",
       "HouseholdLiquidity_NegativeDepositShare",
     ).mkString("\t")

@@ -29,6 +29,7 @@ class HouseholdCreditStressCalibrationExportSpec extends AnyFlatSpec with Matche
       "LiquidityBridgeChargeOffToConsumerLoans",
       "LiquidityBridgeChargeOffShareOfHouseholdCreditWriteOff",
       "MortgageDefaultToMortgageLoans",
+      "HouseholdBankruptcyShare",
       "PositiveDepositsToMonthlyIncome",
       "MedianDepositToMeanMonthlyIncome",
       "NegativeDepositShare",
@@ -62,8 +63,11 @@ class HouseholdCreditStressCalibrationExportSpec extends AnyFlatSpec with Matche
   it should "render seed and summary TSV artifacts with calibration metadata" in {
     val target  = Targets.find(_.id == "ShortfallToIncome").get
     val rows    = Vector(
-      SeedMetric("stress-spec", 1L, 60, target, ObservedValue.Finite(BigDecimal("0.02")), Status.Pass),
-      SeedMetric("stress-spec", 2L, 60, target, ObservedValue.Finite(BigDecimal("0.08")), Status.Warn),
+      SeedMetric("stress-spec", 1L, 60, ObservationWindow.Terminal, 60, target, ObservedValue.Finite(BigDecimal("0.02")), Status.Pass),
+      SeedMetric("stress-spec", 1L, 60, ObservationWindow.PeakMonthly, 13, target, ObservedValue.Finite(BigDecimal("0.08")), Status.Warn),
+      SeedMetric("stress-spec", 2L, 60, ObservationWindow.Terminal, 60, target, ObservedValue.Finite(BigDecimal("0.01")), Status.Pass),
+      SeedMetric("stress-spec", 2L, 60, ObservationWindow.PeakMonthly, 17, target, ObservedValue.Finite(BigDecimal("0.03")), Status.Pass),
+      SeedMetric("stress-spec", 2L, 60, ObservationWindow.PeakRolling3, 18, target, ObservedValue.Finite(BigDecimal("0.025")), Status.Pass),
     )
     val summary = summarize(Config(runId = "stress-spec", seeds = 2, months = 60), rows)
     val seedTsv = renderSeedMetricsTsv(rows)
@@ -74,6 +78,8 @@ class HouseholdCreditStressCalibrationExportSpec extends AnyFlatSpec with Matche
       "RunId",
       "Seed",
       "Months",
+      "ObservationWindow",
+      "ObservationMonth",
       "Metric",
       "Label",
       "Value",
@@ -87,11 +93,13 @@ class HouseholdCreditStressCalibrationExportSpec extends AnyFlatSpec with Matche
       "Interpretation",
     )
     seedTsv should include("ShortfallToIncome")
+    seedTsv should include("PEAK_MONTHLY\t13")
     seedTsv should include("2026-04-30 model-start baseline")
     sumTsv.linesIterator.next() shouldBe tsv(
       "RunId",
       "Months",
       "Seeds",
+      "ObservationWindow",
       "Metric",
       "Label",
       "Mean",
@@ -107,6 +115,7 @@ class HouseholdCreditStressCalibrationExportSpec extends AnyFlatSpec with Matche
       "Interpretation",
     )
     sumTsv should include("SOFT_CALIBRATION_WARNING")
+    sumTsv should include("PEAK_ROLLING_3")
     report should include("--seed-start 2")
   }
 

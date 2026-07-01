@@ -159,8 +159,17 @@ normal-path verdict over:
 - positive GDP proxy direction, with terminal decline reported as a warning
 - total credit to GDP blow-up bounds
 - default/NPL ratio bounds
+- peak and rolling household consumer-default stress on the normal baseline
 - bank-capital and flow-of-funds residual guards relative to annualized GDP
 - household negative-deposit diagnostic counts as warnings
+
+The household peak guard is path-aware: it reads all monthly baseline TSV rows
+and fails the normal-path verdict if peak monthly or peak rolling 3-month
+ordinary consumer-loan default rates exceed the documented `0.03`
+consumer-credit stress band. Liquidity-bridge charge-off, bankruptcy-share, and
+active-distress peaks are included in the health-summary observation string for
+attribution, but the existing `normal.bank_failures` hard fail remains the
+bank-failure invariant.
 
 Hard threshold breaches in normal-validation evidence fail the runner after the
 summary files have been written. Exploratory and stress steps remain visible in
