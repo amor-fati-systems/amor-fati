@@ -121,6 +121,7 @@ private[agents] object HouseholdConsumerCredit:
       liquidityShortfall = Household.LiquidityShortfallComponents.Zero,
       liquidityBridgeChargeOff = PLN.Zero,
       defaultAmt = PLN.Zero,
+      insolvencyDefaultAmt = PLN.Zero,
       updatedDebt = updatedDebt,
     )
 

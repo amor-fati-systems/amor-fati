@@ -37,6 +37,8 @@ bank referenced by the household during the household stage of that month.
 Key household-side columns:
 
 - `HhConsumerLoanDefault`: ordinary unsecured consumer-loan default.
+- `HhConsumerInsolvencyDefault`: subset of consumer-loan default produced by
+  personal-insolvency filing/workout.
 - `HhLiquidityBridgeChargeOff`: same-month liquidity bridge/write-off,
   separate from ordinary consumer-loan default.
 - `HhLiquidityShortfallFinancing`: residual monthly liquidity gap closed by the
@@ -48,8 +50,10 @@ Key household-side columns:
 
 Key bank-side columns:
 
-- `BankConsumerNplLoss`: realized ordinary consumer-loan capital loss net of
-  recovery, aligned with #582 semantics.
+- `BankConsumerNplLoss`: aggregate realized household-credit capital loss net of
+  recovery and any product allowance draw. The timeseries `BankCreditLoss_*`
+  product columns split this into ordinary consumer-loan, personal-insolvency,
+  and liquidity-bridge channels.
 - `BankConsumerNplStock`: closing consumer NPL stock.
 - `BankCapital`, `BankCapitalDelta`, `BankCar`, `BankLcr`: closing bank stress
   state.

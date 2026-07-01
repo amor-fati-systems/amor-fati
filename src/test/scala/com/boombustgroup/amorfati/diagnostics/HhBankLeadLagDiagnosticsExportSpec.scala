@@ -83,6 +83,7 @@ class HhBankLeadLagDiagnosticsExportSpec extends AnyFlatSpec with Matchers with 
       householdCount = 1,
       hhMonthlyIncome = BigDecimal(100),
       hhConsumerLoanDefault = hhConsumerLoanDefault,
+      hhConsumerInsolvencyDefault = BigDecimal(0),
       hhLiquidityBridgeChargeOff = BigDecimal(0),
       hhLiquidityShortfallFinancing = BigDecimal(0),
       hhConsumerDefault = hhConsumerLoanDefault,

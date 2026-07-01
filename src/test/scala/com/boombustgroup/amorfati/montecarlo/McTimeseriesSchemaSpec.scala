@@ -305,6 +305,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     "ConsumerPrincipal",
     "ConsumerDefault",
     "ConsumerLoanDefault",
+    "ConsumerInsolvencyDefault",
     "LiquidityBridgeChargeOff",
     "ConsumerCredit_NetStockFlow",
     "ConsumerCredit_UnderwrittenNetFlow",
@@ -430,6 +431,21 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     "BankCreditLoss_ConsumerLoanDefaultRate",
     "BankCreditLoss_LiquidityBridgeChargeOffRate",
     "BankCreditLoss_ConsumerLossRate",
+    "BankCreditLoss_ConsumerLoanGrossDefault",
+    "BankCreditLoss_ConsumerLoanRecovery",
+    "BankCreditLoss_ConsumerLoanExpectedLoss",
+    "BankCreditLoss_ConsumerLoanAllowanceDraw",
+    "BankCreditLoss_ConsumerLoanNetCapitalLoss",
+    "BankCreditLoss_ConsumerInsolvencyGrossDefault",
+    "BankCreditLoss_ConsumerInsolvencyRecovery",
+    "BankCreditLoss_ConsumerInsolvencyExpectedLoss",
+    "BankCreditLoss_ConsumerInsolvencyAllowanceDraw",
+    "BankCreditLoss_ConsumerInsolvencyNetCapitalLoss",
+    "BankCreditLoss_LiquidityBridgeGrossDefault",
+    "BankCreditLoss_LiquidityBridgeRecovery",
+    "BankCreditLoss_LiquidityBridgeExpectedLoss",
+    "BankCreditLoss_LiquidityBridgeAllowanceDraw",
+    "BankCreditLoss_LiquidityBridgeNetCapitalLoss",
     "BankCreditLoss_CorpBondDefaultRate",
     "BankCreditLoss_CorpBondLossRate",
     "HousingPriceIndex",
@@ -603,7 +619,7 @@ class McTimeseriesSchemaSpec extends AnyFlatSpec with Matchers:
     MetricValue.fromRaw(numerator.ratioTo(denominator).toLong)
 
   "McTimeseriesSchema" should "expose the stable schema contract" in {
-    McTimeseriesSchema.nCols shouldBe 536
+    McTimeseriesSchema.nCols shouldBe 552
     McTimeseriesSchema.colNames.toVector shouldBe expectedColNames
   }
 

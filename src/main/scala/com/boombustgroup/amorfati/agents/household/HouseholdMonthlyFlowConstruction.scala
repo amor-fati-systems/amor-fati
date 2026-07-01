@@ -155,6 +155,7 @@ private[agents] object HouseholdMonthlyFlowConstruction:
       consumerPrincipal = result.credit.principal,
       closingConsumerLoan = result.financialStocks.consumerLoan,
       consumerLoanDefault = result.credit.consumerLoanDefault,
+      consumerInsolvencyDefault = result.credit.insolvencyDefaultAmt,
       liquidityBridgeChargeOff = result.credit.liquidityBridgeChargeOff,
       unmetBasicConsumption = result.unmetBasicConsumption,
       discretionaryConsumptionCompression = result.discretionaryConsumptionCompression,
@@ -188,7 +189,11 @@ private[agents] object HouseholdMonthlyFlowConstruction:
     val ccDefaultAmt                        =
       HouseholdDistressMachine.boundedConsumerLoanDefault(settledCredit, liquidityShortfall, distressMonths, personalInsolvency = true)
     val creditWithDef                       =
-      settledCredit.copy(defaultAmt = settledCredit.defaultAmt + ccDefaultAmt, updatedDebt = (settledCredit.updatedDebt - ccDefaultAmt).max(PLN.Zero))
+      settledCredit.copy(
+        defaultAmt = settledCredit.defaultAmt + ccDefaultAmt,
+        insolvencyDefaultAmt = settledCredit.insolvencyDefaultAmt + ccDefaultAmt,
+        updatedDebt = (settledCredit.updatedDebt - ccDefaultAmt).max(PLN.Zero),
+      )
     val financial                           = Household.FinancialStocks(
       demandDeposit = finalDemandDeposit,
       mortgageLoan = f.newDebt,

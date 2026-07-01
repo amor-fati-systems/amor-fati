@@ -11,39 +11,41 @@ private[agents] object HouseholdStepAccumulator:
     * aggregate objects.
     */
   private[household] final class StepTotals:
-    private var incomeAcc: PLN               = PLN.Zero
-    private var benefitAcc: PLN              = PLN.Zero
-    private var debtSvcAcc: PLN              = PLN.Zero
-    private var mortgagePrincipalAcc: PLN    = PLN.Zero
-    private var mortgageInterestAcc: PLN     = PLN.Zero
-    private var depIntAcc: PLN               = PLN.Zero
-    private var goodsConsAcc: PLN            = PLN.Zero
-    private var rentAcc: PLN                 = PLN.Zero
-    private var remitAcc: PLN                = PLN.Zero
-    private var pitAcc: PLN                  = PLN.Zero
-    private var socialAcc: PLN               = PLN.Zero
-    private var ccDebtSvcAcc: PLN            = PLN.Zero
-    private var ccOrigAcc: PLN               = PLN.Zero
-    private var ccApprovedOrigAcc: PLN       = PLN.Zero
-    private var ccDemandAcc: PLN             = PLN.Zero
-    private var ccRejectedAcc: PLN           = PLN.Zero
-    private var ccBankRejectedAcc: PLN       = PLN.Zero
-    private var ccPortfolioRejectedAcc: PLN  = PLN.Zero
-    private var liquidityShortfallAcc: PLN   = PLN.Zero
-    private var consumptionShortfallAcc: PLN = PLN.Zero
-    private var rentArrearsAcc: PLN          = PLN.Zero
-    private var mortgageArrearsAcc: PLN      = PLN.Zero
-    private var consumerDebtArrearsAcc: PLN  = PLN.Zero
-    private var temporaryOverdraftAcc: PLN   = PLN.Zero
-    private var ccDefaultAcc: PLN            = PLN.Zero
-    private var ccPrincipalAcc: PLN          = PLN.Zero
-    private var ccLoanDefaultAcc: PLN        = PLN.Zero
-    private var bridgeChargeOffAcc: PLN      = PLN.Zero
-    private var unmetBasicConsAcc: PLN       = PLN.Zero
-    private var discretionaryCutAcc: PLN     = PLN.Zero
-    var retrainingAttempts: Int              = 0
-    var retrainingSuccesses: Int             = 0
-    var voluntaryQuits: Int                  = 0
+    private var incomeAcc: PLN               = PLN.Zero // total household income
+    private var benefitAcc: PLN              = PLN.Zero // unemployment benefits received
+    private var debtSvcAcc: PLN              = PLN.Zero // total debt service paid
+    private var mortgagePrincipalAcc: PLN    = PLN.Zero // mortgage principal repaid
+    private var mortgageInterestAcc: PLN     = PLN.Zero // mortgage interest paid
+    private var depIntAcc: PLN               = PLN.Zero // deposit interest received
+    private var goodsConsAcc: PLN            = PLN.Zero // goods consumption paid
+    private var rentAcc: PLN                 = PLN.Zero // rent paid
+    private var remitAcc: PLN                = PLN.Zero // remittances paid
+    private var pitAcc: PLN                  = PLN.Zero // PIT paid
+    private var socialAcc: PLN               = PLN.Zero // social transfers received
+    private var ccDebtSvcAcc: PLN            = PLN.Zero // consumer-credit debt service paid
+    private var ccOrigAcc: PLN               = PLN.Zero // total consumer-credit origination
+    private var ccApprovedOrigAcc: PLN       = PLN.Zero // underwritten consumer credit originated by DTI rule
+    private var ccDemandAcc: PLN             = PLN.Zero // total consumer-credit demand
+    private var ccRejectedAcc: PLN           = PLN.Zero // total rejected consumer-credit demand
+    private var ccBankRejectedAcc: PLN       = PLN.Zero // bank-side rejected consumer-credit demand
+    private var ccPortfolioRejectedAcc: PLN  = PLN.Zero // bank-side rejection due to portfolio preference
+    private var liquidityShortfallAcc: PLN   = PLN.Zero // same-month bridge/write-off preventing negative deposits
+    private var consumptionShortfallAcc: PLN = PLN.Zero // consumption shortfall component
+    private var rentArrearsAcc: PLN          = PLN.Zero // rent arrears component
+    private var mortgageArrearsAcc: PLN      = PLN.Zero // mortgage arrears component
+    private var consumerDebtArrearsAcc: PLN  = PLN.Zero // consumer-debt arrears component
+    private var temporaryOverdraftAcc: PLN   = PLN.Zero // temporary overdraft component
+    private var ccDefaultAcc: PLN            = PLN.Zero // ordinary consumer-loan principal default
+    private var ccPrincipalAcc: PLN          = PLN.Zero // consumer-loan principal repaid
+    private var ccLoanDefaultAcc: PLN        = PLN.Zero // default of ordinary outstanding consumer-loan principal
+    private var ccInsolvencyDefaultAcc: PLN  = PLN.Zero // subset of consumer-loan default from personal-insolvency filing
+    private var bridgeChargeOffAcc: PLN      = PLN.Zero // same-month bridge charge-off, not ordinary consumer-loan default
+    private var unmetBasicConsAcc: PLN       = PLN.Zero // unmet basic consumption
+    private var discretionaryCutAcc: PLN     = PLN.Zero // discretionary consumption compression
+
+    var retrainingAttempts: Int              = 0        // retraining attempts count
+    var retrainingSuccesses: Int             = 0        // retraining successes count
+    var voluntaryQuits: Int                  = 0        // voluntary quits count
 
     /** Adds one finalized household monthly result to the accumulator. */
     def add(r: HhMonthlyResult): Unit =
@@ -75,6 +77,7 @@ private[agents] object HouseholdStepAccumulator:
       ccDefaultAcc = ccDefaultAcc + r.credit.defaultAmt
       ccPrincipalAcc = ccPrincipalAcc + r.credit.principal
       ccLoanDefaultAcc = ccLoanDefaultAcc + r.credit.consumerLoanDefault
+      ccInsolvencyDefaultAcc = ccInsolvencyDefaultAcc + r.credit.insolvencyDefaultAmt
       bridgeChargeOffAcc = bridgeChargeOffAcc + r.credit.liquidityBridgeChargeOff
       unmetBasicConsAcc = unmetBasicConsAcc + r.unmetBasicConsumption
       discretionaryCutAcc = discretionaryCutAcc + r.discretionaryConsumptionCompression
@@ -109,6 +112,7 @@ private[agents] object HouseholdStepAccumulator:
     def consumerDefault: PLN                      = ccDefaultAcc
     def consumerPrincipal: PLN                    = ccPrincipalAcc
     def consumerLoanDefault: PLN                  = ccLoanDefaultAcc
+    def consumerInsolvencyDefault: PLN            = ccInsolvencyDefaultAcc
     def liquidityBridgeChargeOff: PLN             = bridgeChargeOffAcc
     def unmetBasicConsumption: PLN                = unmetBasicConsAcc
     def discretionaryConsumptionCut: PLN          = discretionaryCutAcc
