@@ -25,6 +25,7 @@ The task writes:
 <out>/<run-id>/hh-bank-lead-lag-bank-months.tsv
 <out>/<run-id>/hh-bank-lead-lag-correlations.tsv
 <out>/<run-id>/hh-bank-lead-lag-counterfactuals.tsv
+<out>/<run-id>/hh-bank-lead-lag-concentration-peaks.tsv
 <out>/<run-id>/hh-bank-lead-lag-report.md
 ```
 
@@ -47,6 +48,10 @@ Key household-side columns:
   `HhConsumerBankRejectedOrigination`: underwritten household consumer-credit
   origination, total rejected demand, and the bank-side rejected subset.
 - `HhConsumerDebtArrears` and `HhMortgageArrears`: shortfall components.
+- `HhConsumerLoanDefaultShare`, `HhConsumerInsolvencyDefaultShare`,
+  `HhLiquidityBridgeChargeOffShare`, and
+  `HhLiquidityShortfallFinancingShare`: product-specific per-bank flow shares
+  within the same scenario/seed/month.
 
 Key bank-side columns:
 
@@ -56,12 +61,40 @@ Key bank-side columns:
   separate HH metric and as `BankCreditLoss_*` product diagnostics, but the
   same-month bridge settlement does not add a capital loss by default.
 - `BankConsumerNplStock`: closing consumer NPL stock.
+- `BankConsumerLoanShare`, `BankMortgageLoanShare`, and `BankDepositShare`:
+  closing per-bank product stock shares.
+- `BankRwa`, `BankRwaShare`, `BankEffectiveMinCar`, `BankCarBuffer`,
+  `BankCapitalBuffer`, and `BankCapitalBufferToRwa`: closing capital/RWA
+  fragility surface for explaining which bank fails first under a given HH
+  stress path.
 - `BankCapital`, `BankCapitalDelta`, `BankCar`, `BankLcr`: closing bank stress
   state.
 - `BankNewFailure`: 1 when the bank moves from not failed to failed in that
   month.
 - `BankFailureReasonCode`: populated for the first new failure event when the
   aggregate failure diagnostic identifies that bank.
+
+`HouseholdCount` and `HouseholdShare` use household-stage routing, matching the
+route used for that month's HH stress flows. `ClosingHouseholdCount` and
+`ClosingHouseholdShare` expose post-banking reassignment/deposit-mobility
+routing separately.
+
+## Concentration Peaks
+
+`hh-bank-lead-lag-concentration-peaks.tsv` condenses the bank-month rows into
+one top-bank row per scenario, seed, and concentration metric. It reports the
+peak month, top bank, top share, amount, denominator, consumer-loan exposure
+share, household routing share, RWA share, CAR, effective minimum CAR, and
+capital buffer to RWA. Months with a zero metric denominator are skipped for
+that metric.
+
+Baseline peak metrics include household-stage routing, closing household
+routing, consumer-loan exposure, mortgage exposure, deposits, ordinary
+consumer-loan default flow, insolvency default flow, liquidity-bridge charge-off
+flow, liquidity shortfall financing flow, bank capital, bank capital buffer,
+and RWA share. These are the product-specific inputs needed by baseline
+concentration guardrails without mixing bridge/write-off channels into ordinary
+consumer-loan default.
 
 ## Correlation Versus Causality
 

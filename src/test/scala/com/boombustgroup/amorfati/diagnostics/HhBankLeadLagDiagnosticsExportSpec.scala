@@ -72,17 +72,193 @@ class HhBankLeadLagDiagnosticsExportSpec extends AnyFlatSpec with Matchers with 
     summary.find(_.scenarioId == "no-consumer-npl-capital-hit").value.failedSeeds shouldBe 0
   }
 
+  "HhBankLeadLagDiagnosticsExport.summarizeConcentrationPeaks" should "locate peak per-bank household default-flow concentration" in {
+    val rows = Vector(
+      row(
+        month = 1,
+        bankId = 0,
+        bankCount = 2,
+        hhConsumerLoanDefault = BigDecimal(10),
+        hhConsumerLoanDefaultShare = BigDecimal("0.25"),
+        bankConsumerNplLoss = BigDecimal(8),
+      ),
+      row(
+        month = 1,
+        bankId = 1,
+        bankCount = 2,
+        hhConsumerLoanDefault = BigDecimal(30),
+        hhConsumerLoanDefaultShare = BigDecimal("0.75"),
+        bankConsumerNplLoss = BigDecimal(24),
+      ),
+      row(
+        month = 2,
+        bankId = 0,
+        bankCount = 2,
+        hhConsumerLoanDefault = BigDecimal(45),
+        hhConsumerLoanDefaultShare = BigDecimal("0.90"),
+        bankConsumerNplLoss = BigDecimal(36),
+      ),
+      row(
+        month = 2,
+        bankId = 1,
+        bankCount = 2,
+        hhConsumerLoanDefault = BigDecimal(5),
+        hhConsumerLoanDefaultShare = BigDecimal("0.10"),
+        bankConsumerNplLoss = BigDecimal(4),
+      ),
+    )
+
+    val peaks = HhBankLeadLagDiagnosticsExport.summarizeConcentrationPeaks(HhBankLeadLagDiagnosticsExport.Config(seeds = 1, months = 2), rows)
+    val peak  = peaks.find(_.metric == "ConsumerLoanDefaultFlowShare").value
+
+    peak.peakMonth shouldBe 2
+    peak.bankId shouldBe 0
+    peak.topShare shouldBe BigDecimal("0.90")
+    peak.amount shouldBe BigDecimal(45)
+    peak.denominator shouldBe BigDecimal(50)
+  }
+
+  it should "skip zero-denominator months and use deterministic concentration tie-breaks" in {
+    val rows = Vector(
+      row(
+        month = 1,
+        bankId = 0,
+        bankCount = 2,
+        hhConsumerLoanDefault = BigDecimal(0),
+        hhConsumerLoanDefaultShare = BigDecimal(1),
+        bankConsumerNplLoss = BigDecimal(0),
+        bankDeposits = BigDecimal(0),
+        bankDepositShare = Some(BigDecimal(0)),
+      ),
+      row(
+        month = 1,
+        bankId = 1,
+        bankCount = 2,
+        hhConsumerLoanDefault = BigDecimal(0),
+        hhConsumerLoanDefaultShare = BigDecimal(1),
+        bankConsumerNplLoss = BigDecimal(0),
+        bankDeposits = BigDecimal(0),
+        bankDepositShare = Some(BigDecimal(0)),
+      ),
+      row(
+        month = 2,
+        bankId = 0,
+        bankCount = 2,
+        hhConsumerLoanDefault = BigDecimal(50),
+        hhConsumerLoanDefaultShare = BigDecimal("0.50"),
+        bankConsumerNplLoss = BigDecimal(40),
+        bankDeposits = BigDecimal(10),
+        bankDepositShare = Some(BigDecimal("0.25")),
+      ),
+      row(
+        month = 2,
+        bankId = 1,
+        bankCount = 2,
+        hhConsumerLoanDefault = BigDecimal(50),
+        hhConsumerLoanDefaultShare = BigDecimal("0.50"),
+        bankConsumerNplLoss = BigDecimal(40),
+        bankDeposits = BigDecimal(30),
+        bankDepositShare = Some(BigDecimal("0.75")),
+      ),
+      row(
+        month = 4,
+        bankId = 0,
+        bankCount = 2,
+        hhConsumerLoanDefault = BigDecimal(75),
+        hhConsumerLoanDefaultShare = BigDecimal("0.50"),
+        bankConsumerNplLoss = BigDecimal(60),
+        bankDeposits = BigDecimal(20),
+        bankDepositShare = Some(BigDecimal("0.50")),
+        bankCapitalBuffer = BigDecimal(30),
+      ),
+      row(
+        month = 4,
+        bankId = 1,
+        bankCount = 2,
+        hhConsumerLoanDefault = BigDecimal(75),
+        hhConsumerLoanDefaultShare = BigDecimal("0.50"),
+        bankConsumerNplLoss = BigDecimal(60),
+        bankDeposits = BigDecimal(20),
+        bankDepositShare = Some(BigDecimal("0.50")),
+        bankCapitalBuffer = BigDecimal(10),
+      ),
+      row(
+        month = 5,
+        bankId = 0,
+        bankCount = 2,
+        hhConsumerLoanDefault = BigDecimal(75),
+        hhConsumerLoanDefaultShare = BigDecimal("0.50"),
+        bankConsumerNplLoss = BigDecimal(60),
+        bankDeposits = BigDecimal(20),
+        bankDepositShare = Some(BigDecimal("0.50")),
+        bankCapitalBuffer = BigDecimal(20),
+      ),
+      row(
+        month = 5,
+        bankId = 1,
+        bankCount = 2,
+        hhConsumerLoanDefault = BigDecimal(75),
+        hhConsumerLoanDefaultShare = BigDecimal("0.50"),
+        bankConsumerNplLoss = BigDecimal(60),
+        bankDeposits = BigDecimal(20),
+        bankDepositShare = Some(BigDecimal("0.50")),
+        bankCapitalBuffer = BigDecimal(20),
+      ),
+    )
+
+    val peaks       = HhBankLeadLagDiagnosticsExport.summarizeConcentrationPeaks(HhBankLeadLagDiagnosticsExport.Config(seeds = 1, months = 5), rows)
+    val defaultPeak = peaks.find(_.metric == "ConsumerLoanDefaultFlowShare").value
+
+    defaultPeak.peakMonth shouldBe 4
+    defaultPeak.bankId shouldBe 0
+    defaultPeak.topShare shouldBe BigDecimal("0.50")
+    defaultPeak.amount shouldBe BigDecimal(75)
+    defaultPeak.denominator shouldBe BigDecimal(150)
+
+    val depositPeak = peaks.find(_.metric == "DepositShare").value
+    depositPeak.peakMonth shouldBe 2
+    depositPeak.bankId shouldBe 1
+    depositPeak.topShare shouldBe BigDecimal("0.75")
+    depositPeak.amount shouldBe BigDecimal(30)
+    depositPeak.denominator shouldBe BigDecimal(40)
+
+    val bufferPeak = peaks.find(_.metric == "CapitalBufferShare").value
+    bufferPeak.peakMonth shouldBe 4
+    bufferPeak.bankId shouldBe 0
+    bufferPeak.topShare shouldBe BigDecimal("0.75")
+    bufferPeak.amount shouldBe BigDecimal(30)
+    bufferPeak.denominator shouldBe BigDecimal(40)
+  }
+
   private def row(
       scenarioId: String = "baseline",
       scenarioLabel: String = "Baseline",
       seed: Long = 1L,
       month: Int,
       bankId: Int = 0,
+      bankCount: Int = 1,
       hhConsumerLoanDefault: BigDecimal,
+      hhConsumerLoanDefaultShare: BigDecimal = BigDecimal(1),
       bankConsumerNplLoss: BigDecimal,
       bankNewFailure: Int = 0,
       bankFailed: Int = 0,
+      householdCount: Int = 1,
+      closingHouseholdCount: Int = 1,
+      householdShare: Option[BigDecimal] = None,
+      closingHouseholdShare: Option[BigDecimal] = None,
+      bankConsumerLoanStock: BigDecimal = BigDecimal(1000),
+      bankConsumerLoanShare: Option[BigDecimal] = None,
+      bankDeposits: BigDecimal = BigDecimal(1000),
+      bankDepositShare: Option[BigDecimal] = None,
+      bankRwa: BigDecimal = BigDecimal(1000),
+      bankRwaShare: Option[BigDecimal] = None,
+      bankCapital: BigDecimal = BigDecimal(100),
+      bankCapitalShare: Option[BigDecimal] = None,
+      bankCapitalBuffer: BigDecimal = BigDecimal(20),
   ): HhBankLeadLagDiagnosticsExport.BankMonthRow =
+    require(bankCount > 0, "bankCount must be positive")
+    val equalBankShare     = BigDecimal(1) / BigDecimal(bankCount)
+    val capitalBufferToRwa = if bankRwa > BigDecimal(0) then bankCapitalBuffer / bankRwa else BigDecimal(0)
     HhBankLeadLagDiagnosticsExport.BankMonthRow(
       runId = "test",
       scenarioId = scenarioId,
@@ -91,7 +267,10 @@ class HhBankLeadLagDiagnosticsExportSpec extends AnyFlatSpec with Matchers with 
       month = month,
       bankId = bankId,
       bankName = s"Bank-$bankId",
-      householdCount = 1,
+      householdCount = householdCount,
+      householdShare = householdShare.getOrElse(equalBankShare),
+      closingHouseholdCount = closingHouseholdCount,
+      closingHouseholdShare = closingHouseholdShare.getOrElse(equalBankShare),
       hhMonthlyIncome = BigDecimal(100),
       hhConsumerLoanDefault = hhConsumerLoanDefault,
       hhConsumerInsolvencyDefault = BigDecimal(0),
@@ -104,12 +283,28 @@ class HhBankLeadLagDiagnosticsExportSpec extends AnyFlatSpec with Matchers with 
       hhConsumerBankRejectedOrigination = BigDecimal(0),
       hhConsumerDebtArrears = BigDecimal(0),
       hhMortgageArrears = BigDecimal(0),
-      bankConsumerLoanStock = BigDecimal(1000),
+      hhConsumerLoanDefaultShare = hhConsumerLoanDefaultShare,
+      hhConsumerInsolvencyDefaultShare = BigDecimal(0),
+      hhLiquidityBridgeChargeOffShare = BigDecimal(0),
+      hhLiquidityShortfallFinancingShare = BigDecimal(0),
+      bankConsumerLoanStock = bankConsumerLoanStock,
+      bankConsumerLoanShare = bankConsumerLoanShare.getOrElse(equalBankShare),
+      bankMortgageLoanStock = BigDecimal(0),
+      bankMortgageLoanShare = BigDecimal(0),
+      bankDeposits = bankDeposits,
+      bankDepositShare = bankDepositShare.getOrElse(equalBankShare),
       bankConsumerNplStock = BigDecimal(0),
       bankConsumerNplLoss = bankConsumerNplLoss,
-      bankCapital = BigDecimal(100),
+      bankRwa = bankRwa,
+      bankRwaShare = bankRwaShare.getOrElse(equalBankShare),
+      bankCapital = bankCapital,
+      bankCapitalShare = bankCapitalShare.getOrElse(equalBankShare),
       bankCapitalDelta = -bankConsumerNplLoss,
+      bankEffectiveMinCar = BigDecimal("0.08"),
       bankCar = BigDecimal("0.1"),
+      bankCarBuffer = BigDecimal("0.02"),
+      bankCapitalBuffer = bankCapitalBuffer,
+      bankCapitalBufferToRwa = capitalBufferToRwa,
       bankLcr = BigDecimal("1.0"),
       bankFailed = bankFailed,
       bankNewFailure = bankNewFailure,

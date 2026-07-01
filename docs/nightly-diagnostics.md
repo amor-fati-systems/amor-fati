@@ -309,7 +309,8 @@ Recommended steps:
 - robustness report: `--scenario-set core`, 2 seeds, 24 months
 - bank balance-sheet benchmark: 10 seeds
 - household credit-stress calibration: 5 seeds, 60 months
-- HH-bank lead-lag diagnostics: 5 seeds, 60 months, lag max 6
+- HH-bank lead-lag diagnostics: 5 seeds, 60 months, lag max 6, including
+  per-bank household-credit concentration peaks
 - loan-origination quality diagnostics: 2 seeds, 60 months, outcome window 12
 
 Comparison mode:
