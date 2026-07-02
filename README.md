@@ -20,7 +20,7 @@
 
 | Exact SFC identities | Verified ledger | Empirical validation |
 | --- | --- | --- |
-| [![15 exact SFC identities](https://img.shields.io/badge/exact_SFC_identities-15-orange.svg)](docs/sfc-matrix-evidence.md) | [![Verified ledger with Stainless and Z3](https://img.shields.io/badge/verified_ledger-Stainless_%2B_Z3-4B32C3.svg)](modules/ledger/docs/verification.md) | [![Empirical validation snapshot](https://img.shields.io/badge/empirical_validation-snapshot-0A7EA4.svg)](docs/empirical-validation-report.md) |
+| [![15 exact SFC identities](https://img.shields.io/badge/exact_SFC_identities-15-orange.svg)](docs/sfc-matrix-evidence.md) | [![Verified ledger with Stainless and Z3](https://img.shields.io/badge/verified_ledger-Stainless_%2B_Z3-4B32C3.svg)](https://github.com/boombustgroup/amor-fati-ledger/blob/main/docs/verification.md) | [![Empirical validation snapshot](https://img.shields.io/badge/empirical_validation-snapshot-0A7EA4.svg)](docs/empirical-validation-report.md) |
 
 ### Operational Diagnostics
 
