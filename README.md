@@ -14,7 +14,7 @@
 
 | CI | Coverage | Generated outputs |
 | --- | --- | --- |
-| [![CI](https://github.com/boombustgroup/amor-fati/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/boombustgroup/amor-fati/actions/workflows/ci.yml) | [![Coverage](https://codecov.io/gh/boombustgroup/amor-fati/graph/badge.svg)](https://codecov.io/gh/boombustgroup/amor-fati) | [![Generated outputs guarded](https://img.shields.io/badge/generated_outputs-guarded-2ea44f.svg)](scripts/check-generated-outputs.sh) |
+| [![CI](https://github.com/boombustgroup/amor-fati/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/boombustgroup/amor-fati/actions/workflows/ci.yml) | [![Coverage](https://codecov.io/gh/boombustgroup/amor-fati/graph/badge.svg)](https://codecov.io/gh/boombustgroup/amor-fati) | [![Generated outputs guarded](https://img.shields.io/badge/generated_outputs-guarded-2ea44f.svg)](https://github.com/boombustgroup/amor-fati/actions/workflows/ci.yml) |
 
 ### Research and Accounting Contract
 
