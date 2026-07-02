@@ -313,7 +313,7 @@ jobs:
           PY
 
       - name: Download performance baseline artifact
-        if: ${{ always() && inputs.profile != 'extended' }}
+        if: ${{ always() }}
         id: performance_baseline
         shell: bash
         env:
@@ -350,7 +350,6 @@ jobs:
           CURRENT_MANIFEST: ${{ steps.meta.outputs.run_root }}/run-manifest.json
           BASELINE_MANIFEST: ${{ steps.performance_baseline.outputs.manifest }}
           BASELINE_ARTIFACT: ${{ steps.performance_baseline.outputs.artifact_name }}
-          SKIP_REASON: "${{ inputs.profile == 'extended' && 'extended profile remains report-only for performance budgets until #718 resolves all-failed bank stress semantics.' || '' }}"
         run: |
           set -euo pipefail
 
@@ -367,10 +366,6 @@ jobs:
           if [[ -n "${BASELINE_MANIFEST:-}" ]]; then
             args+=(--baseline "${BASELINE_MANIFEST}")
           fi
-          if [[ -n "${SKIP_REASON:-}" ]]; then
-            args+=(--skip-reason "${SKIP_REASON}")
-          fi
-
           python3 scripts/performance-regression-report.py "${args[@]}"
           {
             echo

@@ -62,13 +62,12 @@ not to encode a claim that the engine is too slow.
 
 ## Profile Eligibility
 
-`smoke` and `nightly` are eligible for soft budget reports because they are the
-most comparable normal-validation profiles.
+`smoke`, `nightly`, and `extended` are eligible for soft budget reports. Each
+profile compares only against the newest successful same-profile artifact, so
+extended runs do not use smoke or nightly artifacts as baselines.
 
-`extended` remains report-only for performance budgets until the all-failed
-bank stress semantics in #718 are resolved. The extended profile currently
-includes stress paths that can terminate before later steps run, which makes
-step-to-step performance comparisons misleading.
+The extended profile remains observability-only: warnings make long-path runtime
+or allocation drift visible, but they do not fail the workflow.
 
 ## Branch Validation
 
