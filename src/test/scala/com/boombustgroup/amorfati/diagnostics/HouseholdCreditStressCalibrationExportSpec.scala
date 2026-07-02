@@ -60,6 +60,31 @@ class HouseholdCreditStressCalibrationExportSpec extends AnyFlatSpec with Matche
     evaluate(ObservedValue.Finite(BigDecimal("1.20")), exploratory) shouldBe Status.Warn
   }
 
+  it should "stream seed metric windows without retaining monthly states" in {
+    val target       = Targets.find(_.id == "DebtArrearsToShortfall").get
+    val observations = Vector(
+      MetricObservation(1, ObservedValue.Finite(BigDecimal("1.0"))),
+      MetricObservation(2, ObservedValue.Finite(BigDecimal("3.0"))),
+      MetricObservation(3, ObservedValue.Finite(BigDecimal("5.0"))),
+      MetricObservation(4, ObservedValue.Finite(BigDecimal("4.0"))),
+    )
+
+    val accumulator = observations.foldLeft(MetricAccumulator.Empty): (acc, observation) =>
+      acc.observe(observation, windowSize = 3)
+    val rows        = accumulator.toSeedMetrics(Config(runId = "stress-spec", months = 4), 7L, target, 3).toOption.get
+
+    val terminal = rows.find(_.observationWindow == ObservationWindow.Terminal).get
+    val peak     = rows.find(_.observationWindow == ObservationWindow.PeakMonthly).get
+    val rolling  = rows.find(_.observationWindow == ObservationWindow.PeakRolling3).get
+
+    terminal.observationMonth shouldBe 4
+    terminal.value.finite shouldBe Some(BigDecimal("4.0"))
+    peak.observationMonth shouldBe 3
+    peak.value.finite shouldBe Some(BigDecimal("5.0"))
+    rolling.observationMonth shouldBe 4
+    rolling.value.finite shouldBe Some(BigDecimal("4.0"))
+  }
+
   it should "render seed and summary TSV artifacts with calibration metadata" in {
     val target  = Targets.find(_.id == "ShortfallToIncome").get
     val rows    = Vector(

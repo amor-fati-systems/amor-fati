@@ -109,7 +109,46 @@ object HouseholdCreditStressCalibrationExport:
       ratioRaw(BigDecimal(numerator.toLong), denominatorRaw)
 
   private final case class MetricDef(target: TargetBand, compute: SeedContext => ObservedValue)
-  private final case class MetricObservation(month: Int, value: ObservedValue)
+  private[diagnostics] final case class MetricObservation(month: Int, value: ObservedValue)
+  private[diagnostics] final case class MetricAccumulator(
+      terminal: Option[MetricObservation],
+      peakMonthly: Option[MetricObservation],
+      rollingWindow: Vector[MetricObservation],
+      peakRolling: Option[MetricObservation],
+      observationCount: Int,
+  ):
+    def observe(observation: MetricObservation, windowSize: Int): MetricAccumulator =
+      val nextWindow           = (rollingWindow :+ observation).takeRight(windowSize)
+      val nextObservationCount = observationCount + 1
+      val rollingCandidate     =
+        Option.when(nextObservationCount >= windowSize):
+          MetricObservation(nextWindow.last.month, rollingValue(nextWindow.map(_.value)))
+      MetricAccumulator(
+        terminal = Some(observation),
+        peakMonthly = Some(bestObservation(peakMonthly, observation)),
+        rollingWindow = nextWindow,
+        peakRolling = rollingCandidate.fold(peakRolling)(candidate => Some(bestObservation(peakRolling, candidate))),
+        observationCount = nextObservationCount,
+      )
+
+    def toSeedMetrics(config: Config, seed: Long, target: TargetBand, windowSize: Int): Either[String, Vector[SeedMetric]] =
+      terminal match
+        case None       => Left(s"metric ${target.id} has no observations")
+        case Some(last) =>
+          val rolling =
+            if observationCount >= windowSize then peakRolling.getOrElse(last)
+            else MetricObservation(last.month, rollingValue(rollingWindow.map(_.value)))
+          Right(
+            Vector(
+              seedMetric(config, seed, target, ObservationWindow.Terminal, last),
+              seedMetric(config, seed, target, ObservationWindow.PeakMonthly, peakMonthly.getOrElse(last)),
+              seedMetric(config, seed, target, ObservationWindow.PeakRolling3, rolling),
+            ),
+          )
+
+  private[diagnostics] object MetricAccumulator:
+    val Empty: MetricAccumulator =
+      MetricAccumulator(None, None, Vector.empty, None, 0)
 
   private val RequiredMetricIds: Set[String] = Set(
     "ConsumerLoansToGdp",
@@ -533,24 +572,26 @@ object HouseholdCreditStressCalibrationExport:
           case GuardrailClass.ExploratoryDiagnostic  => Status.Warn
 
   private def computeSeedMetricsZIO(config: Config, seed: Long, months: ZStream[Any, String, McSeedMonth]): ZIO[Any, String, Vector[SeedMetric]] =
-    months.runCollect.flatMap: collected =>
-      val monthly = collected.toVector
-      if monthly.nonEmpty then ZIO.succeed(computeSeedMetrics(config, seed, monthly))
-      else ZIO.fail("household credit-stress run produced no monthly rows")
-
-  private def computeSeedMetrics(config: Config, seed: Long, months: Vector[McSeedMonth]): Vector[SeedMetric] =
-    Metrics.flatMap: metric =>
-      val observations = months.map: month =>
+    val windowSize = 3
+    months
+      .runFold(Vector.fill(Metrics.length)(MetricAccumulator.Empty)): (accumulators, month) =>
         val context = SeedContext(month)
-        MetricObservation(context.monthNumber, metric.compute(context))
-      val terminal     = observations.last
-      val peakMonthly  = peakObservation(observations)
-      val peakRolling3 = peakRollingObservation(observations, windowSize = 3)
-      Vector(
-        seedMetric(config, seed, metric.target, ObservationWindow.Terminal, terminal),
-        seedMetric(config, seed, metric.target, ObservationWindow.PeakMonthly, peakMonthly),
-        seedMetric(config, seed, metric.target, ObservationWindow.PeakRolling3, peakRolling3),
-      )
+        accumulators
+          .zip(Metrics)
+          .map: (accumulator, metric) =>
+            accumulator.observe(MetricObservation(context.monthNumber, metric.compute(context)), windowSize)
+      .flatMap: accumulators =>
+        ZIO.fromEither(computeSeedMetrics(config, seed, accumulators, windowSize))
+
+  private def computeSeedMetrics(config: Config, seed: Long, accumulators: Vector[MetricAccumulator], windowSize: Int): Either[String, Vector[SeedMetric]] =
+    accumulators
+      .zip(Metrics)
+      .foldLeft[Either[String, Vector[SeedMetric]]](Right(Vector.empty)): (acc, item) =>
+        val (accumulator, metric) = item
+        for
+          rows       <- acc
+          metricRows <- accumulator.toSeedMetrics(config, seed, metric.target, windowSize)
+        yield rows ++ metricRows
 
   private def seedMetric(
       config: Config,
@@ -775,16 +816,14 @@ object HouseholdCreditStressCalibrationExport:
     val target = Targets.find(_.id == id).getOrElse(throw new IllegalArgumentException(s"Missing target band: $id"))
     MetricDef(target, compute)
 
-  private def peakObservation(observations: Vector[MetricObservation]): MetricObservation =
-    observations.maxBy(observation => (valueRank(observation.value), -observation.month))
+  private def bestObservation(current: Option[MetricObservation], candidate: MetricObservation): MetricObservation =
+    current match
+      case Some(existing) if summon[Ordering[(Int, BigDecimal, Int)]].gteq(observationKey(existing), observationKey(candidate)) => existing
+      case _                                                                                                                    => candidate
 
-  private def peakRollingObservation(observations: Vector[MetricObservation], windowSize: Int): MetricObservation =
-    val windows =
-      if observations.length >= windowSize then observations.sliding(windowSize).toVector
-      else Vector(observations)
-    windows
-      .map(window => MetricObservation(window.last.month, rollingValue(window.map(_.value))))
-      .maxBy(observation => (valueRank(observation.value), -observation.month))
+  private def observationKey(observation: MetricObservation): (Int, BigDecimal, Int) =
+    val (rank, value) = valueRank(observation.value)
+    (rank, value, -observation.month)
 
   private def rollingValue(values: Vector[ObservedValue]): ObservedValue =
     if values.exists(_ == ObservedValue.PositiveInfinity) then ObservedValue.PositiveInfinity
