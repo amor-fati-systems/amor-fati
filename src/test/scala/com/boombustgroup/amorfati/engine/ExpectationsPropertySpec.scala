@@ -24,6 +24,11 @@ class ExpectationsPropertySpec extends AnyFlatSpec with Matchers with ScalaCheck
   private def step(prev: Expectations.State, infl: Rate, rate: Rate, unemp: Share): Expectations.State =
     Expectations.step(prev, infl, rate, unemp)
 
+  private def adaptiveInflation(prev: Expectations.State, realizedInflation: Rate): Rate =
+    val error          = realizedInflation - prev.expectedInflation
+    val learningWeight = if realizedInflation < p.monetary.targetInfl then Coefficient.decimal(35, 2) else Coefficient.One
+    prev.expectedInflation + error * p.labor.expLambda * learningWeight
+
   "Expectations.step" should "always bound credibility in [0.01, 1.0]" in
     forAll(inflationGen, rateGen, credGen, unempGen) { (infl: BigDecimal, rate: BigDecimal, cred: BigDecimal, unemp: BigDecimal) =>
       val prev = Expectations.initial.copy(credibility = shareBD(cred))
@@ -65,11 +70,11 @@ class ExpectationsPropertySpec extends AnyFlatSpec with Matchers with ScalaCheck
 
   it should "keep expected inflation between target and adaptive" in
     forAll(inflationGen, credGen) { (infl: BigDecimal, cred: BigDecimal) =>
+      val realized = rateBD(infl)
       val prev     = Expectations.initial.copy(credibility = shareBD(cred))
-      val r        = step(prev, infl, decimal(p.monetary.initialRate), BigDecimal("0.05"))
+      val r        = step(prev, realized, p.monetary.initialRate, Share.decimal(5, 2))
       val target   = decimal(p.monetary.targetInfl)
-      val adaptive =
-        decimal(prev.expectedInflation) + decimal(p.labor.expLambda) * (infl - decimal(prev.expectedInflation))
+      val adaptive = decimal(adaptiveInflation(prev, realized))
       val lo       = DecimalMath.min(target, adaptive)
       val hi       = DecimalMath.max(target, adaptive)
       decimal(r.expectedInflation).should(be >= lo - BigDecimal("1e-10"))
