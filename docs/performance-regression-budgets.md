@@ -24,10 +24,12 @@ The comparison scripts run inside:
 .github/workflows/hot-path-profiling-reusable.yml
 ```
 
-Each workflow downloads the newest non-expired artifact for the same profile on
-`main`, extracts the baseline `run-manifest.json`, and compares it to the
-current manifest. Missing permissions, missing artifacts, expired artifacts, or
-missing manifests produce a `NO_BASELINE` report rather than a failed job.
+Each workflow downloads the newest non-expired artifact produced by a successful
+workflow run for the same profile on `main`, extracts the baseline
+`run-manifest.json`, and compares it to the current manifest. Failed workflow
+runs are ignored even if they uploaded artifacts. Missing permissions, missing
+successful artifacts, expired artifacts, or missing manifests produce a
+`NO_BASELINE` report rather than a failed job.
 
 No noisy baseline files are committed to the repository.
 

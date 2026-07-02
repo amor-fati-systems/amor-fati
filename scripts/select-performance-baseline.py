@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Select the newest matching GitHub Actions artifact for performance baselines.
+"""Select the newest successful GitHub Actions artifact for performance baselines.
 
 The selector is intentionally best-effort. Missing permissions or absent
 artifacts are represented as empty outputs so workflow callers can produce a
@@ -45,16 +45,42 @@ def write_selection(path: Path | None, outputs: dict[str, str]) -> None:
     path.write_text(json.dumps(outputs, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
-def select_artifact(artifacts: list[dict], prefix: str, branch: str) -> dict | None:
+def run_id_for_artifact(artifact: dict) -> str:
+    workflow_run = artifact.get("workflow_run") or {}
+    value = workflow_run.get("id")
+    return "" if value is None else str(value)
+
+
+def artifact_matches(artifact: dict, prefix: str, branch: str) -> bool:
+    workflow_run = artifact.get("workflow_run") or {}
+    if artifact.get("expired") is True:
+        return False
+    if not str(artifact.get("name", "")).startswith(prefix):
+        return False
+    if workflow_run.get("head_branch") != branch:
+        return False
+    return bool(run_id_for_artifact(artifact))
+
+
+def successful_workflow_run(repo: str, run_id: str, token: str, run_cache: dict[str, dict]) -> dict | None:
+    if run_id not in run_cache:
+        run_cache[run_id] = request_json(
+            f"https://api.github.com/repos/{repo}/actions/runs/{run_id}",
+            token,
+        )
+    run = run_cache[run_id]
+    if run.get("status") == "completed" and run.get("conclusion") == "success":
+        return run
+    return None
+
+
+def select_artifact(artifacts: list[dict], prefix: str, branch: str, repo: str, token: str, run_cache: dict[str, dict]) -> tuple[dict, dict] | None:
     for artifact in artifacts:
-        workflow_run = artifact.get("workflow_run") or {}
-        if artifact.get("expired") is True:
+        if not artifact_matches(artifact, prefix, branch):
             continue
-        if not str(artifact.get("name", "")).startswith(prefix):
-            continue
-        if workflow_run.get("head_branch") != branch:
-            continue
-        return artifact
+        run = successful_workflow_run(repo, run_id_for_artifact(artifact), token, run_cache)
+        if run is not None:
+            return artifact, run
     return None
 
 
@@ -73,6 +99,8 @@ def main(argv: list[str]) -> int:
         "artifact_name": "",
         "run_id": "",
         "head_sha": "",
+        "run_status": "",
+        "run_conclusion": "",
         "status": "missing",
     }
     token = os.environ.get(args.token_env, "")
@@ -84,31 +112,35 @@ def main(argv: list[str]) -> int:
         return 0
 
     try:
-        artifact = None
+        selection = None
+        run_cache: dict[str, dict] = {}
         page = 1
-        while artifact is None:
+        while selection is None:
             payload = request_json(
                 f"https://api.github.com/repos/{args.repo}/actions/artifacts?per_page=100&page={page}",
                 token,
             )
             artifacts = payload.get("artifacts", [])
-            artifact = select_artifact(artifacts, args.artifact_prefix, args.branch)
-            if artifact is not None or len(artifacts) < 100:
+            selection = select_artifact(artifacts, args.artifact_prefix, args.branch, args.repo, token, run_cache)
+            if selection is not None or len(artifacts) < 100:
                 break
             page += 1
-        if artifact is None:
-            print(f"No baseline artifact found for prefix {args.artifact_prefix!r} on branch {args.branch!r}.")
+        if selection is None:
+            print(f"No successful baseline artifact found for prefix {args.artifact_prefix!r} on branch {args.branch!r}.")
             outputs = empty_outputs | {"status": "not-found"}
             write_selection(args.out_json, outputs)
             write_outputs(args.github_output, outputs)
             return 0
 
+        artifact, run = selection
         workflow_run = artifact.get("workflow_run") or {}
         outputs = {
             "artifact_id": str(artifact.get("id", "")),
             "artifact_name": str(artifact.get("name", "")),
-            "run_id": str(workflow_run.get("id", "")),
-            "head_sha": str(workflow_run.get("head_sha", "")),
+            "run_id": str(run.get("id", workflow_run.get("id", ""))),
+            "head_sha": str(run.get("head_sha", workflow_run.get("head_sha", ""))),
+            "run_status": str(run.get("status", "")),
+            "run_conclusion": str(run.get("conclusion", "")),
             "status": "ok",
         }
         print(json.dumps(outputs, sort_keys=True))
