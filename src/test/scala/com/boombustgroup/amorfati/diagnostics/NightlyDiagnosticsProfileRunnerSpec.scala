@@ -1,5 +1,6 @@
 package com.boombustgroup.amorfati.diagnostics
 
+import com.boombustgroup.amorfati.config.ScenarioRegistry
 import org.scalatest.EitherValues.*
 import org.scalatest.OptionValues.*
 import org.scalatest.flatspec.AnyFlatSpec
@@ -79,11 +80,14 @@ class NightlyDiagnosticsProfileRunnerSpec extends AnyFlatSpec with Matchers:
     steps.map(_.classification) should not contain NightlyDiagnosticsProfileRunner.DiagnosticClass.StressValidation
   }
 
-  it should "encode the extended profile lag window and all-scenario selector" in {
+  it should "encode the extended profile lag window and extended scenario selector" in {
     val ctx   = context("extended")
     val steps = ctx.profile.steps(ctx)
 
-    steps.find(_.id == "scenario-run").value.details should contain("scenario_selection" -> "all")
+    val scenarioSelection = steps.find(_.id == "scenario-run").value.details.toMap.apply("scenario_selection")
+
+    scenarioSelection shouldBe "extended"
+    ScenarioRegistry.select(scenarioSelection).value.map(_.id) should not contain "bank-failure"
     steps.find(_.id == "scenario-run").value.classification shouldBe NightlyDiagnosticsProfileRunner.DiagnosticClass.StressValidation
     steps.find(_.id == "bank-failure-ablations").value.classification shouldBe NightlyDiagnosticsProfileRunner.DiagnosticClass.StressValidation
     steps.find(_.id == "bank-failure-ablations").value.details should contain("parallelism" -> "2")

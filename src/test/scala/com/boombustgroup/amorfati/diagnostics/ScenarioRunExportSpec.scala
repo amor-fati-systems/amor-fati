@@ -15,6 +15,8 @@ class ScenarioRunExportSpec extends AnyFlatSpec with Matchers:
   "ScenarioRunExport" should "preserve default scenarios and all-scenario CLI selection" in {
     ScenarioRunExport.Config().scenarios.map(_.id) shouldBe ScenarioRegistry.defaultScenarioIds
     ScenarioRunExport.parseArgs(Vector("--scenarios", "all")).map(_.scenarios.map(_.id)) shouldBe Right(ScenarioRegistry.all.map(_.id))
+    ScenarioRunExport.parseArgs(Vector("--scenarios", "extended")).map(_.scenarios.map(_.id)) shouldBe Right(ScenarioRegistry.extendedScenarioIds)
+    ScenarioRegistry.extendedScenarioIds should not contain "bank-failure"
   }
 
   "ScenarioRunExport" should "export scenario provenance in registry and delta artifacts" in {

@@ -641,7 +641,7 @@ object NightlyDiagnosticsProfileRunner:
         steps = _ =>
           Vector(
             baselineMonteCarlo(seeds = 10, months = 60),
-            scenarioRun(selection = "all", seeds = 5, months = 60),
+            scenarioRun(selection = "extended", seeds = 5, months = 60),
             robustnessReport(scenarioSet = ScenarioSet.Core, seeds = 5, months = 60),
             bankBalanceSheetBenchmark(seeds = 10),
             householdCreditStress(seeds = 10, months = 60),

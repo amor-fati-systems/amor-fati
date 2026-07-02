@@ -368,6 +368,9 @@ object ScenarioRegistry:
       ),
     )
 
+  val extendedScenarioIds: Vector[String] =
+    all.map(_.id).filterNot(_ == "bank-failure")
+
   private val byId: Map[String, ScenarioSpec] = all.map(scenario => scenario.id -> scenario).toMap
 
   all
@@ -384,6 +387,7 @@ object ScenarioRegistry:
   def select(value: String): Either[String, Vector[ScenarioSpec]] =
     val normalized = value.trim
     if normalized == "all" then Right(all)
+    else if normalized == "extended" then Right(extendedScenarioIds.flatMap(id => byId.get(id)))
     else
       val ids = normalized.split(",").iterator.map(_.trim).filter(_.nonEmpty).toVector
       if ids.isEmpty then Left("--scenarios must contain at least one scenario id")
