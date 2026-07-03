@@ -4,6 +4,17 @@ Status: Accepted
 
 Date: 2026-07-03
 
+## Historical Provenance
+
+This retroactive ADR records a contract that entered `main` in stages:
+
+| Anchor | Main commit |
+| --- | --- |
+| Engine-side asset ownership contract | `15f6b5bc` Add engine-side asset ownership contract (#370), 2026-04-14 |
+| Primary ledger-state ownership move | `a4c31c32` Milestone 18: move financial ownership to ledger state (#391), 2026-04-19 |
+| Runtime mechanism survivability classification | `cdf2b2cf` Add runtime mechanism survivability contract (#394), 2026-04-20 |
+| Supported runtime-delta materialization | `c89019f0` Materialize runtime-supported ledger state (#401), 2026-04-21 |
+
 ## Context
 
 Agent-based models naturally accumulate state on agents: household deposits,

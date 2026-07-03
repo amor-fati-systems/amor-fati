@@ -4,6 +4,19 @@ Status: Accepted
 
 Date: 2026-07-03
 
+## Historical Provenance
+
+This retroactive ADR records a boundary that entered `main` across several
+closely related commits:
+
+| Anchor | Main commit |
+| --- | --- |
+| Typed `MonthOutcome` inside `FlowSimulation` | `7da02898` Extract typed MonthOutcome boundary inside FlowSimulation (#324), 2026-04-10 |
+| Explicit month randomness contract | `4336acd0` Unify randomness contracts across init and month step (#325), 2026-04-11 |
+| Shared unfold driver | `3e1f5afc` Expose a first-class unfold driver over the monthly step (#326), 2026-04-11 |
+| Typed simulation month boundaries | `918c362d` Introduce typed simulation month boundaries (#327), 2026-04-11 |
+| Extracted next-state advancement boundary | `f6be2e03` Extract NextStateAdvancer from FlowSimulation (#659), 2026-05-29 |
+
 ## Context
 
 The model executes in monthly steps. The implementation needs a boundary that

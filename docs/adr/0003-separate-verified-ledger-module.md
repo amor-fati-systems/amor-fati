@@ -4,6 +4,13 @@ Status: Accepted
 
 Date: 2026-07-03
 
+## Historical Provenance
+
+This retroactive ADR's primary mainline anchor is `224bb12f` Integrate
+amor-fati-ledger-poc as git submodule (#115), merged on 2026-03-24. Later
+commits updated the submodule pointer and expanded engine-side usage, but this
+commit established the separate ledger module boundary.
+
 ## Context
 
 The accounting kernel has a different stability profile from the macro model.

@@ -4,6 +4,17 @@ Status: Accepted
 
 Date: 2026-07-03
 
+## Historical Provenance
+
+This retroactive ADR records a numeric contract that entered `main` in stages:
+
+| Anchor | Main commit |
+| --- | --- |
+| Initial interest/share opaque-type direction | `cfae1d31` Introduce Rate and Ratio opaque types for interest rates and shares (#41), 2026-03-05 |
+| Primary Long-backed fixed-point type system | `3306c646` Fixed-point arithmetic: Long-based type system (#114), 2026-03-23 |
+| Scalar foundation and removal of core-flow Double adapters | `3f7d583a` Introduce Scalar foundation and remove Double adapters from core flows (#288), 2026-04-07 |
+| Removal of remaining computation-boundary Double semantics | `870329f0` Remove ComputationBoundary and Double semantics (#428), 2026-04-26 |
+
 ## Context
 
 Amor Fati executes monetary flows, stock-flow identities, and long multi-month

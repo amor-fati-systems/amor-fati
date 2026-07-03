@@ -4,6 +4,16 @@ Status: Accepted
 
 Date: 2026-07-03
 
+## Historical Provenance
+
+This retroactive ADR records a contract that entered `main` in stages:
+
+| Anchor | Main commit |
+| --- | --- |
+| First explicit flow-simulation skeleton | `8785299e` FlowSimulation skeleton: Contract-First MonthlyCalculus -> emitAllFlows (#157), 2026-03-25 |
+| Primary ledger-execution anchor | `7dd07232` Execute runtime flow batches via imperative ledger runtime (#224), 2026-04-02 |
+| SFC validation tied to runtime state and ledger execution | `fa942061` Redesign SFC validation around runtime state and ledger execution (#235), 2026-04-02 |
+
 ## Context
 
 Amor Fati is an SFC-ABM where rich behavioral rules can change frequently, but

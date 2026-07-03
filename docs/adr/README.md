@@ -9,6 +9,12 @@ embedded in the codebase before this ADR series was started. Later ADRs should
 normally be written when a new durable decision is made or an existing one is
 revised.
 
+Each retroactive ADR includes a `Historical Provenance` section with mainline
+commit anchors found from file history and symbol-level searches. These anchors
+are evidence of when the decision entered `main`; for decisions that evolved
+over multiple PRs, the ADR records both the primary anchor and relevant
+supporting commits.
+
 ## Records
 
 | ADR | Decision |
