@@ -41,7 +41,7 @@ The strongest architectural split is between decisions and monetary execution:
 | Same-month economics | `MonthCalculusRunner` and `SameMonthEconomicsDsl` | Runs ordered economic stages and returns narrowed views. No runtime ledger batches are emitted here. |
 | Flow plan | `MonthFlowPlanBuilder` | Projects execution outputs and opening financial state into `MonthlyCalculus`. |
 | Flow emission | `MonthFlowEmitter` and `*Flows.scala` emitters | Converts `MonthlyCalculus` into named ledger batches. No new economics should be decided here. |
-| Ledger execution | `RuntimeFlowExecutor` and `modules/ledger` | Executes batches and captures conservation evidence plus `deltaLedger`. |
+| Ledger execution | `RuntimeFlowExecutor` and the `modules/ledger` submodule checkout | Executes batches through the external `amor-fati-ledger` kernel and captures conservation evidence plus `deltaLedger`. |
 | Closed-month to next-pre | `NextStateAdvancer` | Applies extracted `SeedOut` and materializes supported runtime deltas into `LedgerFinancialState`. |
 | SFC validation | `SfcSemanticProjection` and `accounting/Sfc.scala` | Converts execution evidence and semantic payloads into exact SFC identity checks. |
 | Trace | `MonthTraceBuilder` | Emits boundary, seed, timing, flow, and validation evidence for the month. |

@@ -1,10 +1,10 @@
 # Architecture Overview
 
 Amor Fati is a ledger-first SFC-ABM implemented as a Scala 3 engine with a
-separate verified ledger module. The codebase keeps scientific model contracts
-in `docs/`, package-local code maps beside the implementation, and executable
-invariants in unit, property, integration, diagnostics, and generated-output
-checks.
+separately verified ledger repository checked out as a Git submodule. The
+codebase keeps scientific model contracts in `docs/`, package-local code maps
+beside the implementation, and executable invariants in unit, property,
+integration, diagnostics, and generated-output checks.
 
 This document is the cross-package map. For package-local file ownership, read
 the README next to the relevant code.
@@ -19,7 +19,7 @@ flowchart TD
     Engine --> Agents[agents]
     Engine --> Accounting[accounting and SFC]
     Engine --> LedgerAdapter[engine/ledger]
-    LedgerAdapter --> LedgerModule[modules/ledger]
+    LedgerAdapter --> LedgerRepo[amor-fati-ledger submodule]
     Engine --> MonteCarlo[montecarlo]
     MonteCarlo --> Diagnostics[diagnostics]
     Diagnostics --> Docs[docs generated evidence]
@@ -52,7 +52,7 @@ Monte Carlo and diagnostics orchestrate repeated execution
 | `montecarlo/` | Production seed/month runner, output schemas, TSV I/O, console progress, and typed run errors. It depends on the engine; the engine does not depend on Monte Carlo. |
 | `diagnostics/` | Exporters and reports for generated evidence, scenario runs, calibration bridges, nightly diagnostics, and profiling inputs. |
 | `networks/`, `math/`, `random/`, `fp/`, `util/` | Supporting libraries for network topology, numeric helpers, deterministic streams, functional helpers, and shared utilities. |
-| `modules/ledger/` | Separate verified accounting kernel used by the runtime flow path. |
+| `modules/ledger/` | Git submodule checkout of the separate `amor-fati-ledger` repository; used by the runtime flow path through the root sbt build. |
 | `integration-tests/` | PR-level runtime and output integration gates over the production initialization and month-driver path. |
 
 ## Runtime Core

@@ -22,7 +22,7 @@ historical anchor date, not the date the ADR text was written.
 | --- | --- |
 | [ADR-0001](0001-ledger-first-runtime.md) | Runtime monetary flows execute through the ledger-first path. |
 | [ADR-0002](0002-explicit-month-boundary.md) | `FlowSimulation.SimState` and explicit month randomness define the public month boundary. |
-| [ADR-0003](0003-separate-verified-ledger-module.md) | The verified accounting kernel lives in the separate `modules/ledger` sbt module. |
+| [ADR-0003](0003-separate-verified-ledger-repository.md) | The verified accounting kernel lives in the separate `amor-fati-ledger` repository, checked out as `modules/ledger`. |
 | [ADR-0004](0004-ledger-owned-financial-state.md) | Supported ledger-backed financial stocks live in `LedgerFinancialState`. |
 | [ADR-0005](0005-fixed-point-domain-numerics.md) | Domain numerics use Long-backed fixed-point opaque types instead of untyped floating-point values. |
 

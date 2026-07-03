@@ -54,7 +54,7 @@ declares how the engine treats public ledger asset types:
 
 The public `amor-fati-ledger` API is wider than the engine's current supported
 persisted slice. Do not infer that a ledger asset type is a supported engine
-stock merely because the ledger module can represent it.
+stock merely because the external ledger API can represent it.
 
 ## Runtime Flow Survivability
 

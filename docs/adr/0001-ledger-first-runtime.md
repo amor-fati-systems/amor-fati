@@ -23,8 +23,8 @@ accounting as a later diagnostic check. That would make model iteration easier
 in the short term, but it would also allow implementation drift to hide inside
 state updates.
 
-The project already depends on the verified `amor-fati-ledger` module and uses
-exact SFC validation as a hard research and engineering contract.
+The project already depends on the verified `amor-fati-ledger` repository and
+uses exact SFC validation as a hard research and engineering contract.
 
 ## Decision
 
@@ -63,4 +63,4 @@ same-month economics
 - [`FlowSimulation.scala`](../../src/main/scala/com/boombustgroup/amorfati/engine/flows/FlowSimulation.scala)
 - [`MonthFlowEmitter.scala`](../../src/main/scala/com/boombustgroup/amorfati/engine/flows/MonthFlowEmitter.scala)
 - [`RuntimeFlowExecutor.scala`](../../src/main/scala/com/boombustgroup/amorfati/engine/flows/RuntimeFlowExecutor.scala)
-- [`modules/ledger`](../../modules/ledger/README.md)
+- [local `amor-fati-ledger` submodule checkout](../../modules/ledger/README.md)
