@@ -12,6 +12,7 @@ inventory below, so new documentation cannot silently become orphaned.
 
 | Need | Start here |
 | --- | --- |
+| SFC + ABM background for new readers | [SFC + ABM reading map](background/reading-map.md) |
 | First scientific review | [Model specification reviewer reading path](model-specification.md#reviewer-reading-path) |
 | ABM structure and scheduling | [ODD / ODD+D model documentation](odd-model-documentation.md) |
 | Sector equations and decision rules | [Model specification source map](model-specification.md#source-map) |
@@ -39,11 +40,13 @@ as the operational entry point.
 | Operational appendix | Commands, CI, validation ownership, scenarios, robustness, and runbook material. Useful, but not the first scientific reading path. |
 | Diagnostics or profiling appendix | Specific diagnostic/profiling methodology, exporter interpretation, or investigation evidence. |
 | ADR or decision record | Durable architectural or semantic decision record. Preserve history unless superseded explicitly. |
+| Background / reading map | Orientation material for readers who need conceptual routing before the model specification, without defining model behavior. |
 
 ## Complete Inventory
 
 | Artifact | Owner class | Purpose |
 | --- | --- | --- |
+| [docs/background/reading-map.md](background/reading-map.md) | Background / reading map | Orientation map for SFC, ABM, SFC-ABM literature, and Amor Fati's ledger-first modeling stance. |
 | [docs/data-bridge-national-financial-accounts.md](data-bridge-national-financial-accounts.md) | Calibration or empirical evidence | Empirical source bridge from Polish, EU, and financial-account data to initialization, calibration, scenarios, and validation. |
 | [docs/empirical-validation-report.md](empirical-validation-report.md) | Calibration or empirical evidence | Interpretation contract for empirical-validation artifacts, status taxonomy, snapshot bundle, and source-manifest expectations. |
 | [docs/empirical-validation-source-manifest.tsv](empirical-validation-source-manifest.tsv) | Calibration or empirical evidence | Editable source manifest used by empirical-validation export. |
