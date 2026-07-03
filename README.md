@@ -55,7 +55,7 @@ That is the hard floor under every experiment in the model. Behavioral rules, po
 3. [Core Invariants](#core-invariants)
 4. [State Ontology](#state-ontology)
 5. [Verified Ledger](#verified-ledger)
-6. [Model Documentation](#model-documentation)
+6. [Documentation](#documentation)
 7. [Ledger-Derived Matrix Artifacts](#ledger-derived-matrix-artifacts)
 
 ## Why
@@ -114,12 +114,14 @@ This is why Amor Fati is useful even when the long-run path is still being calib
 
 That distinction matters. A nonlinear ABM can explore unstable, surprising, even pathological futures. But it should never "lose money" in the plumbing.
 
-## Model Documentation
+## Documentation
 
-Start with the [model specification](docs/model-specification.md). Its
-[Reviewer Reading Path](docs/model-specification.md#reviewer-reading-path) is
-the canonical first-pass path for scientific review. For the complete
-documentation index, use [docs/README.md](docs/README.md):
+Start with the [model specification](docs/model-specification.md) for scientific
+review, or the [architecture documentation](docs/architecture/index.md) for
+code-facing orientation. For the complete documentation index, use
+[docs/README.md](docs/README.md):
+
+### Scientific and Model Path
 
 | Step | Entry point | Boundary |
 | --- | --- | --- |
@@ -127,7 +129,13 @@ documentation index, use [docs/README.md](docs/README.md):
 | 2. SFC evidence boundary | [SFC matrix evidence](docs/sfc-matrix-evidence.md) and [model equations to SFC map](docs/model-equations-to-sfc-map.md) | Hand-maintained entry points for generated BSM/TFM snapshots, exact identities, runtime mechanism mapping, and stock-flow reconciliation evidence. |
 | 3. Calibration evidence | [Calibration register](docs/calibration-register.md) and [data bridge](docs/data-bridge-national-financial-accounts.md) | Parameter provenance, empirical sources, transformations, assumptions, and visible calibration gaps. |
 | 4. Validation evidence | [Empirical validation report](docs/empirical-validation-report.md) and [engine invariants](docs/engine-invariants-and-semantics.md) | Empirical snapshot workflow, normal-path expectations, hard invariants, warnings, and known limitation surfaces. |
-| 5. Operational appendices | [Operations](docs/operations.md) | Entry point for commands, CI ownership, diagnostics/profiling routing, generated-output guards, scenarios, robustness, and local artifacts. |
+
+### Engineering and Operations Path
+
+| Step | Entry point | Boundary |
+| --- | --- | --- |
+| 1. Code architecture | [Architecture documentation](docs/architecture/index.md) | Code-facing map of package boundaries, the runtime loop, state and ledger ownership, extension points, and architecture decision records. |
+| 2. Operational appendices | [Operations](docs/operations.md) | Entry point for commands, CI ownership, diagnostics/profiling routing, generated-output guards, scenarios, robustness, and local artifacts. |
 
 ## Ledger-Derived Matrix Artifacts
 

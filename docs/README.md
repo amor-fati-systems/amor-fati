@@ -17,6 +17,7 @@ inventory below, so new documentation cannot silently become orphaned.
 | Sector equations and decision rules | [Model specification source map](model-specification.md#source-map) |
 | SFC matrix and ledger-derived evidence | [SFC matrix evidence](sfc-matrix-evidence.md) and [model equations to SFC map](model-equations-to-sfc-map.md) |
 | Calibration and empirical validation | [Calibration register](calibration-register.md), [data bridge](data-bridge-national-financial-accounts.md), and [empirical validation report](empirical-validation-report.md) |
+| Code architecture and extension paths | [Architecture documentation](architecture/index.md) |
 | Commands, CI, diagnostics, scenarios, and local outputs | [Operations appendix index](operations.md#operational-appendix-index) |
 
 ## Operational Docs
@@ -34,6 +35,7 @@ as the operational entry point.
 | Generated evidence | Committed output produced by a task or exporter. Do not edit by hand; regenerate through the owning command. |
 | Hand-maintained companion to generated evidence | Human-written bridge, index, or workflow note that explains generated evidence and must stay aligned with it. |
 | Calibration or empirical evidence | Parameter, source, calibration, or empirical-validation evidence. These files do not define parameter governance policy; deeper governance belongs to the [Calibration Governance milestone](https://github.com/boombustgroup/amor-fati/milestone/27). |
+| Architecture | Code-facing architecture contract, package-boundary map, runtime-loop explanation, state ownership boundary, or extension guide. |
 | Operational appendix | Commands, CI, validation ownership, scenarios, robustness, and runbook material. Useful, but not the first scientific reading path. |
 | Diagnostics or profiling appendix | Specific diagnostic/profiling methodology, exporter interpretation, or investigation evidence. |
 | ADR or decision record | Durable architectural or semantic decision record. Preserve history unless superseded explicitly. |
@@ -60,6 +62,17 @@ as the operational entry point.
 | [docs/odd-model-documentation.md](odd-model-documentation.md) | Canonical reviewer spine | ODD/ODD+D model documentation for ABM structure, scheduling, entities, observations, and decision-making. |
 | [docs/stochastic-processes-and-replay.md](stochastic-processes-and-replay.md) | Canonical reviewer spine | Publication-facing randomness, seed, stream, replay, validation, and stochastic-limitation contract. |
 | [README.md](../README.md) | Canonical reviewer spine | Repository front door, status overview, model identity, and top-level documentation entry. |
+| [docs/architecture/extension-points.md](architecture/extension-points.md) | Architecture | Code-facing recipes for adding flow mechanisms, same-month economics stages, agents/sectors, scenarios, diagnostics, output columns, and tests. |
+| [docs/architecture/index.md](architecture/index.md) | Architecture | Entry point for code-facing architecture documentation, source anchors, and maintenance rules. |
+| [docs/architecture/overview.md](architecture/overview.md) | Architecture | Cross-package architecture map, layering rules, runtime core, and evidence layers. |
+| [docs/architecture/runtime-loop.md](architecture/runtime-loop.md) | Architecture | Code-level one-month runtime path from `SimState` and explicit randomness through ledger execution, SFC validation, and `StepOutput`. |
+| [docs/architecture/state-and-ledger-boundary.md](architecture/state-and-ledger-boundary.md) | Architecture | Ownership contract for behavioral state, macro/runtime state, ledger-owned financial stocks, runtime survivability, and supported delta materialization. |
+| [docs/adr/0001-ledger-first-runtime.md](adr/0001-ledger-first-runtime.md) | ADR or decision record | Decision record for executing runtime monetary flows through the ledger-first path. |
+| [docs/adr/0002-explicit-month-boundary.md](adr/0002-explicit-month-boundary.md) | ADR or decision record | Decision record for the explicit `FlowSimulation.SimState` month boundary and caller-owned randomness schedule. |
+| [docs/adr/0003-separate-verified-ledger-repository.md](adr/0003-separate-verified-ledger-repository.md) | ADR or decision record | Decision record for keeping the verified accounting kernel in the separate `amor-fati-ledger` repository, checked out under `modules/ledger`. |
+| [docs/adr/0004-ledger-owned-financial-state.md](adr/0004-ledger-owned-financial-state.md) | ADR or decision record | Decision record for keeping supported ledger-backed financial stocks in `LedgerFinancialState`. |
+| [docs/adr/0005-fixed-point-domain-numerics.md](adr/0005-fixed-point-domain-numerics.md) | ADR or decision record | Decision record for using Long-backed fixed-point opaque types for domain numerics instead of untyped floating-point values. |
+| [docs/adr/README.md](adr/README.md) | ADR or decision record | Index and format note for architecture decision records. |
 | [docs/bank-balance-sheet-benchmark.md](bank-balance-sheet-benchmark.md) | Diagnostics or profiling appendix | Bank balance-sheet benchmark diagnostic and bank-capital source interpretation. |
 | [docs/bank-failure-ablations.md](bank-failure-ablations.md) | Diagnostics or profiling appendix | Bank-failure ablation diagnostic methodology and interpretation. |
 | [docs/hh-bank-lead-lag-diagnostics.md](hh-bank-lead-lag-diagnostics.md) | Diagnostics or profiling appendix | Household-to-bank lead-lag diagnostic methodology and interpretation. |
