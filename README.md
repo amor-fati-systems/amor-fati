@@ -128,6 +128,7 @@ documentation index, use [docs/README.md](docs/README.md):
 | 3. Calibration evidence | [Calibration register](docs/calibration-register.md) and [data bridge](docs/data-bridge-national-financial-accounts.md) | Parameter provenance, empirical sources, transformations, assumptions, and visible calibration gaps. |
 | 4. Validation evidence | [Empirical validation report](docs/empirical-validation-report.md) and [engine invariants](docs/engine-invariants-and-semantics.md) | Empirical snapshot workflow, normal-path expectations, hard invariants, warnings, and known limitation surfaces. |
 | 5. Operational appendices | [Operations](docs/operations.md) | Entry point for commands, CI ownership, diagnostics/profiling routing, generated-output guards, scenarios, robustness, and local artifacts. |
+| 6. Code architecture | [Architecture documentation](docs/architecture/index.md) | Code-facing map of package boundaries, the runtime loop, state and ledger ownership, extension points, and architecture decision records. |
 
 ## Ledger-Derived Matrix Artifacts
 
