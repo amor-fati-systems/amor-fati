@@ -117,14 +117,16 @@ That distinction matters. A nonlinear ABM can explore unstable, surprising, even
 ## Documentation
 
 Start with the [model specification](docs/model-specification.md) for scientific
-review, or the [architecture documentation](docs/architecture/index.md) for
-code-facing orientation. For the complete documentation index, use
-[docs/README.md](docs/README.md):
+review, the [SFC + ABM reading map](docs/background/reading-map.md) if the
+combined modeling tradition is new to you, or the
+[architecture documentation](docs/architecture/index.md) for code-facing
+orientation. For the complete documentation index, use [docs/README.md](docs/README.md):
 
 ### Scientific and Model Path
 
 | Step | Entry point | Boundary |
 | --- | --- | --- |
+| 0. SFC + ABM background | [SFC + ABM reading map](docs/background/reading-map.md) | Optional orientation for readers new to stock-flow consistent agent-based macroeconomics and Amor Fati's ledger-first stance. |
 | 1. Model specification and ODD | [Model specification](docs/model-specification.md) and [ODD / ODD+D model documentation](docs/odd-model-documentation.md) | Model identity, scope, entities, scheduling, state vector, month timing, equation families, stochasticity, limitations, and pointers to detailed sector documents. |
 | 2. SFC evidence boundary | [SFC matrix evidence](docs/sfc-matrix-evidence.md) and [model equations to SFC map](docs/model-equations-to-sfc-map.md) | Hand-maintained entry points for generated BSM/TFM snapshots, exact identities, runtime mechanism mapping, and stock-flow reconciliation evidence. |
 | 3. Calibration evidence | [Calibration register](docs/calibration-register.md) and [data bridge](docs/data-bridge-national-financial-accounts.md) | Parameter provenance, empirical sources, transformations, assumptions, and visible calibration gaps. |
