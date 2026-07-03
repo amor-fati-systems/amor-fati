@@ -13,7 +13,8 @@ Each retroactive ADR includes a `Historical Provenance` section with mainline
 commit anchors found from file history and symbol-level searches. These anchors
 are evidence of when the decision entered `main`; for decisions that evolved
 over multiple PRs, the ADR records both the primary anchor and relevant
-supporting commits.
+supporting commits. The `Date` field on a retroactive ADR uses the primary
+historical anchor date, not the date the ADR text was written.
 
 ## Records
 
