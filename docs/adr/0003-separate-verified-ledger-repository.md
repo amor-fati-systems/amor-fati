@@ -60,7 +60,6 @@ The Amor Fati engine owns:
 
 - [State and ledger boundary](../architecture/state-and-ledger-boundary.md)
 - [amor-fati-ledger repository](https://github.com/boombustgroup/amor-fati-ledger)
-- [Local submodule README](../../modules/ledger/README.md)
 - [`AssetOwnershipContract.scala`](../../src/main/scala/com/boombustgroup/amorfati/engine/ledger/AssetOwnershipContract.scala)
 - [`RuntimeFlowProjection.scala`](../../src/main/scala/com/boombustgroup/amorfati/engine/ledger/RuntimeFlowProjection.scala)
 - [`build.sbt`](../../build.sbt)

@@ -63,4 +63,4 @@ same-month economics
 - [`FlowSimulation.scala`](../../src/main/scala/com/boombustgroup/amorfati/engine/flows/FlowSimulation.scala)
 - [`MonthFlowEmitter.scala`](../../src/main/scala/com/boombustgroup/amorfati/engine/flows/MonthFlowEmitter.scala)
 - [`RuntimeFlowExecutor.scala`](../../src/main/scala/com/boombustgroup/amorfati/engine/flows/RuntimeFlowExecutor.scala)
-- [local `amor-fati-ledger` submodule checkout](../../modules/ledger/README.md)
+- [amor-fati-ledger repository](https://github.com/boombustgroup/amor-fati-ledger)
