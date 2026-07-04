@@ -1,6 +1,6 @@
 package com.boombustgroup.amorfati.diagnostics
 
-import com.boombustgroup.amorfati.montecarlo.{DelimitedTextFile, DelimitedTextFormat, DelimitedTextRows, DelimitedTextSchema}
+import com.boombustgroup.amorfati.montecarlo.io.{DelimitedTextFile, DelimitedTextFormat, DelimitedTextRows, DelimitedTextSchema}
 import com.boombustgroup.amorfati.util.BuildInfo
 import zio.ZIO
 

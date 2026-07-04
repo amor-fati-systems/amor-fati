@@ -47,7 +47,7 @@ Useful shorthand:
 | `NSFR` | net stable funding ratio |
 
 The output-column references below refer to the Monte Carlo time-series schema
-in `src/main/scala/com/boombustgroup/amorfati/montecarlo/McTimeseriesSchema.scala`.
+in `src/main/scala/com/boombustgroup/amorfati/montecarlo/timeseries/McTimeseriesSchema.scala`.
 Those TSV outputs are the primary numeric evidence surface for these rules.
 
 ## Timing Contract

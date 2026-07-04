@@ -1,13 +1,13 @@
 package com.boombustgroup.amorfati
 
 import com.boombustgroup.amorfati.config.SimParams
-import com.boombustgroup.amorfati.montecarlo.{
+import com.boombustgroup.amorfati.montecarlo.core.McRunConfig
+import com.boombustgroup.amorfati.montecarlo.runner.McRunner
+import com.boombustgroup.amorfati.montecarlo.snapshots.{
   McFirmDecisionTraceSelection,
   McFirmSnapshotSchedule,
   McHouseholdSnapshotSchedule,
   McHouseholdSnapshotSelection,
-  McRunConfig,
-  McRunner,
 }
 import com.boombustgroup.amorfati.util.BuildInfo
 import zio.*

@@ -116,7 +116,7 @@ Use this path when producing new TSV, Markdown, or report artifacts.
    recomputing hidden economic logic inside output code.
 2. Add the column definition in `McTimeseriesSchema` or the appropriate
    snapshot/summary schema.
-3. Add or update schema tests under `src/test/scala/com/boombustgroup/amorfati/montecarlo/`.
+3. Add or update schema tests under `src/test/scala/com/boombustgroup/amorfati/montecarlo/timeseries/`.
 4. If the column becomes a documented invariant or health signal, update
    [engine-invariants-and-semantics.md](../engine-invariants-and-semantics.md)
    and the relevant diagnostic docs.

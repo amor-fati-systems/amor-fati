@@ -1,7 +1,8 @@
 package com.boombustgroup.amorfati.diagnostics
 
 import com.boombustgroup.amorfati.engine.SimulationMonth.ExecutionMonth
-import com.boombustgroup.amorfati.montecarlo.{McSeedMonth, McTimeseriesSchema, MetricValue}
+import com.boombustgroup.amorfati.montecarlo.core.{McSeedMonth, MetricValue}
+import com.boombustgroup.amorfati.montecarlo.timeseries.McTimeseriesSchema
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.EitherValues.*

@@ -3,7 +3,8 @@ package com.boombustgroup.amorfati.diagnostics
 import com.boombustgroup.amorfati.config.RobustnessScenarios.ScenarioSet
 import com.boombustgroup.amorfati.config.{ScenarioRegistry, SimParams}
 import com.boombustgroup.amorfati.engine.EngineFailure
-import com.boombustgroup.amorfati.montecarlo.{McRunConfig, McRunner}
+import com.boombustgroup.amorfati.montecarlo.core.McRunConfig
+import com.boombustgroup.amorfati.montecarlo.runner.McRunner
 import com.boombustgroup.amorfati.util.BuildInfo
 import zio.{Cause, Clock, Exit, Ref, ZIO}
 
@@ -657,7 +658,7 @@ object NightlyDiagnosticsProfileRunner:
       id = "baseline-monte-carlo",
       label = "Baseline Monte Carlo",
       classification = DiagnosticClass.NormalValidation,
-      entrypoint = "com.boombustgroup.amorfati.montecarlo.McRunner",
+      entrypoint = "com.boombustgroup.amorfati.montecarlo.runner.McRunner",
       seedStart = Some(1L),
       seeds = Some(seeds),
       months = Some(months),

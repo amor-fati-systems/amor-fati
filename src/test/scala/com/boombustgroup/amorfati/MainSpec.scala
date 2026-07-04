@@ -1,11 +1,11 @@
 package com.boombustgroup.amorfati
 
-import com.boombustgroup.amorfati.montecarlo.{
+import com.boombustgroup.amorfati.montecarlo.core.McRunConfig
+import com.boombustgroup.amorfati.montecarlo.snapshots.{
   McFirmDecisionTraceSelection,
   McFirmSnapshotSchedule,
   McHouseholdSnapshotSchedule,
   McHouseholdSnapshotSelection,
-  McRunConfig,
 }
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

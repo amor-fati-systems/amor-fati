@@ -7,7 +7,7 @@ import com.boombustgroup.amorfati.engine.ledger.LedgerFinancialState
 import com.boombustgroup.amorfati.engine.mechanisms.Macroprudential
 import com.boombustgroup.amorfati.fp.FixedPointBase
 import com.boombustgroup.amorfati.init.{InitRandomness, WorldInit}
-import com.boombustgroup.amorfati.montecarlo.{DelimitedTextFormat, McTsvFile, McTsvSchema}
+import com.boombustgroup.amorfati.montecarlo.io.{DelimitedTextFormat, McTsvFile, McTsvSchema}
 import com.boombustgroup.amorfati.types.*
 import zio.ZIO
 
