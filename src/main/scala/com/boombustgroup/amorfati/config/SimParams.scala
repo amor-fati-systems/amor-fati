@@ -86,6 +86,10 @@ case class SimParams private[config] (
 ):
   SimParams.validateSectorSchema(sectorDefs)
 
+  def macroPln(value: PLN): PLN =
+    val scaleFactor = if gdpRatio > Scalar.Zero then gdpRatio.toMultiplier else Multiplier.One
+    value / scaleFactor
+
 object SimParams:
 
   // ── Sector definitions (6-sector Polish economy, 2026-04-30 baseline) ──

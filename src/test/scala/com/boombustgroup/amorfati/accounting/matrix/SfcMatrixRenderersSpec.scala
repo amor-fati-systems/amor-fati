@@ -2,6 +2,7 @@ package com.boombustgroup.amorfati.accounting.matrix
 
 import com.boombustgroup.amorfati.accounting.matrix.SfcMatrixRenderers.OutputFormat
 import com.boombustgroup.amorfati.config.SimParams
+import com.boombustgroup.amorfati.fp.FixedPointBase
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -51,11 +52,44 @@ class SfcMatrixRenderersSpec extends AnyFlatSpec with Matchers:
     byName("stock-flow-reconciliation.tex") should include("\\begin{longtable}")
   }
 
+  it should "render reconciliation monetary columns as explicit macro PLN values" in {
+    val artifacts           = SfcMatrixRenderers.renderSymbolicBundle(bundle, Vector(OutputFormat.Markdown, OutputFormat.Latex))
+    val byName              = artifacts.map(artifact => artifact.relativePath -> artifact.contents).toMap
+    val row                 = bundle.reconciliation.rows
+      .find(row => row.expectedRaw != 0L && formatRaw(row.expectedRaw) != formatMacroPln(row.expectedRaw))
+      .getOrElse(fail("Expected at least one non-zero reconciliation row whose raw and macro-scaled amounts differ"))
+    val expectedMacroAmount = formatMacroPln(row.expectedRaw)
+
+    val markdown = byName("stock-flow-reconciliation.md")
+    val mdRow    = markdown.linesIterator
+      .find(_.startsWith(s"| ${row.label} |"))
+      .getOrElse(fail(s"Missing rendered reconciliation row for ${row.label}"))
+    mdRow should include(s"| $expectedMacroAmount |")
+    mdRow should not include s"| ${formatRaw(row.expectedRaw)} |"
+    markdown should include("money_scale=macro_pln")
+    markdown should include("raw_validation=model_scale_pln")
+    markdown should include("Expected (macro PLN)")
+    markdown should include("identity validation remains on raw model-scale fixed-point PLN")
+
+    val latex = byName("stock-flow-reconciliation.tex")
+    latex should include("money_scale=macro_pln")
+    latex should include("raw_validation=model_scale_pln")
+    latex should include("Expected (macro PLN)")
+    latex should include(expectedMacroAmount)
+  }
+
   it should "parse output format lists and reject unknown formats" in {
     OutputFormat.parseList("latex,md") shouldBe Right(OutputFormat.Default)
     OutputFormat.parseList("tex") shouldBe Right(Vector(OutputFormat.Latex))
     OutputFormat.parseList("markdown") shouldBe Right(Vector(OutputFormat.Markdown))
     OutputFormat.parseList("yaml").isLeft shouldBe true
   }
+
+  private def formatRaw(value: Long): String =
+    FixedPointBase.format(value, 4)
+
+  private def formatMacroPln(value: Long): String =
+    val gdpRatioRaw = BigDecimal(SimParams.defaults.gdpRatio.toLong)
+    (BigDecimal(value) / gdpRatioRaw).setScale(4, BigDecimal.RoundingMode.HALF_EVEN).toString
 
 end SfcMatrixRenderersSpec
