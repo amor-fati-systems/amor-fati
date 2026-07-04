@@ -54,7 +54,7 @@ for calculation. Those DTOs are execution inputs, not persisted stock owners.
 
 - [State and ledger boundary](../architecture/state-and-ledger-boundary.md)
 - [Engine invariants and semantics](../engine-invariants-and-semantics.md)
-- [`LedgerFinancialState.scala`](../../src/main/scala/com/boombustgroup/amorfati/engine/ledger/LedgerFinancialState.scala)
-- [`World.scala`](../../src/main/scala/com/boombustgroup/amorfati/engine/World.scala)
-- [`RuntimeMechanismSurvivability.scala`](../../src/main/scala/com/boombustgroup/amorfati/engine/ledger/RuntimeMechanismSurvivability.scala)
-- [`WorldInit.scala`](../../src/main/scala/com/boombustgroup/amorfati/init/WorldInit.scala)
+- [`LedgerFinancialState.scala`](../../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/ledger/LedgerFinancialState.scala)
+- [`World.scala`](../../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/World.scala)
+- [`RuntimeMechanismSurvivability.scala`](../../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/ledger/RuntimeMechanismSurvivability.scala)
+- [`WorldInit.scala`](../../modules/model/src/main/scala/com/boombustgroup/amorfati/init/WorldInit.scala)

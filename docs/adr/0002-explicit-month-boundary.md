@@ -65,7 +65,7 @@ pre boundary
 
 - [Runtime loop](../architecture/runtime-loop.md)
 - [Monthly transition function](../monthly-transition-function.md)
-- [`FlowSimulation.scala`](../../src/main/scala/com/boombustgroup/amorfati/engine/flows/FlowSimulation.scala)
-- [`MonthDriver.scala`](../../src/main/scala/com/boombustgroup/amorfati/engine/MonthDriver.scala)
-- [`MonthRandomness.scala`](../../src/main/scala/com/boombustgroup/amorfati/engine/MonthRandomness.scala)
-- [`NextStateAdvancer.scala`](../../src/main/scala/com/boombustgroup/amorfati/engine/flows/NextStateAdvancer.scala)
+- [`FlowSimulation.scala`](../../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/flows/FlowSimulation.scala)
+- [`MonthDriver.scala`](../../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/MonthDriver.scala)
+- [`MonthRandomness.scala`](../../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/MonthRandomness.scala)
+- [`NextStateAdvancer.scala`](../../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/flows/NextStateAdvancer.scala)

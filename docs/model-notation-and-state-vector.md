@@ -30,15 +30,15 @@ top-level reading order.
 
 Implementation anchors:
 
-- [`engine/flows/FlowSimulation.scala`](../src/main/scala/com/boombustgroup/amorfati/engine/flows/FlowSimulation.scala)
-- [`engine/World.scala`](../src/main/scala/com/boombustgroup/amorfati/engine/World.scala)
-- [`engine/WorldStateSegments.scala`](../src/main/scala/com/boombustgroup/amorfati/engine/WorldStateSegments.scala)
-- [`engine/ledger/LedgerFinancialState.scala`](../src/main/scala/com/boombustgroup/amorfati/engine/ledger/LedgerFinancialState.scala)
-- [`agents/Household.scala`](../src/main/scala/com/boombustgroup/amorfati/agents/Household.scala)
-- [`agents/Firm.scala`](../src/main/scala/com/boombustgroup/amorfati/agents/Firm.scala)
-- [`agents/Banking.scala`](../src/main/scala/com/boombustgroup/amorfati/agents/Banking.scala)
-- [`types.scala`](../src/main/scala/com/boombustgroup/amorfati/types.scala)
-- [`engine/MonthRandomness.scala`](../src/main/scala/com/boombustgroup/amorfati/engine/MonthRandomness.scala)
+- [`engine/flows/FlowSimulation.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/flows/FlowSimulation.scala)
+- [`engine/World.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/World.scala)
+- [`engine/WorldStateSegments.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/WorldStateSegments.scala)
+- [`engine/ledger/LedgerFinancialState.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/ledger/LedgerFinancialState.scala)
+- [`agents/Household.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/agents/Household.scala)
+- [`agents/Firm.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/agents/Firm.scala)
+- [`agents/Banking.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/agents/Banking.scala)
+- [`types.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/types.scala)
+- [`engine/MonthRandomness.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/MonthRandomness.scala)
 
 ## Notation Rules
 
@@ -90,7 +90,7 @@ pre boundary -> same-month economics -> same-month boundary views
 
 This order is formalized in [monthly-transition-function.md](monthly-transition-function.md)
 and described operationally in
-`src/main/scala/com/boombustgroup/amorfati/engine/README.md`.
+`modules/model/src/main/scala/com/boombustgroup/amorfati/engine/README.md`.
 
 ## Full State Vector
 

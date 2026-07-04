@@ -15,14 +15,14 @@ assumptions, new probability distributions, or new seed scheduling rules.
 | [Model specification](model-specification.md#reviewer-reading-path) | Canonical reviewer path and model overview. |
 | [Model notation and state vector](model-notation-and-state-vector.md#stochastic-variables) | Stochastic notation, `RND_tau`, and stream-key notation. |
 | [Monthly transition function](monthly-transition-function.md#randomness-contract) | Formal one-month replay contract. |
-| [`random/RandomStream.scala`](../src/main/scala/com/boombustgroup/amorfati/random/RandomStream.scala) | Project-wide RNG facade. |
-| [`random/SeedDerivation.scala`](../src/main/scala/com/boombustgroup/amorfati/random/SeedDerivation.scala) | Stable seed splitting from one explicit root seed. |
-| [`init/InitRandomness.scala`](../src/main/scala/com/boombustgroup/amorfati/init/InitRandomness.scala) | Initialization randomness contract. |
-| [`engine/MonthRandomness.scala`](../src/main/scala/com/boombustgroup/amorfati/engine/MonthRandomness.scala) | Month-step randomness contract. |
-| [`montecarlo/runner/McRunner.scala`](../src/main/scala/com/boombustgroup/amorfati/montecarlo/runner/McRunner.scala) | Production Monte Carlo initialization, month seed schedule, and per-seed streaming path. |
-| [`montecarlo/diagnostics/McDiagnosticRunner.scala`](../src/main/scala/com/boombustgroup/amorfati/montecarlo/diagnostics/McDiagnosticRunner.scala) | Shared scenario/diagnostic runner that reuses the production seed-month path. |
-| [`engine/MonthTrace.scala`](../src/main/scala/com/boombustgroup/amorfati/engine/MonthTrace.scala) | Month audit trace that records the explicit `MonthRandomness.Contract`. |
-| [`MonthRandomnessSpec`](../src/test/scala/com/boombustgroup/amorfati/engine/MonthRandomnessSpec.scala) and [`InitRandomnessSpec`](../src/test/scala/com/boombustgroup/amorfati/init/InitRandomnessSpec.scala) | Stable stream derivation tests. |
+| [`random/RandomStream.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/random/RandomStream.scala) | Project-wide RNG facade. |
+| [`random/SeedDerivation.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/random/SeedDerivation.scala) | Stable seed splitting from one explicit root seed. |
+| [`init/InitRandomness.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/init/InitRandomness.scala) | Initialization randomness contract. |
+| [`engine/MonthRandomness.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/MonthRandomness.scala) | Month-step randomness contract. |
+| [`montecarlo/runner/McRunner.scala`](../modules/montecarlo/src/main/scala/com/boombustgroup/amorfati/montecarlo/runner/McRunner.scala) | Production Monte Carlo initialization, month seed schedule, and per-seed streaming path. |
+| [`montecarlo/diagnostics/McDiagnosticRunner.scala`](../modules/montecarlo/src/main/scala/com/boombustgroup/amorfati/montecarlo/diagnostics/McDiagnosticRunner.scala) | Shared scenario/diagnostic runner that reuses the production seed-month path. |
+| [`engine/MonthTrace.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/MonthTrace.scala) | Month audit trace that records the explicit `MonthRandomness.Contract`. |
+| [`MonthRandomnessSpec`](../modules/model/src/test/scala/com/boombustgroup/amorfati/engine/MonthRandomnessSpec.scala) and [`InitRandomnessSpec`](../modules/model/src/test/scala/com/boombustgroup/amorfati/init/InitRandomnessSpec.scala) | Stable stream derivation tests. |
 
 ## Core Contract
 

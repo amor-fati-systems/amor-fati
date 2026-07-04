@@ -115,8 +115,8 @@ def analyze_file(path: Path) -> list[MethodComplexity]:
 
 def main():
     parser = argparse.ArgumentParser(description="Scala cyclomatic complexity estimator")
-    parser.add_argument("src_dir", nargs="?", default="src/main/scala",
-                        help="Source directory to scan (default: src/main/scala)")
+    parser.add_argument("src_dir", nargs="?", default="modules",
+                        help="Source directory to scan (default: modules)")
     parser.add_argument("--threshold", type=int, default=5,
                         help="Only show methods with complexity >= threshold (default: 5)")
     parser.add_argument("--top", type=int, default=40,

@@ -63,9 +63,9 @@ household, and bank populations, household aggregates, and
 `LedgerFinancialState`.
 
 The public one-month transition is
-[`FlowSimulation.step`](../../src/main/scala/com/boombustgroup/amorfati/engine/flows/FlowSimulation.scala).
+[`FlowSimulation.step`](../../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/flows/FlowSimulation.scala).
 Repeated execution should go through
-[`MonthDriver`](../../src/main/scala/com/boombustgroup/amorfati/engine/MonthDriver.scala),
+[`MonthDriver`](../../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/MonthDriver.scala),
 which owns the unfold over explicit `MonthRandomness.Contract` values supplied
 by the caller.
 
@@ -82,20 +82,20 @@ conventions:
 | Translation before execution | `MonthFlowEmitter` maps `MonthlyCalculus` into named batches. It should not redo economics or decide new behavior. |
 | Execution before supported materialization | The verified ledger interpreter executes batches and returns deltas. `RuntimeFlowProjection` materializes only the supported persisted stock slice. |
 | Ledger-owned stocks outside `World` | Financial stocks with an engine ledger contract live in `LedgerFinancialState`, not as ad hoc mutable balances on `World`. |
-| Domain numerics are typed fixed point | Core economics, runtime, ledger-boundary, and SFC code use semantic Long-backed fixed-point types from `types.scala` rather than raw `Double` values. |
+| Domain numerics are typed fixed point | Core economics, runtime, ledger-boundary, and SFC code use semantic Long-backed fixed-point types from [`types.scala`](../../modules/model/src/main/scala/com/boombustgroup/amorfati/types.scala) rather than raw `Double` values. |
 | Package README is local | Package README files explain nearby files. Cross-package architectural contracts live under `docs/architecture`. |
 
 ## Numeric Layer
 
 Domain quantities are not represented as interchangeable floating-point values.
 The public type surface in
-[`types.scala`](../../src/main/scala/com/boombustgroup/amorfati/types.scala)
+[`types.scala`](../../modules/model/src/main/scala/com/boombustgroup/amorfati/types.scala)
 re-exports opaque fixed-point types such as `PLN`, `Rate`, `Share`, `Scalar`,
 `Multiplier`, `Coefficient`, `PriceIndex`, `Sigma`, `ExchangeRate`, and
 `ExchangeRateShock`.
 
 The shared fixed-point implementation lives in
-[`fp/FixedPointBase.scala`](../../src/main/scala/com/boombustgroup/amorfati/fp/FixedPointBase.scala):
+[`fp/FixedPointBase.scala`](../../modules/model/src/main/scala/com/boombustgroup/amorfati/fp/FixedPointBase.scala):
 
 ```text
 raw representation: Long

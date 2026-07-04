@@ -1,0 +1,485 @@
+package com.boombustgroup.amorfati.diagnostics
+
+import com.boombustgroup.amorfati.diagnostics.EmpiricalValidationExport.{ModelTarget, SourceStatus}
+import com.boombustgroup.amorfati.tsv.TsvRows
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
+
+import java.nio.file.Path
+import java.time.LocalDate
+
+class EmpiricalValidationManifestSpec extends AnyFlatSpec with Matchers:
+
+  private val manifestPath = Path.of("docs/empirical-validation-source-manifest.tsv")
+
+  private val canonicalStatusTokens = Set(
+    "READY",
+    "PARTIAL",
+    "MISSING_OUTPUT",
+    "MISSING_DATA_BRIDGE",
+    "MISSING_SOURCE_DETAIL",
+    "BRIDGE_ASSUMPTION",
+  )
+
+  private val requiredTargets = Set(
+    "GDP growth",
+    "Inflation",
+    "Unemployment",
+    "Wages",
+    "Credit/GDP",
+    "Public debt/GDP",
+    "Current account",
+    "Firm-size distribution",
+    "Bankruptcies",
+    "Bank capital/liquidity",
+    "Inequality",
+    "Sectoral output",
+    "External prices and FX",
+    "Housing and mortgages",
+    "Fiscal stance",
+    "Monetary and financial market conditions",
+  )
+
+  private final case class ManifestRow(line: Int, values: Map[String, String]):
+    def value(column: String): String =
+      values.getOrElse(column, "")
+
+    def nonEmpty(column: String): Boolean =
+      value(column).trim.nonEmpty
+
+    def target: String = value("target")
+    def status: String = value("status")
+
+  "empirical validation source manifest" should "cover every validation target family from the report" in {
+    val rows           = readManifest()
+    val targets        = rows.map(_.target).toSet
+    val missingTargets = requiredTargets -- targets
+
+    withClue(missingTargets.mkString("Missing manifest targets: ", ", ", "")) {
+      missingTargets shouldBe empty
+    }
+  }
+
+  it should "use canonical status tokens and report current status counts" in {
+    val rows = readManifest()
+
+    val nonCanonical = rows.filterNot(row => canonicalStatusTokens.contains(row.status)).map(row => s"line ${row.line}: ${row.status}")
+    withClue(nonCanonical.mkString("\n")) {
+      nonCanonical shouldBe empty
+    }
+
+    val counts = rows.groupMapReduce(row => parseStatus(row))(_ => 1)(_ + _)
+    withClue(renderCounts(counts)) {
+      rows should not be empty
+      counts.values.sum shouldBe rows.size
+    }
+  }
+
+  it should "require metadata fields according to manifest status" in {
+    val errors = readManifest().flatMap(validateMetadata)
+
+    withClue(errors.mkString("\n")) {
+      errors shouldBe empty
+    }
+  }
+
+  it should "carry GUS real-economy ready comparators and documented bridge gaps" in {
+    val rows = readManifest()
+
+    val inflation = rowByTarget(rows, "Inflation")
+    inflation.status shouldBe "READY"
+    inflation.value("source_provider") shouldBe "GUS"
+    inflation.value("dataset_code") shouldBe "GUS CPI March 2026"
+    inflation.value("vintage") should include("March 2026")
+    inflation.value("accessed_at") shouldBe "2026-05-09"
+    inflation.value("empirical_value") shouldBe "0.030"
+    inflation.value("tolerance") shouldBe "0.010"
+    inflation.value("criterion") should include("absolute distance")
+
+    val firmSizeTargets = rows.map(_.target).filter(_.startsWith("Firm-size distribution - ")).toSet
+    firmSizeTargets shouldBe Set(
+      "Firm-size distribution - Micro",
+      "Firm-size distribution - Small",
+      "Firm-size distribution - Medium",
+      "Firm-size distribution - Large",
+    )
+    val microFirmSize   = rowByTarget(rows, "Firm-size distribution - Micro")
+    microFirmSize.status shouldBe "PARTIAL"
+    microFirmSize.value("source_url") should include("active-enterprises-in-the-first-quarter-of-2026")
+    microFirmSize.value("dataset_code") should include("Table 1")
+    microFirmSize.value("vintage") should include("2026 Q1")
+    microFirmSize.value("model_target") shouldBe "terminal_firms:FirmSize_MicroShare:mean"
+    microFirmSize.value("empirical_value") shouldBe "0.959251"
+    microFirmSize.value("criterion") shouldBe ""
+    microFirmSize.value("notes") should include("diagnostics only")
+    rowByTarget(rows, "Firm-size distribution - Large").value("empirical_value") shouldBe "0.001451"
+
+    val gdp = rowByTarget(rows, "GDP growth")
+    gdp.status shouldBe "PARTIAL"
+    gdp.value("notes") should include("quarterly growth extraction")
+  }
+
+  it should "carry six sector output-share bridge rows from the generated source extract" in {
+    val rows = readManifest()
+
+    val family = rowByTarget(rows, "Sectoral output")
+    family.status shouldBe "PARTIAL"
+    family.value("source_provider") shouldBe "GUS primary; Eurostat allocation bridge"
+    family.value("dataset_code") should include("GUS Q1 2026 preliminary estimate Table 3")
+    family.value("vintage") should include("GUS 2025 annual current-price")
+    family.value("accessed_at") shouldBe "2026-06-23"
+    family.value("model_target") shouldBe "timeseries:Manuf_OutputShare:first"
+    family.value("transformation") should include("production-sector-gva-shares.tsv")
+    family.value("notes") should include("family row is not a numeric comparator")
+
+    val expectedSectorRows = Vector(
+      ("Sectoral output - BPO/SSC", "BPO_OutputShare", "0.151020553", "J+M+N business-services proxy"),
+      ("Sectoral output - Manufacturing", "Manuf_OutputShare", "0.227278712", "maps directly"),
+      ("Sectoral output - Retail/Services", "Retail_OutputShare", "0.408615248", "R/S is allocated"),
+      ("Sectoral output - Healthcare", "Health_OutputShare", "0.061255967", "Q is allocated"),
+      ("Sectoral output - Public", "Public_OutputShare", "0.122723802", "O/P is allocated"),
+      ("Sectoral output - Agriculture", "Agri_OutputShare", "0.029105719", "A is allocated"),
+    )
+
+    rows.map(_.target).filter(_.startsWith("Sectoral output - ")).toSet shouldBe expectedSectorRows.map(_._1).toSet
+
+    expectedSectorRows.foreach: (target, outputShareColumn, empiricalValue, noteFragment) =>
+      withClue(target) {
+        val row = rowByTarget(rows, target)
+        row.status shouldBe "BRIDGE_ASSUMPTION"
+        row.value("source_provider") shouldBe "GUS primary; Eurostat allocation bridge"
+        row.value("dataset_code") should include("Eurostat nama_10_a64")
+        row.value("unit") shouldBe "share of included production-sector GVA"
+        row.value("model_target") shouldBe s"timeseries:$outputShareColumn:first"
+        row.value("empirical_value") shouldBe empiricalValue
+        row.value("tolerance") shouldBe ""
+        row.value("criterion") shouldBe ""
+        row.value("transformation") should include("opening structural bridge")
+        row.value("notes") should include("docs/empirical-source-extracts/production-sector-gva-shares.tsv")
+        row.value("notes") should include(noteFragment)
+      }
+  }
+
+  it should "separate sector firm-population, employment, and wage validation surfaces" in {
+    val rows = readManifest()
+
+    val firmShares = rowByTarget(rows, "Sector firm-population shares")
+    firmShares.status shouldBe "PARTIAL"
+    firmShares.value("source_provider") shouldBe "GUS"
+    firmShares.value("dataset_code") shouldBe "GUS Active enterprises in Q1 2026 Table 2"
+    firmShares.value("accessed_at") shouldBe "2026-06-24"
+    firmShares.value("unit") shouldBe "share of active production enterprises"
+    firmShares.value("model_target") shouldBe "timeseries:BPO_FirmShare:first"
+    firmShares.value("transformation") should include("production-sector-labor-bridges.tsv")
+    firmShares.value("transformation") should include("sectorDefs.share")
+    firmShares.value("transformation") should include("firm-population")
+    firmShares.value("notes") should include("family row is not a numeric comparator")
+
+    val employmentShares = rowByTarget(rows, "Sector employment shares")
+    employmentShares.status shouldBe "PARTIAL"
+    employmentShares.value("source_provider") shouldBe "Eurostat"
+    employmentShares.value("dataset_code") shouldBe "Eurostat nama_10_a64_e EMP_DC THS_PER PL 2024"
+    employmentShares.value("accessed_at") shouldBe "2026-06-24"
+    employmentShares.value("unit") shouldBe "share of employed persons"
+    employmentShares.value("model_target") shouldBe "timeseries:BPO_EmploymentShare:first"
+    employmentShares.value("transformation") should include("production-sector-labor-bridges.tsv")
+    employmentShares.value("transformation") should include("separate from sectorDefs.share")
+    employmentShares.value("notes") should include("family row is not a numeric comparator")
+
+    val wageRatios = rowByTarget(rows, "Sector wage ratios")
+    wageRatios.status shouldBe "PARTIAL"
+    wageRatios.value("source_provider") shouldBe "Eurostat"
+    wageRatios.value("dataset_code") should include("D1 CP_MEUR")
+    wageRatios.value("accessed_at") shouldBe "2026-06-24"
+    wageRatios.value("unit") shouldBe "sector compensation-per-employee ratio"
+    wageRatios.value("model_target") shouldBe "timeseries:BPO_WageRatio:first"
+    wageRatios.value("transformation") should include("production-sector-labor-bridges.tsv")
+    wageRatios.value("transformation") should include("included production-sector mean")
+    wageRatios.value("notes") should include("family row is not a numeric comparator")
+
+    val expectedSectorRows = Vector(
+      ("Sector firm-population shares", "BPO/SSC", "BPO_FirmShare", "0.273479618", "J+M+N"),
+      ("Sector firm-population shares", "Manufacturing", "Manuf_FirmShare", "0.090584987", "B+C+D+E"),
+      ("Sector firm-population shares", "Retail/Services", "Retail_FirmShare", "0.504744227", "F+G+H+I+L+R+S"),
+      ("Sector firm-population shares", "Healthcare", "Health_FirmShare", "0.090770457", "Q"),
+      ("Sector firm-population shares", "Public", "Public_FirmShare", "0.031633986", "P"),
+      ("Sector firm-population shares", "Agriculture", "Agri_FirmShare", "0.008786725", "A"),
+      ("Sector employment shares", "BPO/SSC", "BPO_EmploymentShare", "0.120539311", "J+M+N"),
+      ("Sector employment shares", "Manufacturing", "Manuf_EmploymentShare", "0.230172741", "B+C+D+E"),
+      ("Sector employment shares", "Retail/Services", "Retail_EmploymentShare", "0.352204872", "F+G+H+I+L+R+S"),
+      ("Sector employment shares", "Healthcare", "Health_EmploymentShare", "0.070067769", "Q"),
+      ("Sector employment shares", "Public", "Public_EmploymentShare", "0.155638358", "O+P"),
+      ("Sector employment shares", "Agriculture", "Agri_EmploymentShare", "0.071376949", "A"),
+      ("Sector wage ratios", "BPO/SSC", "BPO_WageRatio", "1.233856038", "J+M+N"),
+      ("Sector wage ratios", "Manufacturing", "Manuf_WageRatio", "0.945580499", "B+C+D+E"),
+      ("Sector wage ratios", "Retail/Services", "Retail_WageRatio", "0.868392229", "F+G+H+I+L+R+S"),
+      ("Sector wage ratios", "Healthcare", "Health_WageRatio", "0.958306040", "Q"),
+      ("Sector wage ratios", "Public", "Public_WageRatio", "1.181048625", "O+P"),
+      ("Sector wage ratios", "Agriculture", "Agri_WageRatio", "1.437362138", "A"),
+    )
+
+    expectedSectorRows.foreach: (family, sector, column, empiricalValue, naceSections) =>
+      withClue(s"$family - $sector") {
+        val row = rowByTarget(rows, s"$family - $sector")
+        row.status shouldBe "BRIDGE_ASSUMPTION"
+        row.value("model_target") shouldBe s"timeseries:$column:first"
+        row.value("empirical_value") shouldBe empiricalValue
+        row.value("tolerance") shouldBe ""
+        row.value("criterion") shouldBe ""
+        row.value("notes") should include("docs/empirical-source-extracts/production-sector-labor-bridges.tsv")
+        row.value("notes") should include(s"NACE sections $naceSections")
+      }
+  }
+
+  it should "carry NBP ready comparators and documented bridge gaps" in {
+    val rows = readManifest()
+
+    val fx = rowByTarget(rows, "FX rate - EUR/PLN")
+    fx.status shouldBe "READY"
+    fx.value("source_provider") shouldBe "NBP"
+    fx.value("dataset_code") should include("082/A/NBP/2026")
+    fx.value("vintage") should include("2026-04-29")
+    fx.value("accessed_at") shouldBe "2026-05-09"
+    fx.value("empirical_value") shouldBe "4.2537"
+    fx.value("tolerance") shouldBe "0.1000"
+    fx.value("model_target") shouldBe "timeseries:ExRate:mean"
+
+    val referenceRate = rowByTarget(rows, "NBP reference rate")
+    referenceRate.status shouldBe "READY"
+    referenceRate.value("source_provider") shouldBe "NBP"
+    referenceRate.value("vintage") should include("2026-04-30 model start")
+    referenceRate.value("empirical_value") shouldBe "0.0375"
+    referenceRate.value("tolerance") shouldBe "0.0025"
+    referenceRate.value("model_target") shouldBe "timeseries:RefRate:first"
+    referenceRate.value("transformation") should include("first simulated RefRate")
+    referenceRate.value("notes") should include("endogenous Taylor-rule path evidence")
+
+    val credit = rowByTarget(rows, "Credit/GDP")
+    credit.status shouldBe "PARTIAL"
+    credit.value("notes") should include("GDP denominator bridge")
+
+    val totalCreditGrowth = rowByTarget(rows, "Credit/GDP - total credit stock growth")
+    totalCreditGrowth.status shouldBe "PARTIAL"
+    totalCreditGrowth.value("source_provider") shouldBe "NBP"
+    totalCreditGrowth.value("model_target") shouldBe "timeseries:TotalCreditStock:pct_change"
+    totalCreditGrowth.value("notes") should include("NBP MFI stock-series extraction")
+
+    val firmLoanGrowth = rowByTarget(rows, "Credit/GDP - bank firm loan growth")
+    firmLoanGrowth.status shouldBe "PARTIAL"
+    firmLoanGrowth.value("model_target") shouldBe "timeseries:BankFirmLoans:pct_change"
+    firmLoanGrowth.value("notes") should include("sector-definition mapping")
+
+    val consumerLoanGrowth = rowByTarget(rows, "Credit/GDP - consumer loan growth")
+    consumerLoanGrowth.status shouldBe "PARTIAL"
+    consumerLoanGrowth.value("model_target") shouldBe "timeseries:ConsumerLoans:pct_change"
+    consumerLoanGrowth.value("notes") should include("product-definition mapping")
+
+    val firmApproval = rowByTarget(rows, "Credit supply - firm approval rate bridge")
+    firmApproval.status shouldBe "MISSING_DATA_BRIDGE"
+    firmApproval.value("vintage") should include("2026-04-30")
+    firmApproval.value("model_target") shouldBe "timeseries:FirmCredit_ApprovalRate:delta"
+    firmApproval.value("transformation") should include("Do not compare survey levels directly")
+    firmApproval.value("notes") should include("sloos-credit-supply-bridge")
+    firmApproval.value("notes") should include("Do not use releases after 2026-04-30")
+
+    val consumerApproval = rowByTarget(rows, "Credit supply - consumer approval rate bridge")
+    consumerApproval.status shouldBe "MISSING_DATA_BRIDGE"
+    consumerApproval.value("vintage") should include("2026-04-30")
+    consumerApproval.value("model_target") shouldBe "timeseries:ConsumerCredit_ApprovedToDemand:delta"
+    consumerApproval.value("transformation") should include("Do not compare survey levels directly")
+    consumerApproval.value("notes") should include("sloos-credit-supply-bridge")
+    consumerApproval.value("notes") should include("Do not use releases after 2026-04-30")
+
+    val mortgageStandards = rowByTarget(rows, "Credit supply - mortgage standards bridge")
+    mortgageStandards.status shouldBe "MISSING_DATA_BRIDGE"
+    mortgageStandards.value("vintage") should include("2026-04-30")
+    mortgageStandards.value("unit") shouldBe "supply-constrained mortgage-origination delta"
+    mortgageStandards.value("model_target") shouldBe "timeseries:MortgageOriginationSupplyConstrained:delta"
+    mortgageStandards.value("transformation") should include("Do not fold mortgage standards into unsecured consumer-credit validation")
+    mortgageStandards.value("notes") should include("sloos-mortgage-credit-standards-bridge")
+    mortgageStandards.value("notes") should include("Mortgage-demand questions require a separate secured-credit demand bridge")
+    mortgageStandards.value("notes") should include("Do not use releases after 2026-04-30")
+
+    val firmDemand = rowByTarget(rows, "Credit demand - firm borrower-demand bridge")
+    firmDemand.status shouldBe "MISSING_DATA_BRIDGE"
+    firmDemand.value("vintage") should include("2026-04-30")
+    firmDemand.value("unit") shouldBe "credit-demand delta"
+    firmDemand.value("model_target") shouldBe "timeseries:FirmCredit_CreditDemand:delta"
+    firmDemand.value("transformation") should include("Do not use demand questions as evidence of bank-side tightening")
+    firmDemand.value("notes") should include("sloos-credit-demand-bridge")
+    firmDemand.value("notes") should include("Mortgage-demand questions belong to the secured-credit bridge")
+    firmDemand.value("notes") should include("Do not use releases after 2026-04-30")
+
+    val consumerDemand = rowByTarget(rows, "Credit demand - consumer borrower-demand bridge")
+    consumerDemand.status shouldBe "MISSING_DATA_BRIDGE"
+    consumerDemand.value("vintage") should include("2026-04-30")
+    consumerDemand.value("unit") shouldBe "credit-demand delta"
+    consumerDemand.value("model_target") shouldBe "timeseries:ConsumerCreditDemand:delta"
+    consumerDemand.value("transformation") should include("Do not use demand questions as evidence of bank-side tightening")
+    consumerDemand.value("notes") should include("sloos-credit-demand-bridge")
+    consumerDemand.value("notes") should include("Mortgage-demand questions belong to the secured-credit bridge")
+    consumerDemand.value("notes") should include("Do not use releases after 2026-04-30")
+
+    val currentAccount = rowByTarget(rows, "Current account")
+    currentAccount.status shouldBe "PARTIAL"
+    currentAccount.value("notes") should include("BoP cadence")
+  }
+
+  it should "carry fiscal ready comparators and documented bridge gaps" in {
+    val rows = readManifest()
+
+    val domesticDebt = rowByTarget(rows, "Public debt/GDP - PDP 2025 opening bridge")
+    domesticDebt.status shouldBe "BRIDGE_ASSUMPTION"
+    domesticDebt.value("source_provider") shouldBe "MF"
+    domesticDebt.value("empirical_value") shouldBe "0.489"
+    domesticDebt.value("tolerance") shouldBe "0.050"
+    domesticDebt.value("model_target") shouldBe "timeseries:DebtToGdp:first"
+    domesticDebt.value("vintage") should include("2025-12-05")
+    domesticDebt.value("transformation") should include("before the 2026-04-30 model start")
+    domesticDebt.value("notes") should include("53.8% in 2026")
+
+    val esaDebt = rowByTarget(rows, "Public debt/GDP - ESA2010 debt 2025 opening bridge")
+    esaDebt.status shouldBe "BRIDGE_ASSUMPTION"
+    esaDebt.value("source_provider") shouldBe "Eurostat"
+    esaDebt.value("empirical_value") shouldBe "0.597"
+    esaDebt.value("vintage") should include("2026-04-22")
+    esaDebt.value("model_target") shouldBe "timeseries:Esa2010DebtToGdp:first"
+    esaDebt.value("transformation") should include("before the 2026-04-30 model start")
+    esaDebt.value("notes") should include("terminal debt validation needs a horizon-matched forecast comparator")
+
+    val deficit = rowByTarget(rows, "Fiscal stance - general government deficit 2025")
+    deficit.status shouldBe "READY"
+    deficit.value("source_provider") shouldBe "Eurostat"
+    deficit.value("empirical_value") shouldBe "0.073"
+    deficit.value("model_target") shouldBe "timeseries:DeficitToGdp:terminal"
+
+    val expenditure = rowByTarget(rows, "Fiscal stance - state budget expenditure plan 2026")
+    expenditure.status shouldBe "PARTIAL"
+    expenditure.value("empirical_value") shouldBe "918900000000"
+    expenditure.value("notes") should include("coverage bridge")
+  }
+
+  it should "carry banking and mortgage-risk ready comparators and documented bridge gaps" in {
+    val rows = readManifest()
+
+    val capital = rowByTarget(rows, "Bank capital/liquidity - total capital ratio")
+    capital.status shouldBe "READY"
+    capital.value("source_provider") shouldBe "KNF"
+    capital.value("empirical_value") shouldBe "0.211"
+    capital.value("tolerance") shouldBe "0.020"
+    capital.value("model_target") shouldBe "timeseries:AggregateBankCAR:terminal"
+    capital.value("notes") should include("Terminal per-bank CAR mean is not a sector total-capital-ratio comparator")
+
+    val liquidity = rowByTarget(rows, "Bank capital/liquidity - LCR NSFR NPL bridge")
+    liquidity.status shouldBe "PARTIAL"
+    liquidity.value("notes") should include("sector average versus model minimum")
+
+    val aggregateNplTrajectory = rowByTarget(rows, "Bank capital/liquidity - aggregate NPL trajectory")
+    aggregateNplTrajectory.status shouldBe "PARTIAL"
+    aggregateNplTrajectory.value("source_provider") shouldBe "KNF"
+    aggregateNplTrajectory.value("model_target") shouldBe "timeseries:MaxBankNPL:max"
+    aggregateNplTrajectory.value("notes") should include("KNF NPL trajectory extraction")
+
+    val consumerNplTrajectory = rowByTarget(rows, "Bank capital/liquidity - consumer credit NPL trajectory")
+    consumerNplTrajectory.status shouldBe "PARTIAL"
+    consumerNplTrajectory.value("model_target") shouldBe "timeseries:ConsumerCredit_NplRatioGross:max"
+    consumerNplTrajectory.value("notes") should include("product-level KNF/NBP NPL series")
+
+    val mortgageStock = rowByTarget(rows, "Housing and mortgages - mortgage stock/GDP")
+    mortgageStock.status shouldBe "BRIDGE_ASSUMPTION"
+    mortgageStock.value("source_provider") shouldBe "KNF"
+    mortgageStock.value("empirical_value") shouldBe "0.1217"
+    mortgageStock.value("model_target") shouldBe "timeseries:MortgageToGdp:first"
+    mortgageStock.value("transformation") should include("first simulated MortgageToGdp")
+    mortgageStock.value("notes") should include("horizon-matched comparator")
+
+    val mortgageDefault = rowByTarget(rows, "Housing and mortgages - mortgage default bridge")
+    mortgageDefault.status shouldBe "PARTIAL"
+    mortgageDefault.value("notes") should include("default-flow bridge")
+  }
+
+  private def validateMetadata(row: ManifestRow): Vector[String] =
+    val commonRequired = Vector(
+      "target",
+      "source_provider",
+      "source_url",
+      "dataset_code",
+      "vintage",
+      "license_or_reuse_note",
+      "frequency",
+      "unit",
+      "transformation",
+      "model_target",
+      "status",
+    )
+
+    val commonErrors = commonRequired.flatMap: column =>
+      if row.nonEmpty(column) then None else Some(error(row, s"missing required '$column'"))
+
+    val parseErrors = Vector(
+      ModelTarget.parse(row.value("model_target")).left.toOption.map(err => error(row, err)),
+      SourceStatus.parse(row.status).left.toOption.map(err => error(row, err)),
+      validateOptionalDate(row, "accessed_at"),
+      validateOptionalDecimal(row, "empirical_value"),
+      validateOptionalDecimal(row, "tolerance"),
+    ).flatten
+
+    val statusErrors =
+      parseStatus(row) match
+        case SourceStatus.Ready =>
+          Vector(
+            Option.when(row.value("vintage") == "TBD")(error(row, "READY row must have concrete vintage")),
+            Option.when(!row.nonEmpty("accessed_at"))(error(row, "READY row must have accessed_at")),
+            Option.when(!row.nonEmpty("criterion"))(error(row, "READY row must have criterion")),
+            validateReadyDecimal(row, "empirical_value"),
+            validateReadyDecimal(row, "tolerance"),
+          ).flatten
+        case SourceStatus.Partial | SourceStatus.MissingOutput | SourceStatus.MissingDataBridge | SourceStatus.MissingSourceDetail |
+            SourceStatus.BridgeAssumption =>
+          Vector(
+            Option.when(!row.nonEmpty("notes"))(error(row, s"${row.status} row must explain the remaining blocker in notes")),
+          ).flatten
+
+    commonErrors ++ parseErrors ++ statusErrors
+
+  private def readManifest(): Vector[ManifestRow] =
+    TsvRows
+      .readRows(manifestPath)
+      .fold(err => fail(err), identity)
+      .zipWithIndex
+      .map: (row, index) =>
+        ManifestRow(index + 2, row.values)
+
+  private def parseStatus(row: ManifestRow): SourceStatus =
+    SourceStatus.parse(row.status).fold(err => fail(error(row, err)), identity)
+
+  private def rowByTarget(rows: Vector[ManifestRow], target: String): ManifestRow =
+    rows.find(_.target == target).getOrElse(fail(s"Expected manifest target '$target'"))
+
+  private def validateOptionalDate(row: ManifestRow, column: String): Option[String] =
+    Option
+      .when(row.nonEmpty(column)):
+        try
+          LocalDate.parse(row.value(column))
+          ""
+        catch case err: Exception => error(row, s"invalid '$column': ${err.getMessage}")
+      .filter(_.nonEmpty)
+
+  private def validateOptionalDecimal(row: ManifestRow, column: String): Option[String] =
+    if row.nonEmpty(column) then None else None
+
+  private def validateReadyDecimal(row: ManifestRow, column: String): Option[String] =
+    if !row.nonEmpty(column) then Some(error(row, s"READY row must have $column"))
+    else
+      try
+        BigDecimal(row.value(column))
+        None
+      catch case err: NumberFormatException => Some(error(row, s"READY row must have numeric '$column': ${err.getMessage}"))
+
+  private def renderCounts(counts: Map[SourceStatus, Int]): String =
+    counts.toVector.sortBy(_._1.token).map((status, count) => s"${status.token}=$count").mkString("Manifest status counts: ", ", ", "")
+
+  private def error(row: ManifestRow, message: String): String =
+    s"$manifestPath line ${row.line} '${row.target}': $message"
+
+end EmpiricalValidationManifestSpec
