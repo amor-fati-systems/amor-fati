@@ -1,6 +1,8 @@
 package com.boombustgroup.amorfati.accounting.matrix
 
 import com.boombustgroup.amorfati.accounting.matrix.SfcMatrixEvidence.*
+import com.boombustgroup.amorfati.config.SimParams
+import com.boombustgroup.amorfati.types.*
 import com.boombustgroup.ledger.{AssetType, MechanismId}
 
 import java.nio.charset.StandardCharsets
@@ -42,7 +44,7 @@ object SfcMatrixRenderers:
   def renderSymbolicBundle(
       bundle: MatrixEvidenceBundle,
       formats: Vector[OutputFormat],
-  ): Vector[RenderedArtifact] =
+  )(using SimParams): Vector[RenderedArtifact] =
     val matrixArtifacts = SfcSymbolicMatrices.matrices.flatMap: matrix =>
       formats.map: format =>
         RenderedArtifact(s"${matrix.name}.${format.extension}", renderSymbolicMatrix(bundle.metadata, matrix, format))
@@ -62,7 +64,7 @@ object SfcMatrixRenderers:
       bundle: MatrixEvidenceBundle,
       outDir: Path,
       formats: Vector[OutputFormat],
-  ): Vector[Path] =
+  )(using SimParams): Vector[Path] =
     Files.createDirectories(outDir)
     renderSymbolicBundle(bundle, formats).map: artifact =>
       val path = outDir.resolve(artifact.relativePath)
@@ -266,20 +268,23 @@ object SfcMatrixRenderers:
       rows,
     )
 
-  private def renderReconciliation(bundle: MatrixEvidenceBundle, format: OutputFormat): String =
+  private def renderReconciliation(bundle: MatrixEvidenceBundle, format: OutputFormat)(using SimParams): String =
     format match
       case OutputFormat.Latex    => renderReconciliationLatex(bundle)
       case OutputFormat.Markdown => renderReconciliationMarkdown(bundle)
 
-  private def renderReconciliationLatex(bundle: MatrixEvidenceBundle): String =
+  private def renderReconciliationLatex(bundle: MatrixEvidenceBundle)(using SimParams): String =
     val metadata = bundle.metadata
-    val header   = Vector("Identity", "Expected", "Actual", "Residual", "Status", "Runtime channels", "Source").map(escapeLatex).mkString(" & ")
+    val header   =
+      Vector("Identity", "Expected (macro PLN)", "Actual (macro PLN)", "Residual (macro PLN)", "Status", "Runtime channels", "Source")
+        .map(escapeLatex)
+        .mkString(" & ")
     val body     = bundle.reconciliation.rows.map: row =>
       Vector(
         escapeLatex(row.label),
-        escapeLatex(formatAmountRaw(row.expectedRaw)),
-        escapeLatex(formatAmountRaw(row.actualRaw)),
-        escapeLatex(formatAmountRaw(row.residualRaw)),
+        escapeLatex(formatAmountMacroPln(row.expectedRaw)),
+        escapeLatex(formatAmountMacroPln(row.actualRaw)),
+        escapeLatex(formatAmountMacroPln(row.residualRaw)),
         escapeLatex(row.status),
         latexTextList(reconciliationChannels(row)),
         escapeLatex(s"${row.source} ${row.note}"),
@@ -287,12 +292,13 @@ object SfcMatrixRenderers:
 
     s"""% schema=${metadata.schemaVersion} seed=${metadata.seed} month=${metadata.executionMonth} commit=${escapeLatex(
         metadata.commit,
-      )} sfc=${metadata.sfcStatus} matrix=${metadata.matrixStatus} output=stock-flow-reconciliation
+      )} sfc=${metadata.sfcStatus} matrix=${metadata.matrixStatus} output=stock-flow-reconciliation ${reconciliationScaleMetadata}
        |% requires \\usepackage{longtable}
        |\\begingroup
        |\\scriptsize
        |\\setlength{\\tabcolsep}{2pt}
        |\\renewcommand{\\arraystretch}{1.15}
+       |\\noindent\\textit{Displayed monetary columns are macro-scaled PLN (raw model-scale PLN divided by SimParams.gdpRatio); identity validation remains on raw model-scale fixed-point PLN.}\\\\[0.5em]
        |\\begin{longtable}{p{0.13\\linewidth}p{0.10\\linewidth}p{0.10\\linewidth}p{0.10\\linewidth}p{0.06\\linewidth}p{0.24\\linewidth}p{0.20\\linewidth}}
        |$header \\\\
        |\\hline
@@ -305,29 +311,29 @@ object SfcMatrixRenderers:
        |\\endgroup
        |""".stripMargin
 
-  private def renderReconciliationMarkdown(bundle: MatrixEvidenceBundle): String =
+  private def renderReconciliationMarkdown(bundle: MatrixEvidenceBundle)(using SimParams): String =
     val metadata = bundle.metadata
     val rows     = bundle.reconciliation.rows.map: row =>
       Vector(
         row.label,
-        formatAmountRaw(row.expectedRaw),
-        formatAmountRaw(row.actualRaw),
-        formatAmountRaw(row.residualRaw),
+        formatAmountMacroPln(row.expectedRaw),
+        formatAmountMacroPln(row.actualRaw),
+        formatAmountMacroPln(row.residualRaw),
         row.status,
         reconciliationChannels(row).mkString("<br>"),
         s"${row.source} ${row.note}",
       )
 
     renderMarkdownTable(
-      s"""<!-- schema=${metadata.schemaVersion} seed=${metadata.seed} month=${metadata.executionMonth} commit=${metadata.commit} sfc=${metadata.sfcStatus} matrix=${metadata.matrixStatus} output=stock-flow-reconciliation -->
+      s"""<!-- schema=${metadata.schemaVersion} seed=${metadata.seed} month=${metadata.executionMonth} commit=${metadata.commit} sfc=${metadata.sfcStatus} matrix=${metadata.matrixStatus} output=stock-flow-reconciliation ${reconciliationScaleMetadata} -->
          |
          |${markdownSourceContract}
          |
          |# Stock-Flow Reconciliation and Revaluation Evidence
          |
-         |Rows compare independently sourced transaction, revaluation, default, write-off, and other-change channels with observed stock deltas or level identities. Residual is actual minus expected.
+         |Rows compare independently sourced transaction, revaluation, default, write-off, and other-change channels with observed stock deltas or level identities. Residual is actual minus expected. Displayed monetary columns are macro-scaled PLN (`raw model-scale PLN / SimParams.gdpRatio`) to match Monte Carlo `macroPln`; identity validation remains on raw model-scale fixed-point PLN.
          |""".stripMargin,
-      Vector("Identity", "Expected", "Actual", "Residual", "Status", "Runtime channels", "Source"),
+      Vector("Identity", "Expected (macro PLN)", "Actual (macro PLN)", "Residual (macro PLN)", "Status", "Runtime channels", "Source"),
       rows,
     )
 
@@ -365,13 +371,11 @@ object SfcMatrixRenderers:
   private def symbolicRows(row: FlowMechanismSemantics.Row): Vector[String] =
     if row.symbolicRows.nonEmpty then row.symbolicRows else Vector("No symbolic row; see SFC / reconciliation impact")
 
-  private def formatAmountRaw(value: Long): String =
-    val scale = 10000L
-    val abs   = BigInt(value).abs
-    val sign  = if value < 0L then "-" else ""
-    val whole = abs / scale
-    val frac  = (abs % scale).toString.reverse.padTo(4, '0').reverse
-    s"$sign$whole.$frac"
+  private def formatAmountMacroPln(value: Long)(using p: SimParams): String =
+    p.macroPln(PLN.fromRaw(value)).format(4)
+
+  private def reconciliationScaleMetadata(using p: SimParams): String =
+    s"money_scale=macro_pln gdp_ratio=${p.gdpRatio.format(8)} raw_validation=model_scale_pln"
 
   private[matrix] def escapeLatex(value: String): String =
     value.flatMap:

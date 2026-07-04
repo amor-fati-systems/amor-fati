@@ -214,10 +214,7 @@ object McTimeseriesSchema:
         .map(_.iterator.map(state => state.market -> state).toMap)
         .getOrElse(Map.empty)
 
-    private lazy val polandScaleFactor: Multiplier =
-      if p.gdpRatio > Scalar.Zero then p.gdpRatio.toMultiplier else Multiplier.One
-
-    def polandScale(value: PLN): PLN = value / polandScaleFactor
+    def polandScale(value: PLN): PLN = p.macroPln(value)
 
     def annualizedGdpRatio(stock: PLN): Scalar =
       if annualizedGdp > PLN.Zero then stock / annualizedGdp else Scalar.Zero
