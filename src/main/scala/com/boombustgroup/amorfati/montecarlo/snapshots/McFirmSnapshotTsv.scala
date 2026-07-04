@@ -3,9 +3,8 @@ package com.boombustgroup.amorfati.montecarlo.snapshots
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.SimulationMonth.ExecutionMonth
 import com.boombustgroup.amorfati.engine.flows.FlowSimulation
-import com.boombustgroup.amorfati.montecarlo.core.{McRunConfig, SimError}
+import com.boombustgroup.amorfati.montecarlo.core.{McOutputFiles, McRunConfig, SimError}
 import com.boombustgroup.amorfati.montecarlo.io.McTsvFile
-import com.boombustgroup.amorfati.montecarlo.runner.McOutputFiles
 import zio.stream.ZStream
 import zio.{Scope, ZIO}
 

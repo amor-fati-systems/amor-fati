@@ -10,8 +10,8 @@ same shared delimited-text layer as diagnostic TSV artifacts.
 
 | Package | Files | Role |
 |---------|-------|------|
-| `core` | `McRunConfig`, `McSeedMonth`, `McTypes`, `MetricValue` | Public runtime config, typed errors/results, seed-month payloads, and fixed-point reporting values |
-| `runner` | `McRunner`, `McRunnerConsole`, `McOutputFiles`, `McTerminalSummarySchema`, `McTerminalSummaryTsv` | Production run orchestration, progress rendering, output naming, and terminal summary exports |
+| `core` | `McRunConfig`, `McOutputFiles`, `McSeedMonth`, `McTypes`, `MetricValue` | Public runtime config, output naming, typed errors/results, seed-month payloads, and fixed-point reporting values |
+| `runner` | `McRunner`, `McRunnerConsole`, `McTerminalSummarySchema`, `McTerminalSummaryTsv` | Production run orchestration, progress rendering, and terminal summary exports |
 | `timeseries` | `McTimeseriesSchema`, `McTimeseriesTsv` | Monthly timeseries schema, typed `Col` handles, row computation, and per-seed TSV sink |
 | `snapshots` | `McFirm*`, `McHousehold*` snapshot/trace/cohort files | Optional firm and household microdata schedules, selectors, schemas, chunk writers, and shared liquidity diagnostics |
 | `io` | `DelimitedText*`, `McTsvFile`, `McTsvSchema` | Shared delimited-text and TSV contracts used by Monte Carlo, diagnostics, and data-bridge code |

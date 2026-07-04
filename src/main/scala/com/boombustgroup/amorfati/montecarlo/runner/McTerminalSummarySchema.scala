@@ -8,7 +8,7 @@ import com.boombustgroup.amorfati.agents.Household
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.flows.FlowSimulation
 import com.boombustgroup.amorfati.engine.ledger.LedgerFinancialState
-import com.boombustgroup.amorfati.montecarlo.core.McRunConfig
+import com.boombustgroup.amorfati.montecarlo.core.{McOutputFiles, McRunConfig}
 import com.boombustgroup.amorfati.montecarlo.io.McTsvSchema
 import com.boombustgroup.amorfati.montecarlo.snapshots.{McFirmSizeClass, McHouseholdLiquidityDiagnostics}
 import com.boombustgroup.amorfati.types.*

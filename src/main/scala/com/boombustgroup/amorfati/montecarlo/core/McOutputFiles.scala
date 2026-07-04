@@ -1,6 +1,5 @@
-package com.boombustgroup.amorfati.montecarlo.runner
+package com.boombustgroup.amorfati.montecarlo.core
 
-import com.boombustgroup.amorfati.montecarlo.core.{McRunConfig, SimError}
 import zio.ZIO
 
 import java.io.File
