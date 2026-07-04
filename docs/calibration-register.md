@@ -490,7 +490,7 @@ a concrete diagnostic artifact path.
 Use the following commands to audit open provenance gaps:
 
 ```bash
-rg "UNKNOWN_SOURCE|TUNED_NEEDS_VALIDATION|ASSUMED|PLACEHOLDER|EMPIRICAL_TRANSFORMED|POLICY_SCENARIO" src/main/scala/com/boombustgroup/amorfati/config/CalibrationProvenance.scala docs/calibration-register.md
+rg "UNKNOWN_SOURCE|TUNED_NEEDS_VALIDATION|ASSUMED|PLACEHOLDER|EMPIRICAL_TRANSFORMED|POLICY_SCENARIO" modules/model/src/main/scala/com/boombustgroup/amorfati/config/CalibrationProvenance.scala docs/calibration-register.md
 ```
 
 Priority gaps before publication:

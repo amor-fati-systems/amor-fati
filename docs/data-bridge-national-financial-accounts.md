@@ -104,7 +104,7 @@ sectors used by firms and sector-output validation.
 ## Production-Sector Crosswalk
 
 The test-backed runtime contract lives in
-[`ProductionSectorCrosswalk.scala`](../src/main/scala/com/boombustgroup/amorfati/config/ProductionSectorCrosswalk.scala).
+[`ProductionSectorCrosswalk.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/config/ProductionSectorCrosswalk.scala).
 Initial sector-output validation should use this table as a summary, not as a
 license to treat every row as a direct empirical match.
 

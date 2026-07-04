@@ -31,7 +31,7 @@ coefficients, price indices, exchange rates, and generic scalars.
 
 Domain numerics use Long-backed fixed-point opaque types at scale `10^4`.
 The shared implementation lives in `fp/`, and the public engine imports these
-types through `types.scala`.
+types through [`types.scala`](../../modules/model/src/main/scala/com/boombustgroup/amorfati/types.scala).
 
 Core domain code should use semantic types such as `PLN`, `Rate`, `Share`,
 `Scalar`, `Multiplier`, `Coefficient`, `PriceIndex`, `Sigma`, `ExchangeRate`,
@@ -54,15 +54,15 @@ banker's rounding for fixed-point intermediate results.
   parsing, expectations, or comparison, but should convert into typed
   fixed-point values before entering domain execution.
 - Adding a new numeric domain requires a provider in `fp/`, exports from
-  `types.scala`, and coverage in `OpaqueTypesSpec` or a similarly focused test.
+  [`types.scala`](../../modules/model/src/main/scala/com/boombustgroup/amorfati/types.scala), and coverage in `OpaqueTypesSpec` or a similarly focused test.
 
 ## References
 
 - [Architecture overview](../architecture/overview.md)
 - [Extension points](../architecture/extension-points.md)
-- [`types.scala`](../../src/main/scala/com/boombustgroup/amorfati/types.scala)
-- [`FixedPointBase.scala`](../../src/main/scala/com/boombustgroup/amorfati/fp/FixedPointBase.scala)
-- [`PLNProvider.scala`](../../src/main/scala/com/boombustgroup/amorfati/fp/PLNProvider.scala)
-- [`RateProvider.scala`](../../src/main/scala/com/boombustgroup/amorfati/fp/RateProvider.scala)
-- [`ScalarProvider.scala`](../../src/main/scala/com/boombustgroup/amorfati/fp/ScalarProvider.scala)
-- [`OpaqueTypesSpec.scala`](../../src/test/scala/com/boombustgroup/amorfati/OpaqueTypesSpec.scala)
+- [`types.scala`](../../modules/model/src/main/scala/com/boombustgroup/amorfati/types.scala)
+- [`FixedPointBase.scala`](../../modules/model/src/main/scala/com/boombustgroup/amorfati/fp/FixedPointBase.scala)
+- [`PLNProvider.scala`](../../modules/model/src/main/scala/com/boombustgroup/amorfati/fp/PLNProvider.scala)
+- [`RateProvider.scala`](../../modules/model/src/main/scala/com/boombustgroup/amorfati/fp/RateProvider.scala)
+- [`ScalarProvider.scala`](../../modules/model/src/main/scala/com/boombustgroup/amorfati/fp/ScalarProvider.scala)
+- [`OpaqueTypesSpec.scala`](../../modules/model/src/test/scala/com/boombustgroup/amorfati/OpaqueTypesSpec.scala)

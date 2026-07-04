@@ -46,7 +46,7 @@ jobs:
         run: nix develop --command sbt scalafmtCheckAll
 
       - name: Run non-heavy unit tests with coverage
-        run: nix develop --command sbt coverage "root / Test / test" coverageReport
+        run: nix develop --command sbt coverage "tsv / Test / test" "model / Test / test" "monteCarlo / Test / test" "cli / Test / test" coverageAggregate
 
       - name: Run heavy unit tests without coverage
         run: nix develop --command sbt -DamorFati.includeHeavyTests=true "root / Test / testOnly * -- -n com.boombustgroup.amorfati.tags.Heavy"

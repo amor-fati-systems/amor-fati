@@ -76,9 +76,9 @@ review:
 | External shocks | `external-risk-off` | Activates risk-off shock month and increases FX sensitivity. |
 
 Scenario definitions live in
-`src/main/scala/com/boombustgroup/amorfati/config/RobustnessScenarios.scala`.
+`modules/model/src/main/scala/com/boombustgroup/amorfati/config/RobustnessScenarios.scala`.
 The runner lives in
-`src/main/scala/com/boombustgroup/amorfati/diagnostics/SensitivityRobustnessExport.scala`.
+`modules/cli/src/main/scala/com/boombustgroup/amorfati/diagnostics/SensitivityRobustnessExport.scala`.
 
 ## Metrics
 

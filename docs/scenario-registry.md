@@ -6,9 +6,9 @@ scenario runs are named economic stories, while sensitivity runs are local
 one-at-a-time parameter checks.
 
 The source of truth is
-`src/main/scala/com/boombustgroup/amorfati/config/ScenarioRegistry.scala`.
+`modules/model/src/main/scala/com/boombustgroup/amorfati/config/ScenarioRegistry.scala`.
 The executable runner is
-`src/main/scala/com/boombustgroup/amorfati/diagnostics/ScenarioRunExport.scala`.
+`modules/cli/src/main/scala/com/boombustgroup/amorfati/diagnostics/ScenarioRunExport.scala`.
 
 Operational appendix entry point:
 [operations.md#operational-appendix-index](operations.md#operational-appendix-index).

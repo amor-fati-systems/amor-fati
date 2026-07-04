@@ -18,15 +18,15 @@ or validation documents.
 | [Behavioral equations and decision rules](behavioral-equations-and-decision-rules.md) | Detailed rule families used by the same-month economics stages. |
 | [SFC matrix evidence](sfc-matrix-evidence.md) | Accounting matrix evidence, sign conventions, generated artifacts, and reconciliation surface. |
 | [Engine invariants and semantics](engine-invariants-and-semantics.md) | Hard invariants, failure semantics, known limitations, and validation routing. |
-| [`FlowSimulation.scala`](../src/main/scala/com/boombustgroup/amorfati/engine/flows/FlowSimulation.scala) | Public one-month `step` boundary. |
-| [`MonthCalculusRunner.scala`](../src/main/scala/com/boombustgroup/amorfati/engine/flows/MonthCalculusRunner.scala) | Ordered same-month economics workflow. |
-| [`MonthSemantics.scala`](../src/main/scala/com/boombustgroup/amorfati/engine/MonthSemantics.scala) | Zero-cost phase tags for `Pre`, `SameMonth`, `Post`, and `NextPre`. |
-| [`MonthRandomness.scala`](../src/main/scala/com/boombustgroup/amorfati/engine/MonthRandomness.scala) | Explicit per-month randomness contract. |
-| [`MonthFlowEmitter.scala`](../src/main/scala/com/boombustgroup/amorfati/engine/flows/MonthFlowEmitter.scala) | Translation from same-month quantities into runtime ledger batches. |
-| [`RuntimeFlowExecutor.scala`](../src/main/scala/com/boombustgroup/amorfati/engine/flows/RuntimeFlowExecutor.scala) | Runtime ledger batch execution. |
-| [`SfcSemanticProjection.scala`](../src/main/scala/com/boombustgroup/amorfati/engine/flows/SfcSemanticProjection.scala) | Projection from executed batches and same-month semantic evidence into SFC validation flows. |
-| [`closedmonth/MonthClosing.scala`](../src/main/scala/com/boombustgroup/amorfati/engine/closedmonth/MonthClosing.scala) | Realized closed-month semantic state. |
-| [`NextStateAdvancer.scala`](../src/main/scala/com/boombustgroup/amorfati/engine/flows/NextStateAdvancer.scala) | Closed-month to next-pre state materialization. |
+| [`FlowSimulation.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/flows/FlowSimulation.scala) | Public one-month `step` boundary. |
+| [`MonthCalculusRunner.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/flows/MonthCalculusRunner.scala) | Ordered same-month economics workflow. |
+| [`MonthSemantics.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/MonthSemantics.scala) | Zero-cost phase tags for `Pre`, `SameMonth`, `Post`, and `NextPre`. |
+| [`MonthRandomness.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/MonthRandomness.scala) | Explicit per-month randomness contract. |
+| [`MonthFlowEmitter.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/flows/MonthFlowEmitter.scala) | Translation from same-month quantities into runtime ledger batches. |
+| [`RuntimeFlowExecutor.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/flows/RuntimeFlowExecutor.scala) | Runtime ledger batch execution. |
+| [`SfcSemanticProjection.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/flows/SfcSemanticProjection.scala) | Projection from executed batches and same-month semantic evidence into SFC validation flows. |
+| [`closedmonth/MonthClosing.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/closedmonth/MonthClosing.scala) | Realized closed-month semantic state. |
+| [`NextStateAdvancer.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/flows/NextStateAdvancer.scala) | Closed-month to next-pre state materialization. |
 
 ## Boundary State
 

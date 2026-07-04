@@ -252,7 +252,7 @@ Optional exports are disabled by default:
 Per-seed time-series TSV files emit macro PLN aggregates in Poland scale; do
 not divide them by `gdpRatio` during empirical analysis. Output schema and
 diagnostic-column semantics are owned by
-[montecarlo/README.md](../src/main/scala/com/boombustgroup/amorfati/montecarlo/README.md)
+[montecarlo/README.md](../modules/montecarlo/src/main/scala/com/boombustgroup/amorfati/montecarlo/README.md)
 and the schema definitions it indexes.
 
 Output ownership and commit policy are listed in [Output Locations](#output-locations).
@@ -420,7 +420,7 @@ For scratch and committed-snapshot SFC matrix exports, see
 ## Scenario And Robustness Runs
 
 Named scenarios come from
-`src/main/scala/com/boombustgroup/amorfati/config/ScenarioRegistry.scala` and
+`modules/model/src/main/scala/com/boombustgroup/amorfati/config/ScenarioRegistry.scala` and
 are documented in [scenario-registry.md](scenario-registry.md).
 
 Run a small scenario smoke check:
@@ -436,7 +436,7 @@ sbt "scenarioRun --scenarios all --seeds 2 --months 24 --run-id local-review --o
 ```
 
 Robustness scenario sets come from
-`src/main/scala/com/boombustgroup/amorfati/config/RobustnessScenarios.scala` and
+`modules/model/src/main/scala/com/boombustgroup/amorfati/config/RobustnessScenarios.scala` and
 are documented in
 [sensitivity-robustness-workflow.md](sensitivity-robustness-workflow.md).
 

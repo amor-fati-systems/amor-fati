@@ -6,7 +6,8 @@ import com.boombustgroup.amorfati.agents.HhStatus
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.SimulationMonth.ExecutionMonth
 import com.boombustgroup.amorfati.engine.ledger.LedgerFinancialState
-import com.boombustgroup.amorfati.montecarlo.core.{McRunConfig, RunResult, SimError}
+import com.boombustgroup.amorfati.montecarlo.core.{McRunConfig, MetricValue, RunResult, SimError}
+import com.boombustgroup.amorfati.montecarlo.core.MetricValue.*
 import com.boombustgroup.amorfati.montecarlo.runner.McRunner
 import com.boombustgroup.amorfati.montecarlo.snapshots.{McFirmSnapshotSchedule, McHouseholdSnapshotSchedule}
 import com.boombustgroup.amorfati.montecarlo.timeseries.McTimeseriesSchema
@@ -23,11 +24,14 @@ class McRunnerTsvIntegrationSpec extends AnyFlatSpec with Matchers:
 
   given SimParams = SimParams.defaults
 
-  private val DurationMonths     = 3
-  private val Seeds              = Vector(1L, 2L)
-  private val OutputPrefix       = "mc-it"
-  private val RunId              = "tsvspec"
-  private val HhLiquidityColumns = columns(
+  private def metricDecimal(value: MetricValue): BigDecimal =
+    rawValue(value.toLong)
+
+  private val DurationMonths                         = 3
+  private val Seeds                                  = Vector(1L, 2L)
+  private val OutputPrefix                           = "mc-it"
+  private val RunId                                  = "tsvspec"
+  private val HhLiquidityColumns                     = columns(
     """
       HouseholdLiquidity_NetDemandDeposit
       HouseholdLiquidity_PositiveDemandDeposits
@@ -46,7 +50,7 @@ class McRunnerTsvIntegrationSpec extends AnyFlatSpec with Matchers:
       HouseholdLiquidity_DepositP99
     """,
   )
-  private val HhDistressColumns  = columns(
+  private val HhDistressColumns                      = columns(
     """
       HH_Distress_Current
       HH_Distress_LiquidityStress
@@ -57,7 +61,7 @@ class McRunnerTsvIntegrationSpec extends AnyFlatSpec with Matchers:
       HH_Distress_ActiveShare
     """,
   )
-  private val ExpectedHhHeader   = tsv(
+  private val ExpectedHhHeader                       = tsv(
     columns(
       """
         Seed
@@ -91,7 +95,7 @@ class McRunnerTsvIntegrationSpec extends AnyFlatSpec with Matchers:
       """,
     ) ++ HhLiquidityColumns,
   )
-  private val ExpectedBankHeader = tsv(
+  private val ExpectedBankHeader                     = tsv(
     columns(
       """
         Seed
@@ -107,7 +111,7 @@ class McRunnerTsvIntegrationSpec extends AnyFlatSpec with Matchers:
       """,
     ),
   )
-  private val ExpectedFirmHeader = tsv(
+  private val ExpectedFirmHeader                     = tsv(
     columns(
       """
         Seed
@@ -123,7 +127,7 @@ class McRunnerTsvIntegrationSpec extends AnyFlatSpec with Matchers:
       """,
     ),
   )
-  private val ExpectedFirmSnapshotHeader = tsvHeader(
+  private val ExpectedFirmSnapshotHeader             = tsvHeader(
     """
       RunId
       Seed
@@ -149,7 +153,7 @@ class McRunnerTsvIntegrationSpec extends AnyFlatSpec with Matchers:
       StateOwned
     """,
   )
-  private val ConsumerBankPortfolioColumns = columns(
+  private val ConsumerBankPortfolioColumns           = columns(
     """
       ConsumerBankPortfolioRiskAdjustedLoanReturn
       ConsumerBankPortfolioRiskAdjustedBondReturn
@@ -163,7 +167,7 @@ class McRunnerTsvIntegrationSpec extends AnyFlatSpec with Matchers:
       ConsumerBankPortfolioQuantityThrottle
     """,
   )
-  private val ExpectedHouseholdSnapshotHeader = tsv(
+  private val ExpectedHouseholdSnapshotHeader        = tsv(
     columns(
       """
         RunId
@@ -297,8 +301,7 @@ class McRunnerTsvIntegrationSpec extends AnyFlatSpec with Matchers:
 
   private def unsafeRunEither[A](zio: ZIO[Any, SimError, A]): Either[SimError, A] =
     Unsafe.unsafe:
-      implicit unsafe =>
-        Runtime.default.unsafe.run(zio.either).getOrThrowFiberFailure()
+      implicit unsafe => Runtime.default.unsafe.run(zio.either).getOrThrowFiberFailure()
 
   private def withTempDir[A](f: Path => A): A =
     val dir = Files.createTempDirectory("mc-runner-it-")
@@ -334,67 +337,67 @@ class McRunnerTsvIntegrationSpec extends AnyFlatSpec with Matchers:
     idx
 
   private def assertBankCapitalWaterfall(header: Vector[String], row: Vector[BigDecimal]): Unit =
-    val openingIdx       = columnIndex(header, "BankCapital_Opening")
-    val closingIdx       = columnIndex(header, "BankCapital_Closing")
-    val deltaIdx         = columnIndex(header, "BankCapital_Delta")
-    val retainedIdx      = columnIndex(header, "BankCapital_RetainedIncome")
-    val realizedIdx      = columnIndex(header, "BankCapital_RealizedCreditLoss")
-    val firmLossIdx      = columnIndex(header, "BankCapital_FirmNplLoss")
-    val mortgageLossIdx  = columnIndex(header, "BankCapital_MortgageNplLoss")
-    val consumerLossIdx  = columnIndex(header, "BankCapital_ConsumerNplLoss")
-    val corpBondLossIdx  = columnIndex(header, "BankCapital_CorpBondDefaultLoss")
-    val interbankLossIdx = columnIndex(header, "BankCapital_InterbankContagionLoss")
-    val bfgLevyIdx       = columnIndex(header, "BankCapital_BfgLevy")
-    val polishLevyIdx    = columnIndex(header, "BankCapital_PolishBankLevyTax")
-    val unrealizedIdx    = columnIndex(header, "BankCapital_UnrealizedBondLoss")
-    val htmIdx           = columnIndex(header, "BankCapital_HtmRealizedLoss")
-    val eclIdx           = columnIndex(header, "BankCapital_EclProvisionChange")
-    val eclOpeningIdx    = columnIndex(header, "BankEcl_OpeningAllowance")
-    val eclClosingIdx    = columnIndex(header, "BankEcl_ClosingAllowance")
-    val eclBaselineIdx   = columnIndex(header, "BankEcl_BaselineStage1Allowance")
-    val eclExcessIdx     = columnIndex(header, "BankEcl_ExcessAllowance")
-    val eclExcessShareIdx = columnIndex(header, "BankEcl_ExcessAllowanceShare")
-    val eclStage2ShareIdx = columnIndex(header, "BankEcl_Stage2Share")
-    val eclStage3ShareIdx = columnIndex(header, "BankEcl_Stage3Share")
-    val eclMigrationIdx  = columnIndex(header, "BankEcl_MigrationRate")
-    val destructionIdx   = columnIndex(header, "BankCapital_CapitalDestruction")
-    val reconcileIdx     = columnIndex(header, "BankCapital_ReconciliationResidual")
-    val residualIdx      = columnIndex(header, "BankCapital_WaterfallResidual")
-    val bailInIdx        = columnIndex(header, "BailInLoss")
-    val bankBailInIdx    = columnIndex(header, "BankCapital_DepositBailInLoss")
-    val newFailuresIdx   = columnIndex(header, "BankCapital_NewFailures")
-    val negCapitalIdx    = columnIndex(header, "BankFailure_NewNegativeCapital")
-    val carBreachIdx     = columnIndex(header, "BankFailure_NewCarBreach")
-    val liquidityIdx     = columnIndex(header, "BankFailure_NewLiquidityBreach")
-    val fallbackIdx      = columnIndex(header, "BankFailure_AllFailedFallback")
-    val invariantIdx     = columnIndex(header, "BankFailure_InvariantViolation")
-    val firstReasonIdx   = columnIndex(header, "BankFailure_FirstNewReasonCode")
-    val firstBankIdx     = columnIndex(header, "BankFailure_FirstNewBankId")
-    val reconTargetIdx   = columnIndex(header, "BankReconciliation_TargetBankId")
-    val reconCapIdx      = columnIndex(header, "BankReconciliation_CapitalResidual")
-    val reconBeforeIdx   = columnIndex(header, "BankReconciliation_TargetCapitalBefore")
-    val reconAfterIdx    = columnIndex(header, "BankReconciliation_TargetCapitalAfter")
-    val reconRatioIdx    = columnIndex(header, "BankReconciliation_ResidualToTargetCapital")
-    val reconMaterialIdx = columnIndex(header, "BankReconciliation_MaterialResidual")
-    val reconCrossedIdx  = columnIndex(header, "BankReconciliation_CrossedFailureThreshold")
-    val reconReasonIdx   = columnIndex(header, "BankReconciliation_PostResidualReasonCode")
-    val realizedCapitalIdx = columnIndex(header, "BankCreditLoss_RealizedToOpeningCapital")
-    val firmDefaultRateIdx = columnIndex(header, "BankCreditLoss_FirmDefaultRate")
-    val firmLossRateIdx = columnIndex(header, "BankCreditLoss_FirmLossRate")
+    val openingIdx             = columnIndex(header, "BankCapital_Opening")
+    val closingIdx             = columnIndex(header, "BankCapital_Closing")
+    val deltaIdx               = columnIndex(header, "BankCapital_Delta")
+    val retainedIdx            = columnIndex(header, "BankCapital_RetainedIncome")
+    val realizedIdx            = columnIndex(header, "BankCapital_RealizedCreditLoss")
+    val firmLossIdx            = columnIndex(header, "BankCapital_FirmNplLoss")
+    val mortgageLossIdx        = columnIndex(header, "BankCapital_MortgageNplLoss")
+    val consumerLossIdx        = columnIndex(header, "BankCapital_ConsumerNplLoss")
+    val corpBondLossIdx        = columnIndex(header, "BankCapital_CorpBondDefaultLoss")
+    val interbankLossIdx       = columnIndex(header, "BankCapital_InterbankContagionLoss")
+    val bfgLevyIdx             = columnIndex(header, "BankCapital_BfgLevy")
+    val polishLevyIdx          = columnIndex(header, "BankCapital_PolishBankLevyTax")
+    val unrealizedIdx          = columnIndex(header, "BankCapital_UnrealizedBondLoss")
+    val htmIdx                 = columnIndex(header, "BankCapital_HtmRealizedLoss")
+    val eclIdx                 = columnIndex(header, "BankCapital_EclProvisionChange")
+    val eclOpeningIdx          = columnIndex(header, "BankEcl_OpeningAllowance")
+    val eclClosingIdx          = columnIndex(header, "BankEcl_ClosingAllowance")
+    val eclBaselineIdx         = columnIndex(header, "BankEcl_BaselineStage1Allowance")
+    val eclExcessIdx           = columnIndex(header, "BankEcl_ExcessAllowance")
+    val eclExcessShareIdx      = columnIndex(header, "BankEcl_ExcessAllowanceShare")
+    val eclStage2ShareIdx      = columnIndex(header, "BankEcl_Stage2Share")
+    val eclStage3ShareIdx      = columnIndex(header, "BankEcl_Stage3Share")
+    val eclMigrationIdx        = columnIndex(header, "BankEcl_MigrationRate")
+    val destructionIdx         = columnIndex(header, "BankCapital_CapitalDestruction")
+    val reconcileIdx           = columnIndex(header, "BankCapital_ReconciliationResidual")
+    val residualIdx            = columnIndex(header, "BankCapital_WaterfallResidual")
+    val bailInIdx              = columnIndex(header, "BailInLoss")
+    val bankBailInIdx          = columnIndex(header, "BankCapital_DepositBailInLoss")
+    val newFailuresIdx         = columnIndex(header, "BankCapital_NewFailures")
+    val negCapitalIdx          = columnIndex(header, "BankFailure_NewNegativeCapital")
+    val carBreachIdx           = columnIndex(header, "BankFailure_NewCarBreach")
+    val liquidityIdx           = columnIndex(header, "BankFailure_NewLiquidityBreach")
+    val fallbackIdx            = columnIndex(header, "BankFailure_AllFailedFallback")
+    val invariantIdx           = columnIndex(header, "BankFailure_InvariantViolation")
+    val firstReasonIdx         = columnIndex(header, "BankFailure_FirstNewReasonCode")
+    val firstBankIdx           = columnIndex(header, "BankFailure_FirstNewBankId")
+    val reconTargetIdx         = columnIndex(header, "BankReconciliation_TargetBankId")
+    val reconCapIdx            = columnIndex(header, "BankReconciliation_CapitalResidual")
+    val reconBeforeIdx         = columnIndex(header, "BankReconciliation_TargetCapitalBefore")
+    val reconAfterIdx          = columnIndex(header, "BankReconciliation_TargetCapitalAfter")
+    val reconRatioIdx          = columnIndex(header, "BankReconciliation_ResidualToTargetCapital")
+    val reconMaterialIdx       = columnIndex(header, "BankReconciliation_MaterialResidual")
+    val reconCrossedIdx        = columnIndex(header, "BankReconciliation_CrossedFailureThreshold")
+    val reconReasonIdx         = columnIndex(header, "BankReconciliation_PostResidualReasonCode")
+    val realizedCapitalIdx     = columnIndex(header, "BankCreditLoss_RealizedToOpeningCapital")
+    val firmDefaultRateIdx     = columnIndex(header, "BankCreditLoss_FirmDefaultRate")
+    val firmLossRateIdx        = columnIndex(header, "BankCreditLoss_FirmLossRate")
     val mortgageDefaultRateIdx = columnIndex(header, "BankCreditLoss_MortgageDefaultRate")
-    val mortgageLossRateIdx = columnIndex(header, "BankCreditLoss_MortgageLossRate")
+    val mortgageLossRateIdx    = columnIndex(header, "BankCreditLoss_MortgageLossRate")
     val consumerDefaultRateIdx = columnIndex(header, "BankCreditLoss_ConsumerLoanDefaultRate")
     val bridgeChargeOffRateIdx = columnIndex(header, "BankCreditLoss_LiquidityBridgeChargeOffRate")
-    val consumerLossRateIdx = columnIndex(header, "BankCreditLoss_ConsumerLossRate")
+    val consumerLossRateIdx    = columnIndex(header, "BankCreditLoss_ConsumerLossRate")
     val corpBondDefaultRateIdx = columnIndex(header, "BankCreditLoss_CorpBondDefaultRate")
-    val corpBondLossRateIdx = columnIndex(header, "BankCreditLoss_CorpBondLossRate")
-    val realizedCredit   =
+    val corpBondLossRateIdx    = columnIndex(header, "BankCreditLoss_CorpBondLossRate")
+    val realizedCredit         =
       row(firmLossIdx) + row(mortgageLossIdx) + row(consumerLossIdx) + row(corpBondLossIdx)
-    val expectedDelta    =
+    val expectedDelta          =
       row(retainedIdx) - realizedCredit - row(interbankLossIdx) - row(bfgLevyIdx) - row(polishLevyIdx) -
         row(unrealizedIdx) - row(htmIdx) - row(eclIdx) - row(destructionIdx)
-    val observedDelta    = row(closingIdx) - row(openingIdx)
-    val expectedResidual = row(deltaIdx) - expectedDelta - row(reconcileIdx)
+    val observedDelta          = row(closingIdx) - row(openingIdx)
+    val expectedResidual       = row(deltaIdx) - expectedDelta - row(reconcileIdx)
 
     row(deltaIdx) shouldBe observedDelta +- BigDecimal("0.05")
     row(realizedIdx) shouldBe realizedCredit +- BigDecimal("0.05")
@@ -441,9 +444,9 @@ class McRunnerTsvIntegrationSpec extends AnyFlatSpec with Matchers:
     McRunner.runSingle(seed, DurationMonths).fold(err => fail(err.toString), identity)
 
   private def expectedHhRow(seed: Long, result: RunResult): String =
-    val a             = result.terminalState.householdAggregates
-    val households    = result.terminalState.households
-    val employedWages = households
+    val a                 = result.terminalState.householdAggregates
+    val households        = result.terminalState.households
+    val employedWages     = households
       .flatMap: household =>
         household.status match
           case HhStatus.Employed(_, _, wage) => Some(wage)
@@ -573,7 +576,7 @@ class McRunnerTsvIntegrationSpec extends AnyFlatSpec with Matchers:
 
           for col <- 0 until McTimeseriesSchema.nCols do
             withClue(s"seed=$seed month=${month.toInt} col=$col: ") {
-              actual(col).shouldBe(decimal(expected(col)) +- BigDecimal("1e-6"))
+              actual(col).shouldBe(metricDecimal(expected(col)) +- BigDecimal("1e-6"))
             }
           withClue(s"seed=$seed month=${month.toInt} bank capital waterfall: ") {
             assertBankCapitalWaterfall(header, actual)
@@ -592,12 +595,14 @@ class McRunnerTsvIntegrationSpec extends AnyFlatSpec with Matchers:
       val firmLines = readLines(outputDir.resolve(s"${filePrefix(rc)}_firms.tsv"))
       firmLines.head.shouldBe(ExpectedFirmHeader)
       firmLines.length.shouldBe(Seeds.length + 1)
-      firmLines.tail.zip(Seeds).foreach: (line, seed) =>
-        withClue(s"seed=$seed firms summary: ") {
-          val fields = splitTsv(line)
-          fields.length.shouldBe(splitTsv(ExpectedFirmHeader).length)
-          fields.head.shouldBe(seed.toString)
-        }
+      firmLines.tail
+        .zip(Seeds)
+        .foreach: (line, seed) =>
+          withClue(s"seed=$seed firms summary: ") {
+            val fields = splitTsv(line)
+            fields.length.shouldBe(splitTsv(ExpectedFirmHeader).length)
+            fields.head.shouldBe(seed.toString)
+          }
     }
   }
 
@@ -613,8 +618,8 @@ class McRunnerTsvIntegrationSpec extends AnyFlatSpec with Matchers:
 
       unsafeRun(McRunner.runZIO(snapshotRc, outputDir.toFile))
 
-      val expectedRun = McRunner.runSingle(1L, DurationMonths).fold(err => fail(err.toString), identity)
-      val snapshotLines = readLines(outputDir.resolve(s"${filePrefix(snapshotRc)}_firm_snapshots.tsv"))
+      val expectedRun    = McRunner.runSingle(1L, DurationMonths).fold(err => fail(err.toString), identity)
+      val snapshotLines  = readLines(outputDir.resolve(s"${filePrefix(snapshotRc)}_firm_snapshots.tsv"))
       val snapshotHeader = splitTsv(snapshotLines.head)
       snapshotLines.head.shouldBe(ExpectedFirmSnapshotHeader)
       snapshotLines.tail.size.shouldBe(expectedRun.terminalState.firms.length)
@@ -623,8 +628,8 @@ class McRunnerTsvIntegrationSpec extends AnyFlatSpec with Matchers:
       monthIdx should be >= 0
       snapshotLines.tail.map(line => splitTsv(line)(monthIdx)).toSet.shouldBe(Set(DurationMonths.toString))
 
-      val sizeClassIdx = snapshotHeader.indexOf("SizeClass")
-      val techStateIdx = snapshotHeader.indexOf("TechState")
+      val sizeClassIdx   = snapshotHeader.indexOf("SizeClass")
+      val techStateIdx   = snapshotHeader.indexOf("TechState")
       sizeClassIdx should be >= 0
       techStateIdx should be >= 0
       val snapshotCounts = snapshotLines.tail
@@ -678,30 +683,30 @@ class McRunnerTsvIntegrationSpec extends AnyFlatSpec with Matchers:
         fields(hhIdIdx).toInt should be >= 0
         BigDecimal(fields(depositIdx)) should be >= BigDecimal(0)
 
-      val cohortLines = readLines(outputDir.resolve(s"${filePrefix(snapshotRc)}_household_shortfall_cohorts.tsv"))
+      val cohortLines  = readLines(outputDir.resolve(s"${filePrefix(snapshotRc)}_household_shortfall_cohorts.tsv"))
       val cohortHeader = splitTsv(cohortLines.head)
       cohortLines.head.shouldBe(ExpectedHouseholdShortfallCohortHeader)
       cohortLines.tail should not be empty
 
-      val dimensionIdx = cohortHeader.indexOf("Dimension")
-      val cohortIdx = cohortHeader.indexOf("Cohort")
-      val countIdx = cohortHeader.indexOf("HouseholdCount")
-      val shareIdx = cohortHeader.indexOf("ShortfallShareOfMonth")
-      val householdShortfallIdx = cohortHeader.indexOf("LiquidityShortfallFinancing")
-      val consumptionShortfallIdx = cohortHeader.indexOf("ConsumptionShortfall")
-      val rentArrearsIdx = cohortHeader.indexOf("RentArrears")
-      val mortgageArrearsIdx = cohortHeader.indexOf("MortgageArrears")
-      val consumerDebtArrearsIdx = cohortHeader.indexOf("ConsumerDebtArrears")
-      val temporaryOverdraftIdx = cohortHeader.indexOf("TemporaryOverdraft")
-      val consumerCreditDemandIdx = cohortHeader.indexOf("ConsumerCreditDemand")
-      val consumerRejectedOriginationIdx = cohortHeader.indexOf("ConsumerRejectedOrigination")
+      val dimensionIdx                       = cohortHeader.indexOf("Dimension")
+      val cohortIdx                          = cohortHeader.indexOf("Cohort")
+      val countIdx                           = cohortHeader.indexOf("HouseholdCount")
+      val shareIdx                           = cohortHeader.indexOf("ShortfallShareOfMonth")
+      val householdShortfallIdx              = cohortHeader.indexOf("LiquidityShortfallFinancing")
+      val consumptionShortfallIdx            = cohortHeader.indexOf("ConsumptionShortfall")
+      val rentArrearsIdx                     = cohortHeader.indexOf("RentArrears")
+      val mortgageArrearsIdx                 = cohortHeader.indexOf("MortgageArrears")
+      val consumerDebtArrearsIdx             = cohortHeader.indexOf("ConsumerDebtArrears")
+      val temporaryOverdraftIdx              = cohortHeader.indexOf("TemporaryOverdraft")
+      val consumerCreditDemandIdx            = cohortHeader.indexOf("ConsumerCreditDemand")
+      val consumerRejectedOriginationIdx     = cohortHeader.indexOf("ConsumerRejectedOrigination")
       val consumerBankRejectedOriginationIdx = cohortHeader.indexOf("ConsumerBankRejectedOrigination")
-      val unmetBasicConsumptionIdx = cohortHeader.indexOf("UnmetBasicConsumption")
-      val discretionaryCompressionIdx = cohortHeader.indexOf("DiscretionaryConsumptionCompression")
-      val consumerDefaultIdx = cohortHeader.indexOf("ConsumerDefault")
-      val consumerLoanDefaultIdx = cohortHeader.indexOf("ConsumerLoanDefault")
-      val consumerInsolvencyDefaultIdx = cohortHeader.indexOf("ConsumerInsolvencyDefault")
-      val liquidityBridgeChargeOffIdx = cohortHeader.indexOf("LiquidityBridgeChargeOff")
+      val unmetBasicConsumptionIdx           = cohortHeader.indexOf("UnmetBasicConsumption")
+      val discretionaryCompressionIdx        = cohortHeader.indexOf("DiscretionaryConsumptionCompression")
+      val consumerDefaultIdx                 = cohortHeader.indexOf("ConsumerDefault")
+      val consumerLoanDefaultIdx             = cohortHeader.indexOf("ConsumerLoanDefault")
+      val consumerInsolvencyDefaultIdx       = cohortHeader.indexOf("ConsumerInsolvencyDefault")
+      val liquidityBridgeChargeOffIdx        = cohortHeader.indexOf("LiquidityBridgeChargeOff")
       dimensionIdx should be >= 0
       cohortIdx should be >= 0
       countIdx should be >= 0
@@ -761,7 +766,7 @@ class McRunnerTsvIntegrationSpec extends AnyFlatSpec with Matchers:
           operation.shouldBe("prepare output directory")
           path.shouldBe(outputFile.toFile.getPath)
           details.should(include("not a directory"))
-        case other                                                 =>
+        case other                                                  =>
           fail(s"expected typed output failure, got: $other")
     }
   }

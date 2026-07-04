@@ -21,8 +21,8 @@ class BaselineInvariantIntegrationSpec extends AnyFlatSpec with Matchers:
 
   private given SimParams = SimParams.defaults
 
-  private val Seeds  = Vector(1L, 2L)
-  private val Months = 12
+  private val Seeds               = Vector(1L, 2L)
+  private val Months              = 12
   // Blow-up guard for PR health checks, not a calibration target.
   private val MaxTotalCreditToGdp = Scalar(10)
 
@@ -118,16 +118,18 @@ class BaselineInvariantIntegrationSpec extends AnyFlatSpec with Matchers:
       }
 
   private def assertCriticalStocks(seed: Long, state: FlowSimulation.SimState): Unit =
-    state.banks.zip(state.ledgerFinancialState.banks).foreach: (bank, stocks) =>
-      withClue(s"seed=$seed bank=${bank.id.toInt}: ") {
-        assertNonNegative("capital", bank.capital)
-        assertNonNegative("nplAmount", bank.nplAmount)
-        assertNonNegative("consumerNpl", bank.consumerNpl)
-        assertNonNegative("ecl.stage1", bank.eclStaging.stage1)
-        assertNonNegative("ecl.stage2", bank.eclStaging.stage2)
-        assertNonNegative("ecl.stage3", bank.eclStaging.stage3)
-        assertBankStocksNonNegative(stocks)
-      }
+    state.banks
+      .zip(state.ledgerFinancialState.banks)
+      .foreach: (bank, stocks) =>
+        withClue(s"seed=$seed bank=${bank.id.toInt}: ") {
+          assertNonNegative("capital", bank.capital)
+          assertNonNegative("nplAmount", bank.nplAmount)
+          assertNonNegative("consumerNpl", bank.consumerNpl)
+          assertNonNegative("ecl.stage1", bank.eclStaging.stage1)
+          assertNonNegative("ecl.stage2", bank.eclStaging.stage2)
+          assertNonNegative("ecl.stage3", bank.eclStaging.stage3)
+          assertBankStocksNonNegative(stocks)
+        }
 
     state.ledgerFinancialState.households.zipWithIndex.foreach: (stocks, idx) =>
       withClue(s"seed=$seed householdLedger=$idx: ") {
@@ -175,7 +177,7 @@ class BaselineInvariantIntegrationSpec extends AnyFlatSpec with Matchers:
   private def assertBoundedMacroRatios(state: FlowSimulation.SimState): Unit =
     val annualizedGdp = state.world.cachedMonthlyGdpProxy * 12
     state.world.cachedMonthlyGdpProxy should be > PLN.Zero
-    val unemployment = state.world.unemploymentRate(state.householdAggregates.employed)
+    val unemployment  = state.world.unemploymentRate(state.householdAggregates.employed)
     unemployment should (be >= Share.Zero and be <= Share.One)
 
     val totalCreditToGdp =

@@ -9,12 +9,12 @@ answers where the implementation boundaries live.
 
 | Runtime object | Role |
 | --- | --- |
-| [`WorldInit.initialize`](../../src/main/scala/com/boombustgroup/amorfati/init/WorldInit.scala) | Builds the initial `World`, agent populations, aggregates, and `LedgerFinancialState`. |
-| [`FlowSimulation.SimState`](../../src/main/scala/com/boombustgroup/amorfati/engine/flows/FlowSimulation.scala) | Single public month-boundary input state. |
-| [`MonthRandomness.Contract`](../../src/main/scala/com/boombustgroup/amorfati/engine/MonthRandomness.scala) | Explicit per-month randomness surface derived from one root seed. |
-| [`FlowSimulation.step`](../../src/main/scala/com/boombustgroup/amorfati/engine/flows/FlowSimulation.scala) | Narrow one-month transition used by tests, replay, diagnostics, and drivers. |
-| [`MonthDriver.unfoldSteps`](../../src/main/scala/com/boombustgroup/amorfati/engine/MonthDriver.scala) | Shared month-by-month unfold driver. Callers own the randomness schedule. |
-| [`FlowSimulation.StepOutput`](../../src/main/scala/com/boombustgroup/amorfati/engine/flows/FlowSimulation.scala) | Execution evidence: calculus, operational signals, emitted batches, ledger result, SFC result, trace, and next state. |
+| [`WorldInit.initialize`](../../modules/model/src/main/scala/com/boombustgroup/amorfati/init/WorldInit.scala) | Builds the initial `World`, agent populations, aggregates, and `LedgerFinancialState`. |
+| [`FlowSimulation.SimState`](../../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/flows/FlowSimulation.scala) | Single public month-boundary input state. |
+| [`MonthRandomness.Contract`](../../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/MonthRandomness.scala) | Explicit per-month randomness surface derived from one root seed. |
+| [`FlowSimulation.step`](../../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/flows/FlowSimulation.scala) | Narrow one-month transition used by tests, replay, diagnostics, and drivers. |
+| [`MonthDriver.unfoldSteps`](../../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/MonthDriver.scala) | Shared month-by-month unfold driver. Callers own the randomness schedule. |
+| [`FlowSimulation.StepOutput`](../../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/flows/FlowSimulation.scala) | Execution evidence: calculus, operational signals, emitted batches, ledger result, SFC result, trace, and next state. |
 
 ## One-Month Path
 
@@ -40,10 +40,10 @@ The strongest architectural split is between decisions and monetary execution:
 | Pre boundary | `FlowSimulation.stepInput` | Derives execution month, opening snapshot, topology, and seed input from `SimState`. |
 | Same-month economics | `MonthCalculusRunner` and `SameMonthEconomicsDsl` | Runs ordered economic stages and returns narrowed views. No runtime ledger batches are emitted here. |
 | Flow plan | `MonthFlowPlanBuilder` | Projects execution outputs and opening financial state into `MonthlyCalculus`. |
-| Flow emission | `MonthFlowEmitter` and `*Flows.scala` emitters | Converts `MonthlyCalculus` into named ledger batches. No new economics should be decided here. |
+| Flow emission | `MonthFlowEmitter` and [`engine/flows/*Flows.scala`](../../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/flows) emitters | Converts `MonthlyCalculus` into named ledger batches. No new economics should be decided here. |
 | Ledger execution | `RuntimeFlowExecutor` and the `modules/ledger` submodule checkout | Executes batches through the external `amor-fati-ledger` kernel and captures conservation evidence plus `deltaLedger`. |
 | Closed-month to next-pre | `NextStateAdvancer` | Applies extracted `SeedOut` and materializes supported runtime deltas into `LedgerFinancialState`. |
-| SFC validation | `SfcSemanticProjection` and `accounting/Sfc.scala` | Converts execution evidence and semantic payloads into exact SFC identity checks. |
+| SFC validation | `SfcSemanticProjection` and [`accounting/Sfc.scala`](../../modules/model/src/main/scala/com/boombustgroup/amorfati/accounting/Sfc.scala) | Converts execution evidence and semantic payloads into exact SFC identity checks. |
 | Trace | `MonthTraceBuilder` | Emits boundary, seed, timing, flow, and validation evidence for the month. |
 
 ## Same-Month Economics Order

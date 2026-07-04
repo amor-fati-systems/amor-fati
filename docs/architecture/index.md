@@ -25,10 +25,10 @@ read the nearby package README first, then return here for the system boundary:
 
 | Local map | Boundary |
 | --- | --- |
-| [engine README](../../src/main/scala/com/boombustgroup/amorfati/engine/README.md) | Month loop, same-month economics, flow emission, ledger projection, and closed-month state. |
-| [agents README](../../src/main/scala/com/boombustgroup/amorfati/agents/README.md) | Autonomous agents, behavioral state, and agent-local module splits. |
-| [init README](../../src/main/scala/com/boombustgroup/amorfati/init/README.md) | Initial world construction and initialization randomness. |
-| [montecarlo README](../../src/main/scala/com/boombustgroup/amorfati/montecarlo/README.md) | Production Monte Carlo runner, TSV contracts, and seed/month output path. |
+| [engine README](../../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/README.md) | Month loop, same-month economics, flow emission, ledger projection, and closed-month state. |
+| [agents README](../../modules/model/src/main/scala/com/boombustgroup/amorfati/agents/README.md) | Autonomous agents, behavioral state, and agent-local module splits. |
+| [init README](../../modules/model/src/main/scala/com/boombustgroup/amorfati/init/README.md) | Initial world construction and initialization randomness. |
+| [montecarlo README](../../modules/montecarlo/src/main/scala/com/boombustgroup/amorfati/montecarlo/README.md) | Production Monte Carlo runner, TSV contracts, and seed/month output path. |
 | [amor-fati-ledger repository](https://github.com/boombustgroup/amor-fati-ledger) | Separately verified ledger repository checked out locally under `modules/ledger`; owns the public ledger API. |
 
 ## Architecture Scope

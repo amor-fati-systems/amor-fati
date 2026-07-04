@@ -63,7 +63,7 @@ the generator or source registry first, then rerun the committed snapshot
 command above and let `scripts/check-generated-outputs.sh` verify freshness.
 
 The Balance Sheet Matrix and Transactions Flow Matrix LaTeX files are plain
-`tabular` fragments. The reconciliation and mapping LaTeX files use `longtable`
+`tsv` fragments. The reconciliation and mapping LaTeX files use `longtable`
 so runtime evidence can break across pages.
 
 ## Source Contract

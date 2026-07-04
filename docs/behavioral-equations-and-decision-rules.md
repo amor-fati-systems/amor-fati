@@ -47,7 +47,7 @@ Useful shorthand:
 | `NSFR` | net stable funding ratio |
 
 The output-column references below refer to the Monte Carlo time-series schema
-in `src/main/scala/com/boombustgroup/amorfati/montecarlo/timeseries/McTimeseriesSchema.scala`.
+in `modules/montecarlo/src/main/scala/com/boombustgroup/amorfati/montecarlo/timeseries/McTimeseriesSchema.scala`.
 Those TSV outputs are the primary numeric evidence surface for these rules.
 
 ## Timing Contract
@@ -59,28 +59,28 @@ The formal `X_t -> X_tau` transition contract is documented in
 
 | Module | Rule surface |
 | --- | --- |
-| `engine/economics/FiscalConstraintEconomics.scala` | minimum wage, reservation wage, lending base rate |
-| `engine/economics/LaborEconomics.scala` | wage clearing, employment, immigration, demographics |
-| `engine/economics/HouseholdIncomeEconomics.scala` and `agents/Household.scala` | household income, consumption, saving, credit, retraining, bankruptcy |
-| `engine/economics/DemandEconomics.scala` | sector demand, government purchases, fiscal-rule constraint |
-| `engine/economics/FirmEconomics.scala` and `agents/Firm.scala` | production, pricing markup contribution, technology, labor, investment, defaults, entry |
-| `engine/economics/HouseholdFinancialEconomics.scala` | mortgages, deposit interest, remittances, tourism, consumer credit aggregation |
-| `engine/economics/PriceEquityEconomics.scala` | GDP proxy, inflation, equity, macroprudential, EU funds |
-| `engine/economics/OpenEconEconomics.scala` | external sector, NBP rate, bond yield, QE, insurance, NBFI |
-| `engine/economics/BankingEconomics.scala`, `engine/economics/banking/BankingStepRunner.scala`, and `agents/Banking.scala` | bank P&L, rates, interbank, bond waterfall, failure and resolution |
+| [`engine/economics/FiscalConstraintEconomics.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/economics/FiscalConstraintEconomics.scala) | minimum wage, reservation wage, lending base rate |
+| [`engine/economics/LaborEconomics.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/economics/LaborEconomics.scala) | wage clearing, employment, immigration, demographics |
+| [`engine/economics/HouseholdIncomeEconomics.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/economics/HouseholdIncomeEconomics.scala) and [`agents/Household.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/agents/Household.scala) | household income, consumption, saving, credit, retraining, bankruptcy |
+| [`engine/economics/DemandEconomics.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/economics/DemandEconomics.scala) | sector demand, government purchases, fiscal-rule constraint |
+| [`engine/economics/FirmEconomics.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/economics/FirmEconomics.scala) and [`agents/Firm.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/agents/Firm.scala) | production, pricing markup contribution, technology, labor, investment, defaults, entry |
+| [`engine/economics/HouseholdFinancialEconomics.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/economics/HouseholdFinancialEconomics.scala) | mortgages, deposit interest, remittances, tourism, consumer credit aggregation |
+| [`engine/economics/PriceEquityEconomics.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/economics/PriceEquityEconomics.scala) | GDP proxy, inflation, equity, macroprudential, EU funds |
+| [`engine/economics/OpenEconEconomics.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/economics/OpenEconEconomics.scala) | external sector, NBP rate, bond yield, QE, insurance, NBFI |
+| [`engine/economics/BankingEconomics.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/economics/BankingEconomics.scala), [`engine/economics/banking/BankingStepRunner.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/economics/banking/BankingStepRunner.scala), and [`agents/Banking.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/agents/Banking.scala) | bank P&L, rates, interbank, bond waterfall, failure and resolution |
 
 ## Rule-To-Output Map
 
 | Rule group | Main implementation anchors | Representative output columns |
 | --- | --- | --- |
-| Household income, consumption, savings, credit | `agents/Household.scala`, `engine/economics/HouseholdIncomeEconomics.scala`, `engine/economics/HouseholdFinancialEconomics.scala` | `MarketWage`, `Unemployment`, `EffectivePitRate`, `ConsumerLoans`, `ConsumerOrigination`, `ConsumerApprovedOrigination`, `ConsumerCreditDemand`, `ConsumerRejectedOrigination`, `ConsumerBankRejectedOrigination`, `ConsumerCredit_RejectedPortfolioPreference`, `ConsumerDebtService`, `ConsumerPrincipal`, `ConsumerDefault`, `ConsumerLoanDefault`, `LiquidityBridgeChargeOff`, `ConsumerCredit_NetStockFlow`, `ConsumerCredit_NplRatioGross`, `ConsumerCredit_RejectedPortfolioPreferenceToDemand`, `ConsumerCredit_RejectedPortfolioPreferenceToBankRejected`, `HouseholdDistress_Current`, `HouseholdDistress_LiquidityStress`, `HouseholdDistress_Arrears`, `HouseholdDistress_Restructuring`, `HouseholdDistress_Defaulted`, `HouseholdDistress_Bankruptcy`, `HouseholdDistress_ActiveShare`, `HouseholdLiquidity_ShortfallFinancing`, `HouseholdLiquidity_NetDemandDeposit`, `HouseholdLiquidity_PositiveDemandDeposits`, `HouseholdLiquidity_ImplicitOverdraft`, `HouseholdLiquidity_NegativeDepositShare`, `HouseholdLiquidity_DepositP01`-`P99`, `SectorMobilityRate`, `VoluntaryQuits`, `DiasporaRemittanceInflow`, `RemittanceOutflow`, `TourismExport`, `TourismImport` |
-| Labor, wages, demographics, social funds | `engine/economics/LaborEconomics.scala`, `agents/SocialSecurity.scala`, `agents/EarmarkedFunds.scala` | `MarketWage`, `Unemployment`, `WorkingAgePop`, `NRetirees`, `MonthlyRetirements`, `ZusContributions`, `ZusPensionPayments`, `NfzContributions`, `NfzSpending`, `PpkContributions`, `FpContributions`, `FgspSpending` |
-| Demand allocation and fiscal constraint | `engine/economics/DemandEconomics.scala`, `engine/markets/FiscalRules.scala`, `engine/markets/FiscalBudget.scala` | `GovCurrentSpend`, `GovCapitalSpendDomestic`, `FiscalRuleBinding`, `GovSpendingCutRatio`, `DebtToGdp`, `DeficitToGdp`, `PublicCapitalStock` |
-| Firm production, investment, technology, financing, default, entry | `agents/Firm.scala`, `engine/economics/FirmEconomics.scala`, `engine/mechanisms/FirmEntry.scala` | `TotalAdoption`, `AutoRatio`, `HybridRatio`, `Automation_TechCapex`, `Automation_TechImports`, `Automation_TechLoans`, `Automation_UpgradeFailures`, `Automation_AiDebtTrap`, `Automation_NewFullAi`, `Automation_NewHybrid`, `Adoption_MicroShare`, `Adoption_SmallShare`, `Adoption_MediumShare`, `Adoption_LargeShare`, `Adoption_CashQ1`-`Q4`, `Adoption_DebtQ1`-`Q4`, sector `*_Auto`, sector `*_Sigma`, `GrossInvestment`, `FirmCredit_NewLoans`, `FirmCredit_PrincipalRepaid`, `FirmCredit_GrossDefault`, `FirmCredit_NetStockFlow`, `FirmCredit_CreditDemand`, `FirmCredit_BankRejected`, `AggCapitalStock`, `AggInventoryStock`, `InventoryChange`, `AggEnergyCost`, `GreenInvestment`, `FirmBirths`, `FirmDeaths`, `NetEntry`, `LivingFirmCount`, `CorpBondIssuance`, `EquityIssuanceTotal` |
-| Banking and monetary plumbing | `agents/Banking.scala`, `engine/economics/BankingEconomics.scala`, `engine/economics/banking/BankingStepRunner.scala`, `agents/EclStaging.scala`, `agents/DepositMobility.scala`, `agents/InterbankContagion.scala` | `NPL`, `MinBankCAR`, `MaxBankNPL`, `MinBankLCR`, `MinBankNSFR`, `BankFailures`, `BankFailure_*`, `BankEcl_*`, `BankCreditLoss_*`, `BankReconciliation_*`, `InterbankRate`, `WIBOR_1M`, `WIBOR_3M`, `WIBOR_6M`, `BankAfsBonds`, `BankHtmBonds`, `BankGovBondShareOfAssets`, `BankPrivateCreditToGovBondHoldings`, `BfgLevyTotal`, `PolishBankLevyTaxTotal`, `BailInLoss`, `M0`, `M1`, `M2`, `M3`, `CreditMultiplier` |
-| Housing and mortgages | `engine/markets/HousingMarket.scala`, `engine/economics/banking/BankingStepRunner.scala` | `HousingPriceIndex`, regional `*Hpi`, `MortgageStock`, `MortgageOrigination`, `MortgageRepayment`, `MortgageDefault`, `MortgageNetStockFlow`, `MortgageOriginationToStock`, `MortgageRepaymentToStock`, `MortgageDefaultToStock`, `MortgageNetStockFlowToStock`, `MortgageOriginationSupplyConstrained`, `MortgageToGdp`, `AnnualizedGdpProxy` |
-| Fiscal, NBP, bond market, external sector | `agents/Nbp.scala`, `engine/markets/OpenEconomy.scala`, `engine/economics/OpenEconEconomics.scala`, `engine/markets/CorporateBondMarket.scala`, `engine/markets/BondAuction.scala` | `RefRate`, `GovBondMarketYield`, `GovDebtWeightedCoupon`, `BondsOutstanding`, `NbpBondHoldings`, `ForeignBondHoldings`, `QeActive`, `NbpRemittance`, `NbpBondIncome`, `ReserveInterest`, `StandingFacilityNet`, `FxReserves`, `FxInterventionAmt`, `CurrentAccount`, `CapitalAccount`, `TradeBalance_OE`, `Exports_OE`, `TotalImports_OE`, `NFA`, `FDI` |
-| Insurance, NBFI, quasi-fiscal, local government | `agents/Insurance.scala`, `agents/Nbfi.scala`, `agents/QuasiFiscal.scala`, `agents/Jst.scala` | `InsLifeReserves`, `InsNonLifeReserves`, `InsLifePremium`, `InsNonLifePremium`, `InsLifeClaims`, `InsNonLifeClaims`, `NbfiTfiAum`, `NbfiLoanStock`, `NbfiOrigination`, `NbfiRepayment`, `NbfiDefaults`, `NbfiNetStockFlow`, `NbfiBankTightness`, `NbfiDepositDrainToAum`, `QfBondsOutstanding`, `QfIssuance`, `QfLoanPortfolio`, `Esa2010DebtToGdp`, `JstRevenue`, `JstSpending`, `JstDebt`, `JstDeposits` |
+| Household income, consumption, savings, credit | [`agents/Household.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/agents/Household.scala), [`engine/economics/HouseholdIncomeEconomics.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/economics/HouseholdIncomeEconomics.scala), [`engine/economics/HouseholdFinancialEconomics.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/economics/HouseholdFinancialEconomics.scala) | `MarketWage`, `Unemployment`, `EffectivePitRate`, `ConsumerLoans`, `ConsumerOrigination`, `ConsumerApprovedOrigination`, `ConsumerCreditDemand`, `ConsumerRejectedOrigination`, `ConsumerBankRejectedOrigination`, `ConsumerCredit_RejectedPortfolioPreference`, `ConsumerDebtService`, `ConsumerPrincipal`, `ConsumerDefault`, `ConsumerLoanDefault`, `LiquidityBridgeChargeOff`, `ConsumerCredit_NetStockFlow`, `ConsumerCredit_NplRatioGross`, `ConsumerCredit_RejectedPortfolioPreferenceToDemand`, `ConsumerCredit_RejectedPortfolioPreferenceToBankRejected`, `HouseholdDistress_Current`, `HouseholdDistress_LiquidityStress`, `HouseholdDistress_Arrears`, `HouseholdDistress_Restructuring`, `HouseholdDistress_Defaulted`, `HouseholdDistress_Bankruptcy`, `HouseholdDistress_ActiveShare`, `HouseholdLiquidity_ShortfallFinancing`, `HouseholdLiquidity_NetDemandDeposit`, `HouseholdLiquidity_PositiveDemandDeposits`, `HouseholdLiquidity_ImplicitOverdraft`, `HouseholdLiquidity_NegativeDepositShare`, `HouseholdLiquidity_DepositP01`-`P99`, `SectorMobilityRate`, `VoluntaryQuits`, `DiasporaRemittanceInflow`, `RemittanceOutflow`, `TourismExport`, `TourismImport` |
+| Labor, wages, demographics, social funds | [`engine/economics/LaborEconomics.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/economics/LaborEconomics.scala), [`agents/SocialSecurity.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/agents/SocialSecurity.scala), [`agents/EarmarkedFunds.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/agents/EarmarkedFunds.scala) | `MarketWage`, `Unemployment`, `WorkingAgePop`, `NRetirees`, `MonthlyRetirements`, `ZusContributions`, `ZusPensionPayments`, `NfzContributions`, `NfzSpending`, `PpkContributions`, `FpContributions`, `FgspSpending` |
+| Demand allocation and fiscal constraint | [`engine/economics/DemandEconomics.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/economics/DemandEconomics.scala), [`engine/markets/FiscalRules.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/markets/FiscalRules.scala), [`engine/markets/FiscalBudget.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/markets/FiscalBudget.scala) | `GovCurrentSpend`, `GovCapitalSpendDomestic`, `FiscalRuleBinding`, `GovSpendingCutRatio`, `DebtToGdp`, `DeficitToGdp`, `PublicCapitalStock` |
+| Firm production, investment, technology, financing, default, entry | [`agents/Firm.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/agents/Firm.scala), [`engine/economics/FirmEconomics.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/economics/FirmEconomics.scala), [`engine/mechanisms/FirmEntry.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/mechanisms/FirmEntry.scala) | `TotalAdoption`, `AutoRatio`, `HybridRatio`, `Automation_TechCapex`, `Automation_TechImports`, `Automation_TechLoans`, `Automation_UpgradeFailures`, `Automation_AiDebtTrap`, `Automation_NewFullAi`, `Automation_NewHybrid`, `Adoption_MicroShare`, `Adoption_SmallShare`, `Adoption_MediumShare`, `Adoption_LargeShare`, `Adoption_CashQ1`-`Q4`, `Adoption_DebtQ1`-`Q4`, sector `*_Auto`, sector `*_Sigma`, `GrossInvestment`, `FirmCredit_NewLoans`, `FirmCredit_PrincipalRepaid`, `FirmCredit_GrossDefault`, `FirmCredit_NetStockFlow`, `FirmCredit_CreditDemand`, `FirmCredit_BankRejected`, `AggCapitalStock`, `AggInventoryStock`, `InventoryChange`, `AggEnergyCost`, `GreenInvestment`, `FirmBirths`, `FirmDeaths`, `NetEntry`, `LivingFirmCount`, `CorpBondIssuance`, `EquityIssuanceTotal` |
+| Banking and monetary plumbing | [`agents/Banking.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/agents/Banking.scala), [`engine/economics/BankingEconomics.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/economics/BankingEconomics.scala), [`engine/economics/banking/BankingStepRunner.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/economics/banking/BankingStepRunner.scala), [`agents/EclStaging.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/agents/EclStaging.scala), [`agents/DepositMobility.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/agents/DepositMobility.scala), [`agents/InterbankContagion.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/agents/InterbankContagion.scala) | `NPL`, `MinBankCAR`, `MaxBankNPL`, `MinBankLCR`, `MinBankNSFR`, `BankFailures`, `BankFailure_*`, `BankEcl_*`, `BankCreditLoss_*`, `BankReconciliation_*`, `InterbankRate`, `WIBOR_1M`, `WIBOR_3M`, `WIBOR_6M`, `BankAfsBonds`, `BankHtmBonds`, `BankGovBondShareOfAssets`, `BankPrivateCreditToGovBondHoldings`, `BfgLevyTotal`, `PolishBankLevyTaxTotal`, `BailInLoss`, `M0`, `M1`, `M2`, `M3`, `CreditMultiplier` |
+| Housing and mortgages | [`engine/markets/HousingMarket.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/markets/HousingMarket.scala), [`engine/economics/banking/BankingStepRunner.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/economics/banking/BankingStepRunner.scala) | `HousingPriceIndex`, regional `*Hpi`, `MortgageStock`, `MortgageOrigination`, `MortgageRepayment`, `MortgageDefault`, `MortgageNetStockFlow`, `MortgageOriginationToStock`, `MortgageRepaymentToStock`, `MortgageDefaultToStock`, `MortgageNetStockFlowToStock`, `MortgageOriginationSupplyConstrained`, `MortgageToGdp`, `AnnualizedGdpProxy` |
+| Fiscal, NBP, bond market, external sector | [`agents/Nbp.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/agents/Nbp.scala), [`engine/markets/OpenEconomy.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/markets/OpenEconomy.scala), [`engine/economics/OpenEconEconomics.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/economics/OpenEconEconomics.scala), [`engine/markets/CorporateBondMarket.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/markets/CorporateBondMarket.scala), [`engine/markets/BondAuction.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/markets/BondAuction.scala) | `RefRate`, `GovBondMarketYield`, `GovDebtWeightedCoupon`, `BondsOutstanding`, `NbpBondHoldings`, `ForeignBondHoldings`, `QeActive`, `NbpRemittance`, `NbpBondIncome`, `ReserveInterest`, `StandingFacilityNet`, `FxReserves`, `FxInterventionAmt`, `CurrentAccount`, `CapitalAccount`, `TradeBalance_OE`, `Exports_OE`, `TotalImports_OE`, `NFA`, `FDI` |
+| Insurance, NBFI, quasi-fiscal, local government | [`agents/Insurance.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/agents/Insurance.scala), [`agents/Nbfi.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/agents/Nbfi.scala), [`agents/QuasiFiscal.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/agents/QuasiFiscal.scala), [`agents/Jst.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/agents/Jst.scala) | `InsLifeReserves`, `InsNonLifeReserves`, `InsLifePremium`, `InsNonLifePremium`, `InsLifeClaims`, `InsNonLifeClaims`, `NbfiTfiAum`, `NbfiLoanStock`, `NbfiOrigination`, `NbfiRepayment`, `NbfiDefaults`, `NbfiNetStockFlow`, `NbfiBankTightness`, `NbfiDepositDrainToAum`, `QfBondsOutstanding`, `QfIssuance`, `QfLoanPortfolio`, `Esa2010DebtToGdp`, `JstRevenue`, `JstSpending`, `JstDebt`, `JstDeposits` |
 
 ## Household Rules
 
@@ -90,9 +90,9 @@ the implementation-oriented rule catalog and output-column map.
 
 Implementation anchors:
 
-- `agents/Household.scala`
-- `engine/economics/HouseholdIncomeEconomics.scala`
-- `engine/economics/HouseholdFinancialEconomics.scala`
+- [`agents/Household.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/agents/Household.scala)
+- [`engine/economics/HouseholdIncomeEconomics.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/economics/HouseholdIncomeEconomics.scala)
+- [`engine/economics/HouseholdFinancialEconomics.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/economics/HouseholdFinancialEconomics.scala)
 
 ### State And Status
 
@@ -423,12 +423,12 @@ SFC-consistent through `ConsumerDefault`, `ConsumerLoanDefault`, and
 
 Implementation anchors:
 
-- `engine/economics/FiscalConstraintEconomics.scala`
-- `engine/economics/LaborEconomics.scala`
-- `engine/markets/LaborMarket.scala`
-- `engine/markets/RegionalClearing.scala`
-- `agents/SocialSecurity.scala`
-- `agents/EarmarkedFunds.scala`
+- [`engine/economics/FiscalConstraintEconomics.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/economics/FiscalConstraintEconomics.scala)
+- [`engine/economics/LaborEconomics.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/economics/LaborEconomics.scala)
+- [`engine/markets/LaborMarket.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/markets/LaborMarket.scala)
+- [`engine/markets/RegionalClearing.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/markets/RegionalClearing.scala)
+- [`agents/SocialSecurity.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/agents/SocialSecurity.scala)
+- [`agents/EarmarkedFunds.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/agents/EarmarkedFunds.scala)
 
 ### Minimum Wage And Reservation Wage
 
@@ -499,13 +499,13 @@ governmentSubvention = sum(max(spending_i - contributions_i, 0))
 
 Implementation anchors:
 
-- `engine/economics/DemandEconomics.scala`
-- `engine/economics/PriceEquityEconomics.scala`
-- `engine/markets/FiscalRules.scala`
-- `engine/markets/PriceLevel.scala`
-- `engine/markets/EquityMarket.scala`
-- `engine/mechanisms/EuFunds.scala`
-- `engine/mechanisms/Macroprudential.scala`
+- [`engine/economics/DemandEconomics.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/economics/DemandEconomics.scala)
+- [`engine/economics/PriceEquityEconomics.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/economics/PriceEquityEconomics.scala)
+- [`engine/markets/FiscalRules.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/markets/FiscalRules.scala)
+- [`engine/markets/PriceLevel.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/markets/PriceLevel.scala)
+- [`engine/markets/EquityMarket.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/markets/EquityMarket.scala)
+- [`engine/mechanisms/EuFunds.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/mechanisms/EuFunds.scala)
+- [`engine/mechanisms/Macroprudential.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/mechanisms/Macroprudential.scala)
 
 ### Government Purchases And Fiscal Rules
 
@@ -584,12 +584,12 @@ implementation-oriented rule catalog and output-column map.
 
 Implementation anchors:
 
-- `agents/Firm.scala`
-- `engine/economics/FirmEconomics.scala`
-- `engine/markets/IntermediateMarket.scala`
-- `engine/markets/CorporateBondMarket.scala`
-- `engine/mechanisms/FirmEntry.scala`
-- `agents/StateOwned.scala`
+- [`agents/Firm.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/agents/Firm.scala)
+- [`engine/economics/FirmEconomics.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/economics/FirmEconomics.scala)
+- [`engine/markets/IntermediateMarket.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/markets/IntermediateMarket.scala)
+- [`engine/markets/CorporateBondMarket.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/markets/CorporateBondMarket.scala)
+- [`engine/mechanisms/FirmEntry.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/mechanisms/FirmEntry.scala)
+- [`agents/StateOwned.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/agents/StateOwned.scala)
 
 ### Technology State And Capacity
 
@@ -778,13 +778,13 @@ The material below remains the implementation-oriented banking rule catalog.
 
 Implementation anchors:
 
-- `agents/Banking.scala`
-- `engine/economics/BankingEconomics.scala`
-- `engine/economics/banking/BankingStepRunner.scala`
-- `agents/EclStaging.scala`
-- `agents/DepositMobility.scala`
-- `agents/InterbankContagion.scala`
-- `engine/ledger/CorporateBondOwnership.scala`
+- [`agents/Banking.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/agents/Banking.scala)
+- [`engine/economics/BankingEconomics.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/economics/BankingEconomics.scala)
+- [`engine/economics/banking/BankingStepRunner.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/economics/banking/BankingStepRunner.scala)
+- [`agents/EclStaging.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/agents/EclStaging.scala)
+- [`agents/DepositMobility.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/agents/DepositMobility.scala)
+- [`agents/InterbankContagion.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/agents/InterbankContagion.scala)
+- [`engine/ledger/CorporateBondOwnership.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/ledger/CorporateBondOwnership.scala)
 
 ### Balance-Sheet Ratios
 
@@ -1091,14 +1091,14 @@ bond-market, and external rule catalog.
 
 Implementation anchors:
 
-- `engine/markets/FiscalBudget.scala`
-- `engine/markets/FiscalRules.scala`
-- `agents/Nbp.scala`
-- `engine/markets/OpenEconomy.scala`
-- `engine/economics/OpenEconEconomics.scala`
-- `engine/markets/BondAuction.scala`
-- `engine/markets/CorporateBondMarket.scala`
-- `engine/mechanisms/Expectations.scala`
+- [`engine/markets/FiscalBudget.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/markets/FiscalBudget.scala)
+- [`engine/markets/FiscalRules.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/markets/FiscalRules.scala)
+- [`agents/Nbp.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/agents/Nbp.scala)
+- [`engine/markets/OpenEconomy.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/markets/OpenEconomy.scala)
+- [`engine/economics/OpenEconEconomics.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/economics/OpenEconEconomics.scala)
+- [`engine/markets/BondAuction.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/markets/BondAuction.scala)
+- [`engine/markets/CorporateBondMarket.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/markets/CorporateBondMarket.scala)
+- [`engine/mechanisms/Expectations.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/mechanisms/Expectations.scala)
 
 ### Government Budget And Debt
 
@@ -1275,13 +1275,13 @@ quasi-fiscal, and JST rule catalog.
 
 Implementation anchors:
 
-- `agents/Insurance.scala`
-- `agents/Nbfi.scala`
-- `agents/QuasiFiscal.scala`
-- `agents/Jst.scala`
-- `engine/economics/OpenEconEconomics.scala`
-- `engine/economics/BankingEconomics.scala`
-- `engine/economics/banking/BankingStepRunner.scala`
+- [`agents/Insurance.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/agents/Insurance.scala)
+- [`agents/Nbfi.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/agents/Nbfi.scala)
+- [`agents/QuasiFiscal.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/agents/QuasiFiscal.scala)
+- [`agents/Jst.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/agents/Jst.scala)
+- [`engine/economics/OpenEconEconomics.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/economics/OpenEconEconomics.scala)
+- [`engine/economics/BankingEconomics.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/economics/BankingEconomics.scala)
+- [`engine/economics/banking/BankingStepRunner.scala`](../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/economics/banking/BankingStepRunner.scala)
 
 ### Insurance
 

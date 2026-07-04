@@ -25,7 +25,7 @@ become a dumping ground for supported financial ownership.
 
 ## LedgerFinancialState
 
-[`LedgerFinancialState`](../../src/main/scala/com/boombustgroup/amorfati/engine/ledger/LedgerFinancialState.scala)
+[`LedgerFinancialState`](../../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/ledger/LedgerFinancialState.scala)
 is narrower than `World`. It stores ledger-backed stock balances for households,
 firms, banks, government, foreign sector, NBP, insurance, and funds.
 
@@ -43,7 +43,7 @@ calculation. Those DTOs are not additional persisted owners.
 
 ## Ownership Contract
 
-[`AssetOwnershipContract`](../../src/main/scala/com/boombustgroup/amorfati/engine/ledger/AssetOwnershipContract.scala)
+[`AssetOwnershipContract`](../../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/ledger/AssetOwnershipContract.scala)
 declares how the engine treats public ledger asset types:
 
 | Status | Meaning |
@@ -58,7 +58,7 @@ stock merely because the external ledger API can represent it.
 
 ## Runtime Flow Survivability
 
-[`RuntimeMechanismSurvivability`](../../src/main/scala/com/boombustgroup/amorfati/engine/ledger/RuntimeMechanismSurvivability.scala)
+[`RuntimeMechanismSurvivability`](../../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/ledger/RuntimeMechanismSurvivability.scala)
 classifies emitted `FlowMechanism` batches:
 
 | Classification | Meaning |
@@ -76,7 +76,7 @@ The ledger interpreter returns month deltas over concrete
 `(EntitySector, AssetType, index)` accounts. Not every delta becomes the next
 boundary stock.
 
-[`RuntimeFlowProjection`](../../src/main/scala/com/boombustgroup/amorfati/engine/ledger/RuntimeFlowProjection.scala)
+[`RuntimeFlowProjection`](../../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/ledger/RuntimeFlowProjection.scala)
 materializes only the supported persisted slice that has a one-to-one owner in
 `LedgerFinancialState`. At the time of this architecture record, public-fund
 cash slots and quasi-fiscal bond/loan stocks are materialized from executed
@@ -94,7 +94,7 @@ visible instead of being balanced by residuals.
 are inputs to the ledger state. After initialization, supported financial stocks
 should be read from `LedgerFinancialState` or explicit projections from it.
 
-See the [init package README](../../src/main/scala/com/boombustgroup/amorfati/init/README.md).
+See the [init package README](../../modules/model/src/main/scala/com/boombustgroup/amorfati/init/README.md).
 
 ## Change Rules
 
