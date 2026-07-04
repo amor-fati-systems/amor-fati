@@ -3,12 +3,11 @@ package com.boombustgroup.amorfati.engine
 import com.boombustgroup.amorfati.FixedPointSpecSupport.*
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.SimulationMonth.ExecutionMonth
-import com.boombustgroup.amorfati.montecarlo.McRunner.runSingle
-import com.boombustgroup.amorfati.montecarlo.McTimeseriesSchema
-import com.boombustgroup.amorfati.montecarlo.McTimeseriesSchema.Col
-import com.boombustgroup.amorfati.montecarlo.MetricValue
-import com.boombustgroup.amorfati.montecarlo.MetricValue.*
-import com.boombustgroup.amorfati.montecarlo.TimeSeries
+import com.boombustgroup.amorfati.montecarlo.core.{MetricValue, TimeSeries}
+import com.boombustgroup.amorfati.montecarlo.core.MetricValue.*
+import com.boombustgroup.amorfati.montecarlo.runner.McRunner.runSingle
+import com.boombustgroup.amorfati.montecarlo.timeseries.McTimeseriesSchema
+import com.boombustgroup.amorfati.montecarlo.timeseries.McTimeseriesSchema.Col
 import com.boombustgroup.amorfati.tags.Heavy
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

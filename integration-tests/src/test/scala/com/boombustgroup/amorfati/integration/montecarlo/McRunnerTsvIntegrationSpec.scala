@@ -6,7 +6,10 @@ import com.boombustgroup.amorfati.agents.HhStatus
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.SimulationMonth.ExecutionMonth
 import com.boombustgroup.amorfati.engine.ledger.LedgerFinancialState
-import com.boombustgroup.amorfati.montecarlo.{McFirmSnapshotSchedule, McHouseholdSnapshotSchedule, McRunConfig, McRunner, McTimeseriesSchema, RunResult, SimError}
+import com.boombustgroup.amorfati.montecarlo.core.{McRunConfig, RunResult, SimError}
+import com.boombustgroup.amorfati.montecarlo.runner.McRunner
+import com.boombustgroup.amorfati.montecarlo.snapshots.{McFirmSnapshotSchedule, McHouseholdSnapshotSchedule}
+import com.boombustgroup.amorfati.montecarlo.timeseries.McTimeseriesSchema
 import com.boombustgroup.amorfati.types.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

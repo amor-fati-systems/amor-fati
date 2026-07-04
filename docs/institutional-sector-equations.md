@@ -25,7 +25,7 @@ implementation anchors listed below.
 | [`agents/Nbp.scala`](../src/main/scala/com/boombustgroup/amorfati/agents/Nbp.scala), [`engine/economics/OpenEconEconomics.scala`](../src/main/scala/com/boombustgroup/amorfati/engine/economics/OpenEconEconomics.scala), and [`engine/markets/OpenEconomy.scala`](../src/main/scala/com/boombustgroup/amorfati/engine/markets/OpenEconomy.scala) | NBP policy rule, sovereign yield, QE request, FX intervention, BOP, exchange-rate, NFA, and external-trade dynamics. |
 | [`agents/Insurance.scala`](../src/main/scala/com/boombustgroup/amorfati/agents/Insurance.scala), [`agents/Nbfi.scala`](../src/main/scala/com/boombustgroup/amorfati/agents/Nbfi.scala), and [`agents/QuasiFiscal.scala`](../src/main/scala/com/boombustgroup/amorfati/agents/QuasiFiscal.scala) | Insurance reserves and flows, TFI/NBFI assets and credit, and quasi-fiscal bonds/lending. |
 | [`engine/flows/*`](../src/main/scala/com/boombustgroup/amorfati/engine/flows) | Runtime flow emitters for government, social funds, NBP/banking plumbing, external sector, insurance, NBFI, JST, and quasi-fiscal mechanisms. |
-| [`montecarlo/McTimeseriesSchema.scala`](../src/main/scala/com/boombustgroup/amorfati/montecarlo/McTimeseriesSchema.scala) | Public output columns for fiscal, monetary, external, insurance, NBFI, JST, and quasi-fiscal surfaces. |
+| [`montecarlo/timeseries/McTimeseriesSchema.scala`](../src/main/scala/com/boombustgroup/amorfati/montecarlo/timeseries/McTimeseriesSchema.scala) | Public output columns for fiscal, monetary, external, insurance, NBFI, JST, and quasi-fiscal surfaces. |
 
 ## Institutional State And Ownership Boundary
 

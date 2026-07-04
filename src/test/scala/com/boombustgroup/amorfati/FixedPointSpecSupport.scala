@@ -1,7 +1,8 @@
 package com.boombustgroup.amorfati
 
 import com.boombustgroup.amorfati.fp.*
-import com.boombustgroup.amorfati.montecarlo.MetricValue
+import com.boombustgroup.amorfati.montecarlo.core.MetricValue
+import com.boombustgroup.amorfati.montecarlo.core.MetricValue.*
 import com.boombustgroup.amorfati.types.*
 import org.scalacheck.Gen
 import scala.annotation.targetName

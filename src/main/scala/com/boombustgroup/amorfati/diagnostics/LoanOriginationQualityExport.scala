@@ -4,7 +4,9 @@ import com.boombustgroup.amorfati.agents.{Banking, BankruptReason, Firm, HhFinan
 import com.boombustgroup.amorfati.config.SimParams
 import com.boombustgroup.amorfati.engine.ledger.{CorporateBondOwnership, LedgerFinancialState}
 import com.boombustgroup.amorfati.fp.FixedPointBase
-import com.boombustgroup.amorfati.montecarlo.{McDiagnosticRunner, McSeedMonth, McTsvFile, McTsvSchema}
+import com.boombustgroup.amorfati.montecarlo.core.McSeedMonth
+import com.boombustgroup.amorfati.montecarlo.diagnostics.McDiagnosticRunner
+import com.boombustgroup.amorfati.montecarlo.io.{McTsvFile, McTsvSchema}
 import com.boombustgroup.amorfati.types.*
 import zio.ZIO
 import zio.stream.ZStream

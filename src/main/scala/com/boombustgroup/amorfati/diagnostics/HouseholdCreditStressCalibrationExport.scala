@@ -1,8 +1,11 @@
 package com.boombustgroup.amorfati.diagnostics
 
 import com.boombustgroup.amorfati.config.SimParams
-import com.boombustgroup.amorfati.montecarlo.{McDiagnosticRunner, McSeedMonth, McTimeseriesSchema, McTsvFile, McTsvSchema, MetricValue}
-import com.boombustgroup.amorfati.montecarlo.MetricValue.*
+import com.boombustgroup.amorfati.montecarlo.core.{McSeedMonth, MetricValue}
+import com.boombustgroup.amorfati.montecarlo.core.MetricValue.*
+import com.boombustgroup.amorfati.montecarlo.diagnostics.McDiagnosticRunner
+import com.boombustgroup.amorfati.montecarlo.io.{McTsvFile, McTsvSchema}
+import com.boombustgroup.amorfati.montecarlo.timeseries.McTimeseriesSchema
 import com.boombustgroup.amorfati.types.*
 import zio.ZIO
 import zio.stream.ZStream

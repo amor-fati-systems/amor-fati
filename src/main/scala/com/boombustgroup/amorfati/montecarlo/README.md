@@ -6,41 +6,22 @@ wrappers. It is the only consumer of `McRunConfig` — the engine pipeline has n
 dependency on this package. Runtime Monte Carlo artifacts are TSVs, using the
 same shared delimited-text layer as diagnostic TSV artifacts.
 
-## Files
+## Subpackages
 
-| File | Object | Role |
-|------|--------|------|
-| `McRunner.scala` | `McRunner` | Orchestrates the Monte Carlo run: initializes seeds, streams monthly snapshots, writes per-seed TSVs, collects terminal summaries and optional firm micro exports |
-| `McSeedMonth.scala` | `McSeedMonth` | Canonical monthly seed snapshot shared with diagnostics: execution month, timeseries row, opening/closing state, and lightweight monthly tap payloads |
-| `McDiagnosticRunner.scala` | `McDiagnosticRunner` | Shared scenario/seed diagnostic runner using the same seed-stream path and bounded `mapZIOPar` parallelism as production runs |
-| `McRunConfig.scala` | `McRunConfig` | Runtime config from CLI args: `nSeeds`, `outputPrefix`, `runDurationMonths`, `runId`, `firmSnapshotSchedule`, `householdSnapshotSchedule`, `householdSnapshotSelection`, `firmDecisionTraceSelection` |
-| `McFirmSnapshotSchedule.scala` | `McFirmSnapshotSchedule` | Disabled/terminal/cadence/explicit-month firm microdata export schedule |
-| `McFirmSnapshotSchema.scala` | `McFirmSnapshotSchema` | Generic per-firm snapshot TSV header and row rendering |
-| `McFirmSnapshotTsv.scala` | `McFirmSnapshotTsv` | Optional per-seed firm snapshot chunk writer and combined TSV finalizer |
-| `McHouseholdSnapshotSchedule.scala` | `McHouseholdSnapshotSchedule` | Disabled/terminal/cadence/explicit-month household microdata export schedule |
-| `McHouseholdSnapshotSelection.scala` | `McHouseholdSnapshotSelection` | Household snapshot row selector: all, negative deposits, liquidity shortfall, or either condition |
-| `McHouseholdSnapshotSchema.scala` | `McHouseholdSnapshotSchema` | Generic per-household liquidity snapshot TSV header and row rendering |
-| `McHouseholdSnapshotTsv.scala` | `McHouseholdSnapshotTsv` | Optional per-seed household snapshot chunk writer and combined TSV finalizer |
-| `McHouseholdShortfallCohortSchema.scala` | `McHouseholdShortfallCohortSchema` | Household shortfall cohort aggregation schema for status/region/contract/burden diagnostics |
-| `McHouseholdShortfallCohortTsv.scala` | `McHouseholdShortfallCohortTsv` | Optional per-seed household shortfall cohort writer and combined TSV finalizer |
-| `McFirmDecisionTraceSelection.scala` | `McFirmDecisionTraceSelection` | Disabled/all/explicit-id/first-N firm decision trace selector |
-| `McFirmDecisionTraceSchema.scala` | `McFirmDecisionTraceSchema` | Generic per-firm decision trace TSV header and row rendering |
-| `McFirmDecisionTraceTsv.scala` | `McFirmDecisionTraceTsv` | Optional per-seed firm decision trace chunk writer and combined TSV finalizer |
-| `McFirmSizeClass.scala` | `McFirmSizeClass` | Shared worker-count size-class boundary used by terminal counts and firm snapshots |
-| `McHouseholdLiquidityDiagnostics.scala` | `McHouseholdLiquidityDiagnostics` | Shared household demand-deposit distribution diagnostics for timeseries and terminal summaries |
-| `McTimeseriesSchema.scala` | `McTimeseriesSchema` | Timeseries schema composed from domain column groups, with typed `Col` definitions, `compute`, and shared `tsvSchema` |
-| `DelimitedTextFormat.scala` | `DelimitedTextFormat` | Format descriptor and cell escaping for TSV output |
-| `DelimitedTextSchema.scala` | `DelimitedTextSchema` | Shared header/render contract for delimited-text rows |
-| `DelimitedTextFile.scala` | `DelimitedTextFile` | Generic streaming delimited-text sink with parent-dir creation, temp-file finalization, and fold support |
-| `DelimitedTextRows.scala` | `DelimitedTextRows` | Shared delimited-text row reader used by TSV consumers and diagnostics |
-| `McTsvFile.scala` | `McTsvFile` | Runtime TSV facade over `DelimitedTextFile` |
-| `McTimeseriesTsv.scala` | `McTimeseriesTsv` | Production per-seed timeseries TSV sink backed by `McTsvFile` |
-| `McTerminalSummarySchema.scala` | `McTerminalSummarySchema` | Household/bank/firm terminal summary schemas and terminal-state row extraction; bank stock columns read `LedgerFinancialState` |
-| `McTerminalSummaryTsv.scala` | `McTerminalSummaryTsv` | Writes aggregate household/bank/firm terminal summary TSVs |
-| `McTsvSchema.scala` | `McTsvSchema` | Runtime TSV schema facade over `DelimitedTextSchema` |
-| `McOutputFiles.scala` | `McOutputFiles` | Output directory preparation and stable output file naming |
-| `McRunnerConsole.scala` | `McRunnerConsole` | Console progress/status rendering for runs, seeds, and saved files |
-| `McTypes.scala` | `SimError`, `RunResult`, `TimeSeries` | Typed runtime/output errors plus zero-cost wrappers for simulation output |
+| Package | Files | Role |
+|---------|-------|------|
+| `core` | `McRunConfig`, `McOutputFiles`, `McSeedMonth`, `McTypes`, `MetricValue` | Public runtime config, output naming, typed errors/results, seed-month payloads, and fixed-point reporting values |
+| `runner` | `McRunner`, `McRunnerConsole`, `McTerminalSummarySchema`, `McTerminalSummaryTsv` | Production run orchestration, progress rendering, and terminal summary exports |
+| `timeseries` | `McTimeseriesSchema`, `McTimeseriesTsv` | Monthly timeseries schema, typed `Col` handles, row computation, and per-seed TSV sink |
+| `snapshots` | `McFirm*`, `McHousehold*` snapshot/trace/cohort files | Optional firm and household microdata schedules, selectors, schemas, chunk writers, and shared liquidity diagnostics |
+| `io` | `DelimitedText*`, `McTsvFile`, `McTsvSchema` | Shared delimited-text and TSV contracts used by Monte Carlo, diagnostics, and data-bridge code |
+| `diagnostics` | `McDiagnosticRunner` | Scenario/seed diagnostic runner using the same seed-stream path as production Monte Carlo |
+
+The root `montecarlo` package keeps source-level exports for the stable public
+surface (`McRunConfig`, `McRunner`, `McTimeseriesSchema`, TSV helpers, snapshot
+schedules/selectors, and typed result/error wrappers). New code inside this
+repository should prefer importing from the concrete subpackage that owns the
+symbol.
 
 ## Data flow
 

@@ -103,5 +103,5 @@ The authoritative per-row model mapping is the `model_target` column in the
 source manifest. Family-level schema detail is owned by
 [montecarlo/README.md](../src/main/scala/com/boombustgroup/amorfati/montecarlo/README.md)
 and the schema definitions it indexes, especially
-[McTimeseriesSchema.scala](../src/main/scala/com/boombustgroup/amorfati/montecarlo/McTimeseriesSchema.scala).
+[McTimeseriesSchema.scala](../src/main/scala/com/boombustgroup/amorfati/montecarlo/timeseries/McTimeseriesSchema.scala).
 Diagnostics routing starts from the [operations appendix index](operations.md#operational-appendix-index).

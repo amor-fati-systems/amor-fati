@@ -1,7 +1,7 @@
 package com.boombustgroup.amorfati.diagnostics
 
 import com.boombustgroup.amorfati.diagnostics.EmpiricalValidationExport.{ModelTarget, SourceStatus}
-import com.boombustgroup.amorfati.montecarlo.{DelimitedTextFormat, DelimitedTextRows}
+import com.boombustgroup.amorfati.montecarlo.io.{DelimitedTextFormat, DelimitedTextRows}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 

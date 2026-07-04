@@ -1,6 +1,6 @@
 package com.boombustgroup.amorfati.config
 
-import com.boombustgroup.amorfati.montecarlo.DelimitedTextFormat
+import com.boombustgroup.amorfati.montecarlo.io.DelimitedTextFormat
 
 import scala.math.BigDecimal.RoundingMode
 

@@ -2,7 +2,11 @@ package com.boombustgroup.amorfati.diagnostics
 
 import com.boombustgroup.amorfati.config.ScenarioRegistry
 import com.boombustgroup.amorfati.config.ScenarioRegistry.{DeltaProvenance, ParameterDelta, ScenarioSpec}
-import com.boombustgroup.amorfati.montecarlo.{McDiagnosticRunner, McSeedMonth, McTimeseriesSchema, McTsvFile, McTsvSchema, MetricValue}
+import com.boombustgroup.amorfati.montecarlo.core.{McSeedMonth, MetricValue}
+import com.boombustgroup.amorfati.montecarlo.core.MetricValue.*
+import com.boombustgroup.amorfati.montecarlo.diagnostics.McDiagnosticRunner
+import com.boombustgroup.amorfati.montecarlo.io.{McTsvFile, McTsvSchema}
+import com.boombustgroup.amorfati.montecarlo.timeseries.McTimeseriesSchema
 import zio.ZIO
 
 import java.nio.file.Path

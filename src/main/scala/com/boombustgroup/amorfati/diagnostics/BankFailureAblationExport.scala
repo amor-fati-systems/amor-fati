@@ -1,13 +1,11 @@
 package com.boombustgroup.amorfati.diagnostics
 
 import com.boombustgroup.amorfati.config.BankFailureAblationScenarios
-import com.boombustgroup.amorfati.montecarlo.McTsvFile
-import com.boombustgroup.amorfati.montecarlo.McTsvSchema
-import com.boombustgroup.amorfati.montecarlo.McDiagnosticRunner
-import com.boombustgroup.amorfati.montecarlo.McSeedMonth
-import com.boombustgroup.amorfati.montecarlo.McTimeseriesSchema
-import com.boombustgroup.amorfati.montecarlo.MetricValue
-import com.boombustgroup.amorfati.montecarlo.MetricValue.*
+import com.boombustgroup.amorfati.montecarlo.core.{McSeedMonth, MetricValue}
+import com.boombustgroup.amorfati.montecarlo.core.MetricValue.*
+import com.boombustgroup.amorfati.montecarlo.diagnostics.McDiagnosticRunner
+import com.boombustgroup.amorfati.montecarlo.io.{McTsvFile, McTsvSchema}
+import com.boombustgroup.amorfati.montecarlo.timeseries.McTimeseriesSchema
 import zio.{Cause, Ref, ZIO}
 import zio.stream.ZStream
 
