@@ -142,7 +142,10 @@ Material current limitations include:
 - although parameter provenance is registered, the project does not yet define
   a formal approval, freezing, and versioning policy for canonical calibration
   baselines and their underlying data vintages;
-- limited validation of long-horizon cycles and regime changes;
+- empirical validation currently covers a 60-month horizon and does not yet
+  establish whether endogenous balance-sheet dynamics remain empirically
+  plausible over complete business and financial cycles or across materially
+  different inflation, monetary-policy, and financial-stress environments;
 - bank capital is not holder-resolved equity, and some financial ownership
   families remain unsupported or diagnostic-only;
 - performance budgets are currently warnings rather than hard release gates;
