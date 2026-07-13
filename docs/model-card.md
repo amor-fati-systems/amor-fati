@@ -139,7 +139,9 @@ Material current limitations include:
   predictive performance and the empirical reliability of simulated magnitudes
   have not been established;
 - no completed independent external reproduction of a reference experiment;
-- unsettled calibration-governance and baseline-versioning policy;
+- although parameter provenance is registered, the project does not yet define
+  a formal approval, freezing, and versioning policy for canonical calibration
+  baselines and their underlying data vintages;
 - limited validation of long-horizon cycles and regime changes;
 - bank capital is not holder-resolved equity, and some financial ownership
   families remain unsupported or diagnostic-only;
