@@ -134,7 +134,10 @@ Material current limitations include:
 
 - incomplete empirical bridges and validation evidence for many behavioral
   parameters;
-- no demonstrated out-of-sample forecasting performance;
+- the model has not yet undergone time-split or rolling-origin historical
+  validation on observations excluded from calibration; consequently, its
+  predictive performance and the empirical reliability of simulated magnitudes
+  have not been established;
 - no completed independent external reproduction of a reference experiment;
 - unsettled calibration-governance and baseline-versioning policy;
 - limited validation of long-horizon cycles and regime changes;
