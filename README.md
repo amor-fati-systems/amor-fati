@@ -12,9 +12,9 @@
 
 ### Quality Gates
 
-| CI | Coverage | Generated outputs |
-| --- | --- | --- |
-| [![CI](https://github.com/amor-fati-systems/amor-fati/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/amor-fati-systems/amor-fati/actions/workflows/ci.yml) | [![Coverage](https://codecov.io/gh/amor-fati-systems/amor-fati/graph/badge.svg)](https://codecov.io/gh/amor-fati-systems/amor-fati) | [![Generated outputs guarded](https://img.shields.io/badge/generated_outputs-guarded-2ea44f.svg)](docs/operations.md#generated-output-guard) |
+| CI | Coverage | Generated outputs | CLA |
+| --- | --- | --- | --- |
+| [![CI](https://github.com/amor-fati-systems/amor-fati/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/amor-fati-systems/amor-fati/actions/workflows/ci.yml) | [![Coverage](https://codecov.io/gh/amor-fati-systems/amor-fati/graph/badge.svg)](https://codecov.io/gh/amor-fati-systems/amor-fati) | [![Generated outputs guarded](https://img.shields.io/badge/generated_outputs-guarded-2ea44f.svg)](docs/operations.md#generated-output-guard) | [![CLA assistant](https://cla-assistant.io/readme/badge/amor-fati-systems/amor-fati)](https://cla-assistant.io/amor-fati-systems/amor-fati) |
 
 ### Research and Accounting Contract
 
