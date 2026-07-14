@@ -68,8 +68,15 @@ maintain the public project and offer the contribution under additional terms.
 
 The repository's CLA status check records acceptance for the GitHub account
 submitting a pull request. External contributions must not be merged until that
-check passes. Until the status check is configured, external contributions may
-be reviewed but must not be merged.
+check passes. The check is operated through
+[CLA Assistant](https://cla-assistant.io/amor-fati-systems/amor-fati), using a
+[hosted signing copy](https://gist.github.com/speedcom/1f7923e49cdbb259e78447ffa6ab4983)
+of this repository's `CLA.md`.
+
+`CLA.md` is the canonical agreement. A maintainer changing it must update the
+linked Gist in the same change-management cycle and revalidate the CLA Assistant
+configuration. A new Gist revision requires contributors to accept the revised
+agreement before a covered contribution is merged.
 
 If a contribution is owned by an employer, university, or another legal entity,
 the person accepting the CLA must have authority to bind that entity. Identify
@@ -78,7 +85,9 @@ a maintainer confirms that it can be accepted.
 
 Contributions already owned by BoomBustGroup do not require a separate CLA.
 Maintainers may also exempt trusted automated dependency updates or changes
-that do not contain copyrightable authorship.
+that do not contain copyrightable authorship. Allowlist entries must be limited
+to individually reviewed accounts; GitHub organization membership alone is not
+evidence that BoomBustGroup owns a contribution.
 
 ## Pull Requests
 
