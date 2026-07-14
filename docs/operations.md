@@ -46,7 +46,7 @@ The runtime depends on `amor-fati-ledger`, checked out as the Git submodule at
 Clone with submodules:
 
 ```bash
-git clone --recurse-submodules https://github.com/boombustgroup/amor-fati.git
+git clone --recurse-submodules https://github.com/amor-fati-systems/amor-fati.git
 cd amor-fati
 ```
 
@@ -149,7 +149,7 @@ canonical repository.
 Clone the repository directly:
 
 ```bash
-git clone --recurse-submodules git@github.com:boombustgroup/amor-fati.git
+git clone --recurse-submodules git@github.com:amor-fati-systems/amor-fati.git
 cd amor-fati
 ```
 
@@ -159,7 +159,7 @@ can refresh the baseline when needed:
 ```bash
 git clone --recurse-submodules git@github.com:<user>/amor-fati.git
 cd amor-fati
-git remote add upstream git@github.com:boombustgroup/amor-fati.git
+git remote add upstream git@github.com:amor-fati-systems/amor-fati.git
 git fetch upstream
 ```
 

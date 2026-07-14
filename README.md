@@ -14,23 +14,23 @@
 
 | CI | Coverage | Generated outputs |
 | --- | --- | --- |
-| [![CI](https://github.com/boombustgroup/amor-fati/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/boombustgroup/amor-fati/actions/workflows/ci.yml) | [![Coverage](https://codecov.io/gh/boombustgroup/amor-fati/graph/badge.svg)](https://codecov.io/gh/boombustgroup/amor-fati) | [![Generated outputs guarded](https://img.shields.io/badge/generated_outputs-guarded-2ea44f.svg)](docs/operations.md#generated-output-guard) |
+| [![CI](https://github.com/amor-fati-systems/amor-fati/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/amor-fati-systems/amor-fati/actions/workflows/ci.yml) | [![Coverage](https://codecov.io/gh/amor-fati-systems/amor-fati/graph/badge.svg)](https://codecov.io/gh/amor-fati-systems/amor-fati) | [![Generated outputs guarded](https://img.shields.io/badge/generated_outputs-guarded-2ea44f.svg)](docs/operations.md#generated-output-guard) |
 
 ### Research and Accounting Contract
 
 | Exact SFC identities | Verified ledger | Empirical validation |
 | --- | --- | --- |
-| [![15 exact SFC identities](https://img.shields.io/badge/exact_SFC_identities-15-orange.svg)](docs/sfc-matrix-evidence.md) | [![Verified ledger with Stainless and Z3](https://img.shields.io/badge/verified_ledger-Stainless_%2B_Z3-4B32C3.svg)](https://github.com/boombustgroup/amor-fati-ledger/blob/main/docs/verification.md) | [![Empirical validation snapshot](https://img.shields.io/badge/empirical_validation-snapshot-0A7EA4.svg)](docs/empirical-validation-report.md) |
+| [![15 exact SFC identities](https://img.shields.io/badge/exact_SFC_identities-15-orange.svg)](docs/sfc-matrix-evidence.md) | [![Verified ledger with Stainless and Z3](https://img.shields.io/badge/verified_ledger-Stainless_%2B_Z3-4B32C3.svg)](https://github.com/amor-fati-systems/amor-fati-ledger/blob/main/docs/verification.md) | [![Empirical validation snapshot](https://img.shields.io/badge/empirical_validation-snapshot-0A7EA4.svg)](docs/empirical-validation-report.md) |
 
 ### Operational Diagnostics
 
 | Diagnostics smoke | Diagnostics nightly | Diagnostics extended |
 | --- | --- | --- |
-| [![Diagnostics Smoke](https://github.com/boombustgroup/amor-fati/actions/workflows/diagnostics-smoke.yml/badge.svg?branch=main)](https://github.com/boombustgroup/amor-fati/actions/workflows/diagnostics-smoke.yml) | [![Diagnostics Nightly](https://github.com/boombustgroup/amor-fati/actions/workflows/diagnostics-nightly.yml/badge.svg?branch=main)](https://github.com/boombustgroup/amor-fati/actions/workflows/diagnostics-nightly.yml) | [![Diagnostics Extended](https://github.com/boombustgroup/amor-fati/actions/workflows/diagnostics-extended.yml/badge.svg?branch=main)](https://github.com/boombustgroup/amor-fati/actions/workflows/diagnostics-extended.yml) |
+| [![Diagnostics Smoke](https://github.com/amor-fati-systems/amor-fati/actions/workflows/diagnostics-smoke.yml/badge.svg?branch=main)](https://github.com/amor-fati-systems/amor-fati/actions/workflows/diagnostics-smoke.yml) | [![Diagnostics Nightly](https://github.com/amor-fati-systems/amor-fati/actions/workflows/diagnostics-nightly.yml/badge.svg?branch=main)](https://github.com/amor-fati-systems/amor-fati/actions/workflows/diagnostics-nightly.yml) | [![Diagnostics Extended](https://github.com/amor-fati-systems/amor-fati/actions/workflows/diagnostics-extended.yml/badge.svg?branch=main)](https://github.com/amor-fati-systems/amor-fati/actions/workflows/diagnostics-extended.yml) |
 
 | Profiling smoke | Profiling nightly | Profiling extended |
 | --- | --- | --- |
-| [![Hot-Path Profiling Smoke](https://github.com/boombustgroup/amor-fati/actions/workflows/hot-path-profiling-smoke.yml/badge.svg?branch=main)](https://github.com/boombustgroup/amor-fati/actions/workflows/hot-path-profiling-smoke.yml) | [![Hot-Path Profiling Nightly](https://github.com/boombustgroup/amor-fati/actions/workflows/hot-path-profiling-nightly.yml/badge.svg?branch=main)](https://github.com/boombustgroup/amor-fati/actions/workflows/hot-path-profiling-nightly.yml) | [![Hot-Path Profiling Extended](https://github.com/boombustgroup/amor-fati/actions/workflows/hot-path-profiling-extended.yml/badge.svg?branch=main)](https://github.com/boombustgroup/amor-fati/actions/workflows/hot-path-profiling-extended.yml) |
+| [![Hot-Path Profiling Smoke](https://github.com/amor-fati-systems/amor-fati/actions/workflows/hot-path-profiling-smoke.yml/badge.svg?branch=main)](https://github.com/amor-fati-systems/amor-fati/actions/workflows/hot-path-profiling-smoke.yml) | [![Hot-Path Profiling Nightly](https://github.com/amor-fati-systems/amor-fati/actions/workflows/hot-path-profiling-nightly.yml/badge.svg?branch=main)](https://github.com/amor-fati-systems/amor-fati/actions/workflows/hot-path-profiling-nightly.yml) | [![Hot-Path Profiling Extended](https://github.com/amor-fati-systems/amor-fati/actions/workflows/hot-path-profiling-extended.yml/badge.svg?branch=main)](https://github.com/amor-fati-systems/amor-fati/actions/workflows/hot-path-profiling-extended.yml) |
 
 ---
 
@@ -42,7 +42,7 @@ The key design principle is simple:
 
 > **Macro stories can be wrong. The ledger cannot.**
 
-This engine is built on top of the separately verified [amor-fati-ledger](https://github.com/boombustgroup/amor-fati-ledger) flow interpreter, checked out as a Git submodule under `modules/ledger`. The practical consequence is that the strongest invariant in the entire project is not "inflation should look smooth" or "GDP should converge nicely after 10 years". It is this:
+This engine is built on top of the separately verified [amor-fati-ledger](https://github.com/amor-fati-systems/amor-fati-ledger) flow interpreter, checked out as a Git submodule under `modules/ledger`. The practical consequence is that the strongest invariant in the entire project is not "inflation should look smooth" or "GDP should converge nicely after 10 years". It is this:
 
 > **The books must balance to the end of the universe.**
 
@@ -104,7 +104,7 @@ This split is intentional. It keeps rich agent behavior where object-level model
 
 Most macro models treat accounting consistency as a secondary validation step. Amor Fati does not.
 
-The simulation pipeline is anchored to the verified [amor-fati-ledger](https://github.com/boombustgroup/amor-fati-ledger) layer that enforces the project’s stock-flow constraints at runtime. In other words:
+The simulation pipeline is anchored to the verified [amor-fati-ledger](https://github.com/amor-fati-systems/amor-fati-ledger) layer that enforces the project’s stock-flow constraints at runtime. In other words:
 
 - macro behavior is experimental
 - agent rules are revisable

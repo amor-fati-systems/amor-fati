@@ -36,7 +36,7 @@ as the operational entry point.
 | Canonical reviewer spine | Paper-facing model contract or primary reviewer reference. These files define how the implemented model should be read. |
 | Generated evidence | Committed output produced by a task or exporter. Do not edit by hand; regenerate through the owning command. |
 | Hand-maintained companion to generated evidence | Human-written bridge, index, or workflow note that explains generated evidence and must stay aligned with it. |
-| Calibration or empirical evidence | Parameter, source, calibration, or empirical-validation evidence. These files do not define parameter governance policy; deeper governance belongs to the [Calibration Governance milestone](https://github.com/boombustgroup/amor-fati/milestone/27). |
+| Calibration or empirical evidence | Parameter, source, calibration, or empirical-validation evidence. These files do not define parameter governance policy; deeper governance belongs to the [Calibration Governance milestone](https://github.com/amor-fati-systems/amor-fati/milestone/27). |
 | Architecture | Code-facing architecture contract, package-boundary map, runtime-loop explanation, state ownership boundary, or extension guide. |
 | Operational appendix | Commands, CI, validation ownership, scenarios, robustness, and runbook material. Useful, but not the first scientific reading path. |
 | Diagnostics or profiling appendix | Specific diagnostic/profiling methodology, exporter interpretation, or investigation evidence. |
