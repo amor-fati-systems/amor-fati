@@ -38,7 +38,7 @@ object Main extends ZIOAppDefault:
        |  N=${rc.nSeeds} seeds  |  PLN (NBP)  |  HH=${p.household.count}  |  BANK=multi (10 rows)
        |  $firms firms x 6 sectors x Poland 2026-04-30 x ${p.topology.label} x ${rc.runDurationMonths}m
        |
-       |  Apache 2.0 | Copyright 2026 BoomBustGroup | www.boombustgroup.com
+       |  AGPL-3.0-only | Copyright 2026 BoomBustGroup | www.boombustgroup.com
        |""".stripMargin
 
   private[amorfati] def parseArgs(args: Chunk[String]): ZIO[Any, IllegalArgumentException, McRunConfig] =

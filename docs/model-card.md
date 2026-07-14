@@ -9,7 +9,7 @@
 | Baseline | Poland, model-start data boundary 2026-04-30 |
 | Frequency | Monthly |
 | Development status | Research prototype; not an institutional production model |
-| License | Apache License 2.0 for repository source code |
+| License | GNU Affero General Public License v3.0 only (`AGPL-3.0-only`) for repository source code |
 | Versioning | Unreleased development version; identify results by Git commit and run manifest |
 
 Amor Fati is an executable model of the Polish economy with heterogeneous
@@ -103,9 +103,9 @@ code-note level, 39 assumptions, 88 tuned rows needing validation, seven policy
 scenario controls, and one explicit placeholder. These labels describe
 provenance readiness, not statistical uncertainty or independent validation.
 
-Raw external data are not automatically redistributable under the repository's
-Apache license. Users remain responsible for the terms of the cited source
-datasets.
+Raw external data are not covered by the repository's AGPL-3.0-only license
+and are not automatically redistributable. Users remain responsible for the
+terms of the cited source datasets.
 
 ## Empirical Validation Status
 

@@ -161,6 +161,12 @@ separate README reading path:
 ![Z3](https://img.shields.io/badge/Z3-SMT%20Solver-1F6FEB)
 ![sbt](https://img.shields.io/badge/sbt-1.11.6-blue)
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the development and research review
+requirements. External contributions require acceptance of the
+[Contributor License Agreement](CLA.md) before merge.
+
 ## License
 
-[Apache 2.0](LICENSE) — Copyright 2026 [BoomBustGroup](https://www.boombustgroup.com/)
+[GNU AGPLv3](LICENSE) (`AGPL-3.0-only`) — Copyright 2026 [BoomBustGroup](https://www.boombustgroup.com/)
