@@ -146,8 +146,16 @@ Material current limitations include:
   establish whether endogenous balance-sheet dynamics remain empirically
   plausible over complete business and financial cycles or across materially
   different inflation, monetary-policy, and financial-stress environments;
-- bank capital is not holder-resolved equity, and some financial ownership
-  families remain unsupported or diagnostic-only;
+- each bank's accounting and regulatory capital is persisted and its monthly
+  waterfall is SFC-validated, but the model does not represent bank shares or
+  shareholders; bank equity therefore cannot be attributed to specific owners,
+  and the unretained share of bank gross income has no modeled dividend
+  receiver;
+- listed-equity holdings are represented on the holder side but are not matched
+  to individual issuing firms, so the model does not maintain firm- or
+  bank-level cap tables; corporate bonds are the principal security family
+  resolved by both issuer and holder, while several other financial-market
+  measures remain aggregate or diagnostic-only;
 - performance budgets are currently warnings rather than hard release gates;
 - the model is Poland-specific and contains Poland-shaped institutions;
 - institutional model-risk review, operational certification, and production
