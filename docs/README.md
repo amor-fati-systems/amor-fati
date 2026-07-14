@@ -12,6 +12,7 @@ inventory below, so new documentation cannot silently become orphaned.
 
 | Need | Start here |
 | --- | --- |
+| Model scope, intended use, and limitations | [Model card](model-card.md) |
 | SFC + ABM background for new readers | [SFC + ABM reading map](background/reading-map.md) |
 | First scientific review | [Model specification reviewer reading path](model-specification.md#reviewer-reading-path) |
 | ABM structure and scheduling | [ODD / ODD+D model documentation](odd-model-documentation.md) |
@@ -59,6 +60,7 @@ as the operational entry point.
 | [docs/firm-equations.md](firm-equations.md) | Canonical reviewer spine | Paper-facing firm-sector equations, implementation anchors, SFC mapping, outputs, validation, and limitations. |
 | [docs/household-equations.md](household-equations.md) | Canonical reviewer spine | Paper-facing household-sector equations, implementation anchors, SFC mapping, outputs, validation, and limitations. |
 | [docs/institutional-sector-equations.md](institutional-sector-equations.md) | Canonical reviewer spine | Paper-facing public, monetary, external, insurance, NBFI, TFI, quasi-fiscal, and JST equations. |
+| [docs/model-card.md](model-card.md) | Canonical reviewer spine | Intended use, uses outside scope, evidence status, known limitations, reproducibility, and responsible interpretation. |
 | [docs/model-notation-and-state-vector.md](model-notation-and-state-vector.md) | Canonical reviewer spine | Canonical notation, state-vector definitions, symbols, ownership boundaries, and implementation anchors. |
 | [docs/model-specification.md](model-specification.md) | Canonical reviewer spine | Canonical publication-facing model specification, reviewer reading path, and first scientific entry point. |
 | [docs/monthly-transition-function.md](monthly-transition-function.md) | Canonical reviewer spine | Formal monthly transition contract from pre-boundary state through same-month economics, ledger execution, SFC validation, and next-pre materialization. |
