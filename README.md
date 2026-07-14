@@ -163,4 +163,4 @@ separate README reading path:
 
 ## License
 
-[Apache 2.0](LICENSE) — Copyright 2026 [BoomBustGroup](https://www.boombustgroup.com/)
+[GNU AGPLv3](LICENSE) (`AGPL-3.0-only`) — Copyright 2026 [BoomBustGroup](https://www.boombustgroup.com/)
