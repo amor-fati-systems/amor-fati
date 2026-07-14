@@ -429,7 +429,7 @@ an explicit seed contract.
 
 - This document does not define new equations.
 - This document does not settle calibration governance; that is tracked by
-  the [Calibration Governance milestone](https://github.com/boombustgroup/amor-fati/milestone/27).
+  the [Calibration Governance milestone](https://github.com/amor-fati-systems/amor-fati/milestone/27).
 - This document does not replace generated SFC matrix artifacts.
 - This document intentionally mirrors the current implementation. Future model
   changes should update this notation only when the runtime state boundary or

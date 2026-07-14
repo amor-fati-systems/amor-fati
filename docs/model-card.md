@@ -87,7 +87,7 @@ modeled economy is behaviorally or empirically correct.
 
 See [SFC matrix evidence](sfc-matrix-evidence.md),
 [engine invariants and semantics](engine-invariants-and-semantics.md), and the
-[ledger verification record](https://github.com/boombustgroup/amor-fati-ledger/blob/main/docs/verification.md).
+[ledger verification record](https://github.com/amor-fati-systems/amor-fati-ledger/blob/main/docs/verification.md).
 
 ## Calibration And Data
 

@@ -29,7 +29,7 @@ read the nearby package README first, then return here for the system boundary:
 | [agents README](../../modules/model/src/main/scala/com/boombustgroup/amorfati/agents/README.md) | Autonomous agents, behavioral state, and agent-local module splits. |
 | [init README](../../modules/model/src/main/scala/com/boombustgroup/amorfati/init/README.md) | Initial world construction and initialization randomness. |
 | [montecarlo README](../../modules/montecarlo/src/main/scala/com/boombustgroup/amorfati/montecarlo/README.md) | Production Monte Carlo runner, TSV contracts, and seed/month output path. |
-| [amor-fati-ledger repository](https://github.com/boombustgroup/amor-fati-ledger) | Separately verified ledger repository checked out locally under `modules/ledger`; owns the public ledger API. |
+| [amor-fati-ledger repository](https://github.com/amor-fati-systems/amor-fati-ledger) | Separately verified ledger repository checked out locally under `modules/ledger`; owns the public ledger API. |
 
 ## Architecture Scope
 

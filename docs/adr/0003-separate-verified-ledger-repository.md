@@ -25,7 +25,7 @@ accounting kernel and which come from Amor Fati's model-specific usage of it.
 ## Decision
 
 The verified accounting kernel lives in the separate
-[amor-fati-ledger](https://github.com/boombustgroup/amor-fati-ledger)
+[amor-fati-ledger](https://github.com/amor-fati-systems/amor-fati-ledger)
 repository. Amor Fati checks that repository out as a Git submodule under
 `modules/ledger` and references it from the root build through an sbt
 `ProjectRef`.
@@ -59,7 +59,7 @@ The Amor Fati engine owns:
 ## References
 
 - [State and ledger boundary](../architecture/state-and-ledger-boundary.md)
-- [amor-fati-ledger repository](https://github.com/boombustgroup/amor-fati-ledger)
+- [amor-fati-ledger repository](https://github.com/amor-fati-systems/amor-fati-ledger)
 - [`AssetOwnershipContract.scala`](../../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/ledger/AssetOwnershipContract.scala)
 - [`RuntimeFlowProjection.scala`](../../modules/model/src/main/scala/com/boombustgroup/amorfati/engine/ledger/RuntimeFlowProjection.scala)
 - [`build.sbt`](../../build.sbt)
