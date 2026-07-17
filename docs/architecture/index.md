@@ -15,6 +15,9 @@ equation, SFC, calibration, validation, and diagnostics documents linked from
 | System map and package responsibilities | [Architecture overview](overview.md) |
 | One-month runtime execution path | [Runtime loop](runtime-loop.md) |
 | State ownership and ledger-backed financial stocks | [State and ledger boundary](state-and-ledger-boundary.md) |
+| Proposed population compiler and representation scale | [Population and representation RFC](../rfc/0001-population-and-representation.md) |
+| Proposed public Research API and notebook runtime | [Research API and notebook runtime RFC](../rfc/0002-research-api-and-notebook-runtime.md) |
+| Proposed model-wide ontology and target state architecture | [Model ontology and state architecture RFC](../rfc/0003-model-ontology-and-state-architecture.md) |
 | How to add mechanisms, sectors, scenarios, diagnostics, or output columns | [Extension points](extension-points.md) |
 | Durable architectural decisions | [ADR index](../adr/) |
 
@@ -42,6 +45,11 @@ The current architecture spine covers four contracts:
    and which financial stocks are ledger-owned.
 4. Extension workflow: where to wire new mechanisms and which tests or docs
    must move with the code.
+
+The population, Research API and notebook, and model-wide ontology RFCs describe
+proposed target boundaries, not current implementation. They remain design
+proposals until their decisions are accepted, implemented, and promoted into
+the canonical architecture spine.
 
 Architectural history belongs in [docs/adr](../adr/). ADRs are intentionally
 short records of accepted decisions, not living design tutorials.

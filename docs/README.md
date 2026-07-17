@@ -19,6 +19,9 @@ inventory below, so new documentation cannot silently become orphaned.
 | Sector equations and decision rules | [Model specification source map](model-specification.md#source-map) |
 | SFC matrix and ledger-derived evidence | [SFC matrix evidence](sfc-matrix-evidence.md) and [model equations to SFC map](model-equations-to-sfc-map.md) |
 | Calibration and empirical validation | [Calibration register](calibration-register.md), [data bridge](data-bridge-national-financial-accounts.md), and [empirical validation report](empirical-validation-report.md) |
+| Proposed population, baseline, and representation scale | [Population and representation RFC](rfc/0001-population-and-representation.md) |
+| Proposed public Research API and notebook runtime | [Research API and notebook runtime RFC](rfc/0002-research-api-and-notebook-runtime.md) |
+| Proposed model ontology and state architecture | [Model ontology and state architecture RFC](rfc/0003-model-ontology-and-state-architecture.md) |
 | Code architecture and extension paths | [Architecture documentation](architecture/index.md) |
 | Commands, CI, diagnostics, scenarios, and local outputs | [Operations appendix index](operations.md#operational-appendix-index) |
 
@@ -42,6 +45,7 @@ as the operational entry point.
 | Diagnostics or profiling appendix | Specific diagnostic/profiling methodology, exporter interpretation, or investigation evidence. |
 | ADR or decision record | Durable architectural or semantic decision record. Preserve history unless superseded explicitly. |
 | Background / reading map | Orientation material for readers who need conceptual routing before the model specification, without defining model behavior. |
+| Design proposal / RFC | Proposed model or architecture contract under review. It is not canonical behavior or an accepted decision until promoted explicitly. |
 
 ## Complete Inventory
 
@@ -62,9 +66,13 @@ as the operational entry point.
 | [docs/institutional-sector-equations.md](institutional-sector-equations.md) | Canonical reviewer spine | Paper-facing public, monetary, external, insurance, NBFI, TFI, quasi-fiscal, and JST equations. |
 | [docs/model-card.md](model-card.md) | Canonical reviewer spine | Intended use, uses outside scope, evidence status, known limitations, reproducibility, and responsible interpretation. |
 | [docs/model-notation-and-state-vector.md](model-notation-and-state-vector.md) | Canonical reviewer spine | Canonical notation, state-vector definitions, symbols, ownership boundaries, and implementation anchors. |
+| [docs/rfc/README.md](rfc/README.md) | Design proposal / RFC | Index and lifecycle policy for active, implemented, and superseded RFCs. |
 | [docs/model-specification.md](model-specification.md) | Canonical reviewer spine | Canonical publication-facing model specification, reviewer reading path, and first scientific entry point. |
 | [docs/monthly-transition-function.md](monthly-transition-function.md) | Canonical reviewer spine | Formal monthly transition contract from pre-boundary state through same-month economics, ledger execution, SFC validation, and next-pre materialization. |
 | [docs/odd-model-documentation.md](odd-model-documentation.md) | Canonical reviewer spine | ODD/ODD+D model documentation for ABM structure, scheduling, entities, observations, and decision-making. |
+| [docs/rfc/0001-population-and-representation.md](rfc/0001-population-and-representation.md) | Design proposal / RFC | Draft population specialization for reference-economy compilation, statistical units, representation scale, population storage, firms, migration, tourism, and opening population relationships. |
+| [docs/rfc/0002-research-api-and-notebook-runtime.md](rfc/0002-research-api-and-notebook-runtime.md) | Design proposal / RFC | Draft public Research API, experiment lifecycle, result-query, reproducibility, committed-notebook, and managed Almond/Jupyter runtime contract. |
+| [docs/rfc/0003-model-ontology-and-state-architecture.md](rfc/0003-model-ontology-and-state-architecture.md) | Design proposal / RFC | Draft model-wide ontology and state architecture for units, relationships, instruments, assets, representation resolution, state lifetimes, and data-oriented storage. |
 | [docs/stochastic-processes-and-replay.md](stochastic-processes-and-replay.md) | Canonical reviewer spine | Publication-facing randomness, seed, stream, replay, validation, and stochastic-limitation contract. |
 | [README.md](../README.md) | Canonical reviewer spine | Repository front door, status overview, model identity, and top-level documentation entry. |
 | [docs/architecture/extension-points.md](architecture/extension-points.md) | Architecture | Code-facing recipes for adding flow mechanisms, same-month economics stages, agents/sectors, scenarios, diagnostics, output columns, and tests. |
@@ -77,6 +85,11 @@ as the operational entry point.
 | [docs/adr/0003-separate-verified-ledger-repository.md](adr/0003-separate-verified-ledger-repository.md) | ADR or decision record | Decision record for keeping the verified accounting kernel in the separate `amor-fati-ledger` repository, checked out under `modules/ledger`. |
 | [docs/adr/0004-ledger-owned-financial-state.md](adr/0004-ledger-owned-financial-state.md) | ADR or decision record | Decision record for keeping supported ledger-backed financial stocks in `LedgerFinancialState`. |
 | [docs/adr/0005-fixed-point-domain-numerics.md](adr/0005-fixed-point-domain-numerics.md) | ADR or decision record | Decision record for using Long-backed fixed-point opaque types for domain numerics instead of untyped floating-point values. |
+| [docs/adr/0006-data-oriented-high-cardinality-state.md](adr/0006-data-oriented-high-cardinality-state.md) | ADR or decision record | Decision record for columnar high-cardinality runtime state with typed control and observation boundaries. |
+| [docs/adr/0007-controlled-model-core-replacement.md](adr/0007-controlled-model-core-replacement.md) | ADR or decision record | Decision record for replacing the stateful model core on the target ontology while preserving verified accounting and scientific infrastructure. |
+| [docs/adr/0008-explicit-reference-population-and-representation-scale.md](adr/0008-explicit-reference-population-and-representation-scale.md) | ADR or decision record | Proposed decision separating a versioned reference population from explicit run-level representation scale and weights. |
+| [docs/adr/0009-research-api-as-supported-scientific-interface.md](adr/0009-research-api-as-supported-scientific-interface.md) | ADR or decision record | Proposed decision establishing the versioned Research API as the supported programmatic scientific interface. |
+| [docs/adr/0010-managed-almond-jupyter-runtime-and-committed-notebooks.md](adr/0010-managed-almond-jupyter-runtime-and-committed-notebooks.md) | ADR or decision record | Proposed decision for a managed Almond/Jupyter environment and committed executable research notebooks. |
 | [docs/adr/README.md](adr/README.md) | ADR or decision record | Index and format note for architecture decision records. |
 | [docs/bank-balance-sheet-benchmark.md](bank-balance-sheet-benchmark.md) | Diagnostics or profiling appendix | Bank balance-sheet benchmark diagnostic and bank-capital source interpretation. |
 | [docs/bank-failure-ablations.md](bank-failure-ablations.md) | Diagnostics or profiling appendix | Bank-failure ablation diagnostic methodology and interpretation. |
