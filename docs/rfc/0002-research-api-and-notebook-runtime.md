@@ -386,10 +386,14 @@ cell outputs and execution against an unsupported kernel.
 
 ## Reproducibility and Evidence
 
-Every completed or failed run emits a manifest containing at least:
+The Research API defines a run-manifest contract inside the result-bundle
+contract. The Research API, result bundle, and run manifest are separately
+versioned so that artifact or manifest evolution does not silently change the
+programmatic API. Every completed or failed run emits a manifest containing at
+least:
 
 - Amor Fati release and Git commit, including dirty-worktree status;
-- Research API and result-schema versions;
+- Research API, result-bundle schema, and run-manifest schema versions;
 - baseline ID, source vintage, and content digest;
 - population compiler and representation manifest;
 - complete validated experiment specification;
@@ -400,6 +404,14 @@ Every completed or failed run emits a manifest containing at least:
 - start, completion, cancellation, or failure status;
 - validation and reconciliation results; and
 - hashes of canonical output artifacts.
+
+The existing `EmpiricalValidationExport.ModelRunManifestTsvSchema` and
+`docs/empirical-validation/model-run-manifest.tsv` are a partial legacy export,
+not the complete Research API manifest. Their current seven-column record is a
+useful empirical-validation snapshot locator, but it lacks the baseline,
+representation, contract-version, evidence-policy, validation, reconciliation,
+and canonical-artifact-hash fields required above. It may remain as a
+compatibility artifact until the versioned result-bundle manifest supersedes it.
 
 Notebook source is contextual evidence, not the run record. A modified notebook
 can be reproduced only when its executed specification and environment are

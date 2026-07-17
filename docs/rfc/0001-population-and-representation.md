@@ -263,6 +263,11 @@ while typed batches and pure reference semantics remain object-based. Amor Fati
 should reuse this architectural principle without treating the current ledger
 implementation as a complete population or world-state design.
 
+In this example, `Array[Long]` is raw backing storage for fixed-point monetary
+values, not an untyped integer domain model. Amor Fati accessors and projections
+must expose `PLN` or the project's equivalent opaque fixed-point monetary type;
+the raw representation remains encapsulated inside the storage boundary.
+
 ### Column schemas
 
 An entity table stores one column per state dimension. For example, a person
@@ -273,7 +278,7 @@ labor state should not be stored as an allocated enum payload such as
 labourStatus       Array[Byte]
 employerIndex      Array[Int]
 sectorIndex        Array[Byte]
-wage               Array[Long]
+wageRaw            Array[Long]  // fixed-point PLN backing units; exposed as PLN
 unemployedMonths   Array[Int]
 retrainingProgram  Array[Int]
 representationWeight Array[Long]
@@ -450,11 +455,16 @@ are intensive values and are not multiplied by representation scale. Monetary
 stocks and flows posted to the economy-wide ledger are extensive values and
 must equal the represented amount.
 
+Every monetary value and account balance, whether intensive or extensive, must
+use `PLN` or an equivalent opaque fixed-point domain type at domain boundaries.
+`Double` and `Float` are not valid monetary or accounting representations.
+
 For a weighted household cohort, underwriting may use per-household income,
 debt, and debt-service values, while the ledger contract carries the weighted
-exposure. The implementation must make that projection explicit. It must not
-silently apply `gdpRatio` to some stocks while treating other agent values as
-already scaled.
+exposure. Both sides remain fixed-point monetary values, and weighting must use
+a checked domain operation with explicit rounding and overflow behavior. The
+implementation must make that projection explicit. It must not silently apply
+`gdpRatio` to some stocks while treating other agent values as already scaled.
 
 Changing `residentsPerAgent` should preserve controlled aggregate opening
 stocks and flows within documented rounding tolerances. It may change finite

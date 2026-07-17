@@ -52,8 +52,10 @@ RFCs describe proposed target boundaries, not current implementation. They
 remain design proposals until their decisions are accepted, implemented, and
 promoted into the canonical architecture spine.
 
-Architectural history belongs in [docs/adr](../adr/). ADRs are intentionally
-short records of accepted decisions, not living design tutorials.
+Architectural history belongs in [docs/adr](../adr/). A proposed ADR records a
+candidate decision while its owning RFC remains under review. Only accepted
+ADRs enter the canonical architecture history as durable decisions. ADRs are
+intentionally short decision records, not living design tutorials.
 
 ## Maintenance Rule
 

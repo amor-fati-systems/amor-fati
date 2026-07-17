@@ -486,6 +486,14 @@ risk state, aggregate metric, diagnostic projection, or known unsupported
 ownership family. A field must not enter the ledger merely because it has
 currency units.
 
+Fixed-point money is a hard target invariant across every classification. All
+monetary values, flows, stocks, and account balances use `PLN` or the project's
+equivalent opaque fixed-point domain types, never `Double` or `Float`. A
+continuous calculation may enter accounting or ledger state only through a
+checked conversion with explicit scale, rounding, and overflow behavior that
+preserves SFC identities, including deterministic residual allocation where
+rounding requires it.
+
 ## Flows and Events
 
 Flows record activity over a period. Events record a discrete transition. The
@@ -561,11 +569,21 @@ The monthly execution path additionally owns non-boundary data:
 MonthExecution
 |-- MonthWorkspace        reusable scratch columns and matching buffers
 |-- CommandsAndChangeSets validated proposed transitions
-|-- FlowBatches           ledger inputs and executed-flow evidence
+|-- BatchedFlows           typed BatchedFlow commands and executed-flow evidence
+|-- RuntimeLedgerExecution topology, imperative-interpreter result, and deltas
+|-- AccountingStockProjection supported executed deltas projected into closing stocks
 |-- Events                defaults, failures, migration, entry, exit
 |-- Observations          aggregates and requested snapshots
 `-- Trace                 replay and diagnostic evidence
 ```
+
+Production monthly monetary execution emits `BatchedFlow` values through
+`MonthFlowEmitter`, executes them against `RuntimeLedgerTopology` through
+`ImperativeInterpreter`, and projects the supported executed deltas into the
+accounting-controlled `LedgerFinancialState` slice before publishing closing
+state. Legacy flat `Flow` emitters and `RuntimeLedgerTopology.toFlatFlows` are
+restricted to tests, diagnostics, and explicit compatibility paths; they are
+not production month-execution inputs.
 
 None of these families becomes persistent merely because it appears in a step
 output. Only validated closing state is published as the next boundary.
@@ -650,6 +668,21 @@ workspace buffers, change sets, or snapshots according to their lifetime.
 
 ## Month-Boundary Rules
 
+Signal timing follows three distinct stages for execution month `T`:
+
+- **Stage A -- pre-signal:** opening state and inherited `T - 1`
+  `DecisionSignals` form the pre-decision surface.
+- **Stage B -- same-month:** a decision may consume only Stage A and explicitly
+  ordered same-month state or `OperationalSignals` produced before that
+  decision. It cannot consume a downstream or closing outcome from Stage C.
+- **Stage C -- post-outcome:** realized end-of-month outcomes are closing
+  evidence and may become behavioral input only through `SeedOut` at the
+  `T + 1` boundary.
+
+The pre-signal, same-month, and post-outcome surfaces remain strictly distinct.
+This timing asymmetry prevents a realized outcome from causally feeding a
+decision that helped produce it in the same month.
+
 1. Stable IDs and dense row indices are distinct.
 2. Opening state is read-only to same-month kernels.
 3. Dynamic fields use current/next buffers, validated change sets, or an
@@ -687,14 +720,16 @@ The target architecture must enforce at least:
 9. Secured credit collateral references a valid real asset or an explicitly
    aggregate collateral pool.
 10. Persistent financial principal and balances have one authoritative owner.
-11. Aggregate market or institutional projections identify their source and do
+11. Every monetary value and account balance uses an opaque fixed-point domain
+    type; floating-point values cannot enter accounting or ledger state.
+12. Aggregate market or institutional projections identify their source and do
     not independently drift from authoritative micro or ledger state.
-12. Execution and settlement shells cannot survive as end-of-month owners.
-13. Current-month workspaces and observations cannot silently become behavioral
+13. Execution and settlement shells cannot survive as end-of-month owners.
+14. Current-month workspaces and observations cannot silently become behavioral
     memory.
-14. A change of representation resolution preserves controlled true-scale
+15. A change of representation resolution preserves controlled true-scale
     stocks and flows within declared tolerances.
-15. All state publication is atomic at the explicit month boundary.
+16. All state publication is atomic at the explicit month boundary.
 
 ## Research-Facing Contract
 
