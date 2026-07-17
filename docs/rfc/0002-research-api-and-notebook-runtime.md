@@ -321,6 +321,9 @@ The kernel definition owns:
 The exact command name and packaging mechanism remain open until the repository
 distribution path is selected. The invariant is that a researcher launches an
 Amor Fati environment rather than manually constructing a generic Scala kernel.
+JDK selection, kernel/worker process ownership, JIT, GC, heap, and runtime
+qualification belong to
+[RFC-0004](0004-jvm-runtime-jit-and-garbage-collection-policy.md).
 
 ### Compatibility matrix
 
@@ -329,6 +332,11 @@ with Amor Fati's compiler, TASTy, JVM, and dependency combination. Every Amor
 Fati release that advertises notebook support records and tests one exact
 combination. Upgrading Scala or Almond requires executing the canonical notebook
 suite before promotion.
+
+The exact JVM distribution and runtime profile are qualified through
+[RFC-0004](0004-jvm-runtime-jit-and-garbage-collection-policy.md). The notebook
+matrix must distinguish the Almond kernel JVM from any separately launched
+simulation-worker JVM.
 
 The notebook startup cell or predef exposes the resolved environment versions
 and fails clearly if the kernel does not match the checked-out system release.
@@ -481,8 +489,9 @@ meaning.
 
 ### Phase 2: deliver the pilot notebook environment
 
-1. Pin a development compatibility matrix and provide the minimal system-owned
-   Almond launcher, kernelspec, and predef.
+1. Pin a development compatibility matrix using the provisional control runtime
+   qualified by RFC-0004, and provide the minimal system-owned Almond launcher,
+   kernelspec, and predef.
 2. Commit baseline-overview and scenario-comparison notebooks against the
    pre-release Research API.
 3. Execute both notebooks from a fresh kernel in CI with bounded workloads and

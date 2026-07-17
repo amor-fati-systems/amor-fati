@@ -22,6 +22,7 @@ inventory below, so new documentation cannot silently become orphaned.
 | Proposed population, baseline, and representation scale | [Population and representation RFC](rfc/0001-population-and-representation.md) |
 | Proposed public Research API and notebook runtime | [Research API and notebook runtime RFC](rfc/0002-research-api-and-notebook-runtime.md) |
 | Proposed model ontology and state architecture | [Model ontology and state architecture RFC](rfc/0003-model-ontology-and-state-architecture.md) |
+| Proposed JVM, JIT, GC, and worker-runtime policy | [JVM runtime, JIT, and garbage collection policy RFC](rfc/0004-jvm-runtime-jit-and-garbage-collection-policy.md) |
 | Code architecture and extension paths | [Architecture documentation](architecture/index.md) |
 | Commands, CI, diagnostics, scenarios, and local outputs | [Operations appendix index](operations.md#operational-appendix-index) |
 
@@ -73,6 +74,7 @@ as the operational entry point.
 | [docs/rfc/0001-population-and-representation.md](rfc/0001-population-and-representation.md) | Design proposal / RFC | Draft population specialization for reference-economy compilation, statistical units, representation scale, population storage, firms, migration, tourism, and opening population relationships. |
 | [docs/rfc/0002-research-api-and-notebook-runtime.md](rfc/0002-research-api-and-notebook-runtime.md) | Design proposal / RFC | Draft public Research API, experiment lifecycle, result-query, reproducibility, committed-notebook, and managed Almond/Jupyter runtime contract. |
 | [docs/rfc/0003-model-ontology-and-state-architecture.md](rfc/0003-model-ontology-and-state-architecture.md) | Design proposal / RFC | Draft model-wide ontology and state architecture for units, relationships, instruments, assets, representation resolution, state lifetimes, and data-oriented storage. |
+| [docs/rfc/0004-jvm-runtime-jit-and-garbage-collection-policy.md](rfc/0004-jvm-runtime-jit-and-garbage-collection-policy.md) | Design proposal / RFC | Draft supported JDK, worker-process, JIT, GC-profile, heap, runtime-provenance, and qualification-evidence policy. |
 | [docs/stochastic-processes-and-replay.md](stochastic-processes-and-replay.md) | Canonical reviewer spine | Publication-facing randomness, seed, stream, replay, validation, and stochastic-limitation contract. |
 | [README.md](../README.md) | Canonical reviewer spine | Repository front door, status overview, model identity, and top-level documentation entry. |
 | [docs/architecture/extension-points.md](architecture/extension-points.md) | Architecture | Code-facing recipes for adding flow mechanisms, same-month economics stages, agents/sectors, scenarios, diagnostics, output columns, and tests. |

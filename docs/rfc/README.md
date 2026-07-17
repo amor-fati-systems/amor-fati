@@ -13,23 +13,29 @@ architecture documentation.
 | [RFC-0001: Population and representation](0001-population-and-representation.md) | Draft for decision | Reference economy, population compiler, representation scale, population storage, migration, tourism, and opening relationships. |
 | [RFC-0002: Research API and notebook runtime](0002-research-api-and-notebook-runtime.md) | Draft for decision | Public experiment lifecycle, result queries, reproducibility, committed notebooks, and the managed Almond/Jupyter environment. |
 | [RFC-0003: Model ontology and state architecture](0003-model-ontology-and-state-architecture.md) | Draft for decision | Model-wide units, relationships, instruments, assets, state lifetimes, representation resolution, and target core architecture. |
+| [RFC-0004: JVM runtime, JIT, and garbage collection policy](0004-jvm-runtime-jit-and-garbage-collection-policy.md) | Draft for decision | Supported JDK and distribution, process topology, JIT and GC profiles, heap policy, runtime provenance, and qualification evidence. |
 
-## Decision Order
+## Decision and Evidence Order
 
-Resolve the active RFCs in this order:
+The active RFCs have one evidence loop rather than a strictly linear resolution
+order:
 
 1. **Population and representation:** define the empirical economy, statistical
    units, representation scale, weights, and opening population relationships.
 2. **Research API and notebook runtime:** define how researchers configure,
    execute, observe, compare, and reproduce experiments using those semantics.
-3. **Model ontology and state architecture:** complete the model-wide state
+3. **JVM runtime provisional baseline:** qualify the JDK, process topology, and
+   control runtime needed by the notebook pilot without selecting a final GC.
+4. **Model ontology and state architecture:** complete the model-wide state
    design and translate the accepted semantics and access patterns into
    data-oriented storage, indexes, views, and migration boundaries.
+5. **JVM runtime final qualification:** use the representative target-core DOD
+   allocation and live-set profile to select any supported JIT and GC profiles.
 
 RFC numbers are stable document identities, following the repository's ADR
-convention. For RFC-0001 through RFC-0003 they also reflect the accepted
-decision order. Once assigned, a number is never changed; later dependency
-changes are recorded in this index rather than by renumbering files.
+convention, not dependency or implementation positions. Once assigned, a number
+is never changed; dependency changes and evidence loops are recorded in this
+index rather than by renumbering files.
 
 ## Lifecycle
 

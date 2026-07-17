@@ -46,6 +46,9 @@ boundaries. Related documents have narrower responsibilities:
   defines experiment construction, execution lifecycle, result queries,
   evidence manifests, committed notebooks, and the managed Almond/Jupyter
   adapter.
+- [JVM runtime, JIT, and garbage collection policy RFC](0004-jvm-runtime-jit-and-garbage-collection-policy.md)
+  defines the managed process topology, runtime profiles, provenance, and
+  evidence used to qualify the target DOD allocation and live-set behavior.
 - [ADR-0006](../adr/0006-data-oriented-high-cardinality-state.md) records the
   accepted storage principle for high-cardinality persistent state.
 - [ADR-0007](../adr/0007-controlled-model-core-replacement.md) records the accepted
@@ -603,6 +606,11 @@ Typed immutable values remain the default for:
 Raw arrays are package-private. Domain APIs use typed IDs, validated accessors,
 and explicit transition methods. Separate columns do not weaken economic
 invariants.
+
+Collector or JIT evidence may select column encodings, buffer-reuse policy, and
+capacity strategy only after semantic and month-boundary requirements are met.
+The runtime RFC owns those measurements; no GC preference can expose storage or
+redefine the ontology.
 
 ## Persistent State, Workspace, and Evidence
 
