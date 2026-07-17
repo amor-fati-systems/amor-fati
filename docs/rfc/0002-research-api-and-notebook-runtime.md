@@ -137,8 +137,9 @@ runtime ledger indices, and future primitive columns remain internal.
 8. Public queries use economic domain names, stable selectors, and controlled
    tabular or typed views. They never expose raw high-cardinality storage,
    allocator slots, buffer swaps, or ledger implementation indices.
-9. Every execution emits a machine-readable run manifest and validation status.
-   A notebook file or visible cell output is not sufficient provenance.
+9. Every execution that reaches a controlled terminal state emits a
+   machine-readable run manifest and validation status. A notebook file or
+   visible cell output is not sufficient provenance.
 10. Canonical notebooks are committed, editable examples. Their stored outputs
     are cleared by default, and representative notebooks execute headlessly in
     CI against the release environment.
@@ -389,8 +390,9 @@ cell outputs and execution against an unsupported kernel.
 The Research API defines a run-manifest contract inside the result-bundle
 contract. The Research API, result bundle, and run manifest are separately
 versioned so that artifact or manifest evolution does not silently change the
-programmatic API. Every completed or failed run emits a manifest containing at
-least:
+programmatic API. Every run that reaches a controlled terminal state --
+successful completion, cooperative cancellation, or a captured failure -- emits
+a manifest containing at least:
 
 - Amor Fati release and Git commit, including dirty-worktree status;
 - Research API, result-bundle schema, and run-manifest schema versions;
@@ -401,9 +403,17 @@ least:
 - Scala, JVM, Almond, and notebook-adapter versions;
 - notebook digest when execution originated from a notebook;
 - requested and retained evidence policy;
-- start, completion, cancellation, or failure status;
+- start, completion, cancellation, or captured-failure status;
 - validation and reconciliation results; and
 - hashes of canonical output artifacts.
+
+Abrupt JVM or host termination, process kill, and out-of-memory failure are
+outside that terminal-manifest guarantee. After such an interruption, the
+durable run representation is the last atomically committed checkpoint at an
+accepted month boundary, if one exists. Atomically completed artifacts written
+after that checkpoint may instead be exposed only through a result bundle
+explicitly marked `INCOMPLETE`; that bundle must identify the last accepted
+boundary and must not claim successful completion or complete validation.
 
 The existing `EmpiricalValidationExport.ModelRunManifestTsvSchema` and
 `docs/empirical-validation/model-run-manifest.tsv` are a partial legacy export,
@@ -441,7 +451,9 @@ Interactive execution requires explicit operational behavior:
 - progress is observable without retaining unbounded event history;
 - cancellation is checked at defined safe points;
 - an interrupted month does not publish closing state or a successful result;
-- out-of-memory and kernel termination leave completed artifact writes atomic;
+- abrupt out-of-memory or kernel termination does not promise a terminal
+  manifest; completed artifact writes remain atomic and recovery exposes only
+  the last committed checkpoint or an explicitly incomplete bundle;
 - temporary work directories are run-scoped and recoverable; and
 - parallel seed execution preserves the deterministic seed schedule.
 
@@ -556,7 +568,8 @@ The first supported notebook interface is complete when:
    bottom;
 3. the same experiment specification produces equivalent scientific results
    through notebook and unattended CLI execution;
-4. every run produces a complete manifest and explicit validation status;
+4. every run that reaches a controlled terminal state produces a complete
+   manifest and explicit validation status;
 5. canonical results can be queried without importing engine-internal state;
 6. representation scale and weighted counts are visible and unambiguous;
 7. requested micro evidence is bounded and declared before execution;
