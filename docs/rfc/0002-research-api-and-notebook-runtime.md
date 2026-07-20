@@ -533,11 +533,12 @@ The pilot is a real usable notebook surface, not a mock-up. It is not yet the
 supported long-term API, and fidelity to current internal engine classes is not
 a compatibility requirement for the target core.
 
-### Phase 3: complete the target state design
+### Phase 3: complete the physical target state design
 
-Use the accepted population semantics and observed query patterns to complete
-the model-wide ontology and state RFC. Define indexes, projections, snapshot
-costs, stable views, and evidence retention before fixing DOD table layouts.
+Use the accepted population semantics, accepted model ontology, Research API
+decisions, and observed query patterns to complete RFC-0003's physical
+state-design gate. Define indexes, projections, snapshot costs, stable views,
+and evidence retention before fixing DOD table layouts.
 
 ### Phase 4: implement the target core behind the boundary
 
