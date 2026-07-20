@@ -13,6 +13,40 @@ class BaselineCatalogSpec extends AnyFlatSpec with Matchers:
   private object DefaultsProvider extends BaselineProvider:
     private val params = SimParams.defaults
 
+    val components: Vector[BaselineBundleComponent] =
+      Vector(
+        BaselineBundleComponent(
+          BaselineBundleComponentKind.Parameters,
+          BaselineBundleComponentAvailability.Present,
+          "Test parameter payload.",
+        ),
+        BaselineBundleComponent(
+          BaselineBundleComponentKind.PopulationControls,
+          BaselineBundleComponentAvailability.Missing,
+          "Test population controls.",
+        ),
+        BaselineBundleComponent(
+          BaselineBundleComponentKind.InstitutionalOpeningState,
+          BaselineBundleComponentAvailability.Missing,
+          "Test institutional opening state.",
+        ),
+        BaselineBundleComponent(
+          BaselineBundleComponentKind.ExogenousBaselineAssumptions,
+          BaselineBundleComponentAvailability.Missing,
+          "Test baseline assumptions.",
+        ),
+        BaselineBundleComponent(
+          BaselineBundleComponentKind.Provenance,
+          BaselineBundleComponentAvailability.Referenced,
+          "Test provenance.",
+        ),
+        BaselineBundleComponent(
+          BaselineBundleComponentKind.ValidationProfile,
+          BaselineBundleComponentAvailability.Referenced,
+          "Test validation profile.",
+        ),
+      )
+
     val manifest: BaselineManifest =
       BaselineManifest(
         id = BaselineCatalog.LegacyDefaultsId,
@@ -36,6 +70,10 @@ class BaselineCatalogSpec extends AnyFlatSpec with Matchers:
     resolved.manifest.id shouldBe BaselineCatalog.LegacyDefaultsId
     resolved.manifest.qualification shouldBe BaselineQualification.Legacy
     resolved.manifest.contentDigest shouldBe PinnedLegacyPayloadDigest
+    resolved.components should have size BaselineBundleComponentKind.values.length
+    resolved.component(BaselineBundleComponentKind.Parameters).availability shouldBe BaselineBundleComponentAvailability.Present
+    resolved.component(BaselineBundleComponentKind.PopulationControls).availability shouldBe BaselineBundleComponentAvailability.Missing
+    resolved.component(BaselineBundleComponentKind.Provenance).availability shouldBe BaselineBundleComponentAvailability.Referenced
     resolved.params shouldBe SimParams.defaults
   }
 
@@ -54,7 +92,8 @@ class BaselineCatalogSpec extends AnyFlatSpec with Matchers:
   it should "reject a changed legacy payload against the pinned digest" in {
     val changedParams = SimParams.defaults.copy(pop = SimParams.defaults.pop.copy(firmsCount = SimParams.defaults.pop.firmsCount + 1))
     val changed       = new BaselineProvider:
-      val manifest: BaselineManifest = DefaultsProvider.manifest
+      val manifest: BaselineManifest                  = DefaultsProvider.manifest
+      val components: Vector[BaselineBundleComponent] = DefaultsProvider.components
 
       def compile(): SimParams = changedParams
 
@@ -68,7 +107,8 @@ class BaselineCatalogSpec extends AnyFlatSpec with Matchers:
   it should "reject a baseline compiled for a different model contract" in {
     val incompatibleContract = ModelContractVersion.from("target-core-v1")
     val incompatible         = new BaselineProvider:
-      val manifest: BaselineManifest = DefaultsProvider.manifest.copy(requiredModelContract = incompatibleContract)
+      val manifest: BaselineManifest                  = DefaultsProvider.manifest.copy(requiredModelContract = incompatibleContract)
+      val components: Vector[BaselineBundleComponent] = DefaultsProvider.components
 
       def compile(): SimParams = SimParams.defaults
 
@@ -91,4 +131,11 @@ class BaselineCatalogSpec extends AnyFlatSpec with Matchers:
 
     changed.pop.firmsCount shouldBe first.params.pop.firmsCount + 1
     second.params.pop.firmsCount shouldBe first.params.pop.firmsCount
+  }
+
+  it should "reject a canonical bundle with unresolved logical components" in {
+    val canonicalManifest = DefaultsProvider.manifest.copy(qualification = BaselineQualification.Canonical)
+
+    an[IllegalArgumentException] should be thrownBy
+      new BaselineBundle(canonicalManifest, DefaultsProvider.components, SimParams.defaults)
   }

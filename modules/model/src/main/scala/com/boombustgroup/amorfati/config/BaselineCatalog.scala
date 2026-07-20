@@ -62,6 +62,35 @@ final case class BaselineManifest(
     description: String,
 )
 
+/** Logical components of an immutable reference-economy baseline.
+  *
+  * Identity, compatibility, and integrity remain manifest metadata. These
+  * components hold the economic input and evidence needed to compile a run.
+  */
+enum BaselineBundleComponentKind:
+  case Parameters
+  case PopulationControls
+  case InstitutionalOpeningState
+  case ExogenousBaselineAssumptions
+  case Provenance
+  case ValidationProfile
+
+/** Whether a component is materially part of the resolved bundle, merely
+  * documented elsewhere, or not available yet.
+  */
+enum BaselineBundleComponentAvailability:
+  case Present
+  case Referenced
+  case Missing
+
+/** One declared logical component of a baseline bundle. */
+final case class BaselineBundleComponent(
+    kind: BaselineBundleComponentKind,
+    availability: BaselineBundleComponentAvailability,
+    detail: String,
+):
+  require(detail.trim.nonEmpty, s"baseline component $kind must describe its availability")
+
 enum BaselineLoadError:
   case InvalidId(input: String, reason: String)
   case UnknownBaseline(requested: BaselineId, available: Vector[BaselineId])
@@ -72,19 +101,35 @@ enum BaselineLoadError:
   )
   case IntegrityMismatch(baseline: BaselineId, expected: BaselineDigest, actual: BaselineDigest)
 
-/** Immutable prepared baseline. Its engine configuration remains
-  * config-private.
+/** Immutable internal baseline bundle prepared for compilation. Its engine
+  * configuration remains config-private, and it does not expose a file format
+  * or a public Research API.
   */
-final class ResolvedBaseline private[config] (
+final class BaselineBundle private[config] (
     val manifest: BaselineManifest,
+    val components: Vector[BaselineBundleComponent],
     private[config] val params: SimParams,
-)
+):
+  private val componentKinds = components.map(_.kind)
+
+  require(
+    componentKinds.toSet == BaselineBundleComponentKind.values.toSet && componentKinds.distinct.size == componentKinds.size,
+    "baseline bundle must declare every logical component exactly once",
+  )
+  require(
+    manifest.qualification != BaselineQualification.Canonical || components.forall(_.availability == BaselineBundleComponentAvailability.Present),
+    "a canonical baseline bundle must contain every logical component",
+  )
+
+  def component(kind: BaselineBundleComponentKind): BaselineBundleComponent =
+    components.find(_.kind == kind).getOrElse(throw IllegalStateException(s"missing declared baseline component: $kind"))
 
 /** Internal source of a baseline payload. Disk-backed bundles replace this seam
   * later.
   */
 private[config] trait BaselineProvider:
   def manifest: BaselineManifest
+  def components: Vector[BaselineBundleComponent]
   def compile(): SimParams
 
 /** Exact baseline resolution and verification for the current model contract.
@@ -102,10 +147,10 @@ final class BaselineCatalog private[config] (
 
   def list: Vector[BaselineManifest] = providers.map(_.manifest)
 
-  def resolve(input: String): Either[BaselineLoadError, ResolvedBaseline] =
+  def resolve(input: String): Either[BaselineLoadError, BaselineBundle] =
     BaselineId.from(input).left.map(reason => BaselineLoadError.InvalidId(input, reason)).flatMap(id => resolve(BaselineRef(id)))
 
-  def resolve(ref: BaselineRef): Either[BaselineLoadError, ResolvedBaseline] =
+  def resolve(ref: BaselineRef): Either[BaselineLoadError, BaselineBundle] =
     providersById
       .get(ref.id)
       .toRight(BaselineLoadError.UnknownBaseline(ref.id, list.map(_.id)))
@@ -116,7 +161,7 @@ final class BaselineCatalog private[config] (
           val params = provider.compile()
           val actual = BaselineCatalog.legacyPayloadDigest(params)
           if actual != manifest.contentDigest then Left(BaselineLoadError.IntegrityMismatch(ref.id, manifest.contentDigest, actual))
-          else Right(ResolvedBaseline(manifest, params))
+          else Right(new BaselineBundle(manifest, provider.components, params))
 
 object BaselineCatalog:
   val LegacyDefaultsId: BaselineId = BaselineId.from("pl-2026-04-30-legacy-v1").fold(error => throw IllegalStateException(error), identity)
@@ -127,6 +172,40 @@ object BaselineCatalog:
 
   private object LegacyDefaultsProvider extends BaselineProvider:
     private val params = SimParams.defaults
+
+    val components: Vector[BaselineBundleComponent] =
+      Vector(
+        BaselineBundleComponent(
+          BaselineBundleComponentKind.Parameters,
+          BaselineBundleComponentAvailability.Present,
+          "Pinned in-memory SimParams.defaults payload.",
+        ),
+        BaselineBundleComponent(
+          BaselineBundleComponentKind.PopulationControls,
+          BaselineBundleComponentAvailability.Missing,
+          "Legacy defaults do not contain versioned population control tables.",
+        ),
+        BaselineBundleComponent(
+          BaselineBundleComponentKind.InstitutionalOpeningState,
+          BaselineBundleComponentAvailability.Missing,
+          "WorldInit derives opening state from legacy parameters rather than a reconciled institutional component.",
+        ),
+        BaselineBundleComponent(
+          BaselineBundleComponentKind.ExogenousBaselineAssumptions,
+          BaselineBundleComponentAvailability.Missing,
+          "Legacy defaults do not separate baseline driver assumptions from model parameters.",
+        ),
+        BaselineBundleComponent(
+          BaselineBundleComponentKind.Provenance,
+          BaselineBundleComponentAvailability.Referenced,
+          "CalibrationProvenance.Baseline documents provenance but is not an immutable bundle artifact.",
+        ),
+        BaselineBundleComponent(
+          BaselineBundleComponentKind.ValidationProfile,
+          BaselineBundleComponentAvailability.Referenced,
+          "Existing validation evidence is not yet attached as a baseline-specific profile.",
+        ),
+      )
 
     val manifest: BaselineManifest =
       BaselineManifest(
