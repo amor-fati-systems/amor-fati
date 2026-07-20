@@ -565,12 +565,24 @@ Every lifecycle event also has an explicit financial-disposition rule:
 | Birth, immigration, or firm entry | A new unit starts without financial balances unless explicit transfer, origination, issuance, or capital-injection flows fund them. |
 
 For every disposition, supported financial stocks have exactly one owner in
-`LedgerFinancialState` before and after the event. Transfers, settlements, and
-write-offs execute through balanced ledger flows with symmetric counterparty
-entries. Closing balances must equal opening balances plus executed deltas, and
-SFC validation must pass without an unexplained residual. Publishing the month
-fails if a removed ID remains referenced, a balance lacks an owner, or entity
-deletion would duplicate or silently destroy monetary state.
+`LedgerFinancialState` before and after the event. Production monthly monetary
+effects must be emitted as `BatchedFlow` values through `MonthFlowEmitter`,
+executed against `RuntimeLedgerTopology` by `ImperativeInterpreter`, and only
+then projected from supported executed deltas into closing
+`LedgerFinancialState`. Lifecycle code must not mutate ledger-owned balances
+directly or publish monetary state from an unexecuted proposal. Legacy flat
+`Flow` emitters and helpers, including `RuntimeLedgerTopology.toFlatFlows`, are
+restricted to tests, diagnostics, explicit compatibility, or explicit
+flattening; they must not become new production month-execution inputs.
+
+Transfers, settlements, and write-offs must have symmetric counterparty entries
+in the executed batches. Validation evidence records or canonically hashes the
+emitted batches, interpreter outcome, executed deltas, closing-stock projection,
+and SFC result under the applicable evidence policy. Closing balances must equal
+opening balances plus executed deltas, and SFC validation must pass without an
+unexplained residual. Publishing the month fails if a removed ID remains
+referenced, a balance lacks an owner, or entity deletion would duplicate or
+silently destroy monetary state.
 
 A population rebase or calibration refresh is a separate, explicit operation at
 a declared checkpoint. It creates a new manifest and reconciliation record and
