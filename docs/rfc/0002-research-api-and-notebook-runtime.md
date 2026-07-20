@@ -223,8 +223,8 @@ An experiment specification contains at least:
 
 Population size is not inferred from unrelated firm or worker parameters.
 Baseline and representation semantics come directly from the accepted
-population RFC. `SimParams`, baseline file locations, parsed bundle DTOs, and
-current `ScenarioRegistry.ScenarioSpec.params` do not enter public signatures.
+population RFC. `SimParams`, baseline file locations, and parsed bundle DTOs
+do not enter public signatures.
 
 Conceptually, notebook code should read like:
 

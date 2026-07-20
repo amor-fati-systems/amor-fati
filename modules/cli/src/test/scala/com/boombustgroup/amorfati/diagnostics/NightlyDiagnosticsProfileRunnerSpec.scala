@@ -56,6 +56,7 @@ class NightlyDiagnosticsProfileRunnerSpec extends AnyFlatSpec with Matchers:
     )
     steps.find(_.id == "baseline-monte-carlo").value.seeds shouldBe Some(1)
     steps.find(_.id == "baseline-monte-carlo").value.months shouldBe Some(12)
+    steps.find(_.id == "scenario-run").value.details should contain("scenario_selection" -> "monetary-tightening,fiscal-expansion")
     steps.find(_.id == "robustness-report").value.months shouldBe Some(6)
     steps.map(_.classification) should not contain NightlyDiagnosticsProfileRunner.DiagnosticClass.StressValidation
   }
@@ -87,7 +88,7 @@ class NightlyDiagnosticsProfileRunnerSpec extends AnyFlatSpec with Matchers:
     val scenarioSelection = steps.find(_.id == "scenario-run").value.details.toMap.apply("scenario_selection")
 
     scenarioSelection shouldBe "extended"
-    ScenarioRegistry.select(scenarioSelection).value.map(_.id) should not contain "bank-failure"
+    ScenarioRegistry.select(scenarioSelection).value.map(_.id.value) should not contain "bank-failure"
     steps.find(_.id == "scenario-run").value.classification shouldBe NightlyDiagnosticsProfileRunner.DiagnosticClass.StressValidation
     steps.find(_.id == "bank-failure-ablations").value.classification shouldBe NightlyDiagnosticsProfileRunner.DiagnosticClass.StressValidation
     steps.find(_.id == "bank-failure-ablations").value.details should contain("parallelism" -> "2")

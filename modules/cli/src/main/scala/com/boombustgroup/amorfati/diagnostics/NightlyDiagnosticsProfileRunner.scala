@@ -1,7 +1,7 @@
 package com.boombustgroup.amorfati.diagnostics
 
 import com.boombustgroup.amorfati.config.RobustnessScenarios.ScenarioSet
-import com.boombustgroup.amorfati.config.{ScenarioRegistry, SimParams}
+import com.boombustgroup.amorfati.config.{ScenarioRef, ScenarioRegistry, SimParams}
 import com.boombustgroup.amorfati.engine.EngineFailure
 import com.boombustgroup.amorfati.montecarlo.core.McRunConfig
 import com.boombustgroup.amorfati.montecarlo.runner.McRunner
@@ -613,7 +613,7 @@ object NightlyDiagnosticsProfileRunner:
           Vector(
             baselineMonteCarlo(seeds = 1, months = 12),
             sfcMatrix(seed = 1L, months = 12),
-            scenarioRun(selection = "baseline,monetary-tightening,fiscal-expansion", seeds = 1, months = 12),
+            scenarioRun(selection = "monetary-tightening,fiscal-expansion", seeds = 1, months = 12),
             robustnessReport(scenarioSet = ScenarioSet.Smoke, seeds = 1, months = 6),
             bankBalanceSheetBenchmark(seeds = 2),
             householdCreditStress(seeds = 1, months = 12),
@@ -904,7 +904,7 @@ object NightlyDiagnosticsProfileRunner:
   private def scenarioClassification(selection: String): DiagnosticClass =
     val includesStress = resolveScenarios(selection).toOption.exists(_.exists(isStressScenario))
     if includesStress then DiagnosticClass.StressValidation
-    else if selection.trim == "baseline" then DiagnosticClass.NormalValidation
+    else if selection.trim == "none" then DiagnosticClass.NormalValidation
     else DiagnosticClass.Exploratory
 
   private def isStressScenario(scenario: ScenarioRegistry.ScenarioSpec): Boolean =
@@ -912,7 +912,8 @@ object NightlyDiagnosticsProfileRunner:
 
   private def resolveScenarios(selection: String): Either[String, Vector[ScenarioRegistry.ScenarioSpec]] =
     selection match
-      case "default" => Right(ScenarioRegistry.defaultScenarioIds.flatMap(id => ScenarioRegistry.get(id).toOption))
+      case "default" =>
+        Right(ScenarioRegistry.defaultScenarioIds.flatMap(id => ScenarioRegistry.get(ScenarioRef(id)).toOption))
       case "all"     => Right(ScenarioRegistry.all)
       case other     => ScenarioRegistry.select(other)
 

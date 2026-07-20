@@ -450,9 +450,9 @@ and one-at-a-time parameter sweeps, producing seed envelopes and sensitivity
 summaries under `target/`.
 
 The reproducible scenario registry is documented in
-`docs/scenario-registry.md`. It defines named baseline, policy, banking,
-external, energy, tourism, and quasi-fiscal experiments with exact parameter
-deltas and an executable `scenarioRun` command path.
+`docs/scenario-registry.md`. It defines named policy, banking, external,
+energy, tourism, and quasi-fiscal patches applied to a selected baseline, with
+exact parameter deltas and an executable `scenarioRun` command path.
 
 ## Accounting And Validation Boundary
 
