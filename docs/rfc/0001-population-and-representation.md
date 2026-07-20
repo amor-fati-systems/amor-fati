@@ -1,6 +1,6 @@
 # RFC-0001: Population and Representation
 
-Status: Draft for decision
+Status: Semantic decisions complete; implementation pending
 Scope: Reference population, representation scale, population storage profile,
 firm population, migration, tourism, and opening population relationships
 Performance: Deliberately out of scope for this design pass
@@ -33,16 +33,15 @@ assets, securities, insurance, interbank exposures, markets, policy state, or
 monthly execution evidence.
 
 This RFC records the intended population model, not the current implementation.
-Its durable separation of reference population from representation scale is
-extracted as proposed
+Its durable separation of reference population from representation scale and
+its first-target population semantics are recorded by accepted
 [ADR-0008](../adr/0008-explicit-reference-population-and-representation-scale.md).
-That ADR can become accepted, and canonical model documentation can change,
-only after this RFC's open decisions are resolved. The narrower runtime-storage
-boundary is already accepted in
-[ADR-0006](../adr/0006-data-oriented-high-cardinality-state.md); the population
-ontology and compiler details remain under review here.
+Physical schemas, compiler algorithms, calibration data, and implementation
+remain active RFC work. The narrower runtime-storage boundary is already
+accepted in [ADR-0006](../adr/0006-data-oriented-high-cardinality-state.md); the
+population implementation details remain under review here.
 
-## Proposed Decisions
+## Accepted Semantic Decisions
 
 1. A run represents a versioned **reference economy**. Representation scale is
    a property of the simulation, not a calibration of the economy itself.
@@ -84,6 +83,7 @@ The following terms are normative for this design:
 | Economically inactive | A person outside the labor force. Reasons include education, retirement, care, disability or long-term sickness, and other inactivity. |
 | Pension recipient | A person receiving a pension. This is not identical to economic inactivity because pension recipients may work. |
 | Household | A co-resident economic unit that pools at least part of consumption, housing, income, assets, or liabilities. |
+| Collective household | A declared residual living-arrangement unit for usual residents outside private households; it prevents institutional residents from disappearing from population totals without pretending that they share ordinary household finances. |
 | Firm | The modeled enterprise unit. Establishments and local units require an explicit extension rather than being silently treated as enterprises. |
 | Tourist or visitor | A temporary non-resident visitor, or a resident temporarily travelling abroad. Neither event changes usual residence. |
 | Representation weight | The number of empirical units represented by a simulated unit or relationship. |
@@ -147,11 +147,13 @@ Relevant implementation anchors include:
 
 A person is the demographic and labor-market unit. The minimum target state is:
 
-- `personId` and `householdId`;
+- `personId` and an explicit household-membership relation;
 - age or age cohort;
+- demographic sex under the baseline's source classification;
 - region of usual residence;
 - residency status and migration history;
-- labor-force status: employed, unemployed, or inactive with a reason;
+- labor status: `NotApplicable` below the statistical age boundary, or employed,
+  unemployed, or outside the labor force with a reason;
 - optional employment-contract link;
 - education, skill, and health or work-capacity attributes;
 - pension eligibility and receipt, separate from labor-force status; and
@@ -207,12 +209,52 @@ arrival month, nights, party size, and expenditure basket. Their representation
 weight contributes to visitor nights and expenditure, never to resident
 population or labor-force denominators.
 
+The first target keeps tourism aggregate. `VisitorCohort` is an optional later
+promotion and is not part of the first population compiler contract.
+
+## Statistical Population and Labor-Control Convention
+
+The reference population covers all usual residents of the baseline territory,
+at every age, under the baseline's declared 12-month usual-residence convention.
+Private-household residents are linked to private households. Residents of
+collective living arrangements remain represented through a declared
+collective-household residual rather than being dropped or silently treated as
+private-household members.
+
+Labor controls follow the BAEL implementation of the EU Labour Force Survey and
+ILO concepts applicable to the baseline:
+
+- persons younger than 15 have labor status `NotApplicable`, not `Inactive`;
+- persons aged 15 through 74 are classified as employed, unemployed, or outside
+  the labor force;
+- persons aged 75 through 89 may be employed or outside the labor force, while
+  unemployment is not defined for that age range; and
+- persons aged 90 or older remain resident persons but, unless a later
+  evidence-backed extension resolves their employment, enter the model outside
+  the labor force with an old-age reason and remain outside BAEL 15-89 rate
+  denominators.
+
+Employment means at least one hour of work for pay or profit in the reference
+week or qualifying temporary absence from a job. Unemployment requires no
+employment, active job search, and availability under the BAEL/EU-LFS
+definition. Everyone else in the applicable age universe is outside the labor
+force. Pension receipt, education, disability, care, retraining, and financial
+distress remain separate dimensions and do not override that classification.
+
+The baseline must record the exact statistical definition and source release
+used for every control. `pl-2026q2-v1` is a retrospectively compiled Q2 baseline,
+not a claim that every control was observable on the opening boundary. Later
+source releases are admissible only with explicit observation and release dates.
+
 ## Population Storage Profile
 
-The population ontology and its storage layout should be designed together.
-Amor Fati should not first introduce millions of `Person`, `Household`,
-`Enterprise`, membership, employment, and opening-relationship objects and then
-replace them with a columnar representation in a second migration.
+The accepted population ontology constrains its eventual storage layout, but
+the exact physical design follows Research API access evidence under RFC-0003.
+This section records candidate boundaries and hard constraints; it does not
+close P-08 or P-09. Amor Fati should not first introduce millions of `Person`,
+`Household`, `Enterprise`, membership, employment, and opening-relationship
+objects and then replace them with a columnar representation in a second
+migration.
 
 Data-Oriented Design in this RFC means arranging high-cardinality population
 state by the fields consumed together by model kernels. It does not mean
@@ -322,11 +364,12 @@ stage reads the declared opening state and that the completed month becomes
 visible atomically. Scratch columns for income, consumption, matching, or flow
 amounts may be reused within a month but are not persistent state.
 
-The preferred default for entity-resolved state is double buffering of the
-columns whose opening and closing values must coexist. The runtime swaps those
-buffers only after validation and ledger reconciliation. Full immutable object
-graphs should be materialized only for requested snapshots, not for every
-month.
+Double buffering the columns whose opening and closing values must coexist is a
+candidate implementation. Change sets or validated in-place transitions remain
+eligible where they preserve the same atomic publication rule. The physical
+gate selects among them after Research API access patterns are observed. Full
+immutable object graphs should be materialized only for requested snapshots,
+not for every month.
 
 ### Relationship and contract tables
 
@@ -365,7 +408,7 @@ A reference-economy bundle is a versioned, immutable input to population
 compilation. It should contain:
 
 - country and territorial coverage;
-- reference period and source-vintage metadata;
+- represented quarter, opening boundary, and source-vintage metadata;
 - resident population controls by age, region, household type, and relevant
   labor-force dimensions;
 - household controls for size, composition, tenure, income, and financial
@@ -376,36 +419,71 @@ compilation. It should contain:
 - national-accounts and financial-accounts totals; and
 - migration, births, deaths, pension receipt, and tourism control series.
 
-The first target bundle represents Poland in `2026-Q1` using information
-available by `2026-04-30`. These are different temporal concepts:
+The first target bundle is `pl-2026q2-v1`. It represents Poland at the end of
+`2026-Q2`, with an opening month boundary of `2026-06-30`. A researcher selects
+that one identity; separate reference-period, valuation-date, and
+information-cutoff settings are not part of the experiment configuration.
 
-| Field | Initial target meaning |
-| --- | --- |
-| `referencePeriod` | `2026-Q1`: the principal completed-quarter economic state represented by the baseline. |
-| `valuationDate` | `2026-04-30`: the point-in-time date for market prices and stocks where a valid observation is available. |
-| `informationCutoff` | `2026-04-30`: no source release published after this date belongs to this baseline vintage. |
-| `sourceObservationPeriod` | The actual date, month, quarter, or year observed by each individual source series. |
-| `sourceReleaseDate` | The publication date of the exact source vintage used. |
+Temporal detail remains mandatory inside the immutable bundle manifest. Every
+series retains its actual observation date or period, source release, access
+date, transformation, and reconciliation rule. Point-in-time stocks and prices
+also retain their applicable valuation date. Older annual or monthly sources
+and releases published after the opening boundary remain admissible as explicit
+bridges; the baseline is a retrospectively compiled reference economy, not a
+real-time information vintage.
 
-April 30 is in the second calendar quarter; it must not be used as evidence
-that the reference period is `2026-Q2`. Conversely, calling the bundle
-`2026-Q1` does not make every input a Q1 observation. Older annual, monthly, or
-quarterly inputs remain admissible only when their dates and transformations
-are explicit.
+A baseline identifier is immutable. Changing a source release, transformation,
+classification crosswalk, hard control, or reconciliation policy creates a new
+bundle version and digest. Corrections do not rewrite the meaning or provenance
+of `pl-2026q2-v1`. A better-reconciled compilation of the same represented
+quarter is published as `pl-2026q2-v2`, while a later reference economy receives
+its own period identity.
 
-The bundle may combine sources observed on different dates, but every series
-must retain its observation date, release vintage, transformation, and
-reconciliation rule. A proposed identifier such as
-`pl-2026q1-cutoff-2026-04-30-v1` identifies the compiled bundle, not an
-unsupported claim that every source describes the same day.
+The existing `2026-04-30` Amor Fati calibration is migration evidence for this
+bundle, not an implementation of `pl-2026q2-v1` under a new label. Building v1
+requires an explicit Q2 recalibration and validation pass. Aggregate GDP,
+public, banking, external, and financial stocks may be well bridged while the
+joint population of persons, households, and firms remains only partially
+empirical. The compiler must preserve valid existing bridges and expose the
+remaining sector, population, and ownership gaps rather than treating all
+current defaults as equally calibrated.
 
-The existing Amor Fati calibration is the starting evidence for this bundle,
-not yet proof of a fully reconciled reference economy. Aggregate GDP, public,
-banking, external, and financial stocks may be calibrated while the joint
-population of persons, households, and firms remains only partially empirical.
-The baseline compiler must preserve valid existing bridges and make the sector,
-population, and ownership gaps explicit rather than treating all current
-defaults as equally calibrated.
+### Minimum person-household control bundle
+
+The first compiler does not require one sparse cross-product of every person,
+household, labor, housing, and financial attribute. It requires a versioned set
+of mutually reconciled control tables with shared classifications:
+
+1. resident persons by NUTS-1 region, demographic sex, five-year age band with
+   explicit `90+`, and private or collective residence type;
+2. private households by NUTS-1 region, household size, and composition class:
+   one person, couple without dependent children, couple with dependent
+   children, lone parent, and other multi-person household;
+3. household members by composition class, member role, and broad age band,
+   providing the bridge that makes person and household totals jointly
+   constrain the synthetic population;
+4. labor status by demographic sex and age band, plus regional labor-status
+   totals, using the BAEL age universe; and
+5. employed residents by residence region and represented filled jobs by
+   workplace region and model production sector, with an origin-destination
+   commuting bridge or an explicit no-commuting limitation.
+
+Resident-person totals, private- and collective-household totals, labor
+identities, and filled-job reconciliation are hard controls subject only to
+declared integer or fixed-point rounding tolerances. Membership cells are hard
+compiler controls only where the baseline classifies them as source-backed.
+Higher-order combinations such as
+region-by-age-by-household-type-by-labor-status may be fitted from source
+microdata or documented bridge priors and reported as validation targets rather
+than invented hard cells. Tenure, income, migration background, education, and
+financial-product incidence are additional calibrated margins or conditional
+controls; they do not weaken the minimum joint demographic contract.
+
+Every table records its statistical universe, classification version, source
+observation period, release date, transformation, control strength, tolerance,
+and reconciliation relation. A missing joint source is an explicit empirical
+bridge limitation, not permission to sample independent marginals and call the
+result jointly calibrated.
 
 ## Representation Scale
 
@@ -420,7 +498,7 @@ The primary user setting should therefore be residents per agent, not raw agent
 counts:
 
 ```yaml
-baseline: pl-2026q1-cutoff-2026-04-30-v1
+baseline: pl-2026q2-v1
 representation:
   residentsPerAgent: 1000
   enterprisePolicy: stratified
@@ -447,6 +525,68 @@ weight:
 - every non-default weight and preservation rule is reported in the manifest.
 
 Agent count is never used as an economic count without applying weights.
+
+### Dynamic weight and lifecycle policy
+
+Representation scale is fixed for a run, but represented quantities can change
+through explicit population events. They use typed, checked represented-quantity
+domains rather than `Double` or `Float`, and every event satisfies opening
+quantity plus additions minus removals equals closing quantity.
+
+The first target applies these rules:
+
+- ordinary behavioral transitions do not change entity weights;
+- births, deaths, immigration, emigration, household formation or splitting,
+  firm entry, and firm exit carry an explicit represented quantity;
+- when an event affects only part of a weighted cohort, the runtime partitions
+  that cohort into outcome rows and conserves the source quantity instead of
+  applying the event to every represented unit;
+- a birth creates person quantity and updates or partitions household
+  membership without increasing household quantity unless a household is
+  actually formed; a death removes person quantity and reclassifies affected
+  household composition;
+- firm entry creates enterprise quantity in a controlled stratum, while partial
+  exit partitions survivors from exiting enterprise quantity; a declared
+  systemic weight-one enterprise changes discretely;
+- lifecycle events update all affected memberships, employment links,
+  contracts, and ledger positions atomically at the month boundary;
+- rounding residuals are assigned by a deterministic declared rule and emitted
+  in evidence; and
+- surviving units are never silently reweighted to restore a target total.
+
+Every lifecycle event also has an explicit financial-disposition rule:
+
+| Event | Required first-target disposition |
+| --- | --- |
+| Death | Household-owned positions remain with the surviving household. Any person-linked claim transfers to a declared successor household or institution, or is settled; a residual write-off requires an executed loss allocation. If the household ceases, every household position follows the same transfer, settlement, or write-off process before removal. |
+| Emigration | When the economic owner leaves the resident perimeter, each surviving position is re-owned by the foreign sector or a declared foreign counterparty, or is settled. A domestic balance cannot disappear with the resident row. |
+| Household formation, split, or merge | Positions and contracts are transferred or re-owned among successor households by a declared allocation rule. The event preserves their aggregate ledger balance except for separately executed settlements. |
+| Firm exit | Liquidation transfers assets, settles liabilities, and re-owns surviving contracts or instruments. Unrecovered claims are written off through symmetric creditor losses; the firm row is removed only after no supported position references it. |
+| Birth, immigration, or firm entry | A new unit starts without financial balances unless explicit transfer, origination, issuance, or capital-injection flows fund them. |
+
+For every disposition, supported financial stocks have exactly one owner in
+`LedgerFinancialState` before and after the event. Production monthly monetary
+effects must be emitted as `BatchedFlow` values through `MonthFlowEmitter`,
+executed against `RuntimeLedgerTopology` by `ImperativeInterpreter`, and only
+then projected from supported executed deltas into closing
+`LedgerFinancialState`. Lifecycle code must not mutate ledger-owned balances
+directly or publish monetary state from an unexecuted proposal. Legacy flat
+`Flow` emitters and helpers, including `RuntimeLedgerTopology.toFlatFlows`, are
+restricted to tests, diagnostics, explicit compatibility, or explicit
+flattening; they must not become new production month-execution inputs.
+
+Transfers, settlements, and write-offs must have symmetric counterparty entries
+in the executed batches. Validation evidence records or canonically hashes the
+emitted batches, interpreter outcome, executed deltas, closing-stock projection,
+and SFC result under the applicable evidence policy. Closing balances must equal
+opening balances plus executed deltas, and SFC validation must pass without an
+unexplained residual. Publishing the month fails if a removed ID remains
+referenced, a balance lacks an owner, or entity deletion would duplicate or
+silently destroy monetary state.
+
+A population rebase or calibration refresh is a separate, explicit operation at
+a declared checkpoint. It creates a new manifest and reconciliation record and
+cannot occur as an undocumented side effect of monthly dynamics.
 
 ### Money and the ledger
 
@@ -510,11 +650,14 @@ and weighted job capacity must reconcile with employment. Independent draws
 from national sector, size, and region marginals are insufficient because they
 can create combinations that do not resemble the empirical economy.
 
-Named firms should be included only when their individual identity is necessary
-for the research question and supported by reliable public data. Named or
-explicit archetypal banks are a stronger default because bank concentration,
-balance sheets, and failure propagation are central mechanisms and the
-institution count is small.
+Every nonzero hard-control stratum is preserved by the compiler, using a smaller
+weight where necessary rather than allowing a rare cell to disappear. A
+non-bank firm becomes a named, weight-one systemic enterprise only through an
+explicit baseline declaration supported by its research role and reliable
+public data; the compiler does not infer identity from a changing size
+threshold. Named or explicit archetypal banks are a stronger default because
+bank concentration, balance sheets, and failure propagation are central
+mechanisms and the institution count is small.
 
 ## Bilateral Relationships
 
@@ -686,24 +829,39 @@ names researcher-facing concepts. The physical gate of the model-wide RFC then
 uses accepted semantics and observed access patterns to finalize state,
 indexes, views, and the data-oriented implementation boundary.
 
-## Open Decisions
+## Decision Register
 
-The following decisions remain before this RFC can become an ADR:
+| ID | Decision | First-target resolution | State |
+| --- | --- | --- | --- |
+| P-01 | Baseline identity and vintage | `pl-2026q2-v1`; end-`2026-Q2` opening boundary, one researcher-facing identity, immutable version and content digest, and per-source temporal provenance inside the bundle. Better reconciliation of the same quarter becomes v2. | Accepted, 2026-07-20 |
+| P-02 | Labor-control convention | All-age usual-resident population; BAEL/EU-LFS labor definitions, with employment ages 15-89, unemployment ages 15-74, under-15 `NotApplicable`, and a declared 90+ non-BAEL residual. | Accepted, 2026-07-20 |
+| P-03 | Minimum person-household controls | Reconciled person, household, membership, labor-status, and region-sector employment tables defined above; no mandatory full cross-product of every attribute. | Accepted, 2026-07-20 |
+| P-04 | Rare and systemic enterprises | Preserve every nonzero hard-control stratum with adaptive weights; preserve a named non-bank enterprise at weight one only by explicit baseline declaration. | Accepted, 2026-07-20 |
+| P-05 | Dynamic representation weights | A partial cohort partition conserves its source quantity, and every lifecycle event reconciles opening plus additions minus removals to closing; no silent survivor reweighting, and rebasing is a separate manifested operation. | Accepted, 2026-07-20 |
+| P-06 | Opening financial relationships | The population compiler emits household and enterprise demand-deposit assignments, household mortgage and consumer-credit assignments, and enterprise bank-credit assignments. Named-bank reserve accounts and bilateral interbank exposures belong to institutional initialization under ADR-0011. | Accepted through ADR-0011 |
+| P-07 | Tourism resolution | Aggregate inbound receipts and outbound expenditure only; visitor cohorts are outside the first target. | Accepted through ADR-0011 |
+| P-08 | Stable IDs and population allocation | Stable family-specific typed IDs are accepted by ADR-0011. Concrete slot allocation, reuse, compaction, and relationship-rewrite encoding are deferred to RFC-0003's physical gate. | Semantic boundary accepted; physical design deferred |
+| P-09 | Mutation and buffering | Atomic month publication is required. Per-column double buffering, change sets, and validated in-place mutation are deferred to RFC-0003's physical gate and observed Research API access patterns. | Semantic boundary accepted; physical design deferred |
 
-1. Exact baseline IDs, reference periods, and source-vintage policy.
-2. The statistical definition and age range used for labor force and
-   inactivity controls.
-3. The minimum household/person joint control table supported in the first
-   compiler version.
-4. Whether rare and systemic non-bank firms are preserved automatically or
-   only by baseline declaration.
-5. The representation-weight policy for firm entry, firm death, household
-   splitting, births, and deaths during a run.
-6. The first population-linked account and credit families emitted by the
-   compiler; the model-wide promotion order remains an ontology-RFC decision.
-7. Whether aggregate tourism remains the only supported mode in the first
-   population redesign release.
-8. The concrete stable-ID, slot-allocation, and compaction policy for dynamic
-   populations.
-9. Which dynamic columns require double buffering and which may use validated
-   in-place transitions or change sets.
+## Semantic-Ready Gate
+
+The population-owned decisions P-01 through P-05 are canonicalized by
+[ADR-0008](../adr/0008-explicit-reference-population-and-representation-scale.md).
+P-06 through P-08 inherit their relationship, resolution, and stable-identity
+boundaries from
+[ADR-0011](../adr/0011-first-target-model-ontology-and-resolution-boundaries.md),
+while P-09 inherits atomic month publication from
+[ADR-0002](../adr/0002-explicit-month-boundary.md). The remaining P-08 and P-09
+choices are physical encodings and do not block the semantic-ready gate. This
+RFC remains active while the baseline bundle, compiler, physical population
+tables, lifecycle transitions, reconciliation, and validation evidence are
+implemented.
+
+## References
+
+- [GUS: Aktywność ekonomiczna według BAEL](https://stat.gov.pl/metainformacje/slownik-pojec/pojecia-stosowane-w-statystyce-publicznej/4562,pojecie.html)
+- [Eurostat: EU Labour Force Survey methodology](https://ec.europa.eu/eurostat/web/lfs/methodology)
+- [Eurostat: Population and housing census data](https://ec.europa.eu/eurostat/web/population-demography/population-housing-censuses/information-data)
+- [ADR-0002: Explicit Month Boundary](../adr/0002-explicit-month-boundary.md)
+- [ADR-0008: Explicit Reference Population and Representation Scale](../adr/0008-explicit-reference-population-and-representation-scale.md)
+- [ADR-0011: First-Target Model Ontology and Resolution Boundaries](../adr/0011-first-target-model-ontology-and-resolution-boundaries.md)

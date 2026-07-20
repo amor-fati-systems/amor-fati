@@ -1,8 +1,8 @@
 # ADR-0008: Explicit Reference Population and Representation Scale
 
-Status: Proposed
+Status: Accepted
 
-Date: 2026-07-17
+Date: 2026-07-20
 
 ## Context
 
@@ -53,9 +53,46 @@ weights, controls, residuals, exceptions, and provenance. Researchers do not
 coordinate independent firm, worker, household, and macro-scaling parameters
 to approximate a population size.
 
-Exact Polish baseline controls, weight-transition rules, compiler algorithms,
-and storage encodings remain unresolved in RFC-0001. This ADR remains Proposed
-until that RFC's acceptance criteria and first implementation scope are agreed.
+The first reference-economy bundle is `pl-2026q2-v1`, representing Poland at
+the end of `2026-Q2` with an opening month boundary of `2026-06-30`. The
+researcher selects that one identity rather than coordinating separate period,
+valuation-date, and information-cutoff settings. Every source retains its
+actual observation period, release and access dates, valuation date where
+applicable, transformation, and reconciliation rule inside the bundle manifest.
+The baseline is retrospectively compiled rather than a real-time information
+vintage.
+
+The identifier is immutable. Changing source content, a hard control, or a
+transformation creates a new bundle version and digest. A better-reconciled
+compilation of the same quarter is `pl-2026q2-v2`; it does not mutate v1. The
+existing `2026-04-30` runtime calibration is migration evidence and must be
+recalibrated and validated before it can implement the Q2 v1 bundle.
+
+The reference population covers all usual residents. Labor controls follow the
+BAEL/EU-LFS convention: employment covers ages 15 through 89, unemployment
+covers ages 15 through 74, children are outside the labor-status universe, and
+residents aged 90 or older remain explicit outside BAEL rate denominators.
+Pension receipt and reasons for economic inactivity remain separate from labor
+status.
+
+The first compiler jointly reconciles resident-person controls, private and
+collective-household controls, household membership, labor status, and filled
+jobs. It does not require an unsupported full cross-product of every attribute.
+Ordinary enterprise strata are preserved through explicit weights; named
+non-bank systemic enterprises require baseline declaration. Tourism remains
+aggregate in the first target.
+
+Dynamic population events carry explicit represented quantities. When births,
+deaths, migration, household changes, firm entry, or firm exit affect only part
+of a weighted cohort, partitioning conserves the source quantity across the
+resulting rows. Independently, each event reconciles every affected population
+family as opening quantity plus additions minus removals equals closing
+quantity. Surviving entities are not silently reweighted. A population rebase
+is a separate manifested operation, not an implicit monthly transition.
+
+RFC-0001 owns the baseline data, compiler, reconciliation, and validation work.
+RFC-0003's physical gate owns allocator, compaction, buffering, and storage
+encoding. Those implementation decisions do not reopen this semantic decision.
 
 ## Consequences
 
@@ -77,7 +114,7 @@ until that RFC's acceptance criteria and first implementation scope are agreed.
   `gdpRatio` require classification as economic parameters, numerical
   normalization, or obsolete representation coupling.
 - Dynamic entry, exit, births, deaths, household changes, and migration require
-  weight-preserving lifecycle rules before they are implemented.
+  the accepted quantity-conserving lifecycle rules before they are implemented.
 
 ## Alternatives Considered
 
@@ -109,6 +146,8 @@ special case when validated and operationally feasible.
 - [ADR-0006: Data-Oriented High-Cardinality State](0006-data-oriented-high-cardinality-state.md)
 - [ADR-0007: Controlled Model-Core Replacement](0007-controlled-model-core-replacement.md)
 - [ADR-0011: First-Target Model Ontology and Resolution Boundaries](0011-first-target-model-ontology-and-resolution-boundaries.md)
+- [GUS: Aktywność ekonomiczna według BAEL](https://stat.gov.pl/metainformacje/slownik-pojec/pojecia-stosowane-w-statystyce-publicznej/4562,pojecie.html)
+- [Eurostat: EU Labour Force Survey methodology](https://ec.europa.eu/eurostat/web/lfs/methodology)
 - [`PopulationConfig.scala`](../../modules/model/src/main/scala/com/boombustgroup/amorfati/config/PopulationConfig.scala)
 - [`SimParams.scala`](../../modules/model/src/main/scala/com/boombustgroup/amorfati/config/SimParams.scala)
 - [`WorldInit.scala`](../../modules/model/src/main/scala/com/boombustgroup/amorfati/init/WorldInit.scala)

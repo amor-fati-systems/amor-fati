@@ -214,7 +214,7 @@ Conceptually, notebook code should read like:
 
 ```scala
 val experiment = AmorFati.experiment(
-  baseline = Baseline.poland("2026-Q1"),
+  baseline = Baseline("pl-2026q2-v1"),
   representation = Representation.oneTo(1000),
   seed = Seed(42)
 )
@@ -499,12 +499,15 @@ Internal core and DOD layouts are not covered by this compatibility policy.
 
 ### Phase 0: accept the semantic ontology
 
-Accept the initial population and representation decisions required for
-baseline selection, scale, weights, population summaries, and opening
-relationships. Complete the model-wide semantic gate for units, relationships,
-contracts, instruments, authoritative owners, representation modes, and state
-lifetimes. Research API names must not conceal unresolved economic or
-statistical meaning.
+Phase 0 is complete.
+[ADR-0008](../adr/0008-explicit-reference-population-and-representation-scale.md)
+accepts the population and representation semantics required for baseline
+selection, scale, weights, population summaries, and opening relationships.
+[ADR-0011](../adr/0011-first-target-model-ontology-and-resolution-boundaries.md)
+accepts the model-wide semantic gate for units, relationships, contracts,
+instruments, authoritative owners, representation modes, and state lifetimes.
+Research API names must preserve those decisions rather than expose current
+implementation-shaped substitutes.
 
 ### Phase 1: define the research contract
 
