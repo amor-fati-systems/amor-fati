@@ -15,6 +15,14 @@ architecture documentation.
 | [RFC-0003: Model ontology and state architecture](0003-model-ontology-and-state-architecture.md) | Draft for decision | Model-wide units, relationships, instruments, assets, state lifetimes, representation resolution, and target core architecture. |
 | [RFC-0004: JVM runtime, JIT, and garbage collection policy](0004-jvm-runtime-jit-and-garbage-collection-policy.md) | Draft for decision | Supported JDK and distribution, process topology, JIT and GC profiles, heap policy, runtime provenance, and qualification evidence. |
 
+Detailed working companions:
+
+- [RFC-0002 Research API contract](0002-research-api-contract.md) audits the
+  current configuration surface and records the proposed baseline catalog,
+  historical-experiment, scenario, validation-data, and loading boundaries.
+- [RFC-0003 ontology audit matrix](0003-model-ontology-matrix.md) inventories
+  the current-to-target ontology, ownership, and first-resolution choices.
+
 ## Decision and Evidence Order
 
 The active RFCs have one evidence loop rather than a strictly linear resolution
@@ -37,9 +45,8 @@ order:
 6. **JVM runtime final qualification:** use the representative target-core DOD
    allocation and live-set profile to select any supported JIT and GC profiles.
 
-The [RFC-0003 ontology audit matrix](0003-model-ontology-matrix.md) is the
-working inventory for the model-wide semantic gate. It is a companion to the
-RFC, not a separate decision record.
+RFC companions are working inventories or detailed contracts owned by their
+numbered RFC. They are not separate decision records.
 
 RFC numbers are stable document identities, following the repository's ADR
 convention, not dependency or implementation positions. Once assigned, a number
