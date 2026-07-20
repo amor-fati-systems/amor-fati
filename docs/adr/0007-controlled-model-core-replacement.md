@@ -155,6 +155,7 @@ aggregate financial routing that motivated the ontology redesign.
 - [ADR-0008: Explicit Reference Population and Representation Scale](0008-explicit-reference-population-and-representation-scale.md)
 - [ADR-0009: Research API as the Supported Scientific Interface](0009-research-api-as-supported-scientific-interface.md)
 - [ADR-0010: Managed Almond/Jupyter Runtime and Committed Notebooks](0010-managed-almond-jupyter-runtime-and-committed-notebooks.md)
+- [ADR-0011: First-Target Model Ontology and Resolution Boundaries](0011-first-target-model-ontology-and-resolution-boundaries.md)
 - [ADR-0002: Explicit Month Boundary](0002-explicit-month-boundary.md)
 - [ADR-0004: Ledger-Owned Financial State](0004-ledger-owned-financial-state.md)
 - [ADR-0005: Fixed-Point Domain Numerics](0005-fixed-point-domain-numerics.md)

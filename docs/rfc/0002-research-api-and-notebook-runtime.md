@@ -32,16 +32,20 @@ components required by a release.
 
 ## Decision Order
 
-This RFC is the second decision stage in the target-core design:
+This RFC follows the semantic ontology gate in the target-core design:
 
 1. [Population and representation RFC](0001-population-and-representation.md)
-   defines what the reference economy, represented units, weights, and opening
-   population relationships mean.
-2. This RFC defines what a researcher can configure, execute, observe, compare,
-   and reproduce using those semantics.
-3. [Model ontology and state architecture RFC](0003-model-ontology-and-state-architecture.md)
-   uses the accepted population semantics and research access patterns to
-   complete the state model, indexes, views, and data-oriented storage design.
+   defines the statistical population units, weights, and opening population
+   relationships needed by the first target slice.
+2. The semantic gate of the
+   [model ontology and state architecture RFC](0003-model-ontology-and-state-architecture.md)
+   fixes model-wide concepts, representation modes, authoritative owners, and
+   state lifetimes.
+3. This RFC defines what a researcher can configure, execute, observe, compare,
+   and reproduce using those accepted semantics.
+4. The physical gate of the model ontology and state architecture RFC uses the
+   resulting access patterns to complete indexes, views, and data-oriented
+   storage design.
 
 The documents have different scopes rather than a class-inheritance hierarchy.
 The model-wide RFC may constrain which observations can be authoritative, but
@@ -493,12 +497,14 @@ Internal core and DOD layouts are not covered by this compatibility policy.
 
 ## Implementation Sequence
 
-### Phase 0: resolve population semantics
+### Phase 0: accept the semantic ontology
 
 Accept the initial population and representation decisions required for
 baseline selection, scale, weights, population summaries, and opening
-relationships. Research API names must not conceal unresolved statistical
-meaning.
+relationships. Complete the model-wide semantic gate for units, relationships,
+contracts, instruments, authoritative owners, representation modes, and state
+lifetimes. Research API names must not conceal unresolved economic or
+statistical meaning.
 
 ### Phase 1: define the research contract
 

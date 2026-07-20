@@ -33,11 +33,13 @@ remain a typed Scala structure without disappearing from the ontology.
 
 ## Relationship to Other Documents
 
-This RFC is the model-wide integration design, but it is the third decision
-stage for the target core. Population meaning and researcher-facing access
-patterns are resolved first; this RFC then completes the ontology and translates
-those requirements into authoritative state, indexes, views, and storage
-boundaries. Related documents have narrower responsibilities:
+This RFC owns two distinct gates. Its semantic ontology gate follows the
+population's statistical-unit definitions and precedes the Research API. Its
+physical state-design gate follows the Research API's accepted access patterns
+and translates the ontology into indexes, views, and storage boundaries. The
+[ontology audit matrix](0003-model-ontology-matrix.md) inventories the current
+code and records the decisions required for the first gate. Related documents
+have narrower responsibilities:
 
 - [Population and representation RFC](0001-population-and-representation.md)
   defines the reference economy, statistical population, representation scale,
@@ -54,6 +56,8 @@ boundaries. Related documents have narrower responsibilities:
 - [ADR-0007](../adr/0007-controlled-model-core-replacement.md) records the accepted
   strategy for replacing the stateful core without preserving its internal API
   or rewriting the verified accounting and scientific infrastructure.
+- [ADR-0011](../adr/0011-first-target-model-ontology-and-resolution-boundaries.md)
+  records the accepted first-target ontology and semantic resolution choices.
 - [ADR-0004](../adr/0004-ledger-owned-financial-state.md) records the single-owner
   rule for supported ledger-backed financial stocks.
 - [State and ledger boundary](../architecture/state-and-ledger-boundary.md)
@@ -316,10 +320,20 @@ The detailed statistical definitions belong to the population RFC.
 
 ### Non-financial enterprises
 
-`Enterprise` is the default firm unit. A baseline must not silently mix legal
-enterprises, enterprise groups, establishments, and local units. Establishments
-or local units become separate units only when regional production, site-level
-employment, or capacity is behaviorally required.
+`Enterprise` is the default firm unit and follows the Eurostat statistical-unit
+concept in [Council Regulation (EEC) No 696/93](https://eur-lex.europa.eu/eli/reg/1993/696/oj/eng):
+an autonomous producer may rest on one or more legal units and operate at one
+or more locations. In the first target it is also the consolidated synthetic
+counterparty that owns productive assets, holds financial positions, and enters
+contracts. A weighted row may represent multiple empirical enterprises in one
+controlled stratum; a declared systemic enterprise may have weight one.
+
+Legal units, enterprise groups, establishments, and local units are not
+separately resolved first-target units. A group is an ownership/control layer,
+not an additional ordinary enterprise. Establishments or local units become
+separate units only when regional production, site-level employment, or
+capacity is behaviorally required. The baseline must record the crosswalk and
+consolidation rules rather than silently mixing these universes.
 
 Enterprise state includes operational status, sector, size, region, technology,
 production, inventories, capital, pricing, distress, and lifecycle. Employment,
@@ -339,8 +353,10 @@ The ontology distinguishes:
 - resolution or deposit-guarantee institutions where modeled as balance-sheet
   owners rather than policy mechanisms.
 
-Their first implementation may remain low-cardinality or consolidated. Named
-banks can use weight one while insurers or NBFIs remain aggregate singletons.
+The first target keeps commercial banks as named units with weight one. The
+insurance sector remains one aggregate institution, while TFI/investment funds
+and credit NBFIs are two distinct aggregate institutions. Greater institution
+resolution requires promotion under the evidence rule.
 
 ### General government and public institutions
 
@@ -350,9 +366,11 @@ quasi-fiscal vehicle. Consolidation rules must be explicit. A treasury
 settlement account is not automatically the same unit as central government,
 and an execution shell is not an institutional owner.
 
-The currently aggregate ZUS/FUS, NFZ, PPK, FP, PFRON, FGSP, JST, BGK/PFR-like
-quasi-fiscal state belongs in this institutional map even where no individual
-agent population exists.
+NBP, central government, ZUS/FUS, NFZ, PPK, FP, PFRON, FGSP, and BFG are named
+aggregate singletons. JST remains one consolidated local-government sector.
+BGK and PFR are distinct named low-cardinality units even where the current
+runtime carries one BGK/PFR-like state. Consolidation with general government
+must be declared per accounting view rather than implied by shared storage.
 
 ### Rest of the world
 
@@ -376,11 +394,13 @@ an aggregate stock:
 - collateral links between a real asset and a secured credit contract.
 
 A scalar enterprise capital stock can remain an enterprise column until asset
-vintage or individual-asset heterogeneity affects behavior. A regional housing
-stock can remain an aggregate market state until ownership, tenancy, collateral,
-construction capacity, or household mobility requires resolved dwellings. The
-ontology records the missing resolution rather than pretending that an
-aggregate price index is a dwelling population.
+vintage or individual-asset heterogeneity affects behavior. The first housing
+target uses regional housing cohorts linked to households through explicit
+tenure and collateral relations carrying represented quantity or value. It does
+not assign identities to individual dwellings. Individual assets are promoted
+only when transaction, construction-capacity, mobility, or collateral evidence
+requires them; an aggregate price index is never treated as a dwelling
+population.
 
 ## Relationships
 
@@ -439,12 +459,31 @@ contract-indexed risk table, not only to aggregate bank buckets.
 bonds, corporate bonds, quasi-fiscal bonds, fund units, and listed equity where
 resolved. `SecurityPositionTable` links holders to instruments. Issuance and
 holder positions reconcile to the ledger and to market valuation state.
+Instrument attributes include currency, coupon or indexation, maturity, and
+seniority where applicable. Holder-specific valuation and accounting classes,
+including AFS or HTM, belong to positions rather than instruments.
+
+The first target uses instrument cohorts rather than a security-by-security
+ISIN book. Government, corporate, and quasi-fiscal cohorts preserve issuer or
+issuer class, currency, coupon or indexation, maturity, seniority, and risk as
+relevant. BGK and PFR issuance remains distinguishable. Listed equity uses
+positions in preserved systemic issuers or issuer cohorts; it does not create
+an individual shareholder register.
 
 `EnterpriseOwnershipTable` covers control and beneficial ownership of listed
 and unlisted enterprises. It replaces `foreignOwned` and `stateOwned` Booleans
 with explicit owners or owner classes and shares. Listed equity ownership and
 enterprise-control classification must reconcile but are not assumed to be
 identical concepts.
+
+The first target uses a mixed resolution policy. Ordinary domestic-private
+enterprises carry a declared ownership/control class without a private-owner
+cap table. Publicly controlled enterprises link to a declared public owner or
+owner cohort; foreign-controlled enterprises link to a rest-of-world owner
+cohort. Ownership relations may express mixed stakes, but the derived control
+class is singular and validated under a declared control rule. Listed security
+positions remain a separate instrument layer governed by the security
+resolution decision.
 
 ### Insurance, pension, and reserve claims
 
@@ -758,10 +797,12 @@ contract belongs to the
 
 1. Complete the population and representation decisions required by the first
    target-core slice.
-2. Complete the Research API decisions that define experiment lifecycle,
-   public observations, evidence retention, and dominant access patterns.
-3. Freeze the remaining ontology vocabulary, delivery classes, representation modes,
-   stable-ID namespaces, state-lifetime taxonomy, and manifest schema.
+2. Freeze the model-wide ontology vocabulary, delivery classes, representation
+   modes, stable-ID namespaces, authoritative owners, relationship and contract
+   semantics, and state-lifetime taxonomy.
+3. Complete the Research API decisions that define experiment lifecycle,
+   public observations, evidence retention, and dominant access patterns over
+   the accepted ontology.
 4. Identify the existing tests, fixed-seed runs, ledger identities, SFC checks,
    aggregates, and diagnostics that form the comparison oracle for each future
    slice.
@@ -870,7 +911,15 @@ The new core may replace the current engine only when all gates pass:
 10. **Single runtime ownership:** no production path depends on translating
     persistent state through the old core or maintaining duplicate balances.
 
-## Open Decisions
+## Decision Inventory
+
+The semantic portions of items 1 through 9, 12, and 13 are resolved in
+[ADR-0011](../adr/0011-first-target-model-ontology-and-resolution-boundaries.md).
+Their code audit and resolution history remain in the
+[ontology audit matrix](0003-model-ontology-matrix.md#decision-register).
+Allocator APIs and encodings under items 1 and 2, mutation strategy under item
+10, and snapshot/query design under item 11 remain downstream physical or
+Research API work.
 
 1. Exact stable-ID namespaces and whether heterogeneous parties use a typed
    tagged reference or table-specific party columns.
@@ -894,6 +943,10 @@ The new core may replace the current engine only when all gates pass:
     materializing the full object graph every month.
 12. Promotion criteria for replacing an aggregate projection with a resolved
     entity, relationship, contract, or position population.
+13. Whether the first target defines an ordinary domestic firm as a statistical
+    enterprise and consolidated synthetic financial counterparty, excluding
+    legal units, enterprise groups, establishments, and local units as
+    separately represented units.
 
 ## Implementation Anchors
 
