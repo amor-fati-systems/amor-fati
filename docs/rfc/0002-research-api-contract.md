@@ -1,7 +1,7 @@
 # RFC-0002 Companion: Research API Contract
 
 Status: Draft for decision
-Audit base: `main` at `ed6f4e95`
+Audit base: `main` at `5b17597e`
 Owning RFC: [RFC-0002](0002-research-api-and-notebook-runtime.md)
 
 ## Purpose
@@ -24,6 +24,11 @@ The current configuration surface cannot yet satisfy this contract:
 
 - `SimParams.defaults` is the one code-defined production parameterization and
   still describes the existing `2026-04-30` model-start calibration;
+- `BaselineCatalog` now exposes that calibration through the exact legacy ID
+  `pl-2026-04-30-legacy-v1`, verifies the compiled payload against a reviewed,
+  pinned digest and required model contract, and keeps `SimParams`
+  config-private; it is not yet a public Research API, persisted bundle loader,
+  or `pl-2026q2-v1` implementation;
 - the `SimConfigSpec` and `SimConfigPropertySpec` test names refer to
   `SimParams`; there is no separately loadable `SimConfig` baseline contract;
 - `ScenarioRegistry` builds every scenario from a private
@@ -362,6 +367,12 @@ that historical bundles already exist:
 The legacy provider must not be advertised as a canonical scientific baseline.
 Its ID and manifest must make its migration-only status visible.
 
+The first two boundaries now exist as the internal `BaselineCatalog` kernel.
+It verifies the legacy `SimParams.defaults` payload against a reviewed pinned
+digest and model-contract marker before preparation, but has no public Research
+API facade, filesystem bundle format, or real Q2 baseline. The remaining steps
+above remain required.
+
 ## Decision Register
 
 | ID | Decision | Proposed resolution | State |
@@ -399,6 +410,8 @@ boundary, the design needs:
 
 - [`SimParams.scala`](../../modules/model/src/main/scala/com/boombustgroup/amorfati/config/SimParams.scala)
   for the current code-defined parameter root;
+- [`BaselineCatalog.scala`](../../modules/model/src/main/scala/com/boombustgroup/amorfati/config/BaselineCatalog.scala)
+  for the current internal catalog, legacy provider, and preparation checks;
 - [`ScenarioRegistry.scala`](../../modules/model/src/main/scala/com/boombustgroup/amorfati/config/ScenarioRegistry.scala)
   for current full-configuration scenario materialization and provenance;
 - [`WorldInit.scala`](../../modules/model/src/main/scala/com/boombustgroup/amorfati/init/WorldInit.scala)
