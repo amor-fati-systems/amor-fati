@@ -10,7 +10,7 @@ architecture documentation.
 
 | RFC | Status | Scope |
 | --- | --- | --- |
-| [RFC-0001: Population and representation](0001-population-and-representation.md) | Draft for decision | Reference economy, population compiler, representation scale, population storage, migration, tourism, and opening relationships. |
+| [RFC-0001: Population and representation](0001-population-and-representation.md) | Semantic decisions complete; implementation pending | Reference economy, population compiler, representation scale, population storage, migration, tourism, and opening relationships. |
 | [RFC-0002: Research API and notebook runtime](0002-research-api-and-notebook-runtime.md) | Draft for decision | Public experiment lifecycle, result queries, reproducibility, committed notebooks, and the managed Almond/Jupyter environment. |
 | [RFC-0003: Model ontology and state architecture](0003-model-ontology-and-state-architecture.md) | Draft for decision | Model-wide units, relationships, instruments, assets, state lifetimes, representation resolution, and target core architecture. |
 | [RFC-0004: JVM runtime, JIT, and garbage collection policy](0004-jvm-runtime-jit-and-garbage-collection-policy.md) | Draft for decision | Supported JDK and distribution, process topology, JIT and GC profiles, heap policy, runtime provenance, and qualification evidence. |

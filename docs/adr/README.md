@@ -29,7 +29,7 @@ historical anchor date, not the date the ADR text was written.
 | [ADR-0005](0005-fixed-point-domain-numerics.md) | Accepted | Domain numerics use Long-backed fixed-point opaque types instead of untyped floating-point values. |
 | [ADR-0006](0006-data-oriented-high-cardinality-state.md) | Accepted | High-cardinality runtime state uses data-oriented tables while typed objects remain at control and observation boundaries. |
 | [ADR-0007](0007-controlled-model-core-replacement.md) | Accepted | The stateful model core is replaced natively on the target ontology while verified accounting and scientific infrastructure are preserved. |
-| [ADR-0008](0008-explicit-reference-population-and-representation-scale.md) | Proposed | Runs separate a versioned reference population from their explicit representation scale and weights. |
+| [ADR-0008](0008-explicit-reference-population-and-representation-scale.md) | Accepted | Runs separate a versioned reference population from their explicit representation scale and weights. |
 | [ADR-0009](0009-research-api-as-supported-scientific-interface.md) | Proposed | A versioned Research API is the supported programmatic scientific interface across adapters. |
 | [ADR-0010](0010-managed-almond-jupyter-runtime-and-committed-notebooks.md) | Proposed | Amor Fati supplies a managed Almond/Jupyter kernel and committed executable notebooks. |
 | [ADR-0011](0011-first-target-model-ontology-and-resolution-boundaries.md) | Accepted | The first-target ontology and representation boundaries define units, relationships, contracts, assets, institutions, and promotion rules. |
