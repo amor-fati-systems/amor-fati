@@ -22,6 +22,11 @@ final case class BaselineDigest private (value: String):
   override def toString: String = value
 
 object BaselineDigest:
+  def fromSha256Hex(value: String): BaselineDigest =
+    val normalized = Option(value).fold("")(_.trim.toLowerCase)
+    require(normalized.matches("[0-9a-f]{64}"), "baseline digest must be a 64-character SHA-256 hex value")
+    BaselineDigest(normalized)
+
   def sha256Utf8(value: String): BaselineDigest =
     val digest = MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8))
     val hex    = digest.iterator.map(byte => f"${byte & 0xff}%02x").mkString
@@ -116,6 +121,10 @@ final class BaselineCatalog private[config] (
 object BaselineCatalog:
   val LegacyDefaultsId: BaselineId = BaselineId.from("pl-2026-04-30-legacy-v1").fold(error => throw IllegalStateException(error), identity)
 
+  /** Reviewed digest of the complete legacy SimParams.defaults payload. */
+  private val LegacyDefaultsPayloadDigest =
+    BaselineDigest.fromSha256Hex("ce7d73afff381af8e9eb97647680b9d576e610af2f2d4866580364090de4d8e9")
+
   private object LegacyDefaultsProvider extends BaselineProvider:
     private val params = SimParams.defaults
 
@@ -127,7 +136,7 @@ object BaselineCatalog:
         openingBoundary = LocalDate.of(2026, 4, 30),
         baselineSchemaVersion = 1,
         requiredModelContract = ModelContractVersion.LegacySimParamsV1,
-        contentDigest = legacyPayloadDigest(params),
+        contentDigest = LegacyDefaultsPayloadDigest,
         description = "Migration-only provider over SimParams.defaults; not the pl-2026q2-v1 reference-economy bundle.",
       )
 

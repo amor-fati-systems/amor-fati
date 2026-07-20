@@ -7,6 +7,9 @@ import java.time.LocalDate
 
 class BaselineCatalogSpec extends AnyFlatSpec with Matchers:
 
+  private val PinnedLegacyPayloadDigest =
+    BaselineDigest.fromSha256Hex("ce7d73afff381af8e9eb97647680b9d576e610af2f2d4866580364090de4d8e9")
+
   private object DefaultsProvider extends BaselineProvider:
     private val params = SimParams.defaults
 
@@ -18,7 +21,7 @@ class BaselineCatalogSpec extends AnyFlatSpec with Matchers:
         openingBoundary = LocalDate.of(2026, 4, 30),
         baselineSchemaVersion = 1,
         requiredModelContract = ModelContractVersion.LegacySimParamsV1,
-        contentDigest = BaselineCatalog.legacyPayloadDigest(params),
+        contentDigest = PinnedLegacyPayloadDigest,
         description = "Test fixture.",
       )
 
@@ -32,6 +35,7 @@ class BaselineCatalogSpec extends AnyFlatSpec with Matchers:
     val resolved = catalog.resolve(BaselineCatalog.LegacyDefaultsId.value).fold(error => fail(error.toString), identity)
     resolved.manifest.id shouldBe BaselineCatalog.LegacyDefaultsId
     resolved.manifest.qualification shouldBe BaselineQualification.Legacy
+    resolved.manifest.contentDigest shouldBe PinnedLegacyPayloadDigest
     resolved.params shouldBe SimParams.defaults
   }
 
@@ -47,20 +51,18 @@ class BaselineCatalogSpec extends AnyFlatSpec with Matchers:
       Left(BaselineLoadError.InvalidId("  ", "baseline ID must be non-blank"))
   }
 
-  it should "reject a payload whose digest no longer matches its manifest" in {
-    val tampered = new BaselineProvider:
-      val manifest: BaselineManifest = DefaultsProvider.manifest.copy(
-        contentDigest = BaselineDigest.sha256Utf8("tampered"),
-      )
+  it should "reject a changed legacy payload against the pinned digest" in {
+    val changedParams = SimParams.defaults.copy(pop = SimParams.defaults.pop.copy(firmsCount = SimParams.defaults.pop.firmsCount + 1))
+    val changed       = new BaselineProvider:
+      val manifest: BaselineManifest = DefaultsProvider.manifest
 
-      def compile(): SimParams = SimParams.defaults
+      def compile(): SimParams = changedParams
 
-    val catalog  = BaselineCatalog.forTesting(ModelContractVersion.LegacySimParamsV1, Vector(tampered))
-    val expected = tampered.manifest.contentDigest
-    val actual   = BaselineCatalog.legacyPayloadDigest(SimParams.defaults)
+    val catalog = BaselineCatalog.forTesting(ModelContractVersion.LegacySimParamsV1, Vector(changed))
+    val actual  = BaselineCatalog.legacyPayloadDigest(changedParams)
 
     catalog.resolve(BaselineRef(BaselineCatalog.LegacyDefaultsId)) shouldBe
-      Left(BaselineLoadError.IntegrityMismatch(BaselineCatalog.LegacyDefaultsId, expected, actual))
+      Left(BaselineLoadError.IntegrityMismatch(BaselineCatalog.LegacyDefaultsId, PinnedLegacyPayloadDigest, actual))
   }
 
   it should "reject a baseline compiled for a different model contract" in {
