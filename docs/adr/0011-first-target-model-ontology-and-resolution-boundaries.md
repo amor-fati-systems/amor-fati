@@ -161,8 +161,9 @@ detailed persistence follows the run evidence policy.
   snapshot cadence remain downstream decisions. ADR-0006 still governs the
   data-oriented boundary.
 - Reference-population controls and dynamic weight semantics are fixed by
-  accepted ADR-0008 and remain implemented and validated under RFC-0001. This
-  ADR fixes ontology, not a baseline calibration dataset.
+  accepted ADR-0008; their realization in the baseline and compiler remains to
+  be implemented and validated under RFC-0001. This ADR fixes ontology, not a
+  baseline calibration dataset.
 
 ## Alternatives Considered
 

@@ -530,8 +530,8 @@ Agent count is never used as an economic count without applying weights.
 
 Representation scale is fixed for a run, but represented quantities can change
 through explicit population events. They use typed, checked represented-quantity
-domains rather than `Double` or `Float`, and every event reconciles opening
-quantity, additions, removals, and closing quantity.
+domains rather than `Double` or `Float`, and every event satisfies opening
+quantity plus additions minus removals equals closing quantity.
 
 The first target applies these rules:
 
@@ -553,6 +553,24 @@ The first target applies these rules:
 - rounding residuals are assigned by a deterministic declared rule and emitted
   in evidence; and
 - surviving units are never silently reweighted to restore a target total.
+
+Every lifecycle event also has an explicit financial-disposition rule:
+
+| Event | Required first-target disposition |
+| --- | --- |
+| Death | Household-owned positions remain with the surviving household. Any person-linked claim transfers to a declared successor household or institution, or is settled; a residual write-off requires an executed loss allocation. If the household ceases, every household position follows the same transfer, settlement, or write-off process before removal. |
+| Emigration | When the economic owner leaves the resident perimeter, each surviving position is re-owned by the foreign sector or a declared foreign counterparty, or is settled. A domestic balance cannot disappear with the resident row. |
+| Household formation, split, or merge | Positions and contracts are transferred or re-owned among successor households by a declared allocation rule. The event preserves their aggregate ledger balance except for separately executed settlements. |
+| Firm exit | Liquidation transfers assets, settles liabilities, and re-owns surviving contracts or instruments. Unrecovered claims are written off through symmetric creditor losses; the firm row is removed only after no supported position references it. |
+| Birth, immigration, or firm entry | A new unit starts without financial balances unless explicit transfer, origination, issuance, or capital-injection flows fund them. |
+
+For every disposition, supported financial stocks have exactly one owner in
+`LedgerFinancialState` before and after the event. Transfers, settlements, and
+write-offs execute through balanced ledger flows with symmetric counterparty
+entries. Closing balances must equal opening balances plus executed deltas, and
+SFC validation must pass without an unexplained residual. Publishing the month
+fails if a removed ID remains referenced, a balance lacks an owner, or entity
+deletion would duplicate or silently destroy monetary state.
 
 A population rebase or calibration refresh is a separate, explicit operation at
 a declared checkpoint. It creates a new manifest and reconciliation record and
@@ -807,7 +825,7 @@ indexes, views, and the data-oriented implementation boundary.
 | P-02 | Labor-control convention | All-age usual-resident population; BAEL/EU-LFS labor definitions, with employment ages 15-89, unemployment ages 15-74, under-15 `NotApplicable`, and a declared 90+ non-BAEL residual. | Accepted, 2026-07-20 |
 | P-03 | Minimum person-household controls | Reconciled person, household, membership, labor-status, and region-sector employment tables defined above; no mandatory full cross-product of every attribute. | Accepted, 2026-07-20 |
 | P-04 | Rare and systemic enterprises | Preserve every nonzero hard-control stratum with adaptive weights; preserve a named non-bank enterprise at weight one only by explicit baseline declaration. | Accepted, 2026-07-20 |
-| P-05 | Dynamic representation weights | Explicit quantity-carrying lifecycle events partition weighted cohorts and conserve represented quantities; no silent survivor reweighting, and rebasing is a separate manifested operation. | Accepted, 2026-07-20 |
+| P-05 | Dynamic representation weights | A partial cohort partition conserves its source quantity, and every lifecycle event reconciles opening plus additions minus removals to closing; no silent survivor reweighting, and rebasing is a separate manifested operation. | Accepted, 2026-07-20 |
 | P-06 | Opening financial relationships | The population compiler emits household and enterprise demand-deposit assignments, household mortgage and consumer-credit assignments, and enterprise bank-credit assignments. Named-bank reserve accounts and bilateral interbank exposures belong to institutional initialization under ADR-0011. | Accepted through ADR-0011 |
 | P-07 | Tourism resolution | Aggregate inbound receipts and outbound expenditure only; visitor cohorts are outside the first target. | Accepted through ADR-0011 |
 | P-08 | Stable IDs and population allocation | Stable family-specific typed IDs are accepted by ADR-0011. Concrete slot allocation, reuse, compaction, and relationship-rewrite encoding are deferred to RFC-0003's physical gate. | Semantic boundary accepted; physical design deferred |
@@ -815,18 +833,23 @@ indexes, views, and the data-oriented implementation boundary.
 
 ## Semantic-Ready Gate
 
-The population and representation semantics required by the Research API are
-complete and canonicalized by
+The population-owned decisions P-01 through P-05 are canonicalized by
 [ADR-0008](../adr/0008-explicit-reference-population-and-representation-scale.md).
-P-08 and P-09 do not block that gate because they select physical encodings,
-not statistical meaning. This RFC remains active while the baseline bundle,
-compiler, physical population tables, lifecycle transitions, reconciliation,
-and validation evidence are implemented.
+P-06 through P-08 inherit their relationship, resolution, and stable-identity
+boundaries from
+[ADR-0011](../adr/0011-first-target-model-ontology-and-resolution-boundaries.md),
+while P-09 inherits atomic month publication from
+[ADR-0002](../adr/0002-explicit-month-boundary.md). The remaining P-08 and P-09
+choices are physical encodings and do not block the semantic-ready gate. This
+RFC remains active while the baseline bundle, compiler, physical population
+tables, lifecycle transitions, reconciliation, and validation evidence are
+implemented.
 
 ## References
 
 - [GUS: Aktywność ekonomiczna według BAEL](https://stat.gov.pl/metainformacje/slownik-pojec/pojecia-stosowane-w-statystyce-publicznej/4562,pojecie.html)
 - [Eurostat: EU Labour Force Survey methodology](https://ec.europa.eu/eurostat/web/lfs/methodology)
 - [Eurostat: Population and housing census data](https://ec.europa.eu/eurostat/web/population-demography/population-housing-censuses/information-data)
+- [ADR-0002: Explicit Month Boundary](../adr/0002-explicit-month-boundary.md)
 - [ADR-0008: Explicit Reference Population and Representation Scale](../adr/0008-explicit-reference-population-and-representation-scale.md)
 - [ADR-0011: First-Target Model Ontology and Resolution Boundaries](../adr/0011-first-target-model-ontology-and-resolution-boundaries.md)

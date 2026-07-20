@@ -82,11 +82,13 @@ Ordinary enterprise strata are preserved through explicit weights; named
 non-bank systemic enterprises require baseline declaration. Tourism remains
 aggregate in the first target.
 
-Dynamic population events carry explicit represented quantities. Partial
-events partition weighted cohorts and conserve quantity across births, deaths,
-migration, household changes, firm entry, and firm exit. Surviving entities are
-not silently reweighted. A population rebase is a separate manifested
-operation, not an implicit monthly transition.
+Dynamic population events carry explicit represented quantities. When births,
+deaths, migration, household changes, firm entry, or firm exit affect only part
+of a weighted cohort, partitioning conserves the source quantity across the
+resulting rows. Independently, each event reconciles every affected population
+family as opening quantity plus additions minus removals equals closing
+quantity. Surviving entities are not silently reweighted. A population rebase
+is a separate manifested operation, not an implicit monthly transition.
 
 RFC-0001 owns the baseline data, compiler, reconciliation, and validation work.
 RFC-0003's physical gate owns allocator, compaction, buffering, and storage
