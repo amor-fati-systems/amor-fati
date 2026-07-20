@@ -222,7 +222,7 @@ The scenario contract supports three semantic forms:
 | Form | Meaning | Example |
 | --- | --- | --- |
 | Typed parameter patch | A validated change to a named model parameter relative to the resolved baseline. | Higher capital requirement or alternative behavioral coefficient. |
-| Calendar-indexed driver path | A time series of declared exogenous values or policy settings. | Observed energy-price, tourism-demand, policy-rate, or migration path. |
+| Calendar-indexed driver path | A time series of declared exogenous values or policy settings. Every value declares its source vintage or availability stage and its permitted decision-stage binding. | Observed energy-price, tourism-demand, policy-rate, or migration path. |
 | Timed intervention | A discrete command applied at a defined pre-decision or month-boundary stage. | Policy introduction, transfer program, or one-off balance-sheet operation. |
 
 Each scenario declares:
@@ -232,9 +232,21 @@ Each scenario declares:
   policy counterfactual, or explicit assumption;
 - compatible baseline IDs, opening-boundary constraints, or required features;
 - typed targets, units, calendar timing, and composition rules;
+- source vintage or availability stage and permitted decision-stage binding for
+  every calendar-indexed driver value;
 - whether values are absolute, relative, additive, or replacing;
 - conflict behavior when multiple scenarios affect the same target; and
 - validation and expected-channel metadata.
+
+For execution month `T`, a decision may consume a driver only as an inherited
+pre-signal or as explicitly permitted same-month information available before
+that decision. It must never consume a `T` end-of-month aggregate, a downstream
+Stage C outcome, or a value first realized or released after the decision. This
+uses the Stage A/B/C timing contract in RFC-0003: realized outcomes become
+decision input only at `T + 1` through the next boundary. A run that supplies a
+decision with a future realized driver is a conditional forecast, not a genuine
+out-of-sample evaluation; the manifest and validation report must state that
+classification.
 
 The current `ScenarioRegistry.ScenarioSpec.params: SimParams` is therefore a
 migration shape, not the target contract. The current engine adapter may
@@ -251,7 +263,9 @@ conflate.
 Run the current model from a historical opening economy using an observed or
 curated driver path, then compare with a separate observed-outcome dataset.
 Revised historical data may be used. This is a hindcast or reconstruction, not
-automatically an out-of-sample forecast.
+automatically an out-of-sample forecast. When a path supplies a decision with a
+driver that was first available after that decision, the run is a conditional
+forecast or reconstruction and must be labelled accordingly.
 
 ```text
 pl-2019q4-v1
@@ -263,9 +277,12 @@ pl-2019q4-v1
 
 Run from a baseline compiled only from information available at the declared
 historical cutoff. Later outcomes remain held out from calibration and scenario
-construction except where a driver is explicitly treated as observed input.
-Only this mode can support an out-of-sample forecasting claim, subject to the
-model and experiment's full evidence.
+construction. Every driver must have a declared vintage or availability stage
+and be usable at its Stage A or permitted Stage B decision point. A future
+realized driver may be supplied for a conditional forecast, but disqualifies
+the run from a genuine out-of-sample forecasting claim. Only this mode, with
+that timing condition satisfied, can support such a claim, subject to the model
+and experiment's full evidence.
 
 The researcher still selects one baseline identity. The bundle manifest records
 its real-time information policy and source releases instead of exposing a set
@@ -297,7 +314,9 @@ Historical experiments require a field-level distinction between:
 A datum cannot silently move between these roles. The run manifest records the
 baseline, scenario, and validation dataset digests plus their declared roles.
 Validation reports identify any target contaminated by calibration or by use as
-an input and must not label it out-of-sample.
+an input and must not label it out-of-sample. Driver evidence records the source
+vintage or availability stage for every value used at a decision point; a
+future realized value makes the run conditional rather than out-of-sample.
 
 The same source dataset may contribute different fields to different roles only
 when the bundle manifests record the field-level partition. A single opaque
