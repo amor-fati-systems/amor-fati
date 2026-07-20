@@ -26,9 +26,11 @@ The current configuration surface cannot yet satisfy this contract:
   still describes the existing `2026-04-30` model-start calibration;
 - `BaselineCatalog` now exposes that calibration through the exact legacy ID
   `pl-2026-04-30-legacy-v1`, verifies the compiled payload against a reviewed,
-  pinned digest and required model contract, and keeps `SimParams`
-  config-private; it is not yet a public Research API, persisted bundle loader,
-  or `pl-2026q2-v1` implementation;
+  pinned digest and required model contract, and resolves it into an internal
+  `BaselineBundle`; that legacy bundle contains only the parameter payload,
+  while provenance and validation are references and the population and
+  institutional components remain absent. It is not yet a public Research API,
+  persisted bundle loader, or `pl-2026q2-v1` implementation;
 - the `SimConfigSpec` and `SimConfigPropertySpec` test names refer to
   `SimParams`; there is no separately loadable `SimConfig` baseline contract;
 - `ScenarioRegistry` builds every scenario from a private
@@ -369,9 +371,10 @@ Its ID and manifest must make its migration-only status visible.
 
 The first two boundaries now exist as the internal `BaselineCatalog` kernel.
 It verifies the legacy `SimParams.defaults` payload against a reviewed pinned
-digest and model-contract marker before preparation, but has no public Research
-API facade, filesystem bundle format, or real Q2 baseline. The remaining steps
-above remain required.
+digest and model-contract marker before preparation, then resolves it into a
+logical `BaselineBundle` with explicit component availability. It has no public
+Research API facade, filesystem bundle format, or real Q2 baseline. The
+remaining steps above remain required.
 
 ## Decision Register
 

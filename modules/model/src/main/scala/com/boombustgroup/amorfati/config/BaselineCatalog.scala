@@ -34,9 +34,26 @@ object BaselineDigest:
 
 /** Qualification status shown by the baseline catalog. */
 enum BaselineQualification:
+  /** Scientifically released for its stated scope after required reconciliation
+    * and validation evidence. This is the only status suitable for canonical
+    * research workflows.
+    */
   case Canonical
+
+  /** Structurally loadable but not yet qualified for canonical scientific
+    * claims. It remains visible for controlled development and review.
+    */
   case Experimental
+
+  /** Compatibility adapter over an older or incomplete configuration surface.
+    * It may reproduce legacy work, but must not be presented as a canonical
+    * reference economy.
+    */
   case Legacy
+
+  /** Immutable former canonical release retained solely so prior experiments
+    * remain reproducible after a later baseline succeeds it.
+    */
   case Superseded
 
 /** Version of the model-side contract required to compile a baseline. */
@@ -62,29 +79,117 @@ final case class BaselineManifest(
     description: String,
 )
 
+/** Logical components of an immutable reference-economy baseline.
+  *
+  * Identity, compatibility, and integrity remain manifest metadata. These
+  * components hold the economic input and evidence needed to compile a run.
+  */
+enum BaselineBundleComponentKind:
+  /** Typed calibrated model parameters, including units, domains, and their
+    * parameter-level provenance references.
+    */
+  case Parameters
+
+  /** Reconciled controls for persons, households, labor, firms, migration, and
+    * other represented populations used by the population compiler.
+    */
+  case PopulationControls
+
+  /** Named institutions, opening balance-sheet controls, financial-account
+    * totals, and classification crosswalks needed to initialize the economy.
+    */
+  case InstitutionalOpeningState
+
+  /** Declared no-shock or expected paths that belong to the reference economy,
+    * rather than an intervention selected by a research scenario.
+    */
+  case ExogenousBaselineAssumptions
+
+  /** Per-source observation periods, releases, access dates, transformations,
+    * reconciliation rules, and redistribution constraints.
+    */
+  case Provenance
+
+  /** Compilation invariants, opening reconciliations, empirical targets, known
+    * gaps, and the evidence supporting the qualification status.
+    */
+  case ValidationProfile
+
+/** Whether a component is materially part of the resolved bundle, merely
+  * documented elsewhere, or not available yet.
+  */
+enum BaselineBundleComponentAvailability:
+  /** The component is material input to this bundle and must be covered by its
+    * integrity contract when persisted bundle artifacts are introduced.
+    */
+  case Present
+
+  /** Related evidence exists elsewhere, but is not yet a versioned and
+    * integrity-pinned component of this baseline bundle.
+    */
+  case Referenced
+
+  /** The bundle has no representation of this component. A canonical bundle may
+    * not use this availability.
+    */
+  case Missing
+
+/** One declared logical component of a baseline bundle. */
+final case class BaselineBundleComponent(
+    kind: BaselineBundleComponentKind,
+    availability: BaselineBundleComponentAvailability,
+    detail: String,
+):
+  require(detail.trim.nonEmpty, s"baseline component $kind must describe its availability")
+
 enum BaselineLoadError:
+  /** The supplied textual selector cannot become a valid immutable ID. */
   case InvalidId(input: String, reason: String)
+
+  /** The selector is syntactically valid but no installed provider has it. */
   case UnknownBaseline(requested: BaselineId, available: Vector[BaselineId])
+
+  /** The provider was built for a different model-side compilation contract. */
   case IncompatibleModel(
       baseline: BaselineId,
       required: ModelContractVersion,
       current: ModelContractVersion,
   )
+
+  /** The compiled payload differs from the reviewed digest pinned in the
+    * provider manifest.
+    */
   case IntegrityMismatch(baseline: BaselineId, expected: BaselineDigest, actual: BaselineDigest)
 
-/** Immutable prepared baseline. Its engine configuration remains
-  * config-private.
+/** Immutable internal baseline bundle prepared for compilation. Its engine
+  * configuration remains config-private, and it does not expose a file format
+  * or a public Research API.
   */
-final class ResolvedBaseline private[config] (
+final class BaselineBundle private[config] (
     val manifest: BaselineManifest,
+    val components: Vector[BaselineBundleComponent],
     private[config] val params: SimParams,
-)
+):
+  private val componentKinds = components.map(_.kind)
+
+  require(
+    componentKinds.toSet == BaselineBundleComponentKind.values.toSet && componentKinds.distinct.size == componentKinds.size,
+    "baseline bundle must declare every logical component exactly once",
+  )
+  require(
+    manifest.qualification != BaselineQualification.Canonical || components.forall(_.availability == BaselineBundleComponentAvailability.Present),
+    "a canonical baseline bundle must contain every logical component",
+  )
+
+  def component(kind: BaselineBundleComponentKind): BaselineBundleComponent =
+    components.find(_.kind == kind).getOrElse(throw IllegalStateException(s"missing declared baseline component: $kind"))
 
 /** Internal source of a baseline payload. Disk-backed bundles replace this seam
   * later.
   */
 private[config] trait BaselineProvider:
   def manifest: BaselineManifest
+  def components: Vector[BaselineBundleComponent]
   def compile(): SimParams
 
 /** Exact baseline resolution and verification for the current model contract.
@@ -102,10 +207,10 @@ final class BaselineCatalog private[config] (
 
   def list: Vector[BaselineManifest] = providers.map(_.manifest)
 
-  def resolve(input: String): Either[BaselineLoadError, ResolvedBaseline] =
+  def resolve(input: String): Either[BaselineLoadError, BaselineBundle] =
     BaselineId.from(input).left.map(reason => BaselineLoadError.InvalidId(input, reason)).flatMap(id => resolve(BaselineRef(id)))
 
-  def resolve(ref: BaselineRef): Either[BaselineLoadError, ResolvedBaseline] =
+  def resolve(ref: BaselineRef): Either[BaselineLoadError, BaselineBundle] =
     providersById
       .get(ref.id)
       .toRight(BaselineLoadError.UnknownBaseline(ref.id, list.map(_.id)))
@@ -116,7 +221,7 @@ final class BaselineCatalog private[config] (
           val params = provider.compile()
           val actual = BaselineCatalog.legacyPayloadDigest(params)
           if actual != manifest.contentDigest then Left(BaselineLoadError.IntegrityMismatch(ref.id, manifest.contentDigest, actual))
-          else Right(ResolvedBaseline(manifest, params))
+          else Right(new BaselineBundle(manifest, provider.components, params))
 
 object BaselineCatalog:
   val LegacyDefaultsId: BaselineId = BaselineId.from("pl-2026-04-30-legacy-v1").fold(error => throw IllegalStateException(error), identity)
@@ -127,6 +232,40 @@ object BaselineCatalog:
 
   private object LegacyDefaultsProvider extends BaselineProvider:
     private val params = SimParams.defaults
+
+    val components: Vector[BaselineBundleComponent] =
+      Vector(
+        BaselineBundleComponent(
+          BaselineBundleComponentKind.Parameters,
+          BaselineBundleComponentAvailability.Present,
+          "Pinned in-memory SimParams.defaults payload.",
+        ),
+        BaselineBundleComponent(
+          BaselineBundleComponentKind.PopulationControls,
+          BaselineBundleComponentAvailability.Missing,
+          "Legacy defaults do not contain versioned population control tables.",
+        ),
+        BaselineBundleComponent(
+          BaselineBundleComponentKind.InstitutionalOpeningState,
+          BaselineBundleComponentAvailability.Missing,
+          "WorldInit derives opening state from legacy parameters rather than a reconciled institutional component.",
+        ),
+        BaselineBundleComponent(
+          BaselineBundleComponentKind.ExogenousBaselineAssumptions,
+          BaselineBundleComponentAvailability.Missing,
+          "Legacy defaults do not separate baseline driver assumptions from model parameters.",
+        ),
+        BaselineBundleComponent(
+          BaselineBundleComponentKind.Provenance,
+          BaselineBundleComponentAvailability.Referenced,
+          "CalibrationProvenance.Baseline documents provenance but is not an immutable bundle artifact.",
+        ),
+        BaselineBundleComponent(
+          BaselineBundleComponentKind.ValidationProfile,
+          BaselineBundleComponentAvailability.Referenced,
+          "Existing validation evidence is not yet attached as a baseline-specific profile.",
+        ),
+      )
 
     val manifest: BaselineManifest =
       BaselineManifest(
