@@ -69,6 +69,12 @@ RFC:
 Both remain Proposed until the relevant open decisions and acceptance criteria
 in this RFC are resolved.
 
+The [Research API contract companion](0002-research-api-contract.md) audits the
+current configuration surface and maintains the detailed contract and decision
+register. Its first slice covers baseline discovery and loading, scenario
+composition, historical research modes, validation-data separation, and the
+temporary `SimParams` adapter boundary.
+
 ## Goals
 
 1. Make a first scientifically meaningful Amor Fati experiment executable and
@@ -128,29 +134,34 @@ runtime ledger indices, and future primitive columns remain internal.
    application services. They may format results differently but must not
    implement separate simulation semantics.
 4. Amor Fati supplies a managed Almond-based kernel with a release-pinned and
-   tested Scala, JVM, Almond, Jupyter, model, baseline, and adapter combination.
+   tested Scala, JVM, Almond, Jupyter, model, baseline-schema, and adapter
+   combination. Each selected baseline is verified separately against that
+   compatibility boundary.
 5. Researchers launch the managed system environment. Canonical notebooks do
    not resolve Amor Fati through `$ivy`, publish-local conventions, or an
    independently assembled classpath.
 6. Experiment configuration is immutable, typed, validated, and complete before
    execution. Interactive convenience builds new specifications; it does not
    silently mutate a running experiment's provenance.
-7. A run owns its mutable execution lifecycle. Results, snapshots, manifests,
+7. Researchers select an immutable baseline through a catalog. Baselines,
+   scenarios, representation, execution, evidence, and validation datasets are
+   separate manifested inputs; `SimParams` remains internal.
+8. A run owns its mutable execution lifecycle. Results, snapshots, manifests,
    and researcher-facing views are immutable observations of accepted month
    boundaries.
-8. Public queries use economic domain names, stable selectors, and controlled
+9. Public queries use economic domain names, stable selectors, and controlled
    tabular or typed views. They never expose raw high-cardinality storage,
    allocator slots, buffer swaps, or ledger implementation indices.
-9. Every execution that reaches a controlled terminal state emits a
+10. Every execution that reaches a controlled terminal state emits a
    machine-readable run manifest and validation status. A notebook file or
    visible cell output is not sufficient provenance.
-10. Canonical notebooks are committed, editable examples. Their stored outputs
+11. Canonical notebooks are committed, editable examples. Their stored outputs
     are cleared by default, and representative notebooks execute headlessly in
     CI against the release environment.
-11. Notebook interruption is cooperative cancellation at defined execution
+12. Notebook interruption is cooperative cancellation at defined execution
     boundaries. A cancelled or failed month cannot publish a partially closed
     simulation state.
-12. The kernel is trusted local code execution. Hosted or multi-user deployment
+13. The kernel is trusted local code execution. Hosted or multi-user deployment
     requires a separate isolation and tenancy design.
 
 ## Architecture Boundary
@@ -197,18 +208,23 @@ owners are distinct:
 
 An experiment specification contains at least:
 
-- baseline identity and source-vintage digest;
+- an immutable baseline reference resolved through the baseline catalog to an
+  exact identity and content digest;
 - representation scale and any declared `1:1` exceptions;
-- scenario identity plus typed, validated overrides;
+- scenario identity plus typed, validated patches, driver paths, or timed
+  interventions;
 - master seed and deterministic stream policy;
-- start boundary and horizon;
+- start boundary derived from the resolved baseline or checkpoint, plus the
+  requested horizon;
 - requested aggregate, snapshot, event, trace, and diagnostic evidence;
+- separately identified validation datasets, when requested;
 - execution profile and resource limits; and
 - Research API version.
 
 Population size is not inferred from unrelated firm or worker parameters.
 Baseline and representation semantics come directly from the accepted
-population RFC.
+population RFC. `SimParams`, baseline file locations, parsed bundle DTOs, and
+current `ScenarioRegistry.ScenarioSpec.params` do not enter public signatures.
 
 Conceptually, notebook code should read like:
 
@@ -511,11 +527,14 @@ implementation-shaped substitutes.
 
 ### Phase 1: define the research contract
 
-1. Specify the initial experiment, lifecycle, manifest, result, query, and
-   error types without Almond dependencies.
-2. Map existing initialization, scenario, Monte Carlo, manifest, and exporter
-   capabilities to that boundary.
-3. Implement a narrow pre-release Research API facade over the current engine.
+1. Specify the initial baseline catalog and bundle, experiment, lifecycle,
+   manifest, result, query, and error types without Almond dependencies.
+2. Map existing `SimParams`, initialization, scenario, Monte Carlo, manifest,
+   and exporter capabilities to that boundary, preserving the distinction
+   between baseline inputs, scenario drivers, and validation outcomes.
+3. Implement a narrow pre-release Research API facade over the current engine,
+   using an accurately identified legacy baseline provider until
+   `pl-2026q2-v1` is compiled and validated.
    Current internal engine types do not enter its public signatures.
 4. Keep the contract explicitly pre-release so notebook evidence can correct it
    before the target state design is fixed.
@@ -595,17 +614,19 @@ The following decisions remain before this RFC can become an ADR:
 1. The exact first-version Research API type and package names.
 2. Whether a pilot Research API over the current engine is shipped or remains a
    test-only ergonomics harness until the target core is available.
-3. The exact result-table interchange type and its unit/metadata representation.
-4. The checkpoint serialization format and compatibility policy.
-5. Which micro queries and snapshot cadences are supported in the first release.
-6. Whether one or multiple concurrent run handles are allowed per kernel.
-7. The managed distribution mechanism and final notebook launch command.
-8. The tested Scala, JVM, Almond, and Jupyter compatibility matrix.
-9. Whether canonical `.ipynb` files remain the sole notebook source or gain a
+3. The physical baseline-bundle serialization, canonical hashing, and asset
+   distribution or verified-cache policy.
+4. The exact result-table interchange type and its unit/metadata representation.
+5. The checkpoint serialization format and compatibility policy.
+6. Which micro queries and snapshot cadences are supported in the first release.
+7. Whether one or multiple concurrent run handles are allowed per kernel.
+8. The managed distribution mechanism and final notebook launch command.
+9. The tested Scala, JVM, Almond, and Jupyter compatibility matrix.
+10. Whether canonical `.ipynb` files remain the sole notebook source or gain a
    paired text representation for reviewable diffs.
-10. The CI cadence for lightweight notebooks and heavier scientific examples.
-11. The first visualization and tabular renderers included in the adapter.
-12. The Research API compatibility and deprecation policy after its first
+11. The CI cadence for lightweight notebooks and heavier scientific examples.
+12. The first visualization and tabular renderers included in the adapter.
+13. The Research API compatibility and deprecation policy after its first
     supported release.
 
 ## Implementation Anchors
