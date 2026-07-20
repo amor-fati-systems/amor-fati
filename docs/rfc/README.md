@@ -20,17 +20,26 @@ architecture documentation.
 The active RFCs have one evidence loop rather than a strictly linear resolution
 order:
 
-1. **Population and representation:** define the empirical economy, statistical
-   units, representation scale, weights, and opening population relationships.
-2. **Research API and notebook runtime:** define how researchers configure,
-   execute, observe, compare, and reproduce experiments using those semantics.
-3. **JVM runtime provisional baseline:** qualify the JDK, process topology, and
+1. **Population semantics:** define the statistical population units,
+   representation weights, and opening population relationships required by the
+   first target slice.
+2. **Model-wide semantic ontology:** classify units, relationships, contracts,
+   instruments, assets, aggregate institutions, authoritative owners, state
+   lifetimes, and first-target representation modes.
+3. **Research API and notebook runtime:** define how researchers configure,
+   execute, observe, compare, and reproduce experiments using the accepted
+   ontology.
+4. **JVM runtime provisional baseline:** qualify the JDK, process topology, and
    control runtime needed by the notebook pilot without selecting a final GC.
-4. **Model ontology and state architecture:** complete the model-wide state
-   design and translate the accepted semantics and access patterns into
-   data-oriented storage, indexes, views, and migration boundaries.
-5. **JVM runtime final qualification:** use the representative target-core DOD
+5. **Physical state architecture:** translate the accepted ontology and
+   observed research access patterns into data-oriented storage, indexes, views,
+   and migration boundaries.
+6. **JVM runtime final qualification:** use the representative target-core DOD
    allocation and live-set profile to select any supported JIT and GC profiles.
+
+The [RFC-0003 ontology audit matrix](0003-model-ontology-matrix.md) is the
+working inventory for the model-wide semantic gate. It is a companion to the
+RFC, not a separate decision record.
 
 RFC numbers are stable document identities, following the repository's ADR
 convention, not dependency or implementation positions. Once assigned, a number

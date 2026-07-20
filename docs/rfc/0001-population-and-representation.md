@@ -678,12 +678,13 @@ Runtime optimization follows the accepted semantics. It must not decide the
 statistical units, delete inactive residents, or collapse product-level
 relationships before the reference model is defined.
 
-The next design stage is the
-[Research API and notebook runtime RFC](0002-research-api-and-notebook-runtime.md).
-It turns the population semantics accepted here into researcher-facing
-experiment, query, and evidence requirements. The model-wide ontology and state
-RFC then uses both documents to finalize physical state, indexes, views, and
-the data-oriented implementation boundary.
+The semantic gate of the
+[model-wide ontology and state RFC](0003-model-ontology-and-state-architecture.md)
+integrates these population definitions with the rest of the economy before
+the [Research API and notebook runtime RFC](0002-research-api-and-notebook-runtime.md)
+names researcher-facing concepts. The physical gate of the model-wide RFC then
+uses accepted semantics and observed access patterns to finalize state,
+indexes, views, and the data-oriented implementation boundary.
 
 ## Open Decisions
 

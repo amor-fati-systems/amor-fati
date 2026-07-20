@@ -108,6 +108,7 @@ special case when validated and operationally feasible.
 - [RFC-0003: Model Ontology and State Architecture](../rfc/0003-model-ontology-and-state-architecture.md)
 - [ADR-0006: Data-Oriented High-Cardinality State](0006-data-oriented-high-cardinality-state.md)
 - [ADR-0007: Controlled Model-Core Replacement](0007-controlled-model-core-replacement.md)
+- [ADR-0011: First-Target Model Ontology and Resolution Boundaries](0011-first-target-model-ontology-and-resolution-boundaries.md)
 - [`PopulationConfig.scala`](../../modules/model/src/main/scala/com/boombustgroup/amorfati/config/PopulationConfig.scala)
 - [`SimParams.scala`](../../modules/model/src/main/scala/com/boombustgroup/amorfati/config/SimParams.scala)
 - [`WorldInit.scala`](../../modules/model/src/main/scala/com/boombustgroup/amorfati/init/WorldInit.scala)

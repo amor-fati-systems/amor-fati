@@ -101,6 +101,7 @@ without superseding this ADR as long as the boundary above remains intact.
 - [Population and representation RFC](../rfc/0001-population-and-representation.md#population-storage-profile)
 - [ADR-0009: Research API as the Supported Scientific Interface](0009-research-api-as-supported-scientific-interface.md)
 - [ADR-0007: Controlled Model-Core Replacement](0007-controlled-model-core-replacement.md)
+- [ADR-0011: First-Target Model Ontology and Resolution Boundaries](0011-first-target-model-ontology-and-resolution-boundaries.md)
 - [ADR-0002: Explicit Month Boundary](0002-explicit-month-boundary.md)
 - [ADR-0004: Ledger-Owned Financial State](0004-ledger-owned-financial-state.md)
 - [State and ledger boundary](../architecture/state-and-ledger-boundary.md)
