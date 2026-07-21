@@ -21,6 +21,7 @@ inventory below, so new documentation cannot silently become orphaned.
 | Calibration and empirical validation | [Calibration register](calibration-register.md), [data bridge](data-bridge-national-financial-accounts.md), and [empirical validation report](empirical-validation-report.md) |
 | Proposed population, baseline, and representation scale | [Population and representation RFC](rfc/0001-population-and-representation.md) |
 | Implemented population-control component format | [Population-control bundle format](population-control-bundle.md) |
+| Implemented enterprise-control component format | [Enterprise-control bundle format](enterprise-control-bundle.md) |
 | Proposed public Research API and notebook runtime | [Research API and notebook runtime RFC](rfc/0002-research-api-and-notebook-runtime.md) |
 | Proposed model ontology and state architecture | [Model ontology and state architecture RFC](rfc/0003-model-ontology-and-state-architecture.md) |
 | Proposed JVM, JIT, GC, and worker-runtime policy | [JVM runtime, JIT, and garbage collection policy RFC](rfc/0004-jvm-runtime-jit-and-garbage-collection-policy.md) |
@@ -57,6 +58,7 @@ as the operational entry point.
 | [docs/data-bridge-national-financial-accounts.md](data-bridge-national-financial-accounts.md) | Calibration or empirical evidence | Empirical source bridge from Polish, EU, and financial-account data to initialization, calibration, scenarios, and validation. |
 | [docs/empirical-validation-report.md](empirical-validation-report.md) | Calibration or empirical evidence | Interpretation contract for empirical-validation artifacts, status taxonomy, snapshot bundle, and source-manifest expectations. |
 | [docs/empirical-validation-source-manifest.tsv](empirical-validation-source-manifest.tsv) | Calibration or empirical evidence | Editable source manifest used by empirical-validation export. |
+| [docs/enterprise-control-bundle.md](enterprise-control-bundle.md) | Architecture | Data-only TSV format, integrity rules, source residual semantics, and reconciliation boundary for the enterprise-control baseline component. |
 | [docs/baselines/pl-2026q2-v1-enterprise-controls.md](baselines/pl-2026q2-v1-enterprise-controls.md) | Calibration or empirical evidence | Acquisition record, measurement boundaries, source hierarchy, and publication gates for the planned, currently blocked empirical enterprise-control component. |
 | [docs/baselines/pl-2026q2-v1-population-controls.md](baselines/pl-2026q2-v1-population-controls.md) | Calibration or empirical evidence | Acquisition record, source hierarchy, transformations, and publication gates for the planned, currently blocked empirical population-control component. |
 | [docs/external-sector-baseline-calibration.md](external-sector-baseline-calibration.md) | Calibration or empirical evidence | External-sector baseline calibration note and evidence from the related diagnostic ticket. |
