@@ -65,7 +65,7 @@ object ScenarioRunExport:
       runs          <- ZIO.fromEither(ScenarioRegistry.prepare(baseline, validConfig.scenarios).left.map(_.toString))
       registryPath  <- DiagnosticIo.writeText(validConfig.runRoot.resolve("scenario-registry.md"), renderRegistry(baseline.manifest, validConfig.scenarios))
       deltasPath     = validConfig.runRoot.resolve("scenario-deltas.tsv")
-      deltaRows      = validConfig.scenarios.flatMap(scenario => scenario.deltas.map(delta => ScenarioDeltaRow(scenario.id.value, delta)))
+      deltaRows      = deltaRowsFor(validConfig.scenarios)
       _             <- McTsvFile.writeAll(deltasPath, deltaRows, DeltasTsvSchema)(DiagnosticIo.outputFailure)
       metadataPaths <- ZIO.foreach(runs): run =>
         DiagnosticIo.writeText(validConfig.runRoot.resolve(run.id).resolve("metadata.md"), renderRunMetadata(validConfig, baseline.manifest, run))
@@ -165,8 +165,10 @@ object ScenarioRunExport:
     lines.mkString("\n") + "\n"
 
   private[diagnostics] def renderDeltas(scenarios: Vector[ScenarioSpec]): String =
-    val rows = scenarios.flatMap(scenario => scenario.deltas.map(delta => ScenarioDeltaRow(scenario.id.value, delta)))
-    renderTsv(DeltasTsvSchema, rows)
+    renderTsv(DeltasTsvSchema, deltaRowsFor(scenarios))
+
+  private def deltaRowsFor(scenarios: Vector[ScenarioSpec]): Vector[ScenarioDeltaRow] =
+    scenarios.flatMap(scenario => scenario.deltas.map(delta => ScenarioDeltaRow(scenario.id.value, delta)))
 
   private[diagnostics] def renderRunMetadata(config: Config, baseline: BaselineManifest, run: PreparedScenario): String =
     val scenario    = run.scenario
