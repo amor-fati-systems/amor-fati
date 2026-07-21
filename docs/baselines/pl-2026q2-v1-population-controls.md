@@ -67,10 +67,12 @@ The component can be committed only when all conditions hold:
 5. Household capacity equals private-household member positions, and those
    positions equal the private-resident population. Collective residents remain
    explicit rather than being reassigned to private households.
-6. Demographic and regional BAEL margins agree by status, and represented
-   employed residents equal primary employment assignments by residence region
-   within the declared source tolerance. Both sides count people/jobholders;
-   job positions, FTE, vacancies, and secondary jobs are outside this component.
+6. Demographic and regional labour-status margins agree by status, including
+   `NonBaelResidual` alongside employed, unemployed, inactive, and
+   not-applicable residents. Represented employed residents equal primary
+   employment assignments by residence region within the declared source
+   tolerance. Both sides count people/jobholders; job positions, FTE,
+   vacancies, and secondary jobs are outside this component.
 7. The component digest is computed after final TSV generation; changing one
    source, bridge, classification, or control value requires a new baseline
    version rather than editing `pl-2026q2-v1` in place.
