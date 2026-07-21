@@ -8,6 +8,7 @@ import org.scalatest.matchers.should.Matchers
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.{Files, Path, StandardCopyOption}
 import scala.jdk.CollectionConverters.*
+import scala.util.Using
 
 class PopulationControlBundleLoaderSpec extends AnyFlatSpec with Matchers:
 
@@ -19,14 +20,10 @@ class PopulationControlBundleLoaderSpec extends AnyFlatSpec with Matchers:
   private def withCopiedFixture[A](f: Path => A): A =
     val destination = Files.createTempDirectory("population-control-bundle-")
     try
-      Files
-        .walk(fixtureRoot)
-        .iterator()
-        .asScala
-        .foreach: source =>
-          val target = destination.resolve(fixtureRoot.relativize(source))
-          if Files.isDirectory(source) then Files.createDirectories(target)
-          else Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING)
+      pathsUnder(fixtureRoot).foreach: source =>
+        val target = destination.resolve(fixtureRoot.relativize(source))
+        if Files.isDirectory(source) then Files.createDirectories(target)
+        else Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING)
       f(destination)
     finally deleteTree(destination)
 
@@ -39,7 +36,10 @@ class PopulationControlBundleLoaderSpec extends AnyFlatSpec with Matchers:
     Files.writeString(manifestPath, updated, UTF_8)
 
   private def deleteTree(root: Path): Unit =
-    if Files.exists(root) then Files.walk(root).iterator().asScala.toVector.sortBy(_.getNameCount).reverse.foreach(Files.deleteIfExists)
+    if Files.exists(root) then pathsUnder(root).sortBy(_.getNameCount).reverse.foreach(Files.deleteIfExists)
+
+  private def pathsUnder(root: Path): Vector[Path] =
+    Using.resource(Files.walk(root))(_.iterator().asScala.toVector)
 
   "PopulationControlBundleLoader" should "load and reconcile a synthetic data-only bundle" in {
     val loaded = PopulationControlBundleLoader.load(fixtureRoot).fold(error => fail(s"unexpected loader failure: $error"), identity)
@@ -69,14 +69,22 @@ class PopulationControlBundleLoaderSpec extends AnyFlatSpec with Matchers:
   it should "reject invalid source metadata after its digest has been refreshed" in
     withCopiedFixture: root =>
       val metadataPath = root.resolve("tables.tsv")
-      Files.writeString(metadataPath, Files.readString(metadataPath, UTF_8).replace("2026-01-01", "not-a-date"), UTF_8)
+      Files.writeString(
+        metadataPath,
+        Files
+          .readString(metadataPath, UTF_8)
+          .replace("\npersons\t", "\n\n# retained comment\npersons\t")
+          .replace("2026-01-01", "not-a-date"),
+        UTF_8,
+      )
       refreshDigest(root)
 
       PopulationControlBundleLoader.load(root) match
-        case Left(LoadError.InvalidControlRow(path, _, detail)) =>
+        case Left(LoadError.InvalidControlRow(path, lineNumber, detail)) =>
           path shouldBe metadataPath
+          lineNumber shouldBe 4
           detail should include("accessed_at")
-        case other                                              => fail(s"expected invalid source metadata, got: $other")
+        case other                                                       => fail(s"expected invalid source metadata, got: $other")
 
   it should "reject an unreconciled bundle after its digest has been refreshed" in
     withCopiedFixture: root =>

@@ -4,9 +4,11 @@ import com.boombustgroup.amorfati.config.PopulationControlSchema.*
 import com.boombustgroup.amorfati.config.PopulationRepresentation.PopulationControlsDigest
 import com.boombustgroup.amorfati.tsv.TsvRows
 
+import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.{Files, Path}
 import java.security.MessageDigest
 import java.time.LocalDate
+import scala.IArray
 import scala.util.Try
 
 /** Data-only loader for the population-control component of a reference economy
@@ -53,6 +55,24 @@ object PopulationControlBundleLoader:
     EmploymentFile,
   )
 
+  private val SnapshotFiles = ManifestFile +: ComponentFiles
+
+  /** Immutable bytes captured before integrity verification. All parsing for a
+    * successful load reads this snapshot, so the controls returned to a caller
+    * are the same artifact that produced the verified digest.
+    */
+  private final class ComponentSnapshot(
+      val root: Path,
+      private val bytesByFile: Map[String, IArray[Byte]],
+  ):
+    def path(file: String): Path = root.resolve(file)
+
+    def bytes(file: String): IArray[Byte] = bytesByFile(file)
+
+    def copiedBytes(file: String): Array[Byte] = IArray.genericWrapArray(bytes(file)).toArray
+
+    def utf8(file: String): String = new String(copiedBytes(file), UTF_8)
+
   /** Parsed manifest metadata for one versioned population-control component.
     * Its digest covers these semantic fields and every component TSV; the
     * digest field itself is excluded to avoid self-reference.
@@ -92,24 +112,26 @@ object PopulationControlBundleLoader:
     */
   def load(root: Path): Either[LoadError, Loaded] =
     for
-      manifest      <- readManifest(root)
+      snapshot      <- readSnapshot(root)
+      manifest      <- readManifest(snapshot)
       _             <- ensureSupportedSchema(manifest)
-      actualDigest  <- computeDigest(root, manifest)
+      actualDigest   = computeDigest(snapshot, manifest)
       _             <- Either.cond(
         actualDigest == manifest.populationControlsDigest,
         (),
         LoadError.PopulationControlsDigestMismatch(manifest.populationControlsDigest, actualDigest),
       )
-      tableMetadata <- readTableMetadata(root, manifest.classifications)
-      controls      <- readControls(root, manifest.classifications, tableMetadata)
+      tableMetadata <- readTableMetadata(snapshot, manifest.classifications)
+      controls      <- readControls(snapshot, manifest.classifications, tableMetadata)
       validation     = Validator.validate(controls)
       _             <- Either.cond(validation.isValid, (), LoadError.ControlValidationFailed(validation.errors))
     yield Loaded(manifest, controls, validation)
 
-  private def readManifest(root: Path): Either[LoadError, Manifest] =
-    val path = root.resolve(ManifestFile)
+  private def readManifest(snapshot: ComponentSnapshot): Either[LoadError, Manifest] =
+    val path = snapshot.path(ManifestFile)
     readExactlyOne(
-      path,
+      snapshot,
+      ManifestFile,
       Vector(
         "schema_version",
         "baseline_id",
@@ -131,27 +153,27 @@ object PopulationControlBundleLoader:
           regionRef     <- classificationRef(row, "region_classification").left.map(detail => LoadError.InvalidManifest(path, detail))
           ageRef        <- classificationRef(row, "age_classification").left.map(detail => LoadError.InvalidManifest(path, detail))
           sectorRef     <- classificationRef(row, "production_sector_classification").left.map(detail => LoadError.InvalidManifest(path, detail))
-          classes       <- readClassifications(root, regionRef, ageRef, sectorRef)
+          classes       <- readClassifications(snapshot, regionRef, ageRef, sectorRef)
         yield Manifest(schemaVersion, BaselineRef(baselineId), digest, classes)
 
   private def readClassifications(
-      root: Path,
+      snapshot: ComponentSnapshot,
       region: ClassificationRef,
       age: ClassificationRef,
       productionSector: ClassificationRef,
   ): Either[LoadError, Classifications] =
     for
-      regions           <- readRegions(root.resolve(RegionsFile))
-      ageBands          <- readAgeBands(root.resolve(AgeBandsFile))
-      productionSectors <- readProductionSectors(root.resolve(ProductionSectorsFile))
-      classifications   <- build("classifications", root)(Classifications(region, age, productionSector, regions, ageBands, productionSectors))
+      regions           <- readRegions(snapshot, RegionsFile)
+      ageBands          <- readAgeBands(snapshot, AgeBandsFile)
+      productionSectors <- readProductionSectors(snapshot, ProductionSectorsFile)
+      classifications   <- build("classifications", snapshot.root)(Classifications(region, age, productionSector, regions, ageBands, productionSectors))
     yield classifications
 
-  private def readRegions(path: Path): Either[LoadError, Vector[RegionCode]] =
-    readTypedRows(path, Vector("code"))((row, _) => row.required("code").flatMap(value => buildValue(RegionCode(value)))).map(_.toVector)
+  private def readRegions(snapshot: ComponentSnapshot, file: String): Either[LoadError, Vector[RegionCode]] =
+    readTypedRows(snapshot, file, Vector("code"))((row, _) => row.required("code").flatMap(value => buildValue(RegionCode(value)))).map(_.toVector)
 
-  private def readAgeBands(path: Path): Either[LoadError, Vector[AgeBand]] =
-    readTypedRows(path, Vector("code", "min_inclusive", "max_inclusive")): (row, _) =>
+  private def readAgeBands(snapshot: ComponentSnapshot, file: String): Either[LoadError, Vector[AgeBand]] =
+    readTypedRows(snapshot, file, Vector("code", "min_inclusive", "max_inclusive")): (row, _) =>
       for
         code <- row.required("code")
         min  <- requiredInt(row, "min_inclusive")
@@ -159,13 +181,14 @@ object PopulationControlBundleLoader:
         band <- buildValue(AgeBand(code, min, max))
       yield band
 
-  private def readProductionSectors(path: Path): Either[LoadError, Vector[ProductionSectorCode]] =
-    readTypedRows(path, Vector("code"))((row, _) => row.required("code").flatMap(value => buildValue(ProductionSectorCode(value)))).map(_.toVector)
+  private def readProductionSectors(snapshot: ComponentSnapshot, file: String): Either[LoadError, Vector[ProductionSectorCode]] =
+    readTypedRows(snapshot, file, Vector("code"))((row, _) => row.required("code").flatMap(value => buildValue(ProductionSectorCode(value)))).map(_.toVector)
 
-  private def readTableMetadata(root: Path, classifications: Classifications): Either[LoadError, Map[Table, TableMetadata]] =
-    val path = root.resolve(TableMetadataFile)
+  private def readTableMetadata(snapshot: ComponentSnapshot, classifications: Classifications): Either[LoadError, Map[Table, TableMetadata]] =
+    val path = snapshot.path(TableMetadataFile)
     readTypedRows(
-      path,
+      snapshot,
+      TableMetadataFile,
       Vector(
         "table",
         "control_family",
@@ -206,7 +229,7 @@ object PopulationControlBundleLoader:
         case None                     => Right(metadata)
 
   private def readControls(
-      root: Path,
+      snapshot: ComponentSnapshot,
       classifications: Classifications,
       metadata: Map[Table, TableMetadata],
   ): Either[LoadError, Bundle] =
@@ -214,22 +237,27 @@ object PopulationControlBundleLoader:
     val ages    = classifications.ageBands.map(band => band.code -> band).toMap
     val sectors = classifications.productionSectors.map(sector => sector.value -> sector).toMap
     for
-      persons             <- readPersons(root.resolve(PersonsFile), regions, ages)
-      households          <- readHouseholds(root.resolve(HouseholdsFile), regions)
-      householdMembership <- readHouseholdMembership(root.resolve(HouseholdMembershipFile), ages)
-      demographicLabour   <- readDemographicLabour(root.resolve(DemographicLabourFile), ages)
-      regionalLabour      <- readRegionalLabour(root.resolve(RegionalLabourFile), regions)
-      employment          <- readEmployment(root.resolve(EmploymentFile), regions, sectors)
-      personTable         <- controlTable(root.resolve(PersonsFile), metadata(Table.Persons), persons)
-      householdTable      <- controlTable(root.resolve(HouseholdsFile), metadata(Table.Households), households)
-      membershipTable     <- controlTable(root.resolve(HouseholdMembershipFile), metadata(Table.HouseholdMembership), householdMembership)
-      demographicTable    <- controlTable(root.resolve(DemographicLabourFile), metadata(Table.DemographicLabour), demographicLabour)
-      regionalTable       <- controlTable(root.resolve(RegionalLabourFile), metadata(Table.RegionalLabour), regionalLabour)
-      employmentTable     <- controlTable(root.resolve(EmploymentFile), metadata(Table.Employment), employment)
+      persons             <- readPersons(snapshot, PersonsFile, regions, ages)
+      households          <- readHouseholds(snapshot, HouseholdsFile, regions)
+      householdMembership <- readHouseholdMembership(snapshot, HouseholdMembershipFile, ages)
+      demographicLabour   <- readDemographicLabour(snapshot, DemographicLabourFile, ages)
+      regionalLabour      <- readRegionalLabour(snapshot, RegionalLabourFile, regions)
+      employment          <- readEmployment(snapshot, EmploymentFile, regions, sectors)
+      personTable         <- controlTable(snapshot.path(PersonsFile), metadata(Table.Persons), persons)
+      householdTable      <- controlTable(snapshot.path(HouseholdsFile), metadata(Table.Households), households)
+      membershipTable     <- controlTable(snapshot.path(HouseholdMembershipFile), metadata(Table.HouseholdMembership), householdMembership)
+      demographicTable    <- controlTable(snapshot.path(DemographicLabourFile), metadata(Table.DemographicLabour), demographicLabour)
+      regionalTable       <- controlTable(snapshot.path(RegionalLabourFile), metadata(Table.RegionalLabour), regionalLabour)
+      employmentTable     <- controlTable(snapshot.path(EmploymentFile), metadata(Table.Employment), employment)
     yield Bundle(classifications, personTable, householdTable, membershipTable, demographicTable, regionalTable, employmentTable)
 
-  private def readPersons(path: Path, regions: Map[String, RegionCode], ages: Map[String, AgeBand]): Either[LoadError, Vector[PersonRow]] =
-    readTypedRows(path, Vector("region", "sex", "age_band", "residence", "count")): (row, _) =>
+  private def readPersons(
+      snapshot: ComponentSnapshot,
+      file: String,
+      regions: Map[String, RegionCode],
+      ages: Map[String, AgeBand],
+  ): Either[LoadError, Vector[PersonRow]] =
+    readTypedRows(snapshot, file, Vector("region", "sex", "age_band", "residence", "count")): (row, _) =>
       for
         region    <- known(row, "region", regions)
         sex       <- row.required("sex").flatMap(parseDemographicSex)
@@ -238,8 +266,8 @@ object PopulationControlBundleLoader:
         count     <- representedCount(row)
       yield PersonRow(region, sex, age, residence, count)
 
-  private def readHouseholds(path: Path, regions: Map[String, RegionCode]): Either[LoadError, Vector[HouseholdRow]] =
-    readTypedRows(path, Vector("region", "size", "composition", "count")): (row, _) =>
+  private def readHouseholds(snapshot: ComponentSnapshot, file: String, regions: Map[String, RegionCode]): Either[LoadError, Vector[HouseholdRow]] =
+    readTypedRows(snapshot, file, Vector("region", "size", "composition", "count")): (row, _) =>
       for
         region      <- known(row, "region", regions)
         size        <- requiredInt(row, "size")
@@ -248,8 +276,12 @@ object PopulationControlBundleLoader:
         household   <- buildValue(HouseholdRow(region, size, composition, count))
       yield household
 
-  private def readHouseholdMembership(path: Path, ages: Map[String, AgeBand]): Either[LoadError, Vector[HouseholdMembershipRow]] =
-    readTypedRows(path, Vector("composition", "member_role", "age_band", "count")): (row, _) =>
+  private def readHouseholdMembership(
+      snapshot: ComponentSnapshot,
+      file: String,
+      ages: Map[String, AgeBand],
+  ): Either[LoadError, Vector[HouseholdMembershipRow]] =
+    readTypedRows(snapshot, file, Vector("composition", "member_role", "age_band", "count")): (row, _) =>
       for
         composition <- row.required("composition").flatMap(parseHouseholdComposition)
         role        <- row.required("member_role").flatMap(parseHouseholdMemberRole)
@@ -257,8 +289,8 @@ object PopulationControlBundleLoader:
         count       <- representedCount(row)
       yield HouseholdMembershipRow(composition, role, age, count)
 
-  private def readDemographicLabour(path: Path, ages: Map[String, AgeBand]): Either[LoadError, Vector[DemographicLabourRow]] =
-    readTypedRows(path, Vector("sex", "age_band", "status", "count")): (row, _) =>
+  private def readDemographicLabour(snapshot: ComponentSnapshot, file: String, ages: Map[String, AgeBand]): Either[LoadError, Vector[DemographicLabourRow]] =
+    readTypedRows(snapshot, file, Vector("sex", "age_band", "status", "count")): (row, _) =>
       for
         sex    <- row.required("sex").flatMap(parseDemographicSex)
         age    <- known(row, "age_band", ages)
@@ -266,8 +298,8 @@ object PopulationControlBundleLoader:
         count  <- representedCount(row)
       yield DemographicLabourRow(sex, age, status, count)
 
-  private def readRegionalLabour(path: Path, regions: Map[String, RegionCode]): Either[LoadError, Vector[RegionalLabourRow]] =
-    readTypedRows(path, Vector("region", "status", "count")): (row, _) =>
+  private def readRegionalLabour(snapshot: ComponentSnapshot, file: String, regions: Map[String, RegionCode]): Either[LoadError, Vector[RegionalLabourRow]] =
+    readTypedRows(snapshot, file, Vector("region", "status", "count")): (row, _) =>
       for
         region <- known(row, "region", regions)
         status <- row.required("status").flatMap(parseLabourStatus)
@@ -275,11 +307,12 @@ object PopulationControlBundleLoader:
       yield RegionalLabourRow(region, status, count)
 
   private def readEmployment(
-      path: Path,
+      snapshot: ComponentSnapshot,
+      file: String,
       regions: Map[String, RegionCode],
       sectors: Map[String, ProductionSectorCode],
   ): Either[LoadError, Vector[EmploymentRow]] =
-    readTypedRows(path, Vector("residence_region", "workplace_region", "production_sector", "count")): (row, _) =>
+    readTypedRows(snapshot, file, Vector("residence_region", "workplace_region", "production_sector", "count")): (row, _) =>
       for
         residence <- known(row, "residence_region", regions)
         workplace <- known(row, "workplace_region", regions)
@@ -302,42 +335,52 @@ object PopulationControlBundleLoader:
     * SHA-256 fingerprints of every required component TSV are covered.
     */
   private[config] def computeDigest(root: Path, manifest: Manifest): Either[LoadError, PopulationControlsDigest] =
-    sequenceLoad(ComponentFiles.map(file => readBytes(root.resolve(file)).map(file -> _))).map: files =>
-      val manifestFields = Vector(
-        "population-control-bundle-v1",
-        s"schema_version=${manifest.schemaVersion}",
-        s"baseline_id=${manifest.baseline.id}",
-        s"region_classification=${manifest.classifications.region.id}@${manifest.classifications.region.version}",
-        s"age_classification=${manifest.classifications.age.id}@${manifest.classifications.age.version}",
-        s"production_sector_classification=${manifest.classifications.productionSector.id}@${manifest.classifications.productionSector.version}",
-      )
-      val fileFields     = files
-        .sortBy(_._1)
-        .map: (file, bytes) =>
-          s"$file=${sha256Hex(bytes)}"
-      PopulationControlsDigest.sha256Utf8((manifestFields ++ fileFields).mkString("\n") + "\n")
+    readSnapshot(root).map(snapshot => computeDigest(snapshot, manifest))
 
-  private def readBytes(path: Path): Either[LoadError, Array[Byte]] =
-    Try(Files.readAllBytes(path)).toEither.left.map(error => LoadError.InvalidTsv(path, s"failed to read component bytes: ${error.getMessage}"))
+  private def computeDigest(snapshot: ComponentSnapshot, manifest: Manifest): PopulationControlsDigest =
+    val manifestFields = Vector(
+      "population-control-bundle-v1",
+      s"schema_version=${manifest.schemaVersion}",
+      s"baseline_id=${manifest.baseline.id}",
+      s"region_classification=${manifest.classifications.region.id}@${manifest.classifications.region.version}",
+      s"age_classification=${manifest.classifications.age.id}@${manifest.classifications.age.version}",
+      s"production_sector_classification=${manifest.classifications.productionSector.id}@${manifest.classifications.productionSector.version}",
+    )
+    val fileFields     = ComponentFiles.sorted.map(file => s"$file=${sha256Hex(snapshot.copiedBytes(file))}")
+    PopulationControlsDigest.sha256Utf8((manifestFields ++ fileFields).mkString("\n") + "\n")
 
-  private def readExactlyOne(path: Path, requiredColumns: Vector[String]): Either[String, TsvRow] =
+  private def readSnapshot(root: Path): Either[LoadError, ComponentSnapshot] =
+    sequenceLoad(
+      SnapshotFiles.map: file =>
+        val path = root.resolve(file)
+        Try(Files.readAllBytes(path)).toEither.left
+          .map: error =>
+            val detail = s"failed to read component bytes: ${error.getMessage}"
+            if file == ManifestFile then LoadError.InvalidManifest(path, detail)
+            else LoadError.InvalidTsv(path, detail)
+          .map(bytes => file -> IArray.unsafeFromArray(bytes)),
+    ).map(files => new ComponentSnapshot(root, files.toMap))
+
+  private def readExactlyOne(snapshot: ComponentSnapshot, file: String, requiredColumns: Vector[String]): Either[String, TsvRow] =
+    val path = snapshot.path(file)
     TsvRows
-      .readRows(path, requiredColumns)
+      .readRows(path, snapshot.utf8(file), requiredColumns)
       .flatMap:
         case Vector(row) => Right(row)
         case rows        => Left(s"must contain exactly one data row, got ${rows.size}")
 
-  private def readTypedRows[A](path: Path, requiredColumns: Vector[String])(
+  private def readTypedRows[A](snapshot: ComponentSnapshot, file: String, requiredColumns: Vector[String])(
       parse: (TsvRow, Int) => Either[String, A],
   ): Either[LoadError, Vector[A]] =
+    val path = snapshot.path(file)
     TsvRows
-      .readRows(path, requiredColumns)
+      .readRows(path, snapshot.utf8(file), requiredColumns)
       .left
       .map(detail => LoadError.InvalidTsv(path, detail))
       .flatMap: rows =>
         sequenceLoad(
-          rows.zipWithIndex.map: (row, index) =>
-            parse(row, index + 2).left.map(detail => LoadError.InvalidControlRow(path, index + 2, detail)),
+          rows.map: row =>
+            parse(row, row.lineNumber).left.map(detail => LoadError.InvalidControlRow(path, row.lineNumber, detail)),
         )
 
   private def classificationRef(row: TsvRow, prefix: String): Either[String, ClassificationRef] =

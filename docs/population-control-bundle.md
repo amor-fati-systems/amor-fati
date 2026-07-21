@@ -21,7 +21,7 @@ future full baseline bundle and Research API is defined by
 
 ## Bundle Layout
 
-Each component root contains exactly these files:
+Each component root must provide these files:
 
 ```text
 manifest.tsv
@@ -40,7 +40,9 @@ employment.tsv
 All files are UTF-8, tab-separated, and include one header row. Header names
 and table values are part of the schema. Unknown classifications, enum values,
 missing metadata, duplicate metadata entries, invalid counts, and invalid
-cross-table identities reject the component.
+cross-table identities reject the component. The current loader ignores
+additional root entries; a future full baseline bundle will own its complete
+artifact inventory.
 
 ## Manifest and Integrity
 
