@@ -458,9 +458,15 @@ The first compiler does not require one sparse cross-product of every person,
 household, labor, housing, and financial attribute. It requires a versioned set
 of mutually reconciled control tables with shared classifications:
 
-1. resident persons by NUTS-1 region, demographic sex, five-year age band with
+For `pl-2026q2-v1`, the shared regional classification is the 16 TERYT
+voivodeships recorded in its
+[population-control acquisition record](../baselines/pl-2026q2-v1-population-controls.md).
+This is the same axis for person, household, regional-labour, and employment
+reconciliation cells; it is not the legacy runtime's seven regional markets.
+
+1. resident persons by TERYT voivodeship, demographic sex, five-year age band with
    explicit `90+`, and private or collective residence type;
-2. private households by NUTS-1 region, household size, and composition class:
+2. private households by TERYT voivodeship, household size, and composition class:
    one person, couple without dependent children, couple with dependent
    children, lone parent, and other multi-person household;
 3. household members by composition class, member role, and broad age band,
@@ -468,10 +474,10 @@ of mutually reconciled control tables with shared classifications:
    constrain the synthetic population;
 4. labor status by demographic sex and age band, plus regional labor-status
    totals, using the BAEL age universe; and
-5. employed residents by residence region and represented primary employment
-   assignments by workplace region and model production sector, with one main
-   assignment per employed resident, an origin-destination commuting bridge,
-   or an explicit no-commuting limitation.
+5. employed residents by residence TERYT voivodeship and represented primary
+   employment assignments by workplace TERYT voivodeship and model production
+   sector, with one main assignment per employed resident, an origin-destination
+   commuting bridge, or an explicit no-commuting limitation.
 
 Resident-person totals, private- and collective-household totals, labor
 identities, and primary-employment-assignment reconciliation are hard controls subject only to

@@ -20,7 +20,7 @@ full baseline bundle, not a `Canonical` baseline by itself.
 | Territory | Poland, usual residents |
 | Reference-state boundary | End of 2026-06-30. It is the Q2 closing boundary in source statistics and the opening state for the first simulated month, July 2026. The baseline does not simulate Q2. |
 | Compilation mode | Retrospective; source observation periods and release dates may differ from the reference-state boundary and must be recorded per table. |
-| Territorial classification | The 16 voivodeships, identified by TERYT codes. This is the common, stable level for the GUS population, household, labour, and employment extracts. It is not the legacy runtime's seven regional markets and is not a proxy for NUTS 2. |
+| Territorial classification | The 16 voivodeships, identified by TERYT codes. This is the common, stable level for the GUS population, household, labour, and employment extracts, and is the `pl-2026q2-v1` regional axis in the [RFC-0001 minimum control bundle](../rfc/0001-population-and-representation.md#minimum-person-household-control-bundle). It is not the legacy runtime's seven regional markets and is not a proxy for NUTS 2. |
 | Production classification | PKD 2025 sections or published aggregates, with every aggregation and later mapping to the target production ontology declared explicitly. A Census 2021 or other legacy PKD 2007 input may inform a structural bridge but must not become an undeclared output classification. The six legacy runtime sectors are not control-table codes. |
 | Representation scale | Not a baseline field. The researcher selects it per compilation through `PopulationRepresentation.RepresentationSpec`. |
 
