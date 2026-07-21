@@ -473,7 +473,11 @@ reconciliation cells; it is not the legacy runtime's seven regional markets.
    providing the bridge that makes person and household totals jointly
    constrain the synthetic population;
 4. labor status by demographic sex and age band, plus regional labor-status
-   totals, using the BAEL age universe; and
+   totals, using the supported BAEL age universes (15-89 for employed and
+   inactive residents, 15-74 for unemployed residents) plus the explicit 90+
+   residual. Residents aged 90+ map to `non_bael_residual`, participate in
+   demographic and regional reconciliation, and remain excluded from BAEL
+   denominators; and
 5. employed residents by residence TERYT voivodeship and represented primary
    employment assignments by workplace TERYT voivodeship and model production
    sector, with one main assignment per employed resident, an origin-destination
