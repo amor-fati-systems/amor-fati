@@ -138,7 +138,38 @@ class PopulationControlSchemaSpec extends AnyFlatSpec with Matchers:
     report.reconciliations.foreach(_.passes shouldBe true)
   }
 
-  it should "reject a filled-job total that differs from employed residents" in {
+  it should "require the non-BAEL residual for residents aged 90 and over" in {
+    val Oldest     = AgeBand("90+", 90, None)
+    val withOldest = validBundle.copy(
+      classifications = validBundle.classifications.copy(ageBands = validBundle.classifications.ageBands :+ Oldest),
+      persons = validBundle.persons.copy(
+        rows = validBundle.persons.rows :+ PersonRow(North, DemographicSex.Female, Oldest, ResidenceType.CollectiveResidence, RepresentedCount(1)),
+      ),
+      demographicLabour = validBundle.demographicLabour.copy(
+        rows = validBundle.demographicLabour.rows :+ DemographicLabourRow(DemographicSex.Female, Oldest, LabourStatus.NonBaelResidual, RepresentedCount(1)),
+      ),
+      regionalLabour = validBundle.regionalLabour.copy(
+        rows = validBundle.regionalLabour.rows :+ RegionalLabourRow(North, LabourStatus.NonBaelResidual, RepresentedCount(1)),
+      ),
+    )
+
+    Validator.validate(withOldest).isValid shouldBe true
+
+    val invalid = withOldest.copy(
+      demographicLabour = withOldest.demographicLabour.copy(
+        rows = withOldest.demographicLabour.rows.updated(
+          withOldest.demographicLabour.rows.size - 1,
+          DemographicLabourRow(DemographicSex.Female, Oldest, LabourStatus.Inactive, RepresentedCount(1)),
+        ),
+      ),
+    )
+
+    Validator.validate(invalid).errors should contain(
+      ValidationError.InvalidLabourStatusAgeBand(LabourStatus.Inactive, Oldest),
+    )
+  }
+
+  it should "reject a primary employment-assignment total that differs from employed residents" in {
     val invalidEmployment = validBundle.employment.copy(
       rows = validBundle.employment.rows.updated(3, EmploymentRow(South, South, Services, RepresentedCount(19))),
     )
@@ -146,7 +177,7 @@ class PopulationControlSchemaSpec extends AnyFlatSpec with Matchers:
 
     report.isValid shouldBe false
     report.errors.collect { case ValidationError.FailedReconciliation(reconciliation) => reconciliation.id } should contain(
-      "employed-residents-to-filled-jobs:RegionCode(south)",
+      "employed-residents-to-primary-job-assignments:RegionCode(south)",
     )
   }
 

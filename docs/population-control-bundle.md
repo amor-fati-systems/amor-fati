@@ -109,10 +109,15 @@ codes allowed by dependent tables. The rows are:
 codes are the explicit TSV projections of the typed schema; the loader does
 not infer classifications from labels or IDs.
 
+`employment.tsv` counts primary employment assignments: one main-job assignment
+per employed resident. It does not count all job positions, FTE, vacancies, or
+secondary jobs. This keeps its residence-region total in the same jobholder
+unit as the employed-resident control.
+
 After parsing, the loader delegates to `PopulationControlSchema.Validator`.
 This enforces the declared reconciliation identities, including demographic and
 regional labour totals, household membership, and employed-resident to
-filled-job reconciliation. A component is loadable only when all errors are
+primary-employment-assignment reconciliation. A component is loadable only when all errors are
 empty.
 
 ## Current Use

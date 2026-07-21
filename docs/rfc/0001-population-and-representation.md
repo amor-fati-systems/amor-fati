@@ -468,12 +468,13 @@ of mutually reconciled control tables with shared classifications:
    constrain the synthetic population;
 4. labor status by demographic sex and age band, plus regional labor-status
    totals, using the BAEL age universe; and
-5. employed residents by residence region and represented filled jobs by
-   workplace region and model production sector, with an origin-destination
-   commuting bridge or an explicit no-commuting limitation.
+5. employed residents by residence region and represented primary employment
+   assignments by workplace region and model production sector, with one main
+   assignment per employed resident, an origin-destination commuting bridge,
+   or an explicit no-commuting limitation.
 
 Resident-person totals, private- and collective-household totals, labor
-identities, and filled-job reconciliation are hard controls subject only to
+identities, and primary-employment-assignment reconciliation are hard controls subject only to
 declared integer or fixed-point rounding tolerances. Membership cells are hard
 compiler controls only where the baseline classifies them as source-backed.
 Higher-order combinations such as
@@ -629,8 +630,8 @@ representation policy, and random seed:
    controls.
 5. Generate the firm population from joint sector, size, region, ownership,
    and employment controls.
-6. Match employed persons to weighted firm job positions; keep unemployed and
-   inactive populations distinct.
+6. Match employed persons to exactly one weighted primary firm employment
+   assignment; keep unemployed and inactive populations distinct.
 7. Assign deposit accounts, mortgages, consumer loans, firm loans, and other
    financial contracts using product-specific empirical controls.
 8. Reconcile the micro holdings to national and financial accounts and create
@@ -762,8 +763,8 @@ The compiler and monthly transition must enforce:
 3. Pension receipt does not by itself imply inactivity.
 4. Each resident person belongs to exactly one household or declared collective
    household at a month boundary.
-5. Weighted employed persons equal weighted filled job positions within an
-   explicit tolerance.
+5. Weighted employed persons equal weighted primary employment assignments
+   within an explicit tolerance.
 6. Resident population evolves through births, deaths, immigration, and
    emigration; tourism never changes it.
 7. Every employment or financial contract references live entities and a valid

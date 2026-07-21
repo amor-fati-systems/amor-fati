@@ -61,7 +61,10 @@ object PopulationControlSchema:
     /** Labour-status population margins, by demographic or regional axis. */
     case Labour
 
-    /** Filled jobs, distinguished from employed residents. */
+    /** Primary employment assignments: one main-job assignment per employed
+      * resident, distinct from all job positions, FTE, vacancies, and secondary
+      * jobs.
+      */
     case Employment
 
   /** Identity and version of a classification system used by a table, such as a
@@ -211,9 +214,10 @@ object PopulationControlSchema:
       */
     case NotApplicable
 
-    /** Explicit 90+ residual outside the BAEL labour-status universe. This
-      * prevents an open-ended person band from being silently classified as
-      * inactive.
+    /** Explicit 90+ residual outside the BAEL labour-status universe. Every
+      * resident in that band uses this model-specific status: it remains in the
+      * person, demographic, and regional reconciliation totals, but is excluded
+      * from BAEL rates and primary employment assignments.
       */
     case NonBaelResidual
 
@@ -287,8 +291,8 @@ object PopulationControlSchema:
   )
 
   /** Labour-status population margin by residence region. Its employed total
-    * reconciles to filled jobs by workers' residence, not necessarily by
-    * workplace because commuters are represented explicitly.
+    * reconciles to primary employment assignments by workers' residence, not
+    * necessarily by workplace because commuters are represented explicitly.
     */
   final case class RegionalLabourRow(
       region: RegionCode,
@@ -296,9 +300,12 @@ object PopulationControlSchema:
       count: RepresentedCount,
   )
 
-  /** Filled jobs classified by worker residence, workplace, and production
-    * sector. The residence axis reconciles this table to employed residents;
-    * the workplace axis preserves commuting without treating jobs as residents.
+  /** Primary employment assignments classified by worker residence, workplace,
+    * and production sector. Each count is a jobholder/person count for one
+    * employed resident's main job, not a total-position, FTE, vacancy, or
+    * secondary-job count. The residence axis reconciles this table to employed
+    * residents; the workplace axis preserves commuting without treating jobs as
+    * residents.
     */
   final case class EmploymentRow(
       residenceRegion: RegionCode,
@@ -434,22 +441,22 @@ object PopulationControlSchema:
           ValidationError.InvalidLabourStatusAgeBand(row.status, row.ageBand)
 
     private def reconciliationChecks(bundle: Bundle): Vector[Reconciliation] =
-      val membershipByComposition        = totalBy(bundle.householdMembership.rows)(_.composition)(row => BigInt(row.count.value))
-      val householdCapacityByComposition = totalBy(bundle.households.rows)(_.composition)(row => BigInt(row.count.value) * row.size)
-      val personBySexAge                 = totalBy(bundle.persons.rows)(row => row.sex -> row.ageBand)(row => BigInt(row.count.value))
-      val demographicLabourBySexAge      = totalBy(bundle.demographicLabour.rows)(row => row.sex -> row.ageBand)(row => BigInt(row.count.value))
-      val personByRegion                 = totalBy(bundle.persons.rows)(_.region)(row => BigInt(row.count.value))
-      val regionalLabourByRegion         = totalBy(bundle.regionalLabour.rows)(_.region)(row => BigInt(row.count.value))
-      val demographicLabourByStatus      = totalBy(bundle.demographicLabour.rows)(_.status)(row => BigInt(row.count.value))
-      val regionalLabourByStatus         = totalBy(bundle.regionalLabour.rows)(_.status)(row => BigInt(row.count.value))
-      val employedByRegion               = totalBy(bundle.regionalLabour.rows.filter(_.status == LabourStatus.Employed))(_.region)(row => BigInt(row.count.value))
-      val jobsByResidenceRegion          = totalBy(bundle.employment.rows)(_.residenceRegion)(row => BigInt(row.count.value))
-      val personMembershipTolerance      = combinedTolerance(bundle.persons, bundle.householdMembership)
-      val householdMembershipTolerance   = combinedTolerance(bundle.households, bundle.householdMembership)
-      val personLabourTolerance          = combinedTolerance(bundle.persons, bundle.demographicLabour)
-      val regionalLabourTolerance        = combinedTolerance(bundle.persons, bundle.regionalLabour)
-      val labourMarginTolerance          = combinedTolerance(bundle.demographicLabour, bundle.regionalLabour)
-      val employmentTolerance            = combinedTolerance(bundle.regionalLabour, bundle.employment)
+      val membershipByComposition             = totalBy(bundle.householdMembership.rows)(_.composition)(row => BigInt(row.count.value))
+      val householdCapacityByComposition      = totalBy(bundle.households.rows)(_.composition)(row => BigInt(row.count.value) * row.size)
+      val personBySexAge                      = totalBy(bundle.persons.rows)(row => row.sex -> row.ageBand)(row => BigInt(row.count.value))
+      val demographicLabourBySexAge           = totalBy(bundle.demographicLabour.rows)(row => row.sex -> row.ageBand)(row => BigInt(row.count.value))
+      val personByRegion                      = totalBy(bundle.persons.rows)(_.region)(row => BigInt(row.count.value))
+      val regionalLabourByRegion              = totalBy(bundle.regionalLabour.rows)(_.region)(row => BigInt(row.count.value))
+      val demographicLabourByStatus           = totalBy(bundle.demographicLabour.rows)(_.status)(row => BigInt(row.count.value))
+      val regionalLabourByStatus              = totalBy(bundle.regionalLabour.rows)(_.status)(row => BigInt(row.count.value))
+      val employedByRegion                    = totalBy(bundle.regionalLabour.rows.filter(_.status == LabourStatus.Employed))(_.region)(row => BigInt(row.count.value))
+      val primaryAssignmentsByResidenceRegion = totalBy(bundle.employment.rows)(_.residenceRegion)(row => BigInt(row.count.value))
+      val personMembershipTolerance           = combinedTolerance(bundle.persons, bundle.householdMembership)
+      val householdMembershipTolerance        = combinedTolerance(bundle.households, bundle.householdMembership)
+      val personLabourTolerance               = combinedTolerance(bundle.persons, bundle.demographicLabour)
+      val regionalLabourTolerance             = combinedTolerance(bundle.persons, bundle.regionalLabour)
+      val labourMarginTolerance               = combinedTolerance(bundle.demographicLabour, bundle.regionalLabour)
+      val employmentTolerance                 = combinedTolerance(bundle.regionalLabour, bundle.employment)
 
       Vector(
         Reconciliation(
@@ -463,7 +470,7 @@ object PopulationControlSchema:
         reconcileMaps("person-to-demographic-labour", personBySexAge, demographicLabourBySexAge, personLabourTolerance) ++
         reconcileMaps("person-to-regional-labour", personByRegion, regionalLabourByRegion, regionalLabourTolerance) ++
         reconcileMaps("demographic-to-regional-labour", demographicLabourByStatus, regionalLabourByStatus, labourMarginTolerance) ++
-        reconcileMaps("employed-residents-to-filled-jobs", employedByRegion, jobsByResidenceRegion, employmentTolerance)
+        reconcileMaps("employed-residents-to-primary-job-assignments", employedByRegion, primaryAssignmentsByResidenceRegion, employmentTolerance)
 
     private def duplicateRows[A](table: String, rows: Vector[A])(key: A => String): Vector[ValidationError] =
       rows
