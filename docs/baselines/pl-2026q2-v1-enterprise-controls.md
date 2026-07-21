@@ -7,11 +7,13 @@ component of the retrospective `pl-2026q2-v1` baseline. It is not a baseline
 bundle, a calibration, or evidence that Amor Fati has compiled Polish
 enterprises. No empirical control rows are committed yet.
 
-The Q2 REGON workbook is now source-pinned below, but no derived control rows,
-enterprise-control loader, or accepted workforce bridge exists yet. The
-component therefore remains blocked. When accepted, it will be an
-`Experimental` input to the future full baseline bundle, not a `Canonical`
-baseline by itself.
+The Q2 REGON workbook is now source-pinned below, and the data-only
+[enterprise-control bundle format](../enterprise-control-bundle.md) is
+implemented and exercised by a synthetic fixture. No empirical normalized
+control rows, deterministic extractor, PKD crosswalk, or accepted workforce
+bridge exists yet. The component therefore remains blocked. When accepted, it
+will be an `Experimental` input to the future full baseline bundle, not a
+`Canonical` baseline by itself.
 
 It complements the [population-control component](pl-2026q2-v1-population-controls.md).
 The two components have different statistical units and source cadences, so
@@ -117,9 +119,10 @@ The component can be committed only when all conditions hold:
    agricultural or structural-business source without committing raw files.
 2. Record exact source metadata and classify every missing or unsupported
    source dimension before producing derived controls.
-3. Implement the data-only enterprise-control schema and loader around the
-   accepted source tables, including its component digest and validations.
-4. Generate a candidate component with a deterministic extraction and
+3. Implement a deterministic extraction around the accepted source tables. It
+   must verify the raw source hash and emit the existing data-only schema with
+   its component digest and validations.
+4. Generate a candidate component with that deterministic extraction and
    crosswalk command; review row-level controls and all residuals.
 5. Commit only derived TSV data, immutable component digest, crosswalk, and
    provenance record after review.
