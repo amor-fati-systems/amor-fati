@@ -343,9 +343,12 @@ object EnterpriseControlBundleLoader:
       sections: Vector[Pkd2007SectionCode],
       bands: Vector[ExpectedWorkersBandCode],
   ): Path =
-    if regions.isEmpty || regions.distinct.size != regions.size then snapshot.path(RegionsFile)
-    else if sections.isEmpty || sections.distinct.size != sections.size then snapshot.path(Pkd2007SectionsFile)
-    else if bands.isEmpty || bands.distinct.size != bands.size then snapshot.path(ExpectedWorkersFile)
+    if regions.isEmpty then snapshot.path(RegionsFile)
+    else if sections.isEmpty then snapshot.path(Pkd2007SectionsFile)
+    else if bands.isEmpty then snapshot.path(ExpectedWorkersFile)
+    else if regions.distinct.size != regions.size then snapshot.path(RegionsFile)
+    else if sections.distinct.size != sections.size then snapshot.path(Pkd2007SectionsFile)
+    else if bands.distinct.size != bands.size then snapshot.path(ExpectedWorkersFile)
     else snapshot.path(RegionsFile)
 
   private def bundleStructurePath(

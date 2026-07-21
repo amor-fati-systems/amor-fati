@@ -109,6 +109,20 @@ class EnterpriseControlBundleLoaderSpec extends AnyFlatSpec with Matchers:
           detail should include("registered-seat region")
         case other                                    => fail(s"expected invalid classification TSV, got: $other")
 
+  it should "prioritize an empty later classification over an earlier duplicate" in
+    withCopiedFixture: root =>
+      val regionsPath  = root.resolve("registered-seat-regions.tsv")
+      val sectionsPath = root.resolve("pkd2007-sections.tsv")
+      Files.writeString(regionsPath, "code\nnorth\nnorth\n", UTF_8)
+      Files.writeString(sectionsPath, "code\n", UTF_8)
+      refreshDigest(root)
+
+      EnterpriseControlBundleLoader.load(root) match
+        case Left(LoadError.InvalidTsv(path, detail)) =>
+          path shouldBe sectionsPath
+          detail should include("at least one PKD 2007 section")
+        case other                                    => fail(s"expected empty PKD classification failure, got: $other")
+
   it should "attribute a structural bundle failure to source-totals.tsv" in
     withCopiedFixture: root =>
       val totalsPath = root.resolve("source-totals.tsv")
