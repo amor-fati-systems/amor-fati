@@ -17,6 +17,12 @@ import java.time.LocalDate
   */
 object PopulationControlSchema:
 
+  /** Version of the logical population-control contract. Persisted control
+    * bundles must declare their compatible version once a data-only loader is
+    * introduced; this constant is also recorded by compilation manifests.
+    */
+  val SchemaVersion: Int = 1
+
   /** An integer count in the reference statistical population before any
     * sampling or representation weighting.
     *
