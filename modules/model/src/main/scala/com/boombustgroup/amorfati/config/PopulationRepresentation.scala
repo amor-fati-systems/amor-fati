@@ -142,9 +142,11 @@ object PopulationRepresentation:
       */
     case Institution
 
-  /** Baseline evidence that a cohort is eligible for systemic treatment. This
-    * is copied into the manifest as evidence: the representation layer does not
-    * infer it from a cohort ID, name, asset size, or number of employees.
+  /** Baseline evidence that an enterprise or institution cohort is eligible for
+    * systemic treatment. This is copied into the manifest as evidence: the
+    * representation layer does not infer it from a cohort ID, name, asset size,
+    * or number of employees. Residents and private households cannot carry this
+    * declaration.
     */
   enum SystemicEligibility:
     /** The baseline does not declare this cohort systemic. */
@@ -312,6 +314,11 @@ object PopulationRepresentation:
       */
     case SystemicCohortHasNonUnitWeight(cohort: CohortId, weight: RepresentationWeight)
 
+    /** A resident or private-household cohort claims a systemic declaration,
+      * which is reserved for baseline-declared enterprises and institutions.
+      */
+    case SystemicEligibilityAppliedToUnsupportedFamily(cohort: CohortId, family: RepresentedUnitFamily)
+
     /** The reader understands a different compiled-population manifest schema.
       */
     case UnsupportedManifestSchemaVersion(expected: Int, actual: Int)
@@ -425,11 +432,14 @@ object PopulationRepresentation:
       allocation.systemicEligibility match
         case SystemicEligibility.Ordinary                 => Vector.empty
         case SystemicEligibility.BaselineDeclaredSystemic =>
-          policy match
-            case SystemicInstitutionPolicy.CensusWeightOne =>
-              allocation.buckets.collect:
-                case bucket if bucket.weight.value != 1L =>
-                  ManifestValidationError.SystemicCohortHasNonUnitWeight(allocation.cohort, bucket.weight)
+          allocation.family match
+            case RepresentedUnitFamily.Enterprise | RepresentedUnitFamily.Institution =>
+              policy match
+                case SystemicInstitutionPolicy.CensusWeightOne =>
+                  allocation.buckets.collect:
+                    case bucket if bucket.weight.value != 1L =>
+                      ManifestValidationError.SystemicCohortHasNonUnitWeight(allocation.cohort, bucket.weight)
+            case family                                                               => Vector(ManifestValidationError.SystemicEligibilityAppliedToUnsupportedFamily(allocation.cohort, family))
 
     private def residentScaleErrors(allocation: CohortAllocation, requested: ResidentsPerAgent): Vector[ManifestValidationError] =
       val familyError     = Option.when(allocation.family != RepresentedUnitFamily.Resident)(

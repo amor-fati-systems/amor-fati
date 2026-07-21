@@ -66,6 +66,21 @@ class PopulationRepresentationSpec extends AnyFlatSpec with Matchers:
     Planner.validate(manifest(Vector(allocation))).isValid shouldBe true
   }
 
+  it should "reject a resident cohort marked as baseline-declared systemic before applying systemic policy" in {
+    val invalid = CohortAllocation(
+      cohort = CohortId("persons:declared-systemic"),
+      family = RepresentedUnitFamily.Resident,
+      mode = CohortRepresentationMode.RequestedResidentScale,
+      systemicEligibility = SystemicEligibility.BaselineDeclaredSystemic,
+      representedCount = RepresentedCount(5L),
+      buckets = Vector(WeightBucket(RepresentationWeight(5L), SimulatedUnitCount(1L))),
+    )
+    val errors  = Planner.validate(manifest(Vector(invalid))).errors
+
+    errors should contain(ManifestValidationError.SystemicEligibilityAppliedToUnsupportedFamily(invalid.cohort, RepresentedUnitFamily.Resident))
+    errors should not contain ManifestValidationError.SystemicCohortHasNonUnitWeight(invalid.cohort, RepresentationWeight(5L))
+  }
+
   it should "reject a resident allocation with a weight above the requested scale" in {
     val invalid = CohortAllocation(
       cohort = CohortId("persons:oversized"),
