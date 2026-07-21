@@ -245,7 +245,7 @@ distress remain separate dimensions and do not override that classification.
 
 The baseline must record the exact statistical definition and source release
 used for every control. `pl-2026q2-v1` is a retrospectively compiled Q2 baseline,
-not a claim that every control was observable on the opening boundary. Later
+not a claim that every control was observable on the reference-state boundary. Later
 source releases are admissible only with explicit observation and release dates.
 
 ## Population Storage Profile
@@ -410,7 +410,7 @@ A reference-economy bundle is a versioned, immutable input to population
 compilation. It should contain:
 
 - country and territorial coverage;
-- represented quarter, opening boundary, and source-vintage metadata;
+- represented quarter, reference-state boundary, and source-vintage metadata;
 - resident population controls by age, region, household type, and relevant
   labor-force dimensions;
 - household controls for size, composition, tenure, income, and financial
@@ -422,15 +422,17 @@ compilation. It should contain:
 - migration, births, deaths, pension receipt, and tourism control series.
 
 The first target bundle is `pl-2026q2-v1`. It represents Poland at the end of
-`2026-Q2`, with an opening month boundary of `2026-06-30`. A researcher selects
-that one identity; separate reference-period, valuation-date, and
+`2026-Q2`, with a reference-state boundary at the end of `2026-06-30`. This is
+the Q2 closing boundary in source statistics and the opening state for the
+first simulated month, July 2026. A researcher selects that one identity;
+separate reference-period, valuation-date, and
 information-cutoff settings are not part of the experiment configuration.
 
 Temporal detail remains mandatory inside the immutable bundle manifest. Every
 series retains its actual observation date or period, source release, access
 date, transformation, and reconciliation rule. Point-in-time stocks and prices
 also retain their applicable valuation date. Older annual or monthly sources
-and releases published after the opening boundary remain admissible as explicit
+and releases published after the reference-state boundary remain admissible as explicit
 bridges; the baseline is a retrospectively compiled reference economy, not a
 real-time information vintage.
 
@@ -456,22 +458,33 @@ The first compiler does not require one sparse cross-product of every person,
 household, labor, housing, and financial attribute. It requires a versioned set
 of mutually reconciled control tables with shared classifications:
 
-1. resident persons by NUTS-1 region, demographic sex, five-year age band with
+For `pl-2026q2-v1`, the shared regional classification is the 16 TERYT
+voivodeships recorded in its
+[population-control acquisition record](../baselines/pl-2026q2-v1-population-controls.md).
+This is the same axis for person, household, regional-labour, and employment
+reconciliation cells; it is not the legacy runtime's seven regional markets.
+
+1. resident persons by TERYT voivodeship, demographic sex, five-year age band with
    explicit `90+`, and private or collective residence type;
-2. private households by NUTS-1 region, household size, and composition class:
+2. private households by TERYT voivodeship, household size, and composition class:
    one person, couple without dependent children, couple with dependent
    children, lone parent, and other multi-person household;
 3. household members by composition class, member role, and broad age band,
    providing the bridge that makes person and household totals jointly
    constrain the synthetic population;
 4. labor status by demographic sex and age band, plus regional labor-status
-   totals, using the BAEL age universe; and
-5. employed residents by residence region and represented filled jobs by
-   workplace region and model production sector, with an origin-destination
-   commuting bridge or an explicit no-commuting limitation.
+   totals, using the supported BAEL age universes (15-89 for employed and
+   inactive residents, 15-74 for unemployed residents) plus the explicit 90+
+   residual. Residents aged 90+ map to `non_bael_residual`, participate in
+   demographic and regional reconciliation, and remain excluded from BAEL
+   denominators; and
+5. employed residents by residence TERYT voivodeship and represented primary
+   employment assignments by workplace TERYT voivodeship and model production
+   sector, with one main assignment per employed resident, an origin-destination
+   commuting bridge, or an explicit no-commuting limitation.
 
 Resident-person totals, private- and collective-household totals, labor
-identities, and filled-job reconciliation are hard controls subject only to
+identities, and primary-employment-assignment reconciliation are hard controls subject only to
 declared integer or fixed-point rounding tolerances. Membership cells are hard
 compiler controls only where the baseline classifies them as source-backed.
 Higher-order combinations such as
@@ -627,8 +640,8 @@ representation policy, and random seed:
    controls.
 5. Generate the firm population from joint sector, size, region, ownership,
    and employment controls.
-6. Match employed persons to weighted firm job positions; keep unemployed and
-   inactive populations distinct.
+6. Match employed persons to exactly one weighted primary firm employment
+   assignment; keep unemployed and inactive populations distinct.
 7. Assign deposit accounts, mortgages, consumer loans, firm loans, and other
    financial contracts using product-specific empirical controls.
 8. Reconcile the micro holdings to national and financial accounts and create
@@ -760,8 +773,8 @@ The compiler and monthly transition must enforce:
 3. Pension receipt does not by itself imply inactivity.
 4. Each resident person belongs to exactly one household or declared collective
    household at a month boundary.
-5. Weighted employed persons equal weighted filled job positions within an
-   explicit tolerance.
+5. Weighted employed persons equal weighted primary employment assignments
+   within an explicit tolerance.
 6. Resident population evolves through births, deaths, immigration, and
    emigration; tourism never changes it.
 7. Every employment or financial contract references live entities and a valid
@@ -839,7 +852,7 @@ indexes, views, and the data-oriented implementation boundary.
 
 | ID | Decision | First-target resolution | State |
 | --- | --- | --- | --- |
-| P-01 | Baseline identity and vintage | `pl-2026q2-v1`; end-`2026-Q2` opening boundary, one researcher-facing identity, immutable version and content digest, and per-source temporal provenance inside the bundle. Better reconciliation of the same quarter becomes v2. | Accepted, 2026-07-20 |
+| P-01 | Baseline identity and vintage | `pl-2026q2-v1`; end-`2026-Q2` reference-state boundary, which is the Q2 close in source statistics and the opening state for July simulation; one researcher-facing identity, immutable version and content digest, and per-source temporal provenance inside the bundle. Better reconciliation of the same quarter becomes v2. | Accepted, 2026-07-20 |
 | P-02 | Labor-control convention | All-age usual-resident population; BAEL/EU-LFS labor definitions, with employment ages 15-89, unemployment ages 15-74, under-15 `NotApplicable`, and a declared 90+ non-BAEL residual. | Accepted, 2026-07-20 |
 | P-03 | Minimum person-household controls | Reconciled person, household, membership, labor-status, and region-sector employment tables defined above; no mandatory full cross-product of every attribute. | Accepted, 2026-07-20 |
 | P-04 | Rare and systemic enterprises | Preserve every nonzero hard-control stratum with adaptive weights; preserve a named non-bank enterprise at weight one only by explicit baseline declaration. | Accepted, 2026-07-20 |

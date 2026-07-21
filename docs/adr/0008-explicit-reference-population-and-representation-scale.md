@@ -54,7 +54,9 @@ coordinate independent firm, worker, household, and macro-scaling parameters
 to approximate a population size.
 
 The first reference-economy bundle is `pl-2026q2-v1`, representing Poland at
-the end of `2026-Q2` with an opening month boundary of `2026-06-30`. The
+the end of `2026-Q2` with a reference-state boundary at the end of
+`2026-06-30`. This is the Q2 closing boundary in source statistics and the
+opening state for the first simulated month, July 2026. The
 researcher selects that one identity rather than coordinating separate period,
 valuation-date, and information-cutoff settings. Every source retains its
 actual observation period, release and access dates, valuation date where

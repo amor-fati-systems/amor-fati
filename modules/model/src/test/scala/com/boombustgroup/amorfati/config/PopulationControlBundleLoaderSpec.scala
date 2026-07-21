@@ -111,7 +111,7 @@ class PopulationControlBundleLoaderSpec extends AnyFlatSpec with Matchers:
       PopulationControlBundleLoader.load(root) match
         case Left(LoadError.ControlValidationFailed(errors)) =>
           val hasEmploymentReconciliationFailure = errors.exists:
-            case ValidationError.FailedReconciliation(reconciliation) => reconciliation.id == "employed-residents-to-filled-jobs:RegionCode(south)"
+            case ValidationError.FailedReconciliation(reconciliation) => reconciliation.id == "employed-residents-to-primary-job-assignments:RegionCode(south)"
             case _                                                    => false
           hasEmploymentReconciliationFailure shouldBe true
         case other                                           => fail(s"expected reconciliation failure, got: $other")
