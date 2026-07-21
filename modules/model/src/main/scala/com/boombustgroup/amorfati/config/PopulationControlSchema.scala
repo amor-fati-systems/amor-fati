@@ -2,40 +2,80 @@ package com.boombustgroup.amorfati.config
 
 import java.time.LocalDate
 
-/** Input contract for the person, household, labour, and employment controls
-  * used by the future population compiler.
+/** Versioned input contract for the person, household, labour, and employment
+  * control tables consumed by the future population compiler.
   *
-  * This is deliberately independent of the current agent population and
-  * SimParams. A real reference-economy bundle supplies these controls; this
-  * schema does not itself claim that any particular country or period has been
-  * compiled.
+  * A control is a count in the reference economy, not an agent count and not a
+  * scaling coefficient. The compiler will turn these controls into a finite
+  * represented population and explicit representation weights. It must not use
+  * this schema to derive an economy-wide monetary multiplier.
+  *
+  * The contract is deliberately independent of the current agent population and
+  * `SimParams`. Supplying a [[Bundle]] says only that a source bundle has been
+  * described and structurally reconciled; it does not claim that a particular
+  * country or period has been empirically qualified or compiled.
   */
 object PopulationControlSchema:
 
-  /** A non-negative quantity in the reference population, before sampling or
-    * representation weighting.
+  /** An integer count in the reference statistical population before any
+    * sampling or representation weighting.
+    *
+    * This type is intentionally distinct from a number of simulated agents: one
+    * simulated person can later represent many of these persons. It is also
+    * intentionally not a monetary quantity or a continuous weight.
     */
   final case class RepresentedCount(value: Long):
     require(value >= 0L, s"represented count must be non-negative: $value")
 
   enum ControlStrength:
-    /** The compiler must meet the row total within its declared tolerance. */
+    /** The compiler must reproduce the row total within the table's declared
+      * absolute tolerance. Hard controls constrain generated populations.
+      */
     case Hard
 
-    /** The row informs synthesis or calibration, but is not a binding total. */
+    /** The row is an empirically useful margin but is not a binding population
+      * total. A compiler may use it for synthesis or calibration while
+      * reporting any resulting residual explicitly.
+      */
     case CalibratedMargin
 
+  /** Broad family of a table. This prevents a table with plausible columns but
+    * the wrong economic meaning from being used in a control slot.
+    */
   enum ControlFamily:
+    /** Resident persons, including persons in collective residences. */
     case Persons
+
+    /** Private households, not the people living in them. */
     case Households
+
+    /** Person positions within private households, not household counts. */
     case HouseholdMembership
+
+    /** Labour-status population margins, by demographic or regional axis. */
     case Labour
+
+    /** Filled jobs, distinguished from employed residents. */
     case Employment
 
+  /** Identity and version of a classification system used by a table, such as a
+    * territorial, age-band, or production-sector classification.
+    *
+    * Values in the rows must be interpreted against this reference; a label
+    * alone is not sufficient for reproducibility when classifications change.
+    */
   final case class ClassificationRef(id: String, version: String):
     require(id.trim.nonEmpty, "classification ID must be non-empty")
     require(version.trim.nonEmpty, s"classification $id must have a version")
 
+  /** Provenance of a source table after any transformation required to make it
+    * a population control.
+    *
+    * `observationPeriod` is when the measured population applies, `release`
+    * identifies the published vintage, and `accessedAt` records when Amor Fati
+    * retrieved it. `transformation` must explain operations such as category
+    * aggregation, interpolation, or an adjustment of statistical universes.
+    */
   final case class SourceProvenance(
       provider: String,
       sourceLocation: String,
@@ -50,8 +90,14 @@ object PopulationControlSchema:
     require(release.trim.nonEmpty, s"release for $provider must be non-empty")
     require(transformation.trim.nonEmpty, s"transformation for $provider must be non-empty")
 
-  /** Metadata that makes a control table reproducible and its reconciliation
-    * policy explicit.
+  /** Metadata that defines a table's statistical meaning and makes its use
+    * reproducible.
+    *
+    * `statisticalUniverse` names the population actually counted, for example
+    * resident persons or private households. `absoluteTolerance` is expressed
+    * in [[RepresentedCount]] units and applies only to reconciliations that use
+    * this table; it is not a generic percentage error or a licence to rescale
+    * the economy.
     */
   final case class TableMetadata(
       family: ControlFamily,
@@ -69,29 +115,58 @@ object PopulationControlSchema:
       s"${family.toString} must not repeat a classification reference",
     )
 
+  /** One non-empty control table. The row type fixes its dimensions while the
+    * metadata fixes its universe, source, classifications, and strength.
+    */
   final case class ControlTable[A](metadata: TableMetadata, rows: Vector[A]):
     require(rows.nonEmpty, s"${metadata.family.toString} controls must not be empty")
 
+  /** Stable code from the bundle's declared territorial classification, not a
+    * `Region` enum from the current simulation runtime.
+    */
   final case class RegionCode(value: String):
     require(value.trim.nonEmpty, "region code must be non-empty")
 
+  /** Stable code from the bundle's declared production classification. It
+    * constrains jobs and firms, rather than being a current runtime sector ID.
+    */
   final case class ProductionSectorCode(value: String):
     require(value.trim.nonEmpty, "production sector code must be non-empty")
 
-  /** Closed age interval, or an upper open interval such as 90+. */
+  /** A closed age interval, or an upper-open interval such as `90+`.
+    *
+    * Bands are values rather than bare labels so the validator can reject
+    * overlapping classifications and enforce labour-statistics age universes.
+    */
   final case class AgeBand(code: String, minInclusive: Int, maxInclusive: Option[Int]):
     require(code.trim.nonEmpty, "age-band code must be non-empty")
     require(minInclusive >= 0, s"age-band minimum must be non-negative: $minInclusive")
     require(maxInclusive.forall(_ >= minInclusive), s"age-band maximum must be at least $minInclusive")
 
   enum DemographicSex:
+    /** Female category in the baseline's declared demographic classification.
+      */
     case Female
+
+    /** Male category in the baseline's declared demographic classification. */
     case Male
 
+  /** Residence perimeter for person controls. Only private-household persons
+    * reconcile to household-membership positions.
+    */
   enum ResidenceType:
+    /** Person resides in a private household represented by household controls.
+      */
     case PrivateHousehold
+
+    /** Person resides outside private households, for example in an
+      * institutional or other collective residence.
+      */
     case CollectiveResidence
 
+  /** Household composition used for both household counts and member-position
+    * controls. Their shared value permits the capacity reconciliation.
+    */
   enum HouseholdComposition:
     case OnePerson
     case CoupleWithoutDependentChildren
@@ -99,24 +174,48 @@ object PopulationControlSchema:
     case LoneParent
     case OtherMultiPerson
 
+  /** Role of a represented member position within a household-composition
+    * margin. These roles are not legal relationships or runtime agent classes.
+    */
   enum HouseholdMemberRole:
     case Adult
     case DependentChild
     case OtherMember
 
+  /** Labour-force status used to partition demographic and regional population
+    * margins. The permitted age bands follow the stated BAEL convention; a
+    * baseline that uses another convention must make that change explicit.
+    */
   enum LabourStatus:
+    /** In work within the employment age universe. */
     case Employed
+
+    /** In the labour force without work, within the unemployment age universe.
+      */
     case Unemployed
+
+    /** Outside the labour force, but within the inactive-population age
+      * universe.
+      */
     case Inactive
 
-    /** Persons younger than the labour-force universe. */
+    /** Persons younger than the labour-force universe. They still reconcile to
+      * the resident population but are neither employed, unemployed, nor
+      * inactive.
+      */
     case NotApplicable
 
-    /** Declared 90+ residual outside the BAEL labour-status universe. */
+    /** Explicit 90+ residual outside the BAEL labour-status universe. This
+      * prevents an open-ended person band from being silently classified as
+      * inactive.
+      */
     case NonBaelResidual
 
-  /** Classifications accepted by the controls. The target compiler receives
-    * these axes from a baseline rather than from current runtime enums.
+  /** Closed vocabularies accepted by this bundle's rows.
+    *
+    * The compiler receives these axes from a baseline rather than current
+    * runtime enums. Rows using an undeclared code or band are invalid even when
+    * their labels look familiar.
     */
   final case class Classifications(
       region: ClassificationRef,
@@ -134,6 +233,11 @@ object PopulationControlSchema:
     require(productionSectors.distinct.size == productionSectors.size, "population-control production sectors must be unique")
     require(nonOverlapping(ageBands), "population-control age bands must not overlap")
 
+  /** Resident-person count by territory, demographic sex, age band, and
+    * residence perimeter. Counts from `PrivateHousehold` rows must reconcile to
+    * household-member positions; collective-residence rows remain part of the
+    * total person population but have no household membership counterpart.
+    */
   final case class PersonRow(
       region: RegionCode,
       sex: DemographicSex,
@@ -142,6 +246,10 @@ object PopulationControlSchema:
       count: RepresentedCount,
   )
 
+  /** Private-household count by region, observed size, and composition. The
+    * product of `size` and `count` is the household capacity used to reconcile
+    * against [[HouseholdMembershipRow]] controls.
+    */
   final case class HouseholdRow(
       region: RegionCode,
       size: Int,
@@ -150,7 +258,10 @@ object PopulationControlSchema:
   ):
     require(size > 0, s"household size must be positive: $size")
 
-  /** Counts represented member positions, not a count of households. */
+  /** Count of represented person positions in private households, not a count
+    * of households. A composition's rows must sum to the capacity implied by
+    * corresponding [[HouseholdRow]] controls.
+    */
   final case class HouseholdMembershipRow(
       composition: HouseholdComposition,
       memberRole: HouseholdMemberRole,
@@ -158,6 +269,10 @@ object PopulationControlSchema:
       count: RepresentedCount,
   )
 
+  /** Labour-status population margin by demographic sex and age. Together, its
+    * statuses must partition the corresponding person count and reconcile to
+    * the independent regional labour margin.
+    */
   final case class DemographicLabourRow(
       sex: DemographicSex,
       ageBand: AgeBand,
@@ -165,14 +280,19 @@ object PopulationControlSchema:
       count: RepresentedCount,
   )
 
+  /** Labour-status population margin by residence region. Its employed total
+    * reconciles to filled jobs by workers' residence, not necessarily by
+    * workplace because commuters are represented explicitly.
+    */
   final case class RegionalLabourRow(
       region: RegionCode,
       status: LabourStatus,
       count: RepresentedCount,
   )
 
-  /** Filled jobs classified by resident origin, workplace, and production
-    * sector. The residence axis reconciles this table to employed residents.
+  /** Filled jobs classified by worker residence, workplace, and production
+    * sector. The residence axis reconciles this table to employed residents;
+    * the workplace axis preserves commuting without treating jobs as residents.
     */
   final case class EmploymentRow(
       residenceRegion: RegionCode,
@@ -181,9 +301,11 @@ object PopulationControlSchema:
       count: RepresentedCount,
   )
 
-  /** Five logical control families. Labour contains both demographic and
-    * regional margins because both are required to constrain the same status
-    * population.
+  /** Coherent set of the five logical control families for one baseline.
+    *
+    * Labour has two physical tables because demographic and regional margins
+    * independently constrain the same status population. They are both
+    * required: neither is derived from the other by this schema.
     */
   final case class Bundle(
       classifications: Classifications,
@@ -195,6 +317,11 @@ object PopulationControlSchema:
       employment: ControlTable[EmploymentRow],
   )
 
+  /** Evidence for one accounting-style count reconciliation. `expected` is the
+    * authoritative side named by the reconciliation, `actual` is the compared
+    * side, and `residual` is actual minus expected. `BigInt` avoids overflow
+    * when aggregating national counts.
+    */
   final case class Reconciliation(
       id: String,
       expected: BigInt,
@@ -204,6 +331,10 @@ object PopulationControlSchema:
     def residual: BigInt = actual - expected
     def passes: Boolean  = residual.abs <= BigInt(tolerance)
 
+  /** Structural or reconciliation failure in a [[Bundle]]. These errors say
+    * that a bundle cannot safely enter a population compiler; they do not judge
+    * the empirical credibility of its source or calibration.
+    */
   enum ValidationError:
     case WrongControlFamily(expected: ControlFamily, actual: ControlFamily)
     case MissingClassification(table: ControlFamily, required: ClassificationRef)
@@ -214,6 +345,9 @@ object PopulationControlSchema:
     case InvalidLabourStatusAgeBand(status: LabourStatus, ageBand: AgeBand)
     case FailedReconciliation(reconciliation: Reconciliation)
 
+  /** Complete structural-validation evidence. Reconciliations are retained even
+    * when they pass so a baseline manifest can report the residuals.
+    */
   final case class ValidationReport(
       reconciliations: Vector[Reconciliation],
       errors: Vector[ValidationError],
@@ -222,6 +356,13 @@ object PopulationControlSchema:
 
   object Validator:
 
+    /** Validate a bundle's declared classification axes, duplicate cells,
+      * labour-age convention, and cross-table count identities.
+      *
+      * This is a pre-compilation gate. It does not synthesize agents, estimate
+      * missing margins, validate source methodology, or qualify a baseline for
+      * scientific use.
+      */
     def validate(bundle: Bundle): ValidationReport =
       val classifications = bundle.classifications
       val errors          =
