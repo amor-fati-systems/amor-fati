@@ -7,7 +7,7 @@ import scala.util.Try
 
 private[amorfati] object TsvRows:
 
-  final case class Row(values: Map[String, String]):
+  final case class Row(values: Map[String, String], lineNumber: Int):
     def required(column: String): Either[String, String] =
       optional(column).toRight(s"Missing required column: $column")
 
@@ -22,24 +22,41 @@ private[amorfati] object TsvRows:
   ): Either[String, Vector[Row]] =
     Try(Files.readAllLines(path, StandardCharsets.UTF_8).asScala.toVector).toEither.left
       .map(err => s"Failed to read $path: ${err.getMessage}")
-      .flatMap: lines =>
-        val records = logicalRecords(lines).filter(record => record.text.trim.nonEmpty && !record.text.trim.startsWith("#"))
-        records.headOption match
-          case None               => Left(s"$path is empty")
-          case Some(headerRecord) =>
-            for
-              header <- parseLine(headerRecord.text).left.map(err => s"$path line ${headerRecord.lineNumber}: $err")
-              _      <- validateHeader(path, header, requiredColumns)
-              rows   <- sequence(
-                records.tail
-                  .map(record =>
-                    parseLine(record.text).left
-                      .map(err => s"$path line ${record.lineNumber}: $err")
-                      .flatMap(cells => rowFromCells(path, record.lineNumber, header, cells)),
-                  )
-                  .toVector,
+      .flatMap(lines => readRows(path, lines, requiredColumns))
+
+  /** Parse already-read UTF-8 text while retaining the supplied path for
+    * diagnostics. Callers with an integrity-checked input snapshot use this
+    * overload so parsing cannot observe bytes different from those hashed.
+    */
+  def readRows(
+      path: Path,
+      content: String,
+      requiredColumns: Vector[String],
+  ): Either[String, Vector[Row]] =
+    readRows(path, content.linesIterator.toVector, requiredColumns)
+
+  private def readRows(
+      path: Path,
+      lines: Vector[String],
+      requiredColumns: Vector[String],
+  ): Either[String, Vector[Row]] =
+    val records = logicalRecords(lines).filter(record => record.text.trim.nonEmpty && !record.text.trim.startsWith("#"))
+    records.headOption match
+      case None               => Left(s"$path is empty")
+      case Some(headerRecord) =>
+        for
+          header <- parseLine(headerRecord.text).left.map(err => s"$path line ${headerRecord.lineNumber}: $err")
+          _      <- validateHeader(path, header, requiredColumns)
+          rows   <- sequence(
+            records.tail
+              .map(record =>
+                parseLine(record.text).left
+                  .map(err => s"$path line ${record.lineNumber}: $err")
+                  .flatMap(cells => rowFromCells(path, record.lineNumber, header, cells)),
               )
-            yield rows
+              .toVector,
+          )
+        yield rows
 
   private def validateHeader(path: Path, header: Vector[String], requiredColumns: Vector[String]): Either[String, Unit] =
     val duplicates = header.groupBy(identity).collect { case (column, values) if values.length > 1 => column }.toVector.sorted
@@ -50,7 +67,7 @@ private[amorfati] object TsvRows:
   private def rowFromCells(path: Path, lineNumber: Int, header: Vector[String], cells: Vector[String]): Either[String, Row] =
     Either.cond(
       cells.length == header.length,
-      Row(header.zip(cells).toMap),
+      Row(header.zip(cells).toMap, lineNumber),
       s"$path line $lineNumber has ${cells.length} cells, expected ${header.length}",
     )
 

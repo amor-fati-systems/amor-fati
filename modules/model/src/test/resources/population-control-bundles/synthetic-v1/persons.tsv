@@ -1,0 +1,10 @@
+region	sex	age_band	residence	count
+north	female	0-14	private_household	10
+north	male	0-14	private_household	10
+north	female	15-74	private_household	30
+north	male	15-74	private_household	30
+north	male	15-74	collective_residence	2
+south	female	0-14	private_household	8
+south	male	0-14	private_household	8
+south	female	15-74	private_household	20
+south	male	15-74	private_household	20

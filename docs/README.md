@@ -20,6 +20,7 @@ inventory below, so new documentation cannot silently become orphaned.
 | SFC matrix and ledger-derived evidence | [SFC matrix evidence](sfc-matrix-evidence.md) and [model equations to SFC map](model-equations-to-sfc-map.md) |
 | Calibration and empirical validation | [Calibration register](calibration-register.md), [data bridge](data-bridge-national-financial-accounts.md), and [empirical validation report](empirical-validation-report.md) |
 | Proposed population, baseline, and representation scale | [Population and representation RFC](rfc/0001-population-and-representation.md) |
+| Implemented population-control component format | [Population-control bundle format](population-control-bundle.md) |
 | Proposed public Research API and notebook runtime | [Research API and notebook runtime RFC](rfc/0002-research-api-and-notebook-runtime.md) |
 | Proposed model ontology and state architecture | [Model ontology and state architecture RFC](rfc/0003-model-ontology-and-state-architecture.md) |
 | Proposed JVM, JIT, GC, and worker-runtime policy | [JVM runtime, JIT, and garbage collection policy RFC](rfc/0004-jvm-runtime-jit-and-garbage-collection-policy.md) |
@@ -67,6 +68,7 @@ as the operational entry point.
 | [docs/institutional-sector-equations.md](institutional-sector-equations.md) | Canonical reviewer spine | Paper-facing public, monetary, external, insurance, NBFI, TFI, quasi-fiscal, and JST equations. |
 | [docs/model-card.md](model-card.md) | Canonical reviewer spine | Intended use, uses outside scope, evidence status, known limitations, reproducibility, and responsible interpretation. |
 | [docs/model-notation-and-state-vector.md](model-notation-and-state-vector.md) | Canonical reviewer spine | Canonical notation, state-vector definitions, symbols, ownership boundaries, and implementation anchors. |
+| [docs/population-control-bundle.md](population-control-bundle.md) | Architecture | Data-only TSV format, integrity rules, source metadata, and reconciliation boundary for the population-control baseline component. |
 | [docs/rfc/README.md](rfc/README.md) | Design proposal / RFC | Index and lifecycle policy for active, implemented, and superseded RFCs. |
 | [docs/model-specification.md](model-specification.md) | Canonical reviewer spine | Canonical publication-facing model specification, reviewer reading path, and first scientific entry point. |
 | [docs/monthly-transition-function.md](monthly-transition-function.md) | Canonical reviewer spine | Formal monthly transition contract from pre-boundary state through same-month economics, ledger execution, SFC validation, and next-pre materialization. |

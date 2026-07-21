@@ -1,0 +1,5 @@
+residence_region	workplace_region	production_sector	count
+north	north	goods	30
+north	south	services	20
+south	north	goods	12
+south	south	services	20

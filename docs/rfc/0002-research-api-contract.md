@@ -375,9 +375,11 @@ Its ID and manifest must make its migration-only status visible.
 The first two boundaries now exist as the internal `BaselineCatalog` kernel.
 It verifies the legacy `SimParams.defaults` payload against a reviewed pinned
 digest and model-contract marker before preparation, then resolves it into a
-logical `BaselineBundle` with explicit component availability. It has no public
-Research API facade, filesystem bundle format, or real Q2 baseline. The
-remaining steps above remain required.
+logical `BaselineBundle` with explicit component availability. A separate
+data-only TSV loader now verifies the population-control component, including
+source metadata and cross-table reconciliation, but there is still no public
+Research API facade, full baseline-bundle filesystem format, or real Q2
+baseline. The remaining steps above remain required.
 
 ## Decision Register
 
