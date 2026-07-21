@@ -97,6 +97,30 @@ class EnterpriseControlBundleLoaderSpec extends AnyFlatSpec with Matchers:
           hasSourceTotalFailure shouldBe true
         case other                                           => fail(s"expected reconciliation failure, got: $other")
 
+  it should "attribute a structural classification failure to its classification file" in
+    withCopiedFixture: root =>
+      val regionsPath = root.resolve("registered-seat-regions.tsv")
+      Files.writeString(regionsPath, "code\n", UTF_8)
+      refreshDigest(root)
+
+      EnterpriseControlBundleLoader.load(root) match
+        case Left(LoadError.InvalidTsv(path, detail)) =>
+          path shouldBe regionsPath
+          detail should include("registered-seat region")
+        case other                                    => fail(s"expected invalid classification TSV, got: $other")
+
+  it should "attribute a structural bundle failure to source-totals.tsv" in
+    withCopiedFixture: root =>
+      val totalsPath = root.resolve("source-totals.tsv")
+      Files.writeString(totalsPath, "expected_workers_band\tcount\n", UTF_8)
+      refreshDigest(root)
+
+      EnterpriseControlBundleLoader.load(root) match
+        case Left(LoadError.InvalidTsv(path, detail)) =>
+          path shouldBe totalsPath
+          detail should include("source totals")
+        case other                                    => fail(s"expected invalid source totals TSV, got: $other")
+
   it should "report the physical line for an invalid residual row" in
     withCopiedFixture: root =>
       val residualsPath = root.resolve("source-residuals.tsv")

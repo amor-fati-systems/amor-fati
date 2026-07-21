@@ -204,7 +204,9 @@ object EnterpriseControlBundleLoader:
       bands    <- readTypedRows(snapshot, ExpectedWorkersFile, Vector("code"))((row, _) =>
         row.required("code").flatMap(value => buildValue(ExpectedWorkersBandCode(value))),
       )
-      classes  <- buildManifestValue(snapshot, "classifications")(Classifications(region, pkd, band, regions, sections, bands))
+      classes  <- buildStructuralValue(classificationStructurePath(snapshot, regions, sections, bands), "classifications")(
+        Classifications(region, pkd, band, regions, sections, bands),
+      )
     yield classes
 
   private def readControls(snapshot: ComponentSnapshot, classifications: Classifications): Either[LoadError, Bundle] =
@@ -234,7 +236,7 @@ object EnterpriseControlBundleLoader:
           band  <- known(row, "expected_workers_band", bands)
           count <- enterpriseCount(row)
         yield SourceTotalRow(band, count)
-      bundle    <- buildManifestValue(snapshot, "enterprise controls")(Bundle(classifications, strata, residuals, totals))
+      bundle    <- buildStructuralValue(bundleStructurePath(snapshot, strata, totals), "enterprise controls")(Bundle(classifications, strata, residuals, totals))
     yield bundle
 
   private def ensureSupportedSchema(manifest: Manifest): Either[LoadError, Unit] =
@@ -335,8 +337,28 @@ object EnterpriseControlBundleLoader:
   private def parseDate(value: String, column: String): Either[String, LocalDate] =
     Try(LocalDate.parse(value)).toEither.left.map(_ => s"$column must be an ISO-8601 date, got: $value")
 
-  private def buildManifestValue[A](snapshot: ComponentSnapshot, label: String)(value: => A): Either[LoadError, A] =
-    buildValue(value).left.map(detail => LoadError.InvalidManifest(snapshot.path(ManifestFile), s"invalid $label: $detail"))
+  private def classificationStructurePath(
+      snapshot: ComponentSnapshot,
+      regions: Vector[RegisteredSeatRegionCode],
+      sections: Vector[Pkd2007SectionCode],
+      bands: Vector[ExpectedWorkersBandCode],
+  ): Path =
+    if regions.isEmpty || regions.distinct.size != regions.size then snapshot.path(RegionsFile)
+    else if sections.isEmpty || sections.distinct.size != sections.size then snapshot.path(Pkd2007SectionsFile)
+    else if bands.isEmpty || bands.distinct.size != bands.size then snapshot.path(ExpectedWorkersFile)
+    else snapshot.path(RegionsFile)
+
+  private def bundleStructurePath(
+      snapshot: ComponentSnapshot,
+      strata: Vector[EnterpriseStratumRow],
+      totals: Vector[SourceTotalRow],
+  ): Path =
+    if strata.isEmpty then snapshot.path(EnterpriseStrataFile)
+    else if totals.isEmpty then snapshot.path(SourceTotalsFile)
+    else snapshot.path(EnterpriseStrataFile)
+
+  private def buildStructuralValue[A](path: Path, label: String)(value: => A): Either[LoadError, A] =
+    buildValue(value).left.map(detail => LoadError.InvalidTsv(path, s"invalid $label: $detail"))
 
   private def buildValue[A](value: => A): Either[String, A] =
     Try(value).toEither.left.map(error => Option(error.getMessage).getOrElse(error.getClass.getSimpleName))
