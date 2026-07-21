@@ -1,0 +1,9 @@
+region	status	count
+north	employed	50
+north	unemployed	6
+north	inactive	6
+north	not_applicable	20
+south	employed	32
+south	unemployed	4
+south	inactive	4
+south	not_applicable	16

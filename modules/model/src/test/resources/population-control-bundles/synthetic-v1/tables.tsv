@@ -1,0 +1,7 @@
+table	control_family	statistical_universe	strength	absolute_tolerance	source_provider	source_location	observation_period	release	accessed_at	transformation
+persons	persons	synthetic resident population	hard	0	synthetic-fixture	test://population-controls	fixture-period	fixture-release	2026-01-01	hand-constructed reconciliation fixture
+households	households	synthetic private households	hard	0	synthetic-fixture	test://population-controls	fixture-period	fixture-release	2026-01-01	hand-constructed reconciliation fixture
+household_membership	household_membership	synthetic private-household member positions	hard	0	synthetic-fixture	test://population-controls	fixture-period	fixture-release	2026-01-01	hand-constructed reconciliation fixture
+demographic_labour	labour	synthetic resident population	hard	0	synthetic-fixture	test://population-controls	fixture-period	fixture-release	2026-01-01	hand-constructed reconciliation fixture
+regional_labour	labour	synthetic resident population	hard	0	synthetic-fixture	test://population-controls	fixture-period	fixture-release	2026-01-01	hand-constructed reconciliation fixture
+employment	employment	synthetic filled jobs	hard	0	synthetic-fixture	test://population-controls	fixture-period	fixture-release	2026-01-01	hand-constructed reconciliation fixture
