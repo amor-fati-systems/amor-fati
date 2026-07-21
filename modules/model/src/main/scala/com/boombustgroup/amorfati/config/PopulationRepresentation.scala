@@ -31,10 +31,23 @@ object PopulationRepresentation:
 
   /** Policy for ordinary enterprises. A stratified compiler preserves control
     * strata with adaptive weights; a census compiler keeps every enterprise at
-    * weight one when that is an explicitly supported workload.
+    * weight one when that is an explicitly supported workload. This policy
+    * applies to the synthetic population of ordinary firms; it does not decide
+    * whether a firm is a named systemic institution.
     */
   enum EnterpriseRepresentationPolicy:
+    /** Synthesize ordinary firms by controlled strata such as sector, region,
+      * size, and ownership. A simulated firm may represent several firms, but
+      * the compiler must report its integral stratum weight and preserve every
+      * nonzero hard-control stratum.
+      */
     case Stratified
+
+    /** Represent every ordinary firm in the declared enterprise population at
+      * weight one. This is primarily a `1:1` or validation mode: it can be
+      * expensive and still does not imply that synthetic firms are real legal
+      * entities with observed identities.
+      */
     case Census
 
   /** Policy for nonzero rare control strata. Neither option permits a stratum
@@ -52,11 +65,20 @@ object PopulationRepresentation:
     * threshold.
     */
   enum SystemicInstitutionPolicy:
+    /** Preserve every baseline-declared systemic institution as one simulated
+      * unit with representation weight one. This is distinct from a census of
+      * all ordinary enterprises.
+      */
     case CensusWeightOne
 
   /** Complete representation choice selected for one run. The same baseline may
     * be compiled at different resolutions, but the baseline's empirical
     * controls and monetary inputs do not change as a consequence.
+    *
+    * `residentsPerAgent` controls resident resolution only. The two enterprise
+    * policies define how a future compiler treats ordinary and rare enterprise
+    * strata; `systemicInstitutionPolicy` governs only institutions explicitly
+    * named by the baseline.
     */
   final case class RepresentationSpec(
       residentsPerAgent: ResidentsPerAgent,
@@ -78,11 +100,15 @@ object PopulationRepresentation:
     override def toString: String = value
 
   object PopulationControlsDigest:
+    /** Validate a digest supplied by a persisted control bundle. */
     def fromSha256Hex(value: String): PopulationControlsDigest =
       val normalized = Option(value).fold("")(_.trim.toLowerCase)
       require(normalized.matches("[0-9a-f]{64}"), "population-controls digest must be a 64-character SHA-256 hex value")
       PopulationControlsDigest(normalized)
 
+    /** Compute the digest of canonical UTF-8 control payload bytes. A future
+      * loader, not callers, is responsible for defining those canonical bytes.
+      */
     def sha256Utf8(value: String): PopulationControlsDigest =
       val digest = MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8))
       val hex    = digest.iterator.map(byte => f"${byte & 0xff}%02x").mkString
@@ -94,9 +120,26 @@ object PopulationRepresentation:
     * enterprises.
     */
   enum RepresentedUnitFamily:
+    /** Usual residents, including resident cohorts that later receive person
+      * identifiers. The public `1:N` scale is defined in these units.
+      */
     case Resident
+
+    /** Private households as distinct economic decision units. Their weights
+      * cannot be inferred solely from resident weights because membership and
+      * household composition must remain coherent.
+      */
     case PrivateHousehold
+
+    /** Ordinary or named enterprises. Their weights must reconcile both firm
+      * counts and employment, so they are not derived from `residentsPerAgent`.
+      */
     case Enterprise
+
+    /** A named institutional unit such as a bank, central bank, government, or
+      * foreign-sector anchor. Institutional census treatment is declared by a
+      * baseline rather than inferred from balance-sheet size.
+      */
     case Institution
 
   /** Stable, baseline-defined identity of one controlled cohort. It should be
@@ -122,14 +165,17 @@ object PopulationRepresentation:
     /** Explicit weight-one allocation for census or named systemic units. */
     case CensusWeightOne
 
-  /** Number of simulated units, held separately from the true population count
-    * so model code cannot treat an agent-row count as an economic aggregate.
+  /** Number of simulated units represented by a manifest bucket, held
+    * separately from the true population count so model code cannot treat an
+    * agent-row count as an economic aggregate.
     */
   final case class SimulatedUnitCount(value: Long):
     require(value >= 0L, s"simulated unit count must be non-negative: $value")
 
   /** Exact integral number of represented family units carried by one simulated
-    * unit. Continuous weights are intentionally unsupported.
+    * unit. For example, a resident weight of 1000 represents 1000 residents; it
+    * is neither a probability nor a monetary multiplier. Continuous weights are
+    * intentionally unsupported.
     */
   final case class RepresentationWeight(value: Long):
     require(value > 0L, s"representation weight must be positive: $value")
@@ -165,9 +211,15 @@ object PopulationRepresentation:
       s"cohort ${cohort.value} must order representation-weight buckets from largest to smallest",
     )
 
+    /** Total simulated units after expanding buckets. It is intentionally a
+      * technical count and must not be used as a represented economic total.
+      */
     def simulatedUnitCount: BigInt =
       buckets.iterator.map(bucket => BigInt(bucket.simulatedUnits.value)).foldLeft(BigInt(0))(_ + _)
 
+    /** True-scale quantity implied by the explicit bucket weights. This must
+      * equal [[representedCount]] before the manifest can be published.
+      */
     def representedByAllocation: BigInt =
       buckets.iterator
         .map(bucket => BigInt(bucket.weight.value) * bucket.simulatedUnits.value)
@@ -178,8 +230,11 @@ object PopulationRepresentation:
     * become an explicit manifest-schema revision rather than an implicit drift.
     */
   final case class CohortReconciliation(cohort: CohortId, expected: BigInt, actual: BigInt):
+    /** Implied represented quantity minus the control-table quantity. */
     def residual: BigInt = actual - expected
-    def passes: Boolean  = residual == 0
+
+    /** The first manifest schema permits no rounding residual. */
+    def passes: Boolean = residual == 0
 
   /** Persistable evidence emitted by a population compiler. It records the
     * exact baseline identity and digest, population controls, representation
@@ -211,21 +266,58 @@ object PopulationRepresentation:
     * published as evidence for a compiled population.
     */
   enum ManifestValidationError:
+    /** A non-resident cohort used a scale that has meaning only for residents.
+      */
     case ResidentScaleAppliedToNonResident(cohort: CohortId, family: RepresentedUnitFamily)
+
+    /** A resident bucket represents more residents than the researcher's
+      * requested maximum resolution permits.
+      */
     case ResidentWeightExceedsRequestedScale(cohort: CohortId, weight: RepresentationWeight, requested: ResidentsPerAgent)
+
+    /** A resident allocation has more than one residual bucket or a residual
+      * represented by multiple rows, so it is not the canonical `1:N` split.
+      */
     case NonCanonicalResidentScaleAllocation(cohort: CohortId)
+
+    /** A cohort declared as census or systemic has a weight other than one. */
     case CensusAllocationHasNonUnitWeight(cohort: CohortId, weight: RepresentationWeight)
+
+    /** A rare-stratum allocation used an adaptive weight although the selected
+      * policy requires every represented unit to remain separate.
+      */
     case AdaptiveStratumViolatesUnitWeightPolicy(cohort: CohortId, weight: RepresentationWeight)
+
+    /** An enterprise allocation is weighted even though the selected ordinary
+      * enterprise policy is a census.
+      */
     case EnterpriseCensusAllocationHasNonUnitWeight(cohort: CohortId, weight: RepresentationWeight)
+
+    /** The reader understands a different compiled-population manifest schema.
+      */
     case UnsupportedManifestSchemaVersion(expected: Int, actual: Int)
+
+    /** The manifest refers to an input-control contract that this compiler does
+      * not understand and must not silently reinterpret.
+      */
     case UnsupportedPopulationControlSchemaVersion(expected: Int, actual: Int)
+
+    /** Explicit bucket weights fail to reproduce the true-scale cohort count.
+      */
     case FailedReconciliation(reconciliation: CohortReconciliation)
 
-  /** Complete validation evidence for a population-compilation manifest. */
+  /** Complete validation evidence for a population-compilation manifest.
+    * Reconciliations are retained even when valid so a result bundle can show
+    * the proof of represented-count conservation.
+    */
   final case class ManifestValidationReport(
       reconciliations: Vector[CohortReconciliation],
       errors: Vector[ManifestValidationError],
   ):
+    /** A manifest is valid only when every schema, policy, and count invariant
+      * holds. Callers must not turn an invalid report into a repaired manifest
+      * by silently changing its weights.
+      */
     def isValid: Boolean = errors.isEmpty
 
   /** Canonical planners and validators for representation evidence. The planner
