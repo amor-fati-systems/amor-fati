@@ -66,6 +66,18 @@ class PopulationControlBundleLoaderSpec extends AnyFlatSpec with Matchers:
           actual should not be expected
         case other                                                              => fail(s"expected population-controls digest mismatch, got: $other")
 
+  it should "reject malformed UTF-8 after its digest has been refreshed" in
+    withCopiedFixture: root =>
+      val personsPath = root.resolve("persons.tsv")
+      Files.write(personsPath, Array(0x80.toByte))
+      refreshDigest(root)
+
+      PopulationControlBundleLoader.load(root) match
+        case Left(LoadError.InvalidTsv(path, detail)) =>
+          path shouldBe personsPath
+          detail should include("invalid UTF-8")
+        case other                                    => fail(s"expected invalid UTF-8 failure, got: $other")
+
   it should "reject invalid source metadata after its digest has been refreshed" in
     withCopiedFixture: root =>
       val metadataPath = root.resolve("tables.tsv")

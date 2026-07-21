@@ -4,6 +4,8 @@ import com.boombustgroup.amorfati.config.PopulationControlSchema.*
 import com.boombustgroup.amorfati.config.PopulationRepresentation.PopulationControlsDigest
 import com.boombustgroup.amorfati.tsv.TsvRows
 
+import java.nio.ByteBuffer
+import java.nio.charset.CodingErrorAction
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.{Files, Path}
 import java.security.MessageDigest
@@ -71,7 +73,19 @@ object PopulationControlBundleLoader:
 
     def copiedBytes(file: String): Array[Byte] = IArray.genericWrapArray(bytes(file)).toArray
 
-    def utf8(file: String): String = new String(copiedBytes(file), UTF_8)
+    def utf8(file: String): Either[LoadError, String] =
+      Try(
+        UTF_8
+          .newDecoder()
+          .onMalformedInput(CodingErrorAction.REPORT)
+          .onUnmappableCharacter(CodingErrorAction.REPORT)
+          .decode(ByteBuffer.wrap(copiedBytes(file)))
+          .toString,
+      ).toEither.left.map: error =>
+        val filePath = path(file)
+        val detail   = s"invalid UTF-8: ${Option(error.getMessage).getOrElse(error.getClass.getSimpleName)}"
+        if file == ManifestFile then LoadError.InvalidManifest(filePath, detail)
+        else LoadError.InvalidTsv(filePath, detail)
 
   /** Parsed manifest metadata for one versioned population-control component.
     * Its digest covers these semantic fields and every component TSV; the
@@ -143,18 +157,16 @@ object PopulationControlBundleLoader:
         "production_sector_classification_id",
         "production_sector_classification_version",
       ),
-    ).left
-      .map(detail => LoadError.InvalidManifest(path, detail))
-      .flatMap: row =>
-        for
-          schemaVersion <- requiredInt(row, "schema_version").left.map(detail => LoadError.InvalidManifest(path, detail))
-          baselineId    <- row.required("baseline_id").flatMap(BaselineId.from).left.map(detail => LoadError.InvalidManifest(path, detail))
-          digest        <- row.required("population_controls_digest").flatMap(parseControlsDigest).left.map(detail => LoadError.InvalidManifest(path, detail))
-          regionRef     <- classificationRef(row, "region_classification").left.map(detail => LoadError.InvalidManifest(path, detail))
-          ageRef        <- classificationRef(row, "age_classification").left.map(detail => LoadError.InvalidManifest(path, detail))
-          sectorRef     <- classificationRef(row, "production_sector_classification").left.map(detail => LoadError.InvalidManifest(path, detail))
-          classes       <- readClassifications(snapshot, regionRef, ageRef, sectorRef)
-        yield Manifest(schemaVersion, BaselineRef(baselineId), digest, classes)
+    ).flatMap: row =>
+      for
+        schemaVersion <- requiredInt(row, "schema_version").left.map(detail => LoadError.InvalidManifest(path, detail))
+        baselineId    <- row.required("baseline_id").flatMap(BaselineId.from).left.map(detail => LoadError.InvalidManifest(path, detail))
+        digest        <- row.required("population_controls_digest").flatMap(parseControlsDigest).left.map(detail => LoadError.InvalidManifest(path, detail))
+        regionRef     <- classificationRef(row, "region_classification").left.map(detail => LoadError.InvalidManifest(path, detail))
+        ageRef        <- classificationRef(row, "age_classification").left.map(detail => LoadError.InvalidManifest(path, detail))
+        sectorRef     <- classificationRef(row, "production_sector_classification").left.map(detail => LoadError.InvalidManifest(path, detail))
+        classes       <- readClassifications(snapshot, regionRef, ageRef, sectorRef)
+      yield Manifest(schemaVersion, BaselineRef(baselineId), digest, classes)
 
   private def readClassifications(
       snapshot: ComponentSnapshot,
@@ -361,27 +373,35 @@ object PopulationControlBundleLoader:
           .map(bytes => file -> IArray.unsafeFromArray(bytes)),
     ).map(files => new ComponentSnapshot(root, files.toMap))
 
-  private def readExactlyOne(snapshot: ComponentSnapshot, file: String, requiredColumns: Vector[String]): Either[String, TsvRow] =
+  private def readExactlyOne(snapshot: ComponentSnapshot, file: String, requiredColumns: Vector[String]): Either[LoadError, TsvRow] =
     val path = snapshot.path(file)
-    TsvRows
-      .readRows(path, snapshot.utf8(file), requiredColumns)
-      .flatMap:
-        case Vector(row) => Right(row)
-        case rows        => Left(s"must contain exactly one data row, got ${rows.size}")
+    snapshot
+      .utf8(file)
+      .flatMap: content =>
+        TsvRows
+          .readRows(path, content, requiredColumns)
+          .left
+          .map(detail => LoadError.InvalidManifest(path, detail))
+          .flatMap:
+            case Vector(row) => Right(row)
+            case rows        => Left(LoadError.InvalidManifest(path, s"must contain exactly one data row, got ${rows.size}"))
 
   private def readTypedRows[A](snapshot: ComponentSnapshot, file: String, requiredColumns: Vector[String])(
       parse: (TsvRow, Int) => Either[String, A],
   ): Either[LoadError, Vector[A]] =
     val path = snapshot.path(file)
-    TsvRows
-      .readRows(path, snapshot.utf8(file), requiredColumns)
-      .left
-      .map(detail => LoadError.InvalidTsv(path, detail))
-      .flatMap: rows =>
-        sequenceLoad(
-          rows.map: row =>
-            parse(row, row.lineNumber).left.map(detail => LoadError.InvalidControlRow(path, row.lineNumber, detail)),
-        )
+    snapshot
+      .utf8(file)
+      .flatMap: content =>
+        TsvRows
+          .readRows(path, content, requiredColumns)
+          .left
+          .map(detail => LoadError.InvalidTsv(path, detail))
+          .flatMap: rows =>
+            sequenceLoad(
+              rows.map: row =>
+                parse(row, row.lineNumber).left.map(detail => LoadError.InvalidControlRow(path, row.lineNumber, detail)),
+            )
 
   private def classificationRef(row: TsvRow, prefix: String): Either[String, ClassificationRef] =
     for
