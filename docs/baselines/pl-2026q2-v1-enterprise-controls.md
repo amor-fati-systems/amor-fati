@@ -7,10 +7,11 @@ component of the retrospective `pl-2026q2-v1` baseline. It is not a baseline
 bundle, a calibration, or evidence that Amor Fati has compiled Polish
 enterprises. No empirical control rows are committed yet.
 
-The component remains blocked until the source extracts below are obtained,
-transformed reproducibly, and accepted by its future data-only loader. It will
-be an `Experimental` input to the future full baseline bundle, not a
-`Canonical` baseline by itself.
+The Q2 REGON workbook is now source-pinned below, but no derived control rows,
+enterprise-control loader, or accepted workforce bridge exists yet. The
+component therefore remains blocked. When accepted, it will be an
+`Experimental` input to the future full baseline bundle, not a `Canonical`
+baseline by itself.
 
 It complements the [population-control component](pl-2026q2-v1-population-controls.md).
 The two components have different statistical units and source cadences, so
@@ -24,7 +25,7 @@ they must not be merged into one artificial table.
 | Reference-state boundary | End of 2026-06-30: the Q2 closing boundary in source statistics and the opening state for the first simulated month, July 2026. The baseline does not simulate Q2. |
 | Target unit | A register-declared-operating entity is the first control unit and is represented as one modeled enterprise. It is a legal entity or organisational unit, not an establishment or local unit. The REGON universe excludes persons operating only individual agricultural holdings; agriculture therefore needs an explicit supplementary bridge rather than an invented registry count. |
 | Enterprise geography | The 16 voivodeships identified by TERYT codes. Registry enterprise counts use the registered-seat voivodeship. This is not a workplace geography and cannot be silently substituted for the workplace axis of population employment controls. |
-| Production classification | Preserve the source PKD classification and version. The current quarterly REGON release is published in PKD 2007, so any transition to PKD 2025 and then to Amor Fati production sectors must be an explicit, versioned crosswalk. Do not label PKD 2007 rows as PKD 2025. |
+| Production classification | Preserve the source PKD classification and version. The retrieved Q2 REGON workbook is published in PKD 2007; GUS has reclassified activities entered under PKD 2025 back to PKD 2007 for that publication using its official keys. Any transition to PKD 2025 and then to Amor Fati production sectors must therefore be an explicit, versioned crosswalk. Do not label PKD 2007 rows as PKD 2025. |
 | Size classification | The REGON declared or expected-number-of-workers bands are registry attributes, not realised employment, FTE, vacancies, or BAEL jobholders. |
 | Financial and systemic institutions | Financial and insurance activities and named institutions remain outside the ordinary-enterprise component. A named non-bank enterprise may receive weight-one treatment only through an explicit, evidence-backed baseline declaration; neither size nor a REGON form infers systemic status. |
 | Representation scale | Not a baseline field. The researcher selects ordinary-enterprise representation through `PopulationRepresentation.RepresentationSpec`; the compiler must retain every nonzero hard-control stratum. |
@@ -37,24 +38,28 @@ seat as a workplace observation in the interim.
 ## Source And Transformation Register
 
 Every committed control table must record its exact source file, observation
-period, release, access date, licence, and SHA-256 hash. The sources below name
-the acquisition surface only; they are not yet pinned source artifacts.
+period, release, access date, licence, and SHA-256 hash. The current-state
+column identifies the Q2 source artifact already pinned below; sources still
+marked pending name an acquisition surface only.
 
 | Output control | Authoritative target | Primary source | Required transformation | Current state |
 | --- | --- | --- | --- | --- |
-| Enterprise stock | Register-declared-operating entities by registered-seat TERYT voivodeship and source PKD section or declared aggregate. | GUS quarterly REGON tables for the 30 June 2026 state. | Preserve the REGON universe, including its stated exclusions. Classify every source section through a versioned PKD-to-target-production crosswalk; route sections outside the ordinary production perimeter to their declared institutional component rather than dropping them. | Blocked: the Q2 2026 quarterly REGON extract is not pinned. |
-| Enterprise size margin | Entity counts by source activity and REGON expected-number-of-workers band, with the source's missing-value category retained. | The same quarterly REGON tables. | Retain source bands and missing attributes. A band midpoint or fabricated worker total is forbidden. A later compiler may use the margin only with a declared allocation rule. | Blocked: the Q2 2026 quarterly REGON extract is not pinned. |
-| Legal-form margin | Entity counts by source legal-form classification where published. | The same quarterly REGON tables. | Preserve the source legal-form code and unknown category. Map it to a model ownership or governance feature only through a named bridge, never by a default Boolean draw. | Blocked: the Q2 2026 quarterly REGON extract is not pinned. |
-| Ownership margin | Entity counts by source ownership-form classification where published. | The same quarterly REGON tables. | Preserve all reported ownership classes and the source missing-value category. This is a registry ownership classification, not a cap table and not proof of a beneficial owner. | Blocked: the Q2 2026 quarterly REGON extract is not pinned. |
+| Enterprise stock and size stratum | Register-declared-operating entities jointly by registered-seat TERYT voivodeship, source PKD 2007, and REGON expected-number-of-workers band. | GUS Q2 quarterly REGON workbook, `Tabl 6`, for the 30 June 2026 state. | Preserve the source universe, exclusions, size bands, and its `Brak województwa` and `Brak PKD` categories. Classify every source section through a versioned PKD-to-target-production crosswalk; route sections outside the ordinary production perimeter to their declared institutional component rather than dropping them. A band midpoint or fabricated worker total is forbidden. | Source retrieved and SHA-256 pinned on 2026-07-21; deterministic extraction, crosswalk, and derived controls remain pending. |
+| Legal-form margin | Entity counts by source legal-form classification where published. | GUS Q2 quarterly REGON workbook, `Tabl 3`. | Preserve the source legal-form code and unknown category. Map it to a model ownership or governance feature only through a named bridge, never by a default Boolean draw. | Source retrieved and SHA-256 pinned on 2026-07-21; extraction and a reviewed bridge remain pending. |
+| Ownership margin | Entity counts by source ownership classification where published. | GUS Q2 quarterly REGON workbook, `Tabl 2`, for the public/private sector split; a separately downloadable detailed ownership-form table is required for a finer margin. | Preserve all reported ownership classes and the source missing-value category. This is a registry ownership classification, not a cap table and not proof of a beneficial owner. | Public/private source retrieved; detailed ownership-form source is not pinned, so no finer ownership control can be derived. |
 | Workforce bridge | A declared relation from primary employment assignments in the population component to enterprise strata. | The [population employment control](pl-2026q2-v1-population-controls.md) plus an evidence-backed structural source where needed. | Keep BAEL jobholders, workplace-region employment, and REGON expected workers as distinct measures. Reconcile only through an explicit bridge that records its source, target measure, residual, and tolerance. | Blocked: no Q2 employment component and no reviewed firm-workforce bridge are pinned. |
 | Agricultural coverage bridge | Production units absent from the REGON target universe because they are persons operating only individual agricultural holdings. | GUS agricultural statistics or a separately reviewed agricultural register source. | Add only a declared agricultural bridge; do not inflate REGON enterprise counts or use a residual drawn from `FirmInit`. | Blocked: source and target representation are not yet selected. |
 
-The Q1 2026 quarterly REGON publication confirms the required source dimensions
-but is not a substitute for Q2: it reports entities declaring activity by PKD
-2007, voivodeship, selected legal form, ownership form, and expected-number-of-
-workers bands. It also warns that registry records can lack activity, location,
-ownership, or expected-worker information. Such records must remain explicit
-unknown or residual categories in this component.
+The Q2 quarterly REGON workbook was released on 2026-07-16 and retrieved on
+2026-07-21 from the direct GUS download listed below. Its SHA-256 is
+`858fd5715b1b4d64180d4bd15310a74b8b8d45d26ce3a79182e3dff7f8a6e6e9`.
+`Tabl 6` supplies the needed joint region-by-PKD-by-size stratum, including
+the explicit `Brak województwa` and `Brak PKD` source categories. These are
+source residuals, not members of the 16-voivodeship TERYT classification.
+
+GUS warns that registry records can lack activity, location, ownership, or
+expected-worker information. Such records must remain explicit unknown or
+residual categories in this component.
 
 Annual GUS structural-business and non-financial-enterprise releases may inform
 lagged size, employment, financial, or foreign-capital bridges. They cannot be
@@ -129,6 +134,7 @@ population for `pl-2026q2-v1`.
 ## Source References
 
 - [GUS quarterly REGON information, 2026](https://stat.gov.pl/obszary-tematyczne/podmioty-gospodarcze-wyniki-finansowe/zmiany-strukturalne-grup-podmiotow/kwartalna-informacja-o-podmiotach-gospodarki-narodowej-w-rejestrze-regon-rok-2026%2C7%2C16.html)
+- [GUS Q2 2026 REGON workbook, 30 June state](https://stat.gov.pl/download/gfx/portalinformacyjny/pl/defaultaktualnosci/5504/7/16/1/tablice_kwartalne_regon_20260630.xlsx)
 - [GUS annual REGON structural changes, 2025](https://stat.gov.pl/en/topics/economic-activities-finances/structural-changes-of-groups-of-entities-of-the-national-economy/structural-changes-of-groups-of-the-national-economy-entities-in-the-regon-register-2025%2C2%2C10.html)
 - [GUS Local Data Bank: REGON entities by legal form](https://bdl.stat.gov.pl/bdl/dane/podgrup/temat/25/203/3256?lang=en)
 - [GUS financial results of non-financial enterprises, 2024](https://stat.gov.pl/en/topics/economic-activities-finances/activity-of-enterprises-activity-of-companies/financial-results-of-non-financial-enterprises-in-2024-balance-sheet%2C3%2C19.html)
