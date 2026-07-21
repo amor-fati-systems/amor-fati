@@ -54,9 +54,15 @@ class PopulationRepresentationSpec extends AnyFlatSpec with Matchers:
   }
 
   it should "allocate an explicitly declared census cohort at weight one" in {
-    val allocation = Planner.censusCohort(CohortId("enterprise:named-systemic"), RepresentedUnitFamily.Enterprise, RepresentedCount(3L))
+    val allocation = Planner.censusCohort(
+      CohortId("enterprise:named-systemic"),
+      RepresentedUnitFamily.Enterprise,
+      RepresentedCount(3L),
+      SystemicEligibility.BaselineDeclaredSystemic,
+    )
 
     allocation.buckets shouldBe Vector(WeightBucket(RepresentationWeight(1L), SimulatedUnitCount(3L)))
+    allocation.systemicEligibility shouldBe SystemicEligibility.BaselineDeclaredSystemic
     Planner.validate(manifest(Vector(allocation))).isValid shouldBe true
   }
 
@@ -65,6 +71,7 @@ class PopulationRepresentationSpec extends AnyFlatSpec with Matchers:
       cohort = CohortId("persons:oversized"),
       family = RepresentedUnitFamily.Resident,
       mode = CohortRepresentationMode.RequestedResidentScale,
+      systemicEligibility = SystemicEligibility.Ordinary,
       representedCount = RepresentedCount(1001L),
       buckets = Vector(WeightBucket(RepresentationWeight(1001L), SimulatedUnitCount(1L))),
     )
@@ -79,6 +86,7 @@ class PopulationRepresentationSpec extends AnyFlatSpec with Matchers:
       cohort = CohortId("enterprise:unreconciled"),
       family = RepresentedUnitFamily.Enterprise,
       mode = CohortRepresentationMode.AdaptiveStratum,
+      systemicEligibility = SystemicEligibility.Ordinary,
       representedCount = RepresentedCount(5L),
       buckets = Vector(WeightBucket(RepresentationWeight(4L), SimulatedUnitCount(1L))),
     )
@@ -94,12 +102,28 @@ class PopulationRepresentationSpec extends AnyFlatSpec with Matchers:
       cohort = CohortId("enterprise:rare"),
       family = RepresentedUnitFamily.Enterprise,
       mode = CohortRepresentationMode.AdaptiveStratum,
+      systemicEligibility = SystemicEligibility.Ordinary,
       representedCount = RepresentedCount(5L),
       buckets = Vector(WeightBucket(RepresentationWeight(5L), SimulatedUnitCount(1L))),
     )
 
     Planner.validate(manifest(Vector(invalid), representationSpec = unitWeightOnly)).errors should contain(
       ManifestValidationError.AdaptiveStratumViolatesUnitWeightPolicy(invalid.cohort, RepresentationWeight(5L)),
+    )
+  }
+
+  it should "reject a non-unit adaptive allocation for a baseline-declared systemic cohort" in {
+    val invalid = CohortAllocation(
+      cohort = CohortId("enterprise:declared-systemic"),
+      family = RepresentedUnitFamily.Enterprise,
+      mode = CohortRepresentationMode.AdaptiveStratum,
+      systemicEligibility = SystemicEligibility.BaselineDeclaredSystemic,
+      representedCount = RepresentedCount(5L),
+      buckets = Vector(WeightBucket(RepresentationWeight(5L), SimulatedUnitCount(1L))),
+    )
+
+    Planner.validate(manifest(Vector(invalid))).errors should contain(
+      ManifestValidationError.SystemicCohortHasNonUnitWeight(invalid.cohort, RepresentationWeight(5L)),
     )
   }
 

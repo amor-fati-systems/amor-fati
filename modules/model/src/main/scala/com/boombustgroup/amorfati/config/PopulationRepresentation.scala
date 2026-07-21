@@ -60,14 +60,14 @@ object PopulationRepresentation:
     /** Keep every represented unit separately at weight one. */
     case PreserveAtUnitWeight
 
-  /** Policy for named systemic institutions. Their identities and eligibility
-    * are declared by a baseline; the compiler must never infer them from a size
-    * threshold.
+  /** Policy for named systemic institutions or enterprises. Their identities
+    * and eligibility are declared by a baseline; the compiler must never infer
+    * them from a size threshold.
     */
   enum SystemicInstitutionPolicy:
-    /** Preserve every baseline-declared systemic institution as one simulated
-      * unit with representation weight one. This is distinct from a census of
-      * all ordinary enterprises.
+    /** Preserve every baseline-declared systemic unit as one simulated unit
+      * with representation weight one. This is distinct from a census of all
+      * ordinary enterprises.
       */
     case CensusWeightOne
 
@@ -142,6 +142,19 @@ object PopulationRepresentation:
       */
     case Institution
 
+  /** Baseline evidence that a cohort is eligible for systemic treatment. This
+    * is copied into the manifest as evidence: the representation layer does not
+    * infer it from a cohort ID, name, asset size, or number of employees.
+    */
+  enum SystemicEligibility:
+    /** The baseline does not declare this cohort systemic. */
+    case Ordinary
+
+    /** The baseline explicitly declares this cohort systemic and therefore
+      * subject to [[SystemicInstitutionPolicy]].
+      */
+    case BaselineDeclaredSystemic
+
   /** Stable, baseline-defined identity of one controlled cohort. It should be
     * deterministic from the source table and its stratum, rather than from an
     * allocation order or an in-memory agent index.
@@ -195,6 +208,7 @@ object PopulationRepresentation:
       cohort: CohortId,
       family: RepresentedUnitFamily,
       mode: CohortRepresentationMode,
+      systemicEligibility: SystemicEligibility,
       representedCount: RepresentedCount,
       buckets: Vector[WeightBucket],
   ):
@@ -293,6 +307,11 @@ object PopulationRepresentation:
       */
     case EnterpriseCensusAllocationHasNonUnitWeight(cohort: CohortId, weight: RepresentationWeight)
 
+    /** A baseline-declared systemic cohort has a non-unit weight despite the
+      * selected systemic policy requiring a census representation.
+      */
+    case SystemicCohortHasNonUnitWeight(cohort: CohortId, weight: RepresentationWeight)
+
     /** The reader understands a different compiled-population manifest schema.
       */
     case UnsupportedManifestSchemaVersion(expected: Int, actual: Int)
@@ -344,6 +363,7 @@ object PopulationRepresentation:
         cohort = cohort,
         family = RepresentedUnitFamily.Resident,
         mode = CohortRepresentationMode.RequestedResidentScale,
+        systemicEligibility = SystemicEligibility.Ordinary,
         representedCount = representedCount,
         buckets = buckets,
       )
@@ -351,12 +371,18 @@ object PopulationRepresentation:
     /** Allocate a baseline-declared census cohort at weight one. Callers must
       * choose this mode explicitly; it is never inferred from entity size.
       */
-    def censusCohort(cohort: CohortId, family: RepresentedUnitFamily, representedCount: RepresentedCount): CohortAllocation =
+    def censusCohort(
+        cohort: CohortId,
+        family: RepresentedUnitFamily,
+        representedCount: RepresentedCount,
+        systemicEligibility: SystemicEligibility = SystemicEligibility.Ordinary,
+    ): CohortAllocation =
       val buckets = Option.when(representedCount.value > 0L)(WeightBucket(RepresentationWeight(1L), SimulatedUnitCount(representedCount.value))).toVector
       CohortAllocation(
         cohort = cohort,
         family = family,
         mode = CohortRepresentationMode.CensusWeightOne,
+        systemicEligibility = systemicEligibility,
         representedCount = representedCount,
         buckets = buckets,
       )
@@ -389,10 +415,21 @@ object PopulationRepresentation:
         .toVector
 
     private def cohortErrors(allocation: CohortAllocation, representation: RepresentationSpec): Vector[ManifestValidationError] =
-      allocation.mode match
+      val modeErrors = allocation.mode match
         case CohortRepresentationMode.RequestedResidentScale => residentScaleErrors(allocation, representation.residentsPerAgent)
         case CohortRepresentationMode.CensusWeightOne        => censusWeightErrors(allocation)
         case CohortRepresentationMode.AdaptiveStratum        => adaptiveStratumErrors(allocation, representation)
+      modeErrors ++ systemicEligibilityErrors(allocation, representation.systemicInstitutionPolicy)
+
+    private def systemicEligibilityErrors(allocation: CohortAllocation, policy: SystemicInstitutionPolicy): Vector[ManifestValidationError] =
+      allocation.systemicEligibility match
+        case SystemicEligibility.Ordinary                 => Vector.empty
+        case SystemicEligibility.BaselineDeclaredSystemic =>
+          policy match
+            case SystemicInstitutionPolicy.CensusWeightOne =>
+              allocation.buckets.collect:
+                case bucket if bucket.weight.value != 1L =>
+                  ManifestValidationError.SystemicCohortHasNonUnitWeight(allocation.cohort, bucket.weight)
 
     private def residentScaleErrors(allocation: CohortAllocation, requested: ResidentsPerAgent): Vector[ManifestValidationError] =
       val familyError     = Option.when(allocation.family != RepresentedUnitFamily.Resident)(
