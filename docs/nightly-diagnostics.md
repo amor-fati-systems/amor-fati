@@ -282,8 +282,8 @@ Recommended steps:
 - baseline Monte Carlo: 1 seed, 12 months, snapshots disabled, decision traces
   disabled
 - SFC matrix evidence: seed 1, 12 months, Markdown output under `target`
-- scenario smoke: `baseline,monetary-tightening,fiscal-expansion`, 1 seed,
-  12 months
+- scenario smoke: resolved baseline plus `monetary-tightening,fiscal-expansion`,
+  1 seed, 12 months
 - robustness smoke: `--scenario-set smoke`, 1 seed, 6 months
 - bank balance-sheet benchmark: 2 seeds
 - household credit-stress calibration: 1 seed, 12 months

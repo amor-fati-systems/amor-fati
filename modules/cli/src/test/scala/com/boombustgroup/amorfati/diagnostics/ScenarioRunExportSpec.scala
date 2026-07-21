@@ -1,6 +1,6 @@
 package com.boombustgroup.amorfati.diagnostics
 
-import com.boombustgroup.amorfati.config.{OpeningBankProfileScenario, ScenarioRegistry, SimParams}
+import com.boombustgroup.amorfati.config.{BaselineCatalog, OpeningBankProfileScenario, ScenarioRegistry, SimParams}
 import com.boombustgroup.amorfati.types.Multiplier
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -12,18 +12,23 @@ class ScenarioRunExportSpec extends AnyFlatSpec with Matchers:
   private def tsv(fields: String*): String =
     fields.mkString("\t")
 
-  "ScenarioRunExport" should "preserve default scenarios and all-scenario CLI selection" in {
+  "ScenarioRunExport" should "select scenario patches separately from the baseline run" in {
     ScenarioRunExport.Config().scenarios.map(_.id) shouldBe ScenarioRegistry.defaultScenarioIds
     ScenarioRunExport.parseArgs(Vector("--scenarios", "all")).map(_.scenarios.map(_.id)) shouldBe Right(ScenarioRegistry.all.map(_.id))
     ScenarioRunExport.parseArgs(Vector("--scenarios", "extended")).map(_.scenarios.map(_.id)) shouldBe Right(ScenarioRegistry.extendedScenarioIds)
-    ScenarioRegistry.extendedScenarioIds should not contain "bank-failure"
+    ScenarioRunExport.parseArgs(Vector("--scenarios", "none")).map(_.scenarios) shouldBe Right(Vector.empty)
+    ScenarioRunExport.parseArgs(Vector("--scenarios", "baseline")).isLeft shouldBe true
+    ScenarioRegistry.extendedScenarioIds.map(_.value) should not contain "bank-failure"
   }
 
   "ScenarioRunExport" should "export scenario provenance in registry and delta artifacts" in {
     val scenarios = ScenarioRegistry.select("monetary-tightening").fold(err => fail(err), identity)
 
-    val registry = ScenarioRunExport.renderRegistry(scenarios)
+    val baseline = BaselineCatalog.legacy.list.head
+    val registry = ScenarioRunExport.renderRegistry(baseline, scenarios)
     registry should include("Provenance")
+    registry should include(s"Resolved baseline: `${baseline.id}`")
+    registry should include("The baseline run has no scenario patch.")
     registry should include("Source / provider")
     registry should include("policy counterfactual")
     registry should include("Internal policy scenario over the NBP rate channel")
@@ -37,12 +42,16 @@ class ScenarioRunExportSpec extends AnyFlatSpec with Matchers:
   }
 
   it should "export scenario provenance in per-scenario metadata" in {
+    val baseline = BaselineCatalog.legacy.resolve(BaselineCatalog.LegacyDefaultsId.value).fold(err => fail(err.toString), identity)
     val scenario = ScenarioRegistry.get("energy-shock").fold(err => fail(err), identity)
-    val metadata = ScenarioRunExport.renderScenarioMetadata(
+    val run      = ScenarioRegistry.prepare(baseline, Vector(scenario)).fold(err => fail(err.toString), identity).last
+    val metadata = ScenarioRunExport.renderRunMetadata(
       ScenarioRunExport.Config(scenarios = Vector(scenario), runId = "provenance-spec", out = Path.of("target/scenarios")),
-      scenario,
+      baseline.manifest,
+      run,
     )
 
+    metadata should include(s"- Baseline id: `${baseline.manifest.id}`")
     metadata should include("- Provenance classification: historical analogue")
     metadata should include("- Source/provider: EU ETS and commodity-price stress analogue")
     metadata should include("| Parameter | Baseline | Scenario | Note | Provenance | Source / provider | Vintage | Transformation notes |")
@@ -51,17 +60,21 @@ class ScenarioRunExportSpec extends AnyFlatSpec with Matchers:
   }
 
   it should "route bank-failure opening capital stress through the bank profile scenario" in {
+    val baseline = BaselineCatalog.legacy.resolve(BaselineCatalog.LegacyDefaultsId.value).fold(err => fail(err.toString), identity)
     val scenario = ScenarioRegistry.get("bank-failure").fold(err => fail(err), identity)
+    val run      = ScenarioRegistry.prepare(baseline, Vector(scenario)).fold(err => fail(err.toString), identity).last
 
-    scenario.params.banking.openingBankCapitalAggregateTarget shouldBe SimParams.defaults.banking.openingBankCapitalAggregateTarget
-    scenario.params.banking.openingBankProfileScenario shouldBe OpeningBankProfileScenario.haircutOwnFunds(Multiplier.decimal(55, 2))
+    run.params.banking.openingBankCapitalAggregateTarget shouldBe SimParams.defaults.banking.openingBankCapitalAggregateTarget
+    run.params.banking.openingBankProfileScenario shouldBe OpeningBankProfileScenario.haircutOwnFunds(Multiplier.decimal(55, 2))
     scenario.deltas.map(_.parameter) should contain("banking.openingBankProfileScenario")
   }
 
-  it should "keep scenario runs from overriding the opening bank capital aggregate target directly" in
-    ScenarioRegistry.all
-      .filterNot(_.id == "baseline")
-      .foreach: scenario =>
-        scenario.params.banking.openingBankCapitalAggregateTarget shouldBe SimParams.defaults.banking.openingBankCapitalAggregateTarget
+  it should "keep scenario runs from overriding the opening bank capital aggregate target directly" in {
+    val baseline = BaselineCatalog.legacy.resolve(BaselineCatalog.LegacyDefaultsId.value).fold(err => fail(err.toString), identity)
+    val runs     = ScenarioRegistry.prepare(baseline, ScenarioRegistry.all).fold(err => fail(err.toString), identity)
+
+    runs.tail.foreach: run =>
+      run.params.banking.openingBankCapitalAggregateTarget shouldBe SimParams.defaults.banking.openingBankCapitalAggregateTarget
+  }
 
 end ScenarioRunExportSpec

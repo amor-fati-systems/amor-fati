@@ -1,6 +1,6 @@
 package com.boombustgroup.amorfati.diagnostics
 
-import com.boombustgroup.amorfati.config.ScenarioRegistry
+import com.boombustgroup.amorfati.config.{BaselineCatalog, BaselineId, BaselineManifest, BaselineRef, PreparedScenario, ScenarioRef, ScenarioRegistry}
 import com.boombustgroup.amorfati.config.ScenarioRegistry.{DeltaProvenance, ParameterDelta, ScenarioSpec}
 import com.boombustgroup.amorfati.montecarlo.core.{McSeedMonth, MetricValue}
 import com.boombustgroup.amorfati.montecarlo.core.MetricValue.*
@@ -15,7 +15,8 @@ import scala.util.Try
 object ScenarioRunExport:
 
   final case class Config(
-      scenarios: Vector[ScenarioSpec] = ScenarioRegistry.defaultScenarioIds.flatMap(id => ScenarioRegistry.get(id).toOption),
+      baseline: BaselineRef = BaselineRef(BaselineCatalog.LegacyDefaultsId),
+      scenarios: Vector[ScenarioSpec] = ScenarioRegistry.defaultScenarioIds.flatMap(id => ScenarioRegistry.get(ScenarioRef(id)).toOption),
       seedStart: Long = 1L,
       seeds: Int = 1,
       months: Int = 12,
@@ -60,16 +61,16 @@ object ScenarioRunExport:
   def runZIO(config: Config): ZIO[Any, String, ExportResult] =
     for
       validConfig   <- ZIO.fromEither(validate(config))
-      registryPath  <- DiagnosticIo.writeText(validConfig.runRoot.resolve("scenario-registry.md"), renderRegistry(validConfig.scenarios))
+      baseline      <- ZIO.fromEither(BaselineCatalog.legacy.resolve(validConfig.baseline).left.map(_.toString))
+      runs          <- ZIO.fromEither(ScenarioRegistry.prepare(baseline, validConfig.scenarios).left.map(_.toString))
+      registryPath  <- DiagnosticIo.writeText(validConfig.runRoot.resolve("scenario-registry.md"), renderRegistry(baseline.manifest, validConfig.scenarios))
       deltasPath     = validConfig.runRoot.resolve("scenario-deltas.tsv")
-      deltaRows      = validConfig.scenarios.flatMap(scenario => scenario.deltas.map(delta => ScenarioDeltaRow(scenario.id, delta)))
+      deltaRows      = deltaRowsFor(validConfig.scenarios)
       _             <- McTsvFile.writeAll(deltasPath, deltaRows, DeltasTsvSchema)(DiagnosticIo.outputFailure)
-      metadataPaths <- ZIO.foreach(validConfig.scenarios): scenario =>
-        DiagnosticIo.writeText(validConfig.runRoot.resolve(scenario.id).resolve("metadata.md"), renderScenarioMetadata(validConfig, scenario))
+      metadataPaths <- ZIO.foreach(runs): run =>
+        DiagnosticIo.writeText(validConfig.runRoot.resolve(run.id).resolve("metadata.md"), renderRunMetadata(validConfig, baseline.manifest, run))
       outputs       <- McDiagnosticRunner
-        .runScenarioSeeds(validConfig.scenarios, validConfig.seedRange, validConfig.months, _.id, _.params)((scenario, seed, months) =>
-          runSeed(validConfig, scenario, seed, months),
-        )
+        .runScenarioSeeds(runs, validConfig.seedRange, validConfig.months, _.id, _.params)((run, seed, months) => runSeed(validConfig, run, seed, months))
         .runCollect
         .map(_.toVector)
       paths          = Vector(registryPath, deltasPath) ++ metadataPaths ++ outputs.flatMap(_.paths)
@@ -87,21 +88,23 @@ object ScenarioRunExport:
         case Seq("--help", _*)                      => Left(usage)
         case Seq(flag, tail*) if knownFlag(flag)    =>
           tail match
-            case Seq()                                                              => missingValue(flag)
-            case Seq(value, _*) if value.startsWith("--")                           => missingValue(flag)
-            case Seq(value, next*) if flag == "--scenario" || flag == "--scenarios" =>
+            case Seq()                                       => missingValue(flag)
+            case Seq(value, _*) if value.startsWith("--")    => missingValue(flag)
+            case Seq(value, next*) if flag == "--scenarios"  =>
               ScenarioRegistry.select(value).flatMap(scenarios => loop(next, config.copy(scenarios = scenarios)))
-            case Seq(value, next*) if flag == "--seed-start"                        =>
+            case Seq(value, next*) if flag == "--baseline"   =>
+              BaselineId.from(value).left.map(reason => s"--baseline $reason").flatMap(id => loop(next, config.copy(baseline = BaselineRef(id))))
+            case Seq(value, next*) if flag == "--seed-start" =>
               parseLong(value, flag).flatMap(seedStart => loop(next, config.copy(seedStart = seedStart)))
-            case Seq(value, next*) if flag == "--seeds"                             =>
+            case Seq(value, next*) if flag == "--seeds"      =>
               parseInt(value, flag).flatMap(seeds => loop(next, config.copy(seeds = seeds)))
-            case Seq(value, next*) if flag == "--months"                            =>
+            case Seq(value, next*) if flag == "--months"     =>
               parseInt(value, flag).flatMap(months => loop(next, config.copy(months = months)))
-            case Seq(value, next*) if flag == "--run-id"                            =>
+            case Seq(value, next*) if flag == "--run-id"     =>
               loop(next, config.copy(runId = value))
-            case Seq(value, next*) if flag == "--out"                               =>
+            case Seq(value, next*) if flag == "--out"        =>
               loop(next, config.copy(out = Path.of(value)))
-            case Seq(_, _*)                                                         => Left(s"Unknown argument: $flag")
+            case Seq(_, _*)                                  => Left(s"Unknown argument: $flag")
         case Seq(flag, _*) if flag.startsWith("--") => Left(s"Unknown argument: $flag")
         case Seq(value, _*)                         => Left(s"Unexpected positional argument: $value")
 
@@ -109,34 +112,33 @@ object ScenarioRunExport:
 
   private def validate(config: Config): Either[String, Config] =
     Either
-      .cond(config.scenarios.nonEmpty, config, "--scenarios must contain at least one scenario")
-      .flatMap(valid => Either.cond(valid.seeds > 0, valid, "--seeds must be a positive integer"))
+      .cond(config.seeds > 0, config, "--seeds must be a positive integer")
       .flatMap(valid => Either.cond(valid.months > 0, valid, "--months must be a positive integer"))
       .flatMap(valid => Either.cond(valid.runId.trim.nonEmpty, valid, "--run-id must be non-empty"))
 
   private def runSeed(
       config: Config,
-      scenario: ScenarioSpec,
+      run: PreparedScenario,
       seed: Long,
       months: zio.stream.ZStream[Any, String, McSeedMonth],
   ): ZIO[Any, String, SeedRunOutput] =
-    val tsvPath = config.runRoot.resolve(scenario.id).resolve(f"${config.runId}_${scenario.id}_${config.months}m_seed$seed%03d.tsv")
+    val tsvPath = config.runRoot.resolve(run.id).resolve(f"${config.runId}_${run.id}_${config.months}m_seed$seed%03d.tsv")
     McTsvFile
       .writeStreaming(
         tsvPath,
         months,
         TimeSeriesTsvSchema,
-        s"Scenario ${scenario.id} seed $seed produced no monthly rows",
+        s"Run ${run.id} seed $seed produced no monthly rows",
       )(DiagnosticIo.outputFailure)
       .map: terminal =>
-        val metrics = Metrics.map(metric => TerminalMetric(scenario.id, seed, metric, terminal.row(metric.ordinal)))
+        val metrics = Metrics.map(metric => TerminalMetric(run.id, seed, metric, terminal.row(metric.ordinal)))
         SeedRunOutput(Vector(tsvPath), metrics)
 
-  private[diagnostics] def renderRegistry(scenarios: Vector[ScenarioSpec]): String =
+  private[diagnostics] def renderRegistry(baseline: BaselineManifest, scenarios: Vector[ScenarioSpec]): String =
     val rows = scenarios.map: scenario =>
       markdownRow(
         Vector(
-          scenario.id,
+          scenario.id.value,
           scenario.label,
           scenario.category,
           provenanceClassifications(scenario),
@@ -153,6 +155,9 @@ object ScenarioRunExport:
       "",
       "Generated by `ScenarioRunExport` from `ScenarioRegistry`.",
       "",
+      s"- Resolved baseline: `${baseline.id}`",
+      "- The baseline run has no scenario patch.",
+      "",
       markdownRow(Vector("Scenario", "Label", "Category", "Provenance", "Source / provider", "Vintage", "Recommended months", "Seed policy", "Output folder")),
       markdownRow(Vector("---", "---", "---", "---", "---", "---", "---", "---", "---")),
     ) ++ rows
@@ -160,40 +165,46 @@ object ScenarioRunExport:
     lines.mkString("\n") + "\n"
 
   private[diagnostics] def renderDeltas(scenarios: Vector[ScenarioSpec]): String =
-    val rows = scenarios.flatMap(scenario => scenario.deltas.map(delta => ScenarioDeltaRow(scenario.id, delta)))
-    renderTsv(DeltasTsvSchema, rows)
+    renderTsv(DeltasTsvSchema, deltaRowsFor(scenarios))
 
-  private[diagnostics] def renderScenarioMetadata(config: Config, scenario: ScenarioSpec): String =
-    val channelRows = scenario.expectedChannels.map(channel => s"- `$channel`")
-    val deltaRows   = scenario.deltas.map: delta =>
-      val provenance = delta.provenance
-      markdownRow(
-        Vector(
-          delta.parameter,
-          delta.baseline,
-          delta.scenario,
-          delta.note,
-          provenance.classification.label,
-          provenance.sourceProvider.filter(_.trim.nonEmpty).getOrElse("n/a"),
-          provenance.vintage.filter(_.trim.nonEmpty).getOrElse("n/a"),
-          transformationNotes(provenance),
-        ),
-      )
+  private def deltaRowsFor(scenarios: Vector[ScenarioSpec]): Vector[ScenarioDeltaRow] =
+    scenarios.flatMap(scenario => scenario.deltas.map(delta => ScenarioDeltaRow(scenario.id.value, delta)))
+
+  private[diagnostics] def renderRunMetadata(config: Config, baseline: BaselineManifest, run: PreparedScenario): String =
+    val scenario    = run.scenario
+    val channelRows = scenario.toVector.flatMap(_.expectedChannels).map(channel => s"- `$channel`")
+    val deltaRows   = scenario.toVector
+      .flatMap(_.deltas)
+      .map: delta =>
+        val provenance = delta.provenance
+        markdownRow(
+          Vector(
+            delta.parameter,
+            delta.baseline,
+            delta.scenario,
+            delta.note,
+            provenance.classification.label,
+            provenance.sourceProvider.filter(_.trim.nonEmpty).getOrElse("n/a"),
+            provenance.vintage.filter(_.trim.nonEmpty).getOrElse("n/a"),
+            transformationNotes(provenance),
+          ),
+        )
     val lines       =
       Vector(
-        s"# ${scenario.label}",
+        s"# ${run.label}",
         "",
-        s"- Scenario id: `${scenario.id}`",
-        s"- Category: `${scenario.category}`",
-        s"- Purpose: ${scenario.purpose}",
-        s"- Provenance classification: ${provenanceClassifications(scenario)}",
-        s"- Source/provider: ${sourceProviders(scenario)}",
-        s"- Vintage: ${vintages(scenario)}",
+        s"- Baseline id: `${baseline.id}`",
+        s"- Scenario id: `${scenario.map(_.id.value).getOrElse("none")}`",
+        s"- Category: `${scenario.map(_.category).getOrElse("baseline")}`",
+        s"- Purpose: ${scenario.map(_.purpose).getOrElse("Unpatched resolved baseline run.")}",
+        s"- Provenance classification: ${scenario.map(provenanceClassifications).getOrElse("n/a")}",
+        s"- Source/provider: ${scenario.map(sourceProviders).getOrElse("n/a")}",
+        s"- Vintage: ${scenario.map(vintages).getOrElse("n/a")}",
         s"- Run id: `${config.runId}`",
         s"- Months in this run: `${config.months}`",
-        s"- Recommended months: `${scenario.recommendedMonths}`",
-        s"- Seed policy: ${scenario.seedPolicy}",
-        s"- Output folder: `${config.runRoot.resolve(scenario.id)}`",
+        s"- Recommended months: `${scenario.map(_.recommendedMonths).getOrElse(config.months)}`",
+        s"- Seed policy: ${scenario.map(_.seedPolicy).getOrElse("Use the same seed band as every scenario patch.")}",
+        s"- Output folder: `${config.runRoot.resolve(run.id)}`",
         "",
         "## Expected Channels",
         "",
@@ -248,7 +259,7 @@ object ScenarioRunExport:
     (schema.header +: rows.map(schema.render)).mkString("\n") + "\n"
 
   private def knownFlag(flag: String): Boolean =
-    flag == "--scenario" || flag == "--scenarios" || flag == "--seed-start" || flag == "--seeds" || flag == "--months" || flag == "--run-id" || flag == "--out"
+    flag == "--baseline" || flag == "--scenarios" || flag == "--seed-start" || flag == "--seeds" || flag == "--months" || flag == "--run-id" || flag == "--out"
 
   private def parseLong(value: String, name: String): Either[String, Long] =
     Try(value.toLong).toEither.left.map(_ => s"$name must be a long integer")
@@ -308,6 +319,6 @@ object ScenarioRunExport:
   )
 
   private val usage: String =
-    "Usage: ScenarioRunExport [--scenarios baseline,monetary-tightening|all] [--seed-start <long>] [--seeds <int>] [--months <int>] [--run-id <id>] [--out <path>]"
+    "Usage: ScenarioRunExport [--baseline <id>] [--scenarios monetary-tightening,fiscal-expansion|all|none] [--seed-start <long>] [--seeds <int>] [--months <int>] [--run-id <id>] [--out <path>]"
 
 end ScenarioRunExport

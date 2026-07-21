@@ -1,7 +1,7 @@
 package com.boombustgroup.amorfati.diagnostics
 
 import com.boombustgroup.amorfati.config.RobustnessScenarios.ScenarioSet
-import com.boombustgroup.amorfati.config.{ScenarioRegistry, SimParams}
+import com.boombustgroup.amorfati.config.{BaselineCatalog, BaselineRef, ScenarioRef, ScenarioRegistry, SimParams}
 import com.boombustgroup.amorfati.engine.EngineFailure
 import com.boombustgroup.amorfati.montecarlo.core.McRunConfig
 import com.boombustgroup.amorfati.montecarlo.runner.McRunner
@@ -603,6 +603,8 @@ object NightlyDiagnosticsProfileRunner:
 
   // Keep this vector in sync with docs/nightly-diagnostics.md. The 60-month
   // ceiling is deliberate: 120m+ belongs to the future long-horizon profile.
+  private val LegacyScenarioBaseline = BaselineRef(BaselineCatalog.LegacyDefaultsId)
+
   private[diagnostics] val Profiles: Vector[ProfileSpec] =
     Vector(
       ProfileSpec(
@@ -613,7 +615,7 @@ object NightlyDiagnosticsProfileRunner:
           Vector(
             baselineMonteCarlo(seeds = 1, months = 12),
             sfcMatrix(seed = 1L, months = 12),
-            scenarioRun(selection = "baseline,monetary-tightening,fiscal-expansion", seeds = 1, months = 12),
+            scenarioRun(selection = "monetary-tightening,fiscal-expansion", baseline = LegacyScenarioBaseline, seeds = 1, months = 12),
             robustnessReport(scenarioSet = ScenarioSet.Smoke, seeds = 1, months = 6),
             bankBalanceSheetBenchmark(seeds = 2),
             householdCreditStress(seeds = 1, months = 12),
@@ -627,7 +629,7 @@ object NightlyDiagnosticsProfileRunner:
           Vector(
             baselineMonteCarlo(seeds = 5, months = 60),
             empiricalValidation(baselineSeeds = 5, baselineMonths = 60),
-            scenarioRun(selection = "default", seeds = 5, months = 60),
+            scenarioRun(selection = "default", baseline = LegacyScenarioBaseline, seeds = 5, months = 60),
             robustnessReport(scenarioSet = ScenarioSet.Core, seeds = 2, months = 24),
             bankBalanceSheetBenchmark(seeds = 10),
             householdCreditStress(seeds = 5, months = 60),
@@ -642,7 +644,7 @@ object NightlyDiagnosticsProfileRunner:
         steps = _ =>
           Vector(
             baselineMonteCarlo(seeds = 10, months = 60),
-            scenarioRun(selection = "extended", seeds = 5, months = 60),
+            scenarioRun(selection = "extended", baseline = LegacyScenarioBaseline, seeds = 5, months = 60),
             robustnessReport(scenarioSet = ScenarioSet.Core, seeds = 5, months = 60),
             bankBalanceSheetBenchmark(seeds = 10),
             householdCreditStress(seeds = 10, months = 60),
@@ -687,7 +689,7 @@ object NightlyDiagnosticsProfileRunner:
           .map(_.paths),
     )
 
-  private def scenarioRun(selection: String, seeds: Int, months: Int): DiagnosticStep =
+  private def scenarioRun(selection: String, baseline: BaselineRef, seeds: Int, months: Int): DiagnosticStep =
     DiagnosticStep(
       id = "scenario-run",
       label = "Scenario Registry Run",
@@ -697,12 +699,13 @@ object NightlyDiagnosticsProfileRunner:
       seeds = Some(seeds),
       months = Some(months),
       outputDir = ctx => ctx.runRoot.resolve("scenario-run").resolve(ctx.runId),
-      details = Vector("scenario_selection" -> selection),
+      details = Vector("baseline_id" -> baseline.id.value, "scenario_selection" -> selection),
       run = ctx =>
         for
           scenarios <- ZIO.fromEither(resolveScenarios(selection))
           result    <- ScenarioRunExport.runZIO(
             ScenarioRunExport.Config(
+              baseline = baseline,
               scenarios = scenarios,
               seedStart = 1L,
               seeds = seeds,
@@ -904,7 +907,7 @@ object NightlyDiagnosticsProfileRunner:
   private def scenarioClassification(selection: String): DiagnosticClass =
     val includesStress = resolveScenarios(selection).toOption.exists(_.exists(isStressScenario))
     if includesStress then DiagnosticClass.StressValidation
-    else if selection.trim == "baseline" then DiagnosticClass.NormalValidation
+    else if selection.trim == "none" then DiagnosticClass.NormalValidation
     else DiagnosticClass.Exploratory
 
   private def isStressScenario(scenario: ScenarioRegistry.ScenarioSpec): Boolean =
@@ -912,7 +915,8 @@ object NightlyDiagnosticsProfileRunner:
 
   private def resolveScenarios(selection: String): Either[String, Vector[ScenarioRegistry.ScenarioSpec]] =
     selection match
-      case "default" => Right(ScenarioRegistry.defaultScenarioIds.flatMap(id => ScenarioRegistry.get(id).toOption))
+      case "default" =>
+        Right(ScenarioRegistry.defaultScenarioIds.flatMap(id => ScenarioRegistry.get(ScenarioRef(id)).toOption))
       case "all"     => Right(ScenarioRegistry.all)
       case other     => ScenarioRegistry.select(other)
 

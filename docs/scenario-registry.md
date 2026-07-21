@@ -17,22 +17,22 @@ operations index.
 
 ## Command
 
-Run the baseline plus two nontrivial scenarios:
+Run the resolved baseline plus two nontrivial scenario patches:
 
 ```bash
-sbt "scenarioRun --scenarios baseline,monetary-tightening,fiscal-expansion --seeds 1 --months 12 --run-id scenario-smoke --out target/scenarios"
+sbt "scenarioRun --baseline pl-2026-04-30-legacy-v1 --scenarios monetary-tightening,fiscal-expansion --seeds 1 --months 12 --run-id scenario-smoke --out target/scenarios"
 ```
 
 Run every registered scenario:
 
 ```bash
-sbt "scenarioRun --scenarios all --seeds 2 --months 24 --run-id local-review --out target/scenarios"
+sbt "scenarioRun --baseline pl-2026-04-30-legacy-v1 --scenarios all --seeds 2 --months 24 --run-id local-review --out target/scenarios"
 ```
 
 Equivalent direct entrypoint:
 
 ```bash
-sbt "runMain com.boombustgroup.amorfati.diagnostics.ScenarioRunExport --scenarios all --seeds 2 --months 24 --run-id local-review --out target/scenarios"
+sbt "runMain com.boombustgroup.amorfati.diagnostics.ScenarioRunExport --baseline pl-2026-04-30-legacy-v1 --scenarios all --seeds 2 --months 24 --run-id local-review --out target/scenarios"
 ```
 
 ## Output Layout
@@ -52,8 +52,10 @@ target/scenarios/local-review/
     local-review_monetary-tightening_24m_seed001.tsv
 ```
 
-Each per-seed TSV uses `McTimeseriesSchema.colNames` as the header, so scenario
-outputs can be compared directly with validation and robustness artifacts.
+Each invocation first writes an unpatched run for the resolved baseline, then
+writes one run for each selected scenario patch. Each per-seed TSV uses
+`McTimeseriesSchema.colNames` as the header, so outputs can be compared
+directly with validation and robustness artifacts.
 
 The generated registry and per-scenario metadata are code-backed by
 `ScenarioRegistry`. `scenario-deltas.tsv` includes the parameter diff plus
@@ -75,9 +77,13 @@ delta. The allowed `ProvenanceClassification` values are:
 
 ## Registered Scenarios
 
+The baseline is not a scenario. It is selected by `--baseline`; the current
+registry's patches declare compatibility only with
+`pl-2026-04-30-legacy-v1` until a separately versioned patch set is prepared
+for another baseline.
+
 | Scenario | Label | Category | Provenance | Source/provider | Vintage | Recommended months | Purpose |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `baseline` | Baseline | baseline | explicit assumption | SimParams.defaults | Poland production baseline 2026-04-30 | 120 | Reference scenario using `SimParams.defaults`. |
 | `monetary-tightening` | Monetary tightening | policy rates | policy counterfactual | Internal policy scenario over the NBP rate channel | 2026-04-30 baseline counterfactual | 60 | Higher NBP policy stance for inflation and credit stress analysis. |
 | `fiscal-expansion` | Fiscal expansion | fiscal policy | policy counterfactual | Internal fiscal policy scenario | 2026-04-30 baseline counterfactual | 60 | Higher government demand and capital share for fiscal multiplier and debt-path comparisons. |
 | `credit-crunch` | Credit crunch | banking stress | historical analogue | Internal banking-stress analogue | post-2008 and pandemic credit-stress analogue | 60 | Tighter credit supply and weaker recovery assumptions for credit and default stress testing. |
@@ -89,14 +95,14 @@ delta. The allowed `ProvenanceClassification` values are:
 
 ## Parameter Deltas
 
-The compact table below records the parameter diff. The generated
+The compact table below records each patch relative to the resolved baseline.
+The generated
 `scenario-deltas.tsv` appends provenance classification, source/provider,
 vintage, and transformation notes from the same `ScenarioRegistry` delta
 objects.
 
 | Scenario | Parameter | Baseline | Scenario value | Note |
 | --- | --- | --- | --- | --- |
-| `baseline` | `SimParams` | `SimParams.defaults` | `SimParams.defaults` | No parameter change. |
 | `monetary-tightening` | `monetary.initialRate` | `0.0375` | `0.075` | Higher starting reference rate. |
 | `monetary-tightening` | `monetary.neutralRate` | `0.04` | `0.05` | Higher neutral-rate anchor. |
 | `monetary-tightening` | `monetary.taylorAlpha` | `1.5` | `1.8` | Stronger inflation response. |

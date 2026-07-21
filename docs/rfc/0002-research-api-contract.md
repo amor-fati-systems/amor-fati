@@ -33,9 +33,10 @@ The current configuration surface cannot yet satisfy this contract:
   persisted bundle loader, or `pl-2026q2-v1` implementation;
 - the `SimConfigSpec` and `SimConfigPropertySpec` test names refer to
   `SimParams`; there is no separately loadable `SimConfig` baseline contract;
-- `ScenarioRegistry` builds every scenario from a private
-  `SimParams.defaults` value and stores a fully materialized `SimParams` in each
-  `ScenarioSpec`;
+- `ScenarioRegistry` now selects typed scenario references and applies a typed
+  patch only after resolving a compatible `BaselineBundle`; it currently
+  supports only the legacy baseline and has no persisted scenario manifest,
+  scenario digest, or calendar-indexed driver-path loader;
 - scenario provenance can classify a change as a historical analogue, but the
   current registry does not load a historical opening economy or a complete
   calendar-indexed observed shock path; and
@@ -255,10 +256,12 @@ decision with a future realized driver is a conditional forecast, not a genuine
 out-of-sample evaluation; the manifest and validation report must state that
 classification.
 
-The current `ScenarioRegistry.ScenarioSpec.params: SimParams` is therefore a
-migration shape, not the target contract. The current engine adapter may
-materialize a resolved baseline plus scenario into `SimParams`, but the
-scenario itself remains an independently manifested change set or time path.
+The current registry has removed `ScenarioSpec.params: SimParams`: its typed
+`ScenarioPatch` applies only after a compatible baseline resolves, and the
+unpatched baseline run has no scenario identity. The internal engine adapter
+still materializes that composition into `SimParams`. Persisted scenario
+manifests, independently pinned scenario digests, and driver-path loading
+remain required before this becomes the target contract.
 
 ## Historical Research Modes
 
@@ -356,10 +359,10 @@ that historical bundles already exist:
    boundaries independent of Almond;
 2. expose the existing `2026-04-30` defaults through an accurately named,
    explicitly legacy and non-canonical provider for API ergonomics tests;
-3. adapt the current engine by compiling the resolved provider and scenario
-   into an internal `SimParams`;
+3. adapt the current engine by materializing the resolved provider plus an
+   optional typed scenario patch into an internal `SimParams`;
 4. stop new Research API and notebook code from selecting
-   `SimParams.defaults` or `ScenarioSpec.params` directly;
+   `SimParams.defaults` directly;
 5. replace the legacy provider with the real `pl-2026q2-v1` bundle only after
    Q2 compilation, calibration, opening reconciliation, and validation exist;
    and
@@ -416,7 +419,8 @@ boundary, the design needs:
 - [`BaselineCatalog.scala`](../../modules/model/src/main/scala/com/boombustgroup/amorfati/config/BaselineCatalog.scala)
   for the current internal catalog, legacy provider, and preparation checks;
 - [`ScenarioRegistry.scala`](../../modules/model/src/main/scala/com/boombustgroup/amorfati/config/ScenarioRegistry.scala)
-  for current full-configuration scenario materialization and provenance;
+  for current typed scenario patches, compatible-baseline declarations, and
+  provenance;
 - [`WorldInit.scala`](../../modules/model/src/main/scala/com/boombustgroup/amorfati/init/WorldInit.scala)
   for current initialization inputs and opening-state construction;
 - [`CalibrationProvenance.scala`](../../modules/model/src/main/scala/com/boombustgroup/amorfati/config/CalibrationProvenance.scala)

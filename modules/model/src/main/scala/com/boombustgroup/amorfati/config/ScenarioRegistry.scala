@@ -2,6 +2,141 @@ package com.boombustgroup.amorfati.config
 
 import com.boombustgroup.amorfati.types.*
 
+/** Immutable selector for one registered intervention or driver-path change.
+  *
+  * A baseline run has no ScenarioRef. It is not represented as a no-op
+  * scenario.
+  */
+final case class ScenarioId private (value: String):
+  override def toString: String = value
+
+object ScenarioId:
+  def from(value: String): Either[String, ScenarioId] =
+    val normalized = Option(value).fold("")(_.trim)
+    if normalized.isEmpty then Left("scenario ID must be non-blank")
+    else Right(ScenarioId(normalized))
+
+final case class ScenarioRef(id: ScenarioId)
+
+/** Typed changes applied only after a baseline has been resolved. */
+enum ScenarioPatch:
+  case MonetaryTightening
+  case FiscalExpansion
+  case CreditCrunch
+  case EnergyShock
+  case TourismShock
+  case BankFailure
+  case FxCapitalFlight
+  case QuasiFiscalProgram
+
+  private[config] def applyTo(baseline: SimParams): SimParams =
+    this match
+      case MonetaryTightening =>
+        baseline.copy(
+          monetary = baseline.monetary.copy(
+            initialRate = Rate.decimal(75, 3),
+            neutralRate = Rate.decimal(50, 3),
+            taylorAlpha = Coefficient.decimal(18, 1),
+          ),
+        )
+      case FiscalExpansion    =>
+        baseline.copy(
+          fiscal = baseline.fiscal.copy(
+            govBaseSpending = baseline.fiscal.govBaseSpending * Multiplier.decimal(115, 2),
+            govInvestShare = Share.decimal(30, 2),
+            govAutoStabMult = Coefficient.decimal(35, 1),
+          ),
+        )
+      case CreditCrunch       =>
+        baseline.copy(
+          banking = baseline.banking.copy(
+            baseSpread = Rate.decimal(35, 3),
+            minCar = Multiplier.decimal(10, 2),
+            loanRecovery = Share.decimal(20, 2),
+            eclMigrationSensitivity = Coefficient.decimal(45, 1),
+          ),
+          household = baseline.household.copy(
+            ccMaxDti = Share.decimal(30, 2),
+            ccEligRate = Share.decimal(30, 2),
+          ),
+        )
+      case EnergyShock        =>
+        baseline.copy(
+          climate = baseline.climate.copy(
+            etsBasePrice = Multiplier(120),
+            energyCostShares = Vector(
+              Share.decimal(3, 2),
+              Share.decimal(15, 2),
+              Share.decimal(6, 2),
+              Share.decimal(75, 3),
+              Share.decimal(45, 3),
+              Share.decimal(9, 2),
+            ),
+            greenBudgetShare = Share.decimal(12, 2),
+          ),
+          gvc = baseline.gvc.copy(
+            commodityShockMonth = 6,
+            commodityShockMag = Multiplier.decimal(15, 1),
+          ),
+        )
+      case TourismShock       =>
+        baseline.copy(
+          tourism = baseline.tourism.copy(
+            shockMonth = 6,
+            shockSize = Share.decimal(60, 2),
+            shockRecovery = Rate.decimal(5, 2),
+            inboundShare = Share.decimal(4, 2),
+          ),
+        )
+      case BankFailure        =>
+        baseline.copy(
+          banking = baseline.banking.copy(
+            openingBankProfileScenario = OpeningBankProfileScenario.haircutOwnFunds(Multiplier.decimal(55, 2)),
+            minCar = Multiplier.decimal(12, 2),
+            depositPanicRate = Share.decimal(8, 2),
+            maxDepositSwitchRate = Share.decimal(18, 2),
+          ),
+        )
+      case FxCapitalFlight    =>
+        baseline.copy(
+          forex = baseline.forex.copy(
+            riskOffShockMonth = 6,
+            riskOffMagnitude = Share.decimal(20, 2),
+            riskOffDurationMonths = 9,
+            irpSensitivity = Coefficient.decimal(30, 2),
+            exRateAdjSpeed = Coefficient.decimal(5, 2),
+          ),
+          monetary = baseline.monetary.copy(fxMaxMonthly = Share.decimal(6, 2)),
+        )
+      case QuasiFiscalProgram =>
+        baseline.copy(
+          quasiFiscal = baseline.quasiFiscal.copy(
+            issuanceShare = Share.decimal(65, 2),
+            lendingShare = Share.decimal(70, 2),
+            nbpAbsorptionShare = Share.decimal(85, 2),
+          ),
+          fiscal = baseline.fiscal.copy(govInvestShare = Share.decimal(30, 2)),
+          monetary = baseline.monetary.copy(qeMaxGdpShare = Share.decimal(40, 2)),
+        )
+
+/** Structured reason that a scenario cannot be applied to a resolved bundle. */
+enum ScenarioCompositionError:
+  case IncompatibleBaseline(
+      scenario: ScenarioId,
+      baseline: BaselineId,
+      compatibleBaselines: Vector[BaselineId],
+  )
+
+/** Engine-facing materialization of one selected scenario. This remains inside
+  * the Amor Fati implementation boundary; it is not a Research API result.
+  */
+private[amorfati] final class PreparedScenario private[config] (
+    val id: String,
+    val label: String,
+    val scenario: Option[ScenarioRegistry.ScenarioSpec],
+    private[amorfati] val params: SimParams,
+)
+
 /** Named policy and shock scenarios for reproducible experiment runs.
   *
   * This lives in the config package because scenario composition needs the
@@ -33,7 +168,7 @@ object ScenarioRegistry:
   )
 
   final case class ScenarioSpec(
-      id: String,
+      id: ScenarioId,
       label: String,
       category: String,
       purpose: String,
@@ -41,11 +176,13 @@ object ScenarioRegistry:
       recommendedMonths: Int,
       seedPolicy: String,
       outputFolder: String,
+      compatibleBaselineIds: Vector[BaselineId],
       deltas: Vector[ParameterDelta],
-      params: SimParams,
-  )
+      patch: ScenarioPatch,
+  ):
+    def ref: ScenarioRef = ScenarioRef(id)
 
-  private val Baseline = SimParams.defaults
+    require(compatibleBaselineIds.nonEmpty, s"Scenario $id must declare compatible baselines")
 
   private def provenance(
       classification: ProvenanceClassification,
@@ -59,13 +196,6 @@ object ScenarioRegistry:
       vintage = Some(vintage),
       transformationNotes = Some(transformationNotes),
     )
-
-  private val BaselineProvenance = provenance(
-    ExplicitAssumption,
-    "SimParams.defaults",
-    "Poland production baseline 2026-04-30",
-    "No scenario adjustment; the run uses the configured baseline.",
-  )
 
   private val MonetaryTighteningProvenance = provenance(
     PolicyCounterfactual,
@@ -123,25 +253,18 @@ object ScenarioRegistry:
     "Raises off-budget issuance, subsidized-lending routing, NBP absorption, and QE capacity.",
   )
 
-  val defaultScenarioIds: Vector[String] =
-    Vector("baseline", "monetary-tightening", "fiscal-expansion")
+  private def scenarioId(value: String): ScenarioId =
+    ScenarioId.from(value).fold(error => throw IllegalArgumentException(error), identity)
+
+  private val LegacyCompatibleBaselineIds = Vector(BaselineCatalog.LegacyDefaultsId)
+
+  val defaultScenarioIds: Vector[ScenarioId] =
+    Vector(scenarioId("monetary-tightening"), scenarioId("fiscal-expansion"))
 
   val all: Vector[ScenarioSpec] =
     Vector(
       ScenarioSpec(
-        id = "baseline",
-        label = "Baseline",
-        category = "baseline",
-        purpose = "Reference scenario using SimParams.defaults.",
-        expectedChannels = Vector("all baseline model channels"),
-        recommendedMonths = 120,
-        seedPolicy = "Use fixed seed bands; default smoke command uses seed 1.",
-        outputFolder = "<out>/<run-id>/baseline",
-        deltas = Vector(ParameterDelta("SimParams", "SimParams.defaults", "SimParams.defaults", "No parameter change.", BaselineProvenance)),
-        params = Baseline,
-      ),
-      ScenarioSpec(
-        id = "monetary-tightening",
+        id = scenarioId("monetary-tightening"),
         label = "Monetary tightening",
         category = "policy rates",
         purpose = "Higher NBP policy stance for inflation and credit stress analysis.",
@@ -149,21 +272,16 @@ object ScenarioRegistry:
         recommendedMonths = 60,
         seedPolicy = "Compare on the same seed band as baseline.",
         outputFolder = "<out>/<run-id>/monetary-tightening",
+        compatibleBaselineIds = LegacyCompatibleBaselineIds,
         deltas = Vector(
           ParameterDelta("monetary.initialRate", "0.0375", "0.075", "Higher starting reference rate.", MonetaryTighteningProvenance),
           ParameterDelta("monetary.neutralRate", "0.04", "0.05", "Higher neutral-rate anchor.", MonetaryTighteningProvenance),
           ParameterDelta("monetary.taylorAlpha", "1.5", "1.8", "Stronger inflation response.", MonetaryTighteningProvenance),
         ),
-        params = Baseline.copy(
-          monetary = Baseline.monetary.copy(
-            initialRate = Rate.decimal(75, 3),
-            neutralRate = Rate.decimal(50, 3),
-            taylorAlpha = Coefficient.decimal(18, 1),
-          ),
-        ),
+        patch = ScenarioPatch.MonetaryTightening,
       ),
       ScenarioSpec(
-        id = "fiscal-expansion",
+        id = scenarioId("fiscal-expansion"),
         label = "Fiscal expansion",
         category = "fiscal policy",
         purpose = "Higher government demand and capital share for fiscal multiplier and debt-path comparisons.",
@@ -171,6 +289,7 @@ object ScenarioRegistry:
         recommendedMonths = 60,
         seedPolicy = "Compare on the same seed band as baseline.",
         outputFolder = "<out>/<run-id>/fiscal-expansion",
+        compatibleBaselineIds = LegacyCompatibleBaselineIds,
         deltas = Vector(
           ParameterDelta(
             "fiscal.govBaseSpending",
@@ -182,16 +301,10 @@ object ScenarioRegistry:
           ParameterDelta("fiscal.govInvestShare", "0.20", "0.30", "Higher capital-spending share.", FiscalExpansionProvenance),
           ParameterDelta("fiscal.govAutoStabMult", "3.0", "3.5", "Stronger automatic stabilization.", FiscalExpansionProvenance),
         ),
-        params = Baseline.copy(
-          fiscal = Baseline.fiscal.copy(
-            govBaseSpending = Baseline.fiscal.govBaseSpending * Multiplier.decimal(115, 2),
-            govInvestShare = Share.decimal(30, 2),
-            govAutoStabMult = Coefficient.decimal(35, 1),
-          ),
-        ),
+        patch = ScenarioPatch.FiscalExpansion,
       ),
       ScenarioSpec(
-        id = "credit-crunch",
+        id = scenarioId("credit-crunch"),
         label = "Credit crunch",
         category = "banking stress",
         purpose = "Tighter credit supply and weaker recovery assumptions for credit and default stress testing.",
@@ -199,6 +312,7 @@ object ScenarioRegistry:
         recommendedMonths = 60,
         seedPolicy = "Compare on the same seed band as baseline.",
         outputFolder = "<out>/<run-id>/credit-crunch",
+        compatibleBaselineIds = LegacyCompatibleBaselineIds,
         deltas = Vector(
           ParameterDelta("banking.baseSpread", "0.015", "0.035", "Higher firm-loan spread.", CreditCrunchProvenance),
           ParameterDelta("banking.minCar", "0.08", "0.10", "Higher capital constraint.", CreditCrunchProvenance),
@@ -207,18 +321,10 @@ object ScenarioRegistry:
           ParameterDelta("household.ccMaxDti", "0.40", "0.30", "Tighter household credit affordability cap.", CreditCrunchProvenance),
           ParameterDelta("household.ccEligRate", "0.85", "0.30", "Lower stressed-household access to underwritten consumer credit.", CreditCrunchProvenance),
         ),
-        params = Baseline.copy(
-          banking = Baseline.banking.copy(
-            baseSpread = Rate.decimal(35, 3),
-            minCar = Multiplier.decimal(10, 2),
-            loanRecovery = Share.decimal(20, 2),
-            eclMigrationSensitivity = Coefficient.decimal(45, 1),
-          ),
-          household = Baseline.household.copy(ccMaxDti = Share.decimal(30, 2), ccEligRate = Share.decimal(30, 2)),
-        ),
+        patch = ScenarioPatch.CreditCrunch,
       ),
       ScenarioSpec(
-        id = "energy-shock",
+        id = scenarioId("energy-shock"),
         label = "Energy shock",
         category = "climate and commodity shock",
         purpose = "ETS and commodity-price stress for import costs, inflation, green capital, and sector pressure.",
@@ -226,6 +332,7 @@ object ScenarioRegistry:
         recommendedMonths = 60,
         seedPolicy = "Compare on the same seed band as baseline; shock starts at month 6.",
         outputFolder = "<out>/<run-id>/energy-shock",
+        compatibleBaselineIds = LegacyCompatibleBaselineIds,
         deltas = Vector(
           ParameterDelta("climate.etsBasePrice", "80", "120", "Higher EU ETS starting price.", EnergyShockProvenance),
           ParameterDelta(
@@ -239,27 +346,10 @@ object ScenarioRegistry:
           ParameterDelta("gvc.commodityShockMonth", "0", "6", "Commodity-price shock starts in month 6.", EnergyShockProvenance),
           ParameterDelta("gvc.commodityShockMag", "0.0", "1.5", "One-time commodity-price shock magnitude.", EnergyShockProvenance),
         ),
-        params = Baseline.copy(
-          climate = Baseline.climate.copy(
-            etsBasePrice = Multiplier(120),
-            energyCostShares = Vector(
-              Share.decimal(3, 2),
-              Share.decimal(15, 2),
-              Share.decimal(6, 2),
-              Share.decimal(75, 3),
-              Share.decimal(45, 3),
-              Share.decimal(9, 2),
-            ),
-            greenBudgetShare = Share.decimal(12, 2),
-          ),
-          gvc = Baseline.gvc.copy(
-            commodityShockMonth = 6,
-            commodityShockMag = Multiplier.decimal(15, 1),
-          ),
-        ),
+        patch = ScenarioPatch.EnergyShock,
       ),
       ScenarioSpec(
-        id = "tourism-shock",
+        id = scenarioId("tourism-shock"),
         label = "Tourism shock",
         category = "external demand shock",
         purpose = "Tourism-demand loss for services demand, current account, employment, and FX flows.",
@@ -267,23 +357,17 @@ object ScenarioRegistry:
         recommendedMonths = 36,
         seedPolicy = "Compare on the same seed band as baseline; shock starts at month 6.",
         outputFolder = "<out>/<run-id>/tourism-shock",
+        compatibleBaselineIds = LegacyCompatibleBaselineIds,
         deltas = Vector(
           ParameterDelta("tourism.shockMonth", "0", "6", "Tourism shock starts in month 6.", TourismShockProvenance),
           ParameterDelta("tourism.shockSize", "0.80", "0.60", "60% tourism-demand loss in the named scenario.", TourismShockProvenance),
           ParameterDelta("tourism.shockRecovery", "0.03", "0.05", "Faster monthly recovery than default COVID-style setting.", TourismShockProvenance),
           ParameterDelta("tourism.inboundShare", "0.05", "0.04", "Lower inbound tourism baseline share.", TourismShockProvenance),
         ),
-        params = Baseline.copy(
-          tourism = Baseline.tourism.copy(
-            shockMonth = 6,
-            shockSize = Share.decimal(60, 2),
-            shockRecovery = Rate.decimal(5, 2),
-            inboundShare = Share.decimal(4, 2),
-          ),
-        ),
+        patch = ScenarioPatch.TourismShock,
       ),
       ScenarioSpec(
-        id = "bank-failure",
+        id = scenarioId("bank-failure"),
         label = "Bank failure stress",
         category = "financial stability",
         purpose = "Low bank-capital and deposit-panic stress for failures, liquidity, and resolution channels.",
@@ -291,6 +375,7 @@ object ScenarioRegistry:
         recommendedMonths = 36,
         seedPolicy = "Compare on the same seed band as baseline.",
         outputFolder = "<out>/<run-id>/bank-failure",
+        compatibleBaselineIds = LegacyCompatibleBaselineIds,
         deltas = Vector(
           ParameterDelta(
             "banking.openingBankProfileScenario",
@@ -303,17 +388,10 @@ object ScenarioRegistry:
           ParameterDelta("banking.depositPanicRate", "0.03", "0.08", "Higher deposit panic migration after failures.", BankFailureProvenance),
           ParameterDelta("banking.maxDepositSwitchRate", "0.10", "0.18", "Higher maximum monthly deposit switching.", BankFailureProvenance),
         ),
-        params = Baseline.copy(
-          banking = Baseline.banking.copy(
-            openingBankProfileScenario = OpeningBankProfileScenario.haircutOwnFunds(Multiplier.decimal(55, 2)),
-            minCar = Multiplier.decimal(12, 2),
-            depositPanicRate = Share.decimal(8, 2),
-            maxDepositSwitchRate = Share.decimal(18, 2),
-          ),
-        ),
+        patch = ScenarioPatch.BankFailure,
       ),
       ScenarioSpec(
-        id = "fx-capital-flight",
+        id = scenarioId("fx-capital-flight"),
         label = "FX and capital-flight stress",
         category = "external financial shock",
         purpose = "Risk-off and carry-unwind stress for exchange rate, reserves, current account, and bond demand.",
@@ -321,6 +399,7 @@ object ScenarioRegistry:
         recommendedMonths = 60,
         seedPolicy = "Compare on the same seed band as baseline; shock starts at month 6.",
         outputFolder = "<out>/<run-id>/fx-capital-flight",
+        compatibleBaselineIds = LegacyCompatibleBaselineIds,
         deltas = Vector(
           ParameterDelta("forex.riskOffShockMonth", "0", "6", "Risk-off shock starts in month 6.", FxCapitalFlightProvenance),
           ParameterDelta("forex.riskOffMagnitude", "0.10", "0.20", "Larger capital outflow shock.", FxCapitalFlightProvenance),
@@ -329,19 +408,10 @@ object ScenarioRegistry:
           ParameterDelta("forex.exRateAdjSpeed", "0.02", "0.05", "Faster exchange-rate adjustment.", FxCapitalFlightProvenance),
           ParameterDelta("monetary.fxMaxMonthly", "0.03", "0.06", "Larger allowed monthly FX intervention.", FxCapitalFlightProvenance),
         ),
-        params = Baseline.copy(
-          forex = Baseline.forex.copy(
-            riskOffShockMonth = 6,
-            riskOffMagnitude = Share.decimal(20, 2),
-            riskOffDurationMonths = 9,
-            irpSensitivity = Coefficient.decimal(30, 2),
-            exRateAdjSpeed = Coefficient.decimal(5, 2),
-          ),
-          monetary = Baseline.monetary.copy(fxMaxMonthly = Share.decimal(6, 2)),
-        ),
+        patch = ScenarioPatch.FxCapitalFlight,
       ),
       ScenarioSpec(
-        id = "quasi-fiscal-program",
+        id = scenarioId("quasi-fiscal-program"),
         label = "Quasi-fiscal program",
         category = "quasi-fiscal policy",
         purpose = "BGK/PFR-style off-budget financing stress for ESA debt, NBP absorption, and subsidized lending.",
@@ -349,6 +419,7 @@ object ScenarioRegistry:
         recommendedMonths = 60,
         seedPolicy = "Compare on the same seed band as baseline.",
         outputFolder = "<out>/<run-id>/quasi-fiscal-program",
+        compatibleBaselineIds = LegacyCompatibleBaselineIds,
         deltas = Vector(
           ParameterDelta("quasiFiscal.issuanceShare", "0.40", "0.65", "Higher BGK/PFR share of capital programs.", QuasiFiscalProgramProvenance),
           ParameterDelta("quasiFiscal.lendingShare", "0.50", "0.70", "More issuance routed to subsidized lending.", QuasiFiscalProgramProvenance),
@@ -356,37 +427,33 @@ object ScenarioRegistry:
           ParameterDelta("fiscal.govInvestShare", "0.20", "0.30", "Higher capital-spending share feeding quasi-fiscal issuance.", QuasiFiscalProgramProvenance),
           ParameterDelta("monetary.qeMaxGdpShare", "0.30", "0.40", "Higher QE stock ceiling.", QuasiFiscalProgramProvenance),
         ),
-        params = Baseline.copy(
-          quasiFiscal = Baseline.quasiFiscal.copy(
-            issuanceShare = Share.decimal(65, 2),
-            lendingShare = Share.decimal(70, 2),
-            nbpAbsorptionShare = Share.decimal(85, 2),
-          ),
-          fiscal = Baseline.fiscal.copy(govInvestShare = Share.decimal(30, 2)),
-          monetary = Baseline.monetary.copy(qeMaxGdpShare = Share.decimal(40, 2)),
-        ),
+        patch = ScenarioPatch.QuasiFiscalProgram,
       ),
     )
 
-  val extendedScenarioIds: Vector[String] =
-    all.map(_.id).filterNot(_ == "bank-failure")
+  val extendedScenarioIds: Vector[ScenarioId] =
+    all.map(_.id).filterNot(_ == scenarioId("bank-failure"))
 
-  private val byId: Map[String, ScenarioSpec] = all.map(scenario => scenario.id -> scenario).toMap
+  private val byId: Map[ScenarioId, ScenarioSpec] = all.map(scenario => scenario.id -> scenario).toMap
 
   all
-    .filterNot(_.id == "baseline")
     .foreach: scenario =>
+      val params = scenario.patch.applyTo(SimParams.defaults)
       require(
-        scenario.params.banking.openingBankCapitalAggregateTarget == Baseline.banking.openingBankCapitalAggregateTarget,
+        params.banking.openingBankCapitalAggregateTarget == SimParams.defaults.banking.openingBankCapitalAggregateTarget,
         s"Scenario ${scenario.id} must use banking.openingBankProfileScenario instead of overriding banking.openingBankCapitalAggregateTarget",
       )
 
-  def get(id: String): Either[String, ScenarioSpec] =
-    byId.get(id).toRight(s"Unknown scenario '$id'. Known scenarios: ${all.map(_.id).mkString(", ")}")
+  def get(ref: ScenarioRef): Either[String, ScenarioSpec] =
+    byId.get(ref.id).toRight(s"Unknown scenario '${ref.id}'. Known scenarios: ${all.map(_.id.value).mkString(", ")}")
+
+  def get(input: String): Either[String, ScenarioSpec] =
+    ScenarioId.from(input).flatMap(id => get(ScenarioRef(id)))
 
   def select(value: String): Either[String, Vector[ScenarioSpec]] =
     val normalized = value.trim
-    if normalized == "all" then Right(all)
+    if normalized == "none" then Right(Vector.empty)
+    else if normalized == "all" then Right(all)
     else if normalized == "extended" then Right(extendedScenarioIds.flatMap(id => byId.get(id)))
     else
       val ids = normalized.split(",").iterator.map(_.trim).filter(_.nonEmpty).toVector
@@ -397,5 +464,36 @@ object ScenarioRegistry:
             selected <- acc
             scenario <- get(id)
           yield selected :+ scenario
+
+  private[amorfati] def prepare(
+      baseline: BaselineBundle,
+      scenarios: Vector[ScenarioSpec],
+  ): Either[ScenarioCompositionError, Vector[PreparedScenario]] =
+    val baselineRun = new PreparedScenario(
+      id = "baseline",
+      label = baseline.manifest.displayName,
+      scenario = None,
+      params = baseline.params,
+    )
+
+    scenarios.foldLeft[Either[ScenarioCompositionError, Vector[PreparedScenario]]](Right(Vector(baselineRun))): (prepared, scenario) =>
+      prepared.flatMap: runs =>
+        if scenario.compatibleBaselineIds.contains(baseline.manifest.id) then
+          Right(
+            runs :+ new PreparedScenario(
+              id = scenario.id.value,
+              label = scenario.label,
+              scenario = Some(scenario),
+              params = scenario.patch.applyTo(baseline.params),
+            ),
+          )
+        else
+          Left(
+            ScenarioCompositionError.IncompatibleBaseline(
+              scenario.id,
+              baseline.manifest.id,
+              scenario.compatibleBaselineIds,
+            ),
+          )
 
 end ScenarioRegistry

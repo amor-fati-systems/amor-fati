@@ -56,6 +56,8 @@ class NightlyDiagnosticsProfileRunnerSpec extends AnyFlatSpec with Matchers:
     )
     steps.find(_.id == "baseline-monte-carlo").value.seeds shouldBe Some(1)
     steps.find(_.id == "baseline-monte-carlo").value.months shouldBe Some(12)
+    steps.find(_.id == "scenario-run").value.details should contain("baseline_id" -> "pl-2026-04-30-legacy-v1")
+    steps.find(_.id == "scenario-run").value.details should contain("scenario_selection" -> "monetary-tightening,fiscal-expansion")
     steps.find(_.id == "robustness-report").value.months shouldBe Some(6)
     steps.map(_.classification) should not contain NightlyDiagnosticsProfileRunner.DiagnosticClass.StressValidation
   }
@@ -75,6 +77,7 @@ class NightlyDiagnosticsProfileRunnerSpec extends AnyFlatSpec with Matchers:
       "loan-origination-quality",
     )
     steps.flatMap(_.months).max shouldBe 60
+    steps.find(_.id == "scenario-run").value.details should contain("baseline_id" -> "pl-2026-04-30-legacy-v1")
     steps.find(_.id == "hh-bank-lead-lag").value.details should contain("lag_max" -> "6")
     steps.find(_.id == "loan-origination-quality").value.details should contain("outcome_window" -> "12")
     steps.map(_.classification) should not contain NightlyDiagnosticsProfileRunner.DiagnosticClass.StressValidation
@@ -87,7 +90,7 @@ class NightlyDiagnosticsProfileRunnerSpec extends AnyFlatSpec with Matchers:
     val scenarioSelection = steps.find(_.id == "scenario-run").value.details.toMap.apply("scenario_selection")
 
     scenarioSelection shouldBe "extended"
-    ScenarioRegistry.select(scenarioSelection).value.map(_.id) should not contain "bank-failure"
+    ScenarioRegistry.select(scenarioSelection).value.map(_.id.value) should not contain "bank-failure"
     steps.find(_.id == "scenario-run").value.classification shouldBe NightlyDiagnosticsProfileRunner.DiagnosticClass.StressValidation
     steps.find(_.id == "bank-failure-ablations").value.classification shouldBe NightlyDiagnosticsProfileRunner.DiagnosticClass.StressValidation
     steps.find(_.id == "bank-failure-ablations").value.details should contain("parallelism" -> "2")
