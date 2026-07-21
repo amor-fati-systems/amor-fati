@@ -170,14 +170,69 @@ class PopulationControlSchemaSpec extends AnyFlatSpec with Matchers:
   }
 
   it should "reject an undeclared axis value and duplicate control cell" in {
-    val unknownRegion  = RegionCode("undeclared")
-    val invalidPersons = validBundle.persons.copy(
-      rows = validBundle.persons.rows :+
+    val unknownRegion             = RegionCode("undeclared")
+    val unknownPersonAge          = AgeBand("undeclared-person-age", 75, Some(80))
+    val unknownHouseholdRegion    = RegionCode("undeclared-household-region")
+    val unknownMembershipAge      = AgeBand("undeclared-membership-age", 75, Some(80))
+    val unknownDemographicAge     = AgeBand("undeclared-demographic-age", 75, Some(80))
+    val unknownRegionalLabourArea = RegionCode("undeclared-regional-labour-area")
+    val unknownEmploymentHome     = RegionCode("undeclared-employment-home")
+    val unknownEmploymentWork     = RegionCode("undeclared-employment-work")
+    val unknownEmploymentSector   = ProductionSectorCode("undeclared-employment-sector")
+    val invalidPersons            = validBundle.persons.copy(
+      rows = validBundle.persons.rows ++ Vector(
         PersonRow(unknownRegion, DemographicSex.Female, Child, ResidenceType.PrivateHousehold, RepresentedCount(1)),
+        PersonRow(North, DemographicSex.Female, unknownPersonAge, ResidenceType.PrivateHousehold, RepresentedCount(1)),
+      ),
     )
-    val report         = Validator.validate(validBundle.copy(persons = invalidPersons))
+    val invalidBundle             = validBundle.copy(
+      persons = invalidPersons,
+      households = validBundle.households.copy(
+        rows = validBundle.households.rows :+ HouseholdRow(unknownHouseholdRegion, 1, HouseholdComposition.OnePerson, RepresentedCount(1)),
+      ),
+      householdMembership = validBundle.householdMembership.copy(
+        rows = validBundle.householdMembership.rows :+ HouseholdMembershipRow(
+          HouseholdComposition.OnePerson,
+          HouseholdMemberRole.Adult,
+          unknownMembershipAge,
+          RepresentedCount(1),
+        ),
+      ),
+      demographicLabour = validBundle.demographicLabour.copy(
+        rows = validBundle.demographicLabour.rows :+ DemographicLabourRow(
+          DemographicSex.Female,
+          unknownDemographicAge,
+          LabourStatus.Inactive,
+          RepresentedCount(1),
+        ),
+      ),
+      regionalLabour = validBundle.regionalLabour.copy(
+        rows = validBundle.regionalLabour.rows :+ RegionalLabourRow(
+          unknownRegionalLabourArea,
+          LabourStatus.Inactive,
+          RepresentedCount(1),
+        ),
+      ),
+      employment = validBundle.employment.copy(
+        rows = validBundle.employment.rows :+ EmploymentRow(
+          unknownEmploymentHome,
+          unknownEmploymentWork,
+          unknownEmploymentSector,
+          RepresentedCount(1),
+        ),
+      ),
+    )
+    val report                    = Validator.validate(invalidBundle)
 
     report.errors should contain(ValidationError.UnknownRegion("persons", unknownRegion))
+    report.errors should contain(ValidationError.UnknownAgeBand("persons", unknownPersonAge))
+    report.errors should contain(ValidationError.UnknownRegion("households", unknownHouseholdRegion))
+    report.errors should contain(ValidationError.UnknownAgeBand("household-membership", unknownMembershipAge))
+    report.errors should contain(ValidationError.UnknownAgeBand("demographic-labour", unknownDemographicAge))
+    report.errors should contain(ValidationError.UnknownRegion("regional-labour", unknownRegionalLabourArea))
+    report.errors should contain(ValidationError.UnknownRegion("employment residence", unknownEmploymentHome))
+    report.errors should contain(ValidationError.UnknownRegion("employment workplace", unknownEmploymentWork))
+    report.errors should contain(ValidationError.UnknownProductionSector("employment", unknownEmploymentSector))
 
     val duplicatePersons = validBundle.persons.copy(rows = validBundle.persons.rows :+ validBundle.persons.rows.head)
     Validator.validate(validBundle.copy(persons = duplicatePersons)).errors.exists {
