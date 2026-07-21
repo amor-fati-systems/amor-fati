@@ -415,7 +415,9 @@ compilation. It should contain:
   labor-force dimensions;
 - household controls for size, composition, tenure, income, and financial
   products;
-- enterprise controls by sector, size, region, ownership, and employment;
+- enterprise controls by sector, size, registered-seat region, ownership, and
+  employment, with the source-measure and workplace-bridge boundary recorded in
+  the [enterprise-control acquisition record](../baselines/pl-2026q2-v1-enterprise-controls.md);
 - an explicit sector-classification bridge into Amor Fati sectors;
 - named or archetypal financial institutions and their opening profiles;
 - national-accounts and financial-accounts totals; and
