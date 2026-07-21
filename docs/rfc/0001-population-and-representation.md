@@ -109,6 +109,7 @@ implement the ontology above.
 | Firms | Sector counts are controlled; size, region, and ownership attributes are then sampled in separate passes, with some ownership probabilities conditional on sector. | The population reflects selected empirical marginals but not a controlled joint distribution of sector, size, region, ownership, and employment. |
 | Banks | A household or firm has one `bankId`; household deposits, mortgages, consumer credit, interest, and most flows use it. | Aggregate multi-bank routing is explicit, but product-level bilateral contracts are not. |
 | Scale | Defaults declare 10,000 firms and use `workersPerFirm` as a population and GDP normalizer. `gdpRatio` scales many macro stocks. | Population representation, firm production, and monetary calibration are coupled. A scale change is not a transparent `1:N` sampling decision. |
+| Population-control inputs | `PopulationControlSchema` defines typed person, household, membership, demographic-labour, regional-labour, and employment controls with source metadata and cross-table reconciliation. Its tests use only a synthetic fixture. | The schema is an executable target-core boundary with no `gdpRatio`; it is not yet a Poland bundle, population compiler, or replacement runtime. |
 | Runtime data layout | Agent state and persistent financial state are primarily `Vector` collections of per-entity case classes. The ledger library executes batches against columnar `Array[Long]` stores, but Amor Fati currently creates an empty execution state for monthly deltas and snapshots the result to a `Map`. | The ledger execution kernel is data-oriented, but the persistent simulation state is not. Population passes still allocate and copy object rows, and the ledger layout is not yet the single persistent layout of financial state. |
 
 Two opening stocks expose the population mismatch directly. Initial
@@ -792,7 +793,9 @@ A practical sequence is:
 
 1. Define the baseline schema, representation weights, compiler manifest,
    population-table schemas, stable-ID policy, and invariants consistently with
-   the model-wide ontology RFC.
+   the model-wide ontology RFC. `PopulationControlSchema` is the first
+   executable part of this step: it accepts true represented counts and does
+   not admit `gdpRatio` or another economy-wide scale multiplier.
 2. Build the constrained firm and household/person compiler so its native
    output is the target columnar population, then validate it offline against
    the baseline.
