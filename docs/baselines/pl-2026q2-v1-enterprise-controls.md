@@ -55,9 +55,10 @@ marked pending name an acquisition surface only.
 The Q2 quarterly REGON workbook was released on 2026-07-16 and retrieved on
 2026-07-21 from the direct GUS download listed below. Its SHA-256 is
 `858fd5715b1b4d64180d4bd15310a74b8b8d45d26ce3a79182e3dff7f8a6e6e9`.
-`Tabl 6` supplies the needed joint region-by-PKD-by-size stratum, including
-the explicit `Brak województwa` and `Brak PKD` source categories. These are
-source residuals, not members of the 16-voivodeship TERYT classification.
+`Tabl 6` supplies the needed joint region-by-PKD-by-size stratum. It also
+publishes separate global residual rows for `Brak województwa` and `Brak PKD`;
+they are distinct source-residual families, not members of the 16-voivodeship
+TERYT classification and not one inferred missing-both cell.
 
 GUS warns that registry records can lack activity, location, ownership, or
 expected-worker information. Such records must remain explicit unknown or
