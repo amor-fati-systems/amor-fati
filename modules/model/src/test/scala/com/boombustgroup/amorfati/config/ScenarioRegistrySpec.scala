@@ -38,7 +38,7 @@ class ScenarioRegistrySpec extends AnyFlatSpec with Matchers:
 
   it should "reject a scenario for an incompatible baseline" in {
     val resolved       = BaselineCatalog.legacy.resolve(BaselineCatalog.LegacyDefaultsId.value).fold(error => fail(error.toString), identity)
-    val incompatibleId = BaselineId.from("pl-2026q2-v1").fold(error => fail(error), identity)
+    val incompatibleId = BaselineId.from("PL-2026-Q2-v1").fold(error => fail(error), identity)
     val incompatible   = new BaselineBundle(
       resolved.manifest.copy(id = incompatibleId),
       resolved.components,

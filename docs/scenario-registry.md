@@ -20,19 +20,19 @@ operations index.
 Run the resolved baseline plus two nontrivial scenario patches:
 
 ```bash
-sbt "scenarioRun --baseline pl-2026-04-30-legacy-v1 --scenarios monetary-tightening,fiscal-expansion --seeds 1 --months 12 --run-id scenario-smoke --out target/scenarios"
+sbt "scenarioRun --baseline PL-2026-04-30-legacy-v1 --scenarios monetary-tightening,fiscal-expansion --seeds 1 --months 12 --run-id scenario-smoke --out target/scenarios"
 ```
 
 Run every registered scenario:
 
 ```bash
-sbt "scenarioRun --baseline pl-2026-04-30-legacy-v1 --scenarios all --seeds 2 --months 24 --run-id local-review --out target/scenarios"
+sbt "scenarioRun --baseline PL-2026-04-30-legacy-v1 --scenarios all --seeds 2 --months 24 --run-id local-review --out target/scenarios"
 ```
 
 Equivalent direct entrypoint:
 
 ```bash
-sbt "runMain com.boombustgroup.amorfati.diagnostics.ScenarioRunExport --baseline pl-2026-04-30-legacy-v1 --scenarios all --seeds 2 --months 24 --run-id local-review --out target/scenarios"
+sbt "runMain com.boombustgroup.amorfati.diagnostics.ScenarioRunExport --baseline PL-2026-04-30-legacy-v1 --scenarios all --seeds 2 --months 24 --run-id local-review --out target/scenarios"
 ```
 
 ## Output Layout
@@ -79,7 +79,7 @@ delta. The allowed `ProvenanceClassification` values are:
 
 The baseline is not a scenario. It is selected by `--baseline`; the current
 registry's patches declare compatibility only with
-`pl-2026-04-30-legacy-v1` until a separately versioned patch set is prepared
+`PL-2026-04-30-legacy-v1` until a separately versioned patch set is prepared
 for another baseline.
 
 | Scenario | Label | Category | Provenance | Source/provider | Vintage | Recommended months | Purpose |

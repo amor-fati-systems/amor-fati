@@ -11,7 +11,7 @@ can consume it.
 This is not a full `BaselineBundle`, a public Research API, or a population
 compiler. It does not load `SimParams`, execute Scala configuration, initialize
 the runtime, or establish a Poland calibration. The committed
-`synthetic-v1` fixture is a test artifact only; it is not `pl-2026q2-v1` or an
+`synthetic-v1` fixture is a test artifact only; it is not `PL-2026-Q2-v1` or an
 empirical baseline.
 
 The target contract and the remaining compiler work are defined by

@@ -53,7 +53,7 @@ weights, controls, residuals, exceptions, and provenance. Researchers do not
 coordinate independent firm, worker, household, and macro-scaling parameters
 to approximate a population size.
 
-The first reference-economy bundle is `pl-2026q2-v1`, representing Poland at
+The first reference-economy bundle is `PL-2026-Q2-v1`, representing Poland at
 the end of `2026-Q2` with a reference-state boundary at the end of
 `2026-06-30`. This is the Q2 closing boundary in source statistics and the
 opening state for the first simulated month, July 2026. The
@@ -66,7 +66,7 @@ vintage.
 
 The identifier is immutable. Changing source content, a hard control, or a
 transformation creates a new bundle version and digest. A better-reconciled
-compilation of the same quarter is `pl-2026q2-v2`; it does not mutate v1. The
+compilation of the same quarter is `PL-2026-Q2-v2`; it does not mutate v1. The
 existing `2026-04-30` runtime calibration is migration evidence and must be
 recalibrated and validated before it can implement the Q2 v1 bundle.
 
