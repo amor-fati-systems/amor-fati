@@ -222,16 +222,19 @@ object EnterpriseControlBundleLoader:
             band    <- known(row, "expected_workers_band", bands)
             count   <- enterpriseCount(row)
           yield EnterpriseStratumRow(region, section, band, count)
-      residuals <- readTypedRows(snapshot, SourceResidualsFile, Vector("source_residual_category", "registered_seat_region", "pkd2007_section", "expected_workers_band", "count")):
-        (row, _) =>
-          for
-            category <- row.required("source_residual_category").flatMap(value => buildValue(SourceResidualCategoryCode(value)))
-            region   <- optionalKnown(row, "registered_seat_region", regions)
-            section  <- optionalKnown(row, "pkd2007_section", sections)
-            band     <- known(row, "expected_workers_band", bands)
-            count    <- enterpriseCount(row)
-            residual <- buildValue(SourceResidualRow(category, region, section, band, count))
-          yield residual
+      residuals <- readTypedRows(
+        snapshot,
+        SourceResidualsFile,
+        Vector("source_residual_category", "registered_seat_region", "pkd2007_section", "expected_workers_band", "count"),
+      ): (row, _) =>
+        for
+          category <- row.required("source_residual_category").flatMap(value => buildValue(SourceResidualCategoryCode(value)))
+          region   <- optionalKnown(row, "registered_seat_region", regions)
+          section  <- optionalKnown(row, "pkd2007_section", sections)
+          band     <- known(row, "expected_workers_band", bands)
+          count    <- enterpriseCount(row)
+          residual <- buildValue(SourceResidualRow(category, region, section, band, count))
+        yield residual
       totals    <- readTypedRows(snapshot, SourceTotalsFile, Vector("expected_workers_band", "count")): (row, _) =>
         for
           band  <- known(row, "expected_workers_band", bands)

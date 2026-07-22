@@ -85,8 +85,8 @@ object EnterpriseControlSchema:
       count: EnterpriseCount,
   )
 
-  /** Source cell with an explicit missing registered-seat or PKD dimension.
-    * The source residual category distinguishes separately published unknown
+  /** Source cell with an explicit missing registered-seat or PKD dimension. The
+    * source residual category distinguishes separately published unknown
     * families when both dimensions are absent. The other axis stays present
     * whenever the source supplies it.
     *
