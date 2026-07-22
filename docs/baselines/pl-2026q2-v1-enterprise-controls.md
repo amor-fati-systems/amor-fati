@@ -1,9 +1,9 @@
-# pl-2026q2-v1 Enterprise Controls
+# PL-2026-Q2-v1 Enterprise Controls
 
 ## Status
 
 This is the acquisition and acceptance record for the enterprise-control
-component of the retrospective `pl-2026q2-v1` baseline. It is not a baseline
+component of the retrospective `PL-2026-Q2-v1` baseline. It is not a baseline
 bundle, a calibration, or evidence that Amor Fati has compiled Polish
 enterprises. No empirical control rows are committed yet.
 
@@ -23,7 +23,7 @@ they must not be merged into one artificial table.
 
 | Field | Value |
 | --- | --- |
-| Baseline identity | `pl-2026q2-v1` |
+| Baseline identity | `PL-2026-Q2-v1` |
 | Reference-state boundary | End of 2026-06-30: the Q2 closing boundary in source statistics and the opening state for the first simulated month, July 2026. The baseline does not simulate Q2. |
 | Target unit | A register-declared-operating entity is the first control unit and is represented as one modeled enterprise. It is a legal entity or organisational unit, not an establishment or local unit. The REGON universe excludes persons operating only individual agricultural holdings; agriculture therefore needs an explicit supplementary bridge rather than an invented registry count. |
 | Enterprise geography | The 16 voivodeships identified by TERYT codes. Registry enterprise counts use the registered-seat voivodeship. This is not a workplace geography and cannot be silently substituted for the workplace axis of population employment controls. |
@@ -111,7 +111,7 @@ The component can be committed only when all conditions hold:
    heuristic based on size, ownership label, or sector can promote one.
 8. The component digest is computed after final TSV generation. Changing a
    source, classification, crosswalk, bridge, or control value creates a new
-   baseline version rather than editing `pl-2026q2-v1` in place.
+   baseline version rather than editing `PL-2026-Q2-v1` in place.
 
 ## Publication Sequence
 
@@ -132,7 +132,7 @@ The component can be committed only when all conditions hold:
 
 Until this component is accepted, the existing `FirmInit` sampling remains
 legacy migration evidence. It must not be relabelled as a calibrated enterprise
-population for `pl-2026q2-v1`.
+population for `PL-2026-Q2-v1`.
 
 ## Source References
 

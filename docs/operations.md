@@ -195,8 +195,8 @@ sbt "runMain com.boombustgroup.amorfati.Main 1 counterfactual --duration 12 --ru
 For named scenarios, compare the same scenario set across branches:
 
 ```bash
-sbt "scenarioRun --baseline pl-2026-04-30-legacy-v1 --scenarios monetary-tightening --seeds 1 --months 12 --run-id baseline-review --out target/scenarios"
-sbt "scenarioRun --baseline pl-2026-04-30-legacy-v1 --scenarios monetary-tightening --seeds 1 --months 12 --run-id <short-name>-review --out target/scenarios"
+sbt "scenarioRun --baseline PL-2026-04-30-legacy-v1 --scenarios monetary-tightening --seeds 1 --months 12 --run-id baseline-review --out target/scenarios"
+sbt "scenarioRun --baseline PL-2026-04-30-legacy-v1 --scenarios monetary-tightening --seeds 1 --months 12 --run-id <short-name>-review --out target/scenarios"
 ```
 
 Commit code, tests, and intentionally refreshed docs. Do not commit generated
@@ -426,13 +426,13 @@ are documented in [scenario-registry.md](scenario-registry.md).
 Run a small scenario smoke check:
 
 ```bash
-sbt "scenarioRun --baseline pl-2026-04-30-legacy-v1 --scenarios monetary-tightening,fiscal-expansion --seeds 1 --months 12 --run-id scenario-smoke --out target/scenarios"
+sbt "scenarioRun --baseline PL-2026-04-30-legacy-v1 --scenarios monetary-tightening,fiscal-expansion --seeds 1 --months 12 --run-id scenario-smoke --out target/scenarios"
 ```
 
 Run every registered scenario with a small seed envelope:
 
 ```bash
-sbt "scenarioRun --baseline pl-2026-04-30-legacy-v1 --scenarios all --seeds 2 --months 24 --run-id local-review --out target/scenarios"
+sbt "scenarioRun --baseline PL-2026-04-30-legacy-v1 --scenarios all --seeds 2 --months 24 --run-id local-review --out target/scenarios"
 ```
 
 Robustness scenario sets come from

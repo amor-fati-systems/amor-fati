@@ -12,11 +12,11 @@ This is not a full `BaselineBundle`, an XLSX extractor, a firm compiler, a
 public Research API, or a workforce bridge. It does not load `SimParams`,
 execute Scala configuration, initialize runtime firms, or treat a REGON
 expected-workers band as actual employment. The committed `synthetic-v1`
-fixture is a test artifact only; it is not `pl-2026q2-v1` or an empirical
+fixture is a test artifact only; it is not `PL-2026-Q2-v1` or an empirical
 baseline.
 
 The target evidence and remaining enterprise work are defined by the
-[pl-2026q2-v1 enterprise-control acquisition record](baselines/pl-2026q2-v1-enterprise-controls.md)
+[PL-2026-Q2-v1 enterprise-control acquisition record](baselines/pl-2026q2-v1-enterprise-controls.md)
 and [RFC-0001](rfc/0001-population-and-representation.md). The relationship to
 the future full baseline bundle and Research API is defined by
 [RFC-0002's contract](rfc/0002-research-api-contract.md).
@@ -128,6 +128,6 @@ deliberately separate from the legacy `BaselineCatalog` provider over
 
 The next implementation step is a deterministic, separately reviewed source
 extractor that verifies the pinned GUS workbook and emits a candidate
-`pl-2026q2-v1` component. That candidate still needs a reviewed PKD crosswalk,
+`PL-2026-Q2-v1` component. That candidate still needs a reviewed PKD crosswalk,
 remaining enterprise dimensions, and an explicit workforce bridge before it
 can participate in a full baseline compilation.

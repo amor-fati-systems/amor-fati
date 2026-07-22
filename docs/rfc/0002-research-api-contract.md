@@ -25,12 +25,12 @@ The current configuration surface cannot yet satisfy this contract:
 - `SimParams.defaults` is the one code-defined production parameterization and
   still describes the existing `2026-04-30` model-start calibration;
 - `BaselineCatalog` now exposes that calibration through the exact legacy ID
-  `pl-2026-04-30-legacy-v1`, verifies the compiled payload against a reviewed,
+  `PL-2026-04-30-legacy-v1`, verifies the compiled payload against a reviewed,
   pinned digest and required model contract, and resolves it into an internal
   `BaselineBundle`; that legacy bundle contains only the parameter payload,
   while provenance and validation are references and the population and
   institutional components remain absent. It is not yet a public Research API,
-  persisted bundle loader, or `pl-2026q2-v1` implementation;
+  persisted bundle loader, or `PL-2026-Q2-v1` implementation;
 - the `SimConfigSpec` and `SimConfigPropertySpec` test names refer to
   `SimParams`; there is no separately loadable `SimConfig` baseline contract;
 - `ScenarioRegistry` now selects typed scenario references and applies a typed
@@ -45,7 +45,7 @@ The current configuration surface cannot yet satisfy this contract:
   was resolved and verified.
 
 The existing defaults and scenarios are useful migration evidence. They must
-not be relabeled as the unimplemented `pl-2026q2-v1` bundle or presented as
+not be relabeled as the unimplemented `PL-2026-Q2-v1` bundle or presented as
 historical replay.
 
 ## Contract Principles
@@ -109,7 +109,7 @@ val experiment = AmorFati.experiment(
 ```
 
 These names and historical asset IDs are illustrative. Except for the accepted
-target identity `pl-2026q2-v1`, they do not claim that a corresponding bundle
+target identity `PL-2026-Q2-v1`, they do not claim that a corresponding bundle
 currently exists. The accepted API must preserve the separation of concepts
 even if its final syntax differs.
 
@@ -150,7 +150,7 @@ not silently select an experimental or legacy baseline.
 
 ## Immutable Baseline Bundle
 
-The first-target `pl-2026q2-v1` bundle is the reference-economy input accepted
+The first-target `PL-2026-Q2-v1` bundle is the reference-economy input accepted
 by RFC-0001. Logically, a bundle contains:
 
 | Component | Required content |
@@ -171,10 +171,10 @@ deterministic integrity rules. The public contract does not require one giant
 configuration file and must not serialize `SimParams` or target-core storage
 objects directly.
 
-The researcher-facing identity remains `pl-2026q2-v1`. Detailed source periods,
+The researcher-facing identity remains `PL-2026-Q2-v1`. Detailed source periods,
 valuation dates, access dates, and transformations remain inside its manifest,
 as required by RFC-0001. Improving a source bridge or reconciliation for the
-same opening quarter produces `pl-2026q2-v2`; it never rewrites v1.
+same opening quarter produces `PL-2026-Q2-v2`; it never rewrites v1.
 
 ## Resolution and Compilation
 
@@ -363,7 +363,7 @@ that historical bundles already exist:
    optional typed scenario patch into an internal `SimParams`;
 4. stop new Research API and notebook code from selecting
    `SimParams.defaults` directly;
-5. replace the legacy provider with the real `pl-2026q2-v1` bundle only after
+5. replace the legacy provider with the real `PL-2026-Q2-v1` bundle only after
    Q2 compilation, calibration, opening reconciliation, and validation exist;
    and
 6. add historical baselines, driver paths, and validation datasets as separate
@@ -392,7 +392,7 @@ baseline. The remaining steps above remain required.
 | R-05 | Historical claims | Distinguish reconstruction, real-time vintage evaluation, and counterfactual analysis in experiment and result metadata. | Proposed for RFC-0002 |
 | R-06 | Validation leakage | Keep observed outcomes separate and record field-level input, calibration, driver, and validation roles. | Proposed for RFC-0002 |
 | R-07 | Compatibility | Direct load, explicit migration, or explicit rejection; never silent baseline reinterpretation. | Proposed for RFC-0002 |
-| R-08 | Pilot baseline | Use an accurately named legacy provider until `pl-2026q2-v1` is genuinely compiled and validated. | Proposed for RFC-0002 |
+| R-08 | Pilot baseline | Use an accurately named legacy provider until `PL-2026-Q2-v1` is genuinely compiled and validated. | Proposed for RFC-0002 |
 | R-09 | Serialization | Choose schema formats and canonical hashing after the logical DTOs and expected control-table sizes are fixed. | Open physical design |
 | R-10 | Distribution | Decide which assets ship with a release and which use a verified artifact cache after size and redistribution constraints are inventoried. | Open operational design |
 | R-11 | Custom researcher baselines | Defer import of non-canonical bundles until canonical loading, validation, trust status, and failure evidence are implemented. | Deferred extension |

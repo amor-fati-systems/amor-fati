@@ -224,7 +224,7 @@ final class BaselineCatalog private[config] (
           else Right(new BaselineBundle(manifest, provider.components, params))
 
 object BaselineCatalog:
-  val LegacyDefaultsId: BaselineId = BaselineId.from("pl-2026-04-30-legacy-v1").fold(error => throw IllegalStateException(error), identity)
+  val LegacyDefaultsId: BaselineId = BaselineId.from("PL-2026-04-30-legacy-v1").fold(error => throw IllegalStateException(error), identity)
 
   /** Reviewed digest of the complete legacy SimParams.defaults payload. */
   private val LegacyDefaultsPayloadDigest =
@@ -276,7 +276,7 @@ object BaselineCatalog:
         baselineSchemaVersion = 1,
         requiredModelContract = ModelContractVersion.LegacySimParamsV1,
         contentDigest = LegacyDefaultsPayloadDigest,
-        description = "Migration-only provider over SimParams.defaults; not the pl-2026q2-v1 reference-economy bundle.",
+        description = "Migration-only provider over SimParams.defaults; not the PL-2026-Q2-v1 reference-economy bundle.",
       )
 
     def compile(): SimParams = params
