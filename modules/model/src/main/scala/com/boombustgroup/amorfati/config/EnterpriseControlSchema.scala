@@ -13,7 +13,7 @@ object EnterpriseControlSchema:
   /** Version of this logical contract. Persisted bundles must declare it so a
     * later reader never silently reinterprets source strata.
     */
-  val SchemaVersion: Int = 1
+  val SchemaVersion: Int = 2
 
   /** Non-negative count of entities in the source statistical universe. This is
     * neither a simulated-firm count nor a representation weight.
@@ -41,6 +41,13 @@ object EnterpriseControlSchema:
     */
   final case class ExpectedWorkersBandCode(value: String):
     require(value.trim.nonEmpty, "expected-workers band code must be non-empty")
+
+  /** Source-declared residual family. It distinguishes separately published
+    * unknown categories when the same geography and activity axes are absent,
+    * without treating a source label as an ordinary classification code.
+    */
+  final case class SourceResidualCategoryCode(value: String):
+    require(value.trim.nonEmpty, "source residual category code must be non-empty")
 
   /** Identity and version of a classification referenced by a bundle. */
   final case class ClassificationRef(id: String, version: String):
@@ -79,10 +86,9 @@ object EnterpriseControlSchema:
   )
 
   /** Source cell with an explicit missing registered-seat or PKD dimension. The
-    * absent axis corresponds to the Q2 REGON `Brak województwa` or `Brak PKD`
-    * category. The other axis stays present whenever the source supplies it, so
-    * the source's missing-both intersection remains one partition cell rather
-    * than being double-counted in two aggregate residuals.
+    * source residual category distinguishes separately published unknown
+    * families when both dimensions are absent. The other axis stays present
+    * whenever the source supplies it.
     *
     * These rows are retained for reconciliation but cannot be sampled as
     * ordinary enterprise geography or activity. An empty TSV cell means this
@@ -90,6 +96,7 @@ object EnterpriseControlSchema:
     * normal stratum.
     */
   final case class SourceResidualRow(
+      sourceResidualCategory: SourceResidualCategoryCode,
       registeredSeatRegion: Option[RegisteredSeatRegionCode],
       pkd2007Section: Option[Pkd2007SectionCode],
       expectedWorkersBand: ExpectedWorkersBandCode,
@@ -185,7 +192,7 @@ object EnterpriseControlSchema:
         s"${row.registeredSeatRegion.value}|${row.pkd2007Section.value}|${row.expectedWorkersBand.value}",
       ) ++
         duplicateRows("source-residuals", bundle.sourceResiduals)(row =>
-          s"${row.registeredSeatRegion.map(_.value)}|${row.pkd2007Section.map(_.value)}|${row.expectedWorkersBand.value}",
+          s"${row.sourceResidualCategory.value}|${row.registeredSeatRegion.map(_.value)}|${row.pkd2007Section.map(_.value)}|${row.expectedWorkersBand.value}",
         ) ++
         duplicateRows("source-totals", bundle.sourceTotals)(row => row.expectedWorkersBand.value)
 

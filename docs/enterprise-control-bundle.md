@@ -80,7 +80,7 @@ The classification files declare the only codes accepted by dependent tables:
 | `pkd2007-sections.tsv` | `code` | PKD 2007 section code, `A` through `U`. |
 | `expected-workers-bands.tsv` | `code` | Published REGON expected-number-of-workers band. It is a label, not a numeric workforce estimate. |
 | `enterprise-strata.tsv` | `registered_seat_region`, `pkd2007_section`, `expected_workers_band`, `count` | Count of ordinary source cells with all three dimensions known. |
-| `source-residuals.tsv` | `registered_seat_region`, `pkd2007_section`, `expected_workers_band`, `count` | Count of explicit source cells with either registered seat or PKD section missing. |
+| `source-residuals.tsv` | `source_residual_category`, `registered_seat_region`, `pkd2007_section`, `expected_workers_band`, `count` | Count of an explicit source residual family with at least one of registered seat or PKD section missing. |
 | `source-totals.tsv` | `expected_workers_band`, `count` | Published national total by expected-workers band before the source cells are partitioned. |
 
 `count` is a non-negative `Long` count of registry entities. It is neither a
@@ -88,11 +88,12 @@ simulated-enterprise count nor a representation weight.
 
 An `enterprise-strata.tsv` row must name declared region, PKD section, and
 expected-workers band. A `source-residuals.tsv` row must leave at least one of
-`registered_seat_region` and `pkd2007_section` empty. That empty cell means an
-explicit source category such as `Brak województwa` or `Brak PKD`; it is not an
-inference from absent ordinary rows. The other axis remains populated whenever
-the source reports it, which preserves the missing-both intersection as one
-cell and prevents double counting.
+`registered_seat_region` and `pkd2007_section` empty. Its non-empty
+`source_residual_category` identifies the separately published source family,
+such as `missing_registered_seat` or `missing_pkd`; it is not an ordinary axis
+classification or an inference from absent normal rows. The other axis remains
+populated whenever the source reports it. When both axes are absent, the
+category keeps distinct source residual families from collapsing into one cell.
 
 The loader requires exact per-band reconciliation:
 

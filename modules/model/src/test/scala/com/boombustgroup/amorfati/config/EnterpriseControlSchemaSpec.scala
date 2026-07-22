@@ -34,9 +34,9 @@ class EnterpriseControlSchemaSpec extends AnyFlatSpec with Matchers:
       EnterpriseStratumRow(North, A, Mid, EnterpriseCount(2)),
     ),
     sourceResiduals = Vector(
-      SourceResidualRow(None, Some(A), Small, EnterpriseCount(1)),
-      SourceResidualRow(None, None, Small, EnterpriseCount(1)),
-      SourceResidualRow(Some(South), None, Mid, EnterpriseCount(3)),
+      SourceResidualRow(SourceResidualCategoryCode("missing-region"), None, Some(A), Small, EnterpriseCount(1)),
+      SourceResidualRow(SourceResidualCategoryCode("missing-both"), None, None, Small, EnterpriseCount(1)),
+      SourceResidualRow(SourceResidualCategoryCode("missing-section"), Some(South), None, Mid, EnterpriseCount(3)),
     ),
     sourceTotals = Vector(
       SourceTotalRow(Small, EnterpriseCount(13)),
@@ -65,7 +65,13 @@ class EnterpriseControlSchemaSpec extends AnyFlatSpec with Matchers:
         EnterpriseStratumRow(North, A, Small, EnterpriseCount(7)),
         EnterpriseStratumRow(undeclaredRegion, undeclaredSection, undeclaredBand, EnterpriseCount(1)),
       ),
-      sourceResiduals = validBundle.sourceResiduals :+ SourceResidualRow(None, Some(A), undeclaredBand, EnterpriseCount(1)),
+      sourceResiduals = validBundle.sourceResiduals :+ SourceResidualRow(
+        SourceResidualCategoryCode("unknown-band"),
+        None,
+        Some(A),
+        undeclaredBand,
+        EnterpriseCount(1),
+      ),
     )
 
     val report = Validator.validate(invalid)
@@ -84,6 +90,36 @@ class EnterpriseControlSchemaSpec extends AnyFlatSpec with Matchers:
     val invalid = validBundle.copy(sourceTotals = validBundle.sourceTotals.filterNot(_.expectedWorkersBand == Mid))
 
     Validator.validate(invalid).errors should contain(ValidationError.MissingSourceTotal(Mid))
+  }
+
+  it should "keep separately declared missing-both source residuals distinct" in {
+    val distinctResiduals = validBundle.copy(
+      sourceResiduals = validBundle.sourceResiduals :+ SourceResidualRow(
+        SourceResidualCategoryCode("another-missing-both"),
+        None,
+        None,
+        Small,
+        EnterpriseCount(1),
+      ),
+      sourceTotals = validBundle.sourceTotals.updated(0, SourceTotalRow(Small, EnterpriseCount(14))),
+    )
+
+    Validator.validate(distinctResiduals).isValid shouldBe true
+
+    val duplicateCategory = distinctResiduals.copy(
+      sourceResiduals = distinctResiduals.sourceResiduals :+ SourceResidualRow(
+        SourceResidualCategoryCode("another-missing-both"),
+        None,
+        None,
+        Small,
+        EnterpriseCount(1),
+      ),
+      sourceTotals = distinctResiduals.sourceTotals.updated(0, SourceTotalRow(Small, EnterpriseCount(15))),
+    )
+
+    Validator.validate(duplicateCategory).errors should contain(
+      ValidationError.DuplicateRow("source-residuals", "another-missing-both|None|None|0-9"),
+    )
   }
 
 end EnterpriseControlSchemaSpec

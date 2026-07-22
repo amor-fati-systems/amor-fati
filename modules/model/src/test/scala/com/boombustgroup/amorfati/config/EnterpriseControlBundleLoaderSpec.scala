@@ -12,7 +12,7 @@ import scala.util.Using
 
 class EnterpriseControlBundleLoaderSpec extends AnyFlatSpec with Matchers:
 
-  private val FixtureDigest = "e576c112117f76843122fb3ac277d0b41eab76d200fdb2df23b6535c2e77a181"
+  private val FixtureDigest = "d28372598f8b1d1f0eb4ec8e2fc0aa83aca4f9ae9a4dff0dc0add6952f91940f"
 
   private def fixtureRoot: Path =
     Path.of(Option(getClass.getResource("/enterprise-control-bundles/synthetic-v1")).getOrElse(fail("synthetic enterprise-control fixture is missing")).toURI)
@@ -66,6 +66,17 @@ class EnterpriseControlBundleLoaderSpec extends AnyFlatSpec with Matchers:
           expected.toString shouldBe FixtureDigest
           actual should not be expected
         case other                                                              => fail(s"expected enterprise-controls digest mismatch, got: $other")
+
+  it should "reject a residual component written with an older schema version" in
+    withCopiedFixture: root =>
+      val manifestPath = root.resolve("manifest.tsv")
+      Files.writeString(
+        manifestPath,
+        Files.readString(manifestPath, UTF_8).replaceFirst("(?m)^2(?=\\t)", "1"),
+        UTF_8,
+      )
+
+      EnterpriseControlBundleLoader.load(root) shouldBe Left(LoadError.UnsupportedSchemaVersion(2, 1))
 
   it should "reject malformed UTF-8 after its digest has been refreshed" in
     withCopiedFixture: root =>
