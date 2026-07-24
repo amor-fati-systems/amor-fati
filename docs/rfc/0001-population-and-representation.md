@@ -417,7 +417,7 @@ compilation. It should contain:
   products;
 - enterprise controls by sector, size, registered-seat region, ownership, and
   employment, with the source-measure and workplace-bridge boundary recorded in
-  the [enterprise-control acquisition record](../baselines/pl-2025q4-v1-enterprise-controls.md);
+  the [enterprise-control acquisition record](../baselines/pl-2025-q4-v1-enterprise-controls.md);
 - an explicit sector-classification bridge into Amor Fati sectors;
 - named or archetypal financial institutions and their opening profiles;
 - national-accounts and financial-accounts totals; and
@@ -462,7 +462,7 @@ of mutually reconciled control tables with shared classifications:
 
 For `PL-2025-Q4-v1`, the shared regional classification is the 16 TERYT
 voivodeships recorded in its
-[population-control acquisition record](../baselines/pl-2025q4-v1-population-controls.md).
+[population-control acquisition record](../baselines/pl-2025-q4-v1-population-controls.md).
 This is the same axis for person, household, regional-labour, and employment
 reconciliation cells; it is not the legacy runtime's seven regional markets.
 

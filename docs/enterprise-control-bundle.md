@@ -15,7 +15,7 @@ expected-workers band as actual employment. The committed `synthetic-v1`
 fixture is a test artifact only; it is not an empirical baseline.
 
 The target evidence and remaining enterprise work are defined by the
-[PL-2025-Q4-v1 enterprise-control acquisition record](baselines/pl-2025q4-v1-enterprise-controls.md)
+[PL-2025-Q4-v1 enterprise-control acquisition record](baselines/pl-2025-q4-v1-enterprise-controls.md)
 and [RFC-0001](rfc/0001-population-and-representation.md). The relationship to
 the future full baseline bundle and Research API is defined by
 [RFC-0002's contract](rfc/0002-research-api-contract.md).
