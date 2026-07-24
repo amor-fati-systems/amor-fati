@@ -276,7 +276,7 @@ object BaselineCatalog:
         baselineSchemaVersion = 1,
         requiredModelContract = ModelContractVersion.LegacySimParamsV1,
         contentDigest = LegacyDefaultsPayloadDigest,
-        description = "Migration-only provider over SimParams.defaults; not the PL-2026-Q2-v1 reference-economy bundle.",
+        description = "Migration-only provider over SimParams.defaults; not the PL-2025-Q4-v1 reference-economy bundle.",
       )
 
     def compile(): SimParams = params

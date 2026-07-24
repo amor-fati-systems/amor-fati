@@ -2,7 +2,7 @@
 
 Status: Accepted
 
-Date: 2026-07-20
+Date: 2026-07-24
 
 ## Context
 
@@ -53,10 +53,10 @@ weights, controls, residuals, exceptions, and provenance. Researchers do not
 coordinate independent firm, worker, household, and macro-scaling parameters
 to approximate a population size.
 
-The first reference-economy bundle is `PL-2026-Q2-v1`, representing Poland at
-the end of `2026-Q2` with a reference-state boundary at the end of
-`2026-06-30`. This is the Q2 closing boundary in source statistics and the
-opening state for the first simulated month, July 2026. The
+The first reference-economy bundle is `PL-2025-Q4-v1`, representing Poland at
+the end of `2025-Q4` with a reference-state boundary at the end of
+`2025-12-31`. This is the Q4 closing boundary in source statistics and the
+opening state for the first simulated month, January 2026. The
 researcher selects that one identity rather than coordinating separate period,
 valuation-date, and information-cutoff settings. Every source retains its
 actual observation period, release and access dates, valuation date where
@@ -66,9 +66,9 @@ vintage.
 
 The identifier is immutable. Changing source content, a hard control, or a
 transformation creates a new bundle version and digest. A better-reconciled
-compilation of the same quarter is `PL-2026-Q2-v2`; it does not mutate v1. The
+compilation of the same quarter is `PL-2025-Q4-v2`; it does not mutate v1. The
 existing `2026-04-30` runtime calibration is migration evidence and must be
-recalibrated and validated before it can implement the Q2 v1 bundle.
+recalibrated and validated before it can implement the Q4 v1 bundle.
 
 The reference population covers all usual residents. Labor controls follow the
 BAEL/EU-LFS convention: employment covers ages 15 through 89, unemployment

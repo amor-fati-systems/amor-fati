@@ -230,7 +230,7 @@ Conceptually, notebook code should read like:
 
 ```scala
 val experiment = AmorFati.experiment(
-  baseline = Baseline("PL-2026-Q2-v1"),
+  baseline = Baseline("PL-2025-Q4-v1"),
   representation = Representation.oneTo(1000),
   seed = Seed(42)
 )
@@ -534,7 +534,7 @@ implementation-shaped substitutes.
    between baseline inputs, scenario drivers, and validation outcomes.
 3. Implement a narrow pre-release Research API facade over the current engine,
    using an accurately identified legacy baseline provider until
-   `PL-2026-Q2-v1` is compiled and validated.
+   `PL-2025-Q4-v1` is compiled and validated.
    Current internal engine types do not enter its public signatures.
 4. Keep the contract explicitly pre-release so notebook evidence can correct it
    before the target state design is fixed.
