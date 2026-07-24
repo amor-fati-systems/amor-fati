@@ -5,15 +5,16 @@
 This is the acquisition and acceptance record for the enterprise-control
 component of the retrospective `PL-2026-Q2-v1` baseline. It is not a baseline
 bundle, a calibration, or evidence that Amor Fati has compiled Polish
-enterprises. No empirical control rows are committed yet.
+enterprises.
 
-The Q2 REGON workbook is now source-pinned below, and the data-only
-[enterprise-control bundle format](../enterprise-control-bundle.md) is
-implemented and exercised by a synthetic fixture. No empirical normalized
-control rows, deterministic extractor, PKD crosswalk, or accepted workforce
-bridge exists yet. The component therefore remains blocked. When accepted, it
-will be an `Experimental` input to the future full baseline bundle, not a
-`Canonical` baseline by itself.
+The Q2 REGON workbook is source-pinned below. A deterministic extractor in
+[`amor-fati-economies`](https://github.com/amor-fati-systems/amor-fati-economies/tree/3efe505dc9288d86537fa05ce99157af0d91019d/baselines/PL/PL-2026-Q2-v1/enterprise-controls)
+has emitted a source-native, data-only component that passes the
+[enterprise-control bundle format](../enterprise-control-bundle.md) and exact
+per-band reconciliation. That makes this registry component
+`artifact_validated`; it does not provide a PKD crosswalk, an accepted
+workforce bridge, or a full executable baseline. It remains an `Experimental`
+input to a future full baseline bundle, not a `Canonical` baseline by itself.
 
 It complements the [population-control component](pl-2026q2-v1-population-controls.md).
 The two components have different statistical units and source cadences, so
@@ -46,7 +47,7 @@ marked pending name an acquisition surface only.
 
 | Output control | Authoritative target | Primary source | Required transformation | Current state |
 | --- | --- | --- | --- | --- |
-| Enterprise stock and size stratum | Register-declared-operating entities jointly by registered-seat TERYT voivodeship, source PKD 2007, and REGON expected-number-of-workers band. | GUS Q2 quarterly REGON workbook, `Tabl 6`, for the 30 June 2026 state. | Preserve the source universe, exclusions, size bands, and its `Brak województwa` and `Brak PKD` categories. Classify every source section through a versioned PKD-to-target-production crosswalk; route sections outside the ordinary production perimeter to their declared institutional component rather than dropping them. A band midpoint or fabricated worker total is forbidden. | Source retrieved and SHA-256 pinned on 2026-07-21; deterministic extraction, crosswalk, and derived controls remain pending. |
+| Enterprise stock and size stratum | Register-declared-operating entities jointly by registered-seat TERYT voivodeship, source PKD 2007, and REGON expected-number-of-workers band. | GUS Q2 quarterly REGON workbook, `Tabl 6`, for the 30 June 2026 state. | Preserve the source universe, exclusions, and size bands. `Brak województwa` and `Brak PKD` are overlapping published national margins; partition them by expected-worker band with a checked inclusion-exclusion calculation before reconciliation. A versioned PKD-to-target-production crosswalk remains a separate artifact; a band midpoint or fabricated worker total is forbidden. | Source-native derived controls are emitted and loaded by the core contract. PKD crosswalk and workforce bridge remain pending. |
 | Legal-form margin | Entity counts by source legal-form classification where published. | GUS Q2 quarterly REGON workbook, `Tabl 3`. | Preserve the source legal-form code and unknown category. Map it to a model ownership or governance feature only through a named bridge, never by a default Boolean draw. | Source retrieved and SHA-256 pinned on 2026-07-21; extraction and a reviewed bridge remain pending. |
 | Ownership margin | Entity counts by source ownership classification where published. | GUS Q2 quarterly REGON workbook, `Tabl 2`, for the public/private sector split; a separately downloadable detailed ownership-form table is required for a finer margin. | Preserve all reported ownership classes and the source missing-value category. This is a registry ownership classification, not a cap table and not proof of a beneficial owner. | Public/private source retrieved; detailed ownership-form source is not pinned, so no finer ownership control can be derived. |
 | Workforce bridge | A declared relation from primary employment assignments in the population component to enterprise strata. | The [population employment control](pl-2026q2-v1-population-controls.md) plus an evidence-backed structural source where needed. | Keep BAEL jobholders, workplace-region employment, and REGON expected workers as distinct measures. Reconcile only through an explicit bridge that records its source, target measure, residual, and tolerance. | Blocked: no Q2 employment component and no reviewed firm-workforce bridge are pinned. |
@@ -56,9 +57,13 @@ The Q2 quarterly REGON workbook was released on 2026-07-16 and retrieved on
 2026-07-21 from the direct GUS download listed below. Its SHA-256 is
 `858fd5715b1b4d64180d4bd15310a74b8b8d45d26ce3a79182e3dff7f8a6e6e9`.
 `Tabl 6` supplies the needed joint region-by-PKD-by-size stratum. It also
-publishes separate global residual rows for `Brak województwa` and `Brak PKD`;
-they are distinct source-residual families, not members of the 16-voivodeship
-TERYT classification and not one inferred missing-both cell.
+publishes global `Brak województwa` and `Brak PKD` margins that overlap. For
+each expected-worker band, the extractor derives their intersection as
+`known region-and-PKD + missing region margin + missing PKD margin - national
+total`, then emits the three non-overlapping residual cells: missing region
+only, missing PKD only, and both missing. A negative intersection or one
+larger than either margin rejects the artifact. None of those cells is a
+member of the 16-voivodeship TERYT classification or an ordinary PKD section.
 
 GUS warns that registry records can lack activity, location, ownership, or
 expected-worker information. Such records must remain explicit unknown or
@@ -90,18 +95,20 @@ rewrite either source measure until its reconciliation rule is accepted.
 
 ## Acceptance Gates
 
-The component can be committed only when all conditions hold:
+The source-native registry component is accepted only when conditions 1-4 and
+8 hold. Conditions 5-7 are gates for using it in a full enterprise
+compilation, not reasons to fabricate missing data in this component.
 
 1. Exact raw-source references, retrieval dates, licences, and SHA-256 hashes
    are recorded for every table and bridge.
 2. Every enterprise-count row identifies the source statistical universe,
-   registered-seat territory, PKD version, and classification crosswalk.
+   registered-seat territory, source PKD version, and expected-worker-band
+   classification.
 3. The 16 TERYT voivodeships are the common regional axis for registry controls;
    a workplace control is labelled as such and never merged with registered-seat
    counts by an implicit assumption.
-4. Missing REGON activity, region, ownership, legal-form, and expected-worker
-   attributes remain represented by declared categories or a quantified,
-   justified residual. They are not discarded to make margins sum.
+4. Missing REGON region and activity margins remain explicit, quantified,
+   non-overlapping residual cells. They are not discarded to make margins sum.
 5. Every source PKD section is mapped exactly once to an ordinary production
    target, a named institutional component, or an explicit exclusion. The
    mapping records whether it is direct, residual, or a bridge assumption.
@@ -116,17 +123,18 @@ The component can be committed only when all conditions hold:
 
 ## Publication Sequence
 
-1. Obtain and locally archive the Q2 quarterly REGON tables and any selected
-   agricultural or structural-business source without committing raw files.
-2. Record exact source metadata and classify every missing or unsupported
-   source dimension before producing derived controls.
-3. Implement a deterministic extraction around the accepted source tables. It
-   must verify the raw source hash and emit the existing data-only schema with
-   its component digest and validations.
-4. Generate a candidate component with that deterministic extraction and
-   crosswalk command; review row-level controls and all residuals.
-5. Commit only derived TSV data, immutable component digest, crosswalk, and
-   provenance record after review.
+1. Obtain and locally archive the Q2 quarterly REGON tables without committing
+   raw files. Completed for `Tabl 6`.
+2. Record exact source metadata and classify its missing region and activity
+   margins before producing derived controls. Completed for `Tabl 6`.
+3. Implement a deterministic extraction that verifies the raw source hash and
+   emits the data-only schema with its component digest and validations.
+   Completed for `Tabl 6`.
+4. Generate and review the source-native component, including every residual
+   cell and the per-band reconciliation. Completed for `Tabl 6`.
+5. Commit only the derived TSV data, immutable component digest, and
+   provenance record after review. A PKD crosswalk is a separate later
+   artifact, not a property inferred by this extraction.
 6. Combine it with the accepted population component only through the declared
    workforce bridge, then register both in a full baseline bundle alongside
    parameters, institutions, and validation evidence.

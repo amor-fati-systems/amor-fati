@@ -89,11 +89,14 @@ simulated-enterprise count nor a representation weight.
 An `enterprise-strata.tsv` row must name declared region, PKD section, and
 expected-workers band. A `source-residuals.tsv` row must leave at least one of
 `registered_seat_region` and `pkd2007_section` empty. Its non-empty
-`source_residual_category` identifies the separately published source family,
-such as `missing_registered_seat` or `missing_pkd`; it is not an ordinary axis
-classification or an inference from absent normal rows. The other axis remains
-populated whenever the source reports it. When both axes are absent, the
-category keeps distinct source residual families from collapsing into one cell.
+`source_residual_category` identifies either a separately published source
+family or a declared partition of published residual margins; it is not an
+ordinary axis classification or an inference from absent normal rows. The
+other axis remains populated whenever the source reports it. When both axes
+are absent, the category keeps distinct source residual families or partition
+cells from collapsing into one row. A derived partition must be documented in
+the source recipe and preserve the published total through a checked
+reconciliation.
 
 The loader requires exact per-band reconciliation:
 
@@ -123,12 +126,14 @@ constrain the other.
 
 The format is exercised by the synthetic fixture in
 `modules/model/src/test/resources/enterprise-control-bundles/synthetic-v1` and
-its schema and loader specifications. It is an internal target-core boundary,
-deliberately separate from the legacy `BaselineCatalog` provider over
-`SimParams.defaults`.
+its schema and loader specifications. The first empirical source-native
+component is generated and versioned in
+[`amor-fati-economies`](https://github.com/amor-fati-systems/amor-fati-economies/tree/3efe505dc9288d86537fa05ce99157af0d91019d/baselines/PL/PL-2026-Q2-v1/enterprise-controls);
+the raw XLSX remains outside both repositories. This is an internal
+target-core boundary, deliberately separate from the legacy `BaselineCatalog`
+provider over `SimParams.defaults`.
 
-The next implementation step is a deterministic, separately reviewed source
-extractor that verifies the pinned GUS workbook and emits a candidate
-`PL-2026-Q2-v1` component. That candidate still needs a reviewed PKD crosswalk,
-remaining enterprise dimensions, and an explicit workforce bridge before it
-can participate in a full baseline compilation.
+The next implementation steps are a reviewed PKD crosswalk, remaining
+enterprise dimensions, and an explicit workforce bridge. The source-native
+component must not be treated as a full baseline compilation until those
+separate artifacts are accepted.
