@@ -22,7 +22,7 @@ then become an `Experimental` input to a full baseline; it is not a
 | Reference-state boundary | End of `2025-12-31`, the Q4 closing boundary in source statistics and the opening state for the first simulated month, January 2026. |
 | Target unit | A register-declared-operating entity represented as one model enterprise. It is a legal entity or organisational unit, not an establishment or local unit. The registry universe must state its agricultural exclusions explicitly. |
 | Enterprise geography | The 16 TERYT voivodeships. Registry counts use registered-seat geography; that is not workplace geography and cannot substitute for population employment controls. |
-| Production classification | Preserve the source PKD classification and version. Every mapping to the target production ontology is an explicit, versioned crosswalk. |
+| Production classification | The source classification is PKD 2007 at section level (`A` through `U`), matching the loader's `pkd2007-sections.tsv` contract. Every mapping from PKD 2007 to the target production ontology is an explicit, versioned crosswalk. |
 | Size classification | A REGON expected-number-of-workers band is a registry attribute, not realised employment, FTE, vacancies, or BAEL jobholders. |
 | Financial and systemic institutions | Financial and insurance activities and named institutions remain outside ordinary-enterprise controls until separately declared. Size, ownership label, or sector never infer systemic status. |
 | Representation scale | Not a baseline field. The compiler retains each nonzero hard-control stratum under `PopulationRepresentation.RepresentationSpec`. |

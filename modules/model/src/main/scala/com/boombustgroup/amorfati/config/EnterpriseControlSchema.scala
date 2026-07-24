@@ -28,9 +28,9 @@ object EnterpriseControlSchema:
   final case class RegisteredSeatRegionCode(value: String):
     require(value.trim.nonEmpty, "registered-seat region code must be non-empty")
 
-  /** PKD 2007 section used by the published Q2 REGON workbook. The source
-    * component preserves this input classification; any PKD-2025 or runtime
-    * production-sector bridge is a separate, manifested transformation.
+  /** PKD 2007 section required by the current enterprise-control contract. The
+    * source component preserves this input classification; any PKD-2025 or
+    * runtime production-sector bridge is a separate, manifested transformation.
     */
   final case class Pkd2007SectionCode(value: String):
     require(value.matches("[A-U]"), s"PKD 2007 section code must be A-U, got: $value")
