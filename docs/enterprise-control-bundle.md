@@ -12,11 +12,10 @@ This is not a full `BaselineBundle`, an XLSX extractor, a firm compiler, a
 public Research API, or a workforce bridge. It does not load `SimParams`,
 execute Scala configuration, initialize runtime firms, or treat a REGON
 expected-workers band as actual employment. The committed `synthetic-v1`
-fixture is a test artifact only; it is not `PL-2026-Q2-v1` or an empirical
-baseline.
+fixture is a test artifact only; it is not an empirical baseline.
 
 The target evidence and remaining enterprise work are defined by the
-[PL-2026-Q2-v1 enterprise-control acquisition record](baselines/pl-2026q2-v1-enterprise-controls.md)
+[PL-2025-Q4-v1 enterprise-control acquisition record](baselines/pl-2025q4-v1-enterprise-controls.md)
 and [RFC-0001](rfc/0001-population-and-representation.md). The relationship to
 the future full baseline bundle and Research API is defined by
 [RFC-0002's contract](rfc/0002-research-api-contract.md).
@@ -110,11 +109,11 @@ validated rather than silently dropped.
 
 ## Measurement Boundary
 
-The first target component preserves the Q2 2026 REGON table's registered-seat
-voivodeship, PKD 2007 section, and expected-workers-band dimensions. It does
-not establish actual employment, FTE, job positions, vacancies, ownership,
-legal form, a PKD-to-Amor-Fati-sector crosswalk, financial institutions, or
-systemic enterprises.
+The first target component preserves the selected source table's registered-seat
+voivodeship, PKD section, and expected-workers-band dimensions. It does not
+establish actual employment, FTE, job positions, vacancies, ownership, legal
+form, a PKD-to-Amor-Fati-sector crosswalk, financial institutions, or systemic
+enterprises.
 
 In particular, population `employment.tsv` counts primary employment
 assignments for employed usual residents, while REGON expected-workers bands
@@ -126,10 +125,10 @@ constrain the other.
 
 The format is exercised by the synthetic fixture in
 `modules/model/src/test/resources/enterprise-control-bundles/synthetic-v1` and
-its schema and loader specifications. The first empirical source-native
-component is generated and versioned in
-[`amor-fati-economies`](https://github.com/amor-fati-systems/amor-fati-economies/tree/3efe505dc9288d86537fa05ce99157af0d91019d/baselines/PL/PL-2026-Q2-v1/enterprise-controls);
-the raw XLSX remains outside both repositories. This is an internal
+its schema and loader specifications. No empirical source-native component is
+committed yet. When one exists, it is generated and versioned in
+[`amor-fati-economies`](https://github.com/amor-fati-systems/amor-fati-economies)
+while the raw source remains outside both repositories. This is an internal
 target-core boundary, deliberately separate from the legacy `BaselineCatalog`
 provider over `SimParams.defaults`.
 

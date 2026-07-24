@@ -244,7 +244,7 @@ force. Pension receipt, education, disability, care, retraining, and financial
 distress remain separate dimensions and do not override that classification.
 
 The baseline must record the exact statistical definition and source release
-used for every control. `PL-2026-Q2-v1` is a retrospectively compiled Q2 baseline,
+used for every control. `PL-2025-Q4-v1` is a retrospectively compiled Q4 baseline,
 not a claim that every control was observable on the reference-state boundary. Later
 source releases are admissible only with explicit observation and release dates.
 
@@ -417,16 +417,16 @@ compilation. It should contain:
   products;
 - enterprise controls by sector, size, registered-seat region, ownership, and
   employment, with the source-measure and workplace-bridge boundary recorded in
-  the [enterprise-control acquisition record](../baselines/pl-2026q2-v1-enterprise-controls.md);
+  the [enterprise-control acquisition record](../baselines/pl-2025q4-v1-enterprise-controls.md);
 - an explicit sector-classification bridge into Amor Fati sectors;
 - named or archetypal financial institutions and their opening profiles;
 - national-accounts and financial-accounts totals; and
 - migration, births, deaths, pension receipt, and tourism control series.
 
-The first target bundle is `PL-2026-Q2-v1`. It represents Poland at the end of
-`2026-Q2`, with a reference-state boundary at the end of `2026-06-30`. This is
-the Q2 closing boundary in source statistics and the opening state for the
-first simulated month, July 2026. A researcher selects that one identity;
+The first target bundle is `PL-2025-Q4-v1`. It represents Poland at the end of
+`2025-Q4`, with a reference-state boundary at the end of `2025-12-31`. This is
+the Q4 closing boundary in source statistics and the opening state for the
+first simulated month, January 2026. A researcher selects that one identity;
 separate reference-period, valuation-date, and
 information-cutoff settings are not part of the experiment configuration.
 
@@ -441,13 +441,13 @@ real-time information vintage.
 A baseline identifier is immutable. Changing a source release, transformation,
 classification crosswalk, hard control, or reconciliation policy creates a new
 bundle version and digest. Corrections do not rewrite the meaning or provenance
-of `PL-2026-Q2-v1`. A better-reconciled compilation of the same represented
-quarter is published as `PL-2026-Q2-v2`, while a later reference economy receives
+of `PL-2025-Q4-v1`. A better-reconciled compilation of the same represented
+quarter is published as `PL-2025-Q4-v2`, while a later reference economy receives
 its own period identity.
 
 The existing `2026-04-30` Amor Fati calibration is migration evidence for this
-bundle, not an implementation of `PL-2026-Q2-v1` under a new label. Building v1
-requires an explicit Q2 recalibration and validation pass. Aggregate GDP,
+bundle, not an implementation of `PL-2025-Q4-v1` under a new label. Building v1
+requires an explicit Q4 recalibration and validation pass. Aggregate GDP,
 public, banking, external, and financial stocks may be well bridged while the
 joint population of persons, households, and firms remains only partially
 empirical. The compiler must preserve valid existing bridges and expose the
@@ -460,9 +460,9 @@ The first compiler does not require one sparse cross-product of every person,
 household, labor, housing, and financial attribute. It requires a versioned set
 of mutually reconciled control tables with shared classifications:
 
-For `PL-2026-Q2-v1`, the shared regional classification is the 16 TERYT
+For `PL-2025-Q4-v1`, the shared regional classification is the 16 TERYT
 voivodeships recorded in its
-[population-control acquisition record](../baselines/pl-2026q2-v1-population-controls.md).
+[population-control acquisition record](../baselines/pl-2025q4-v1-population-controls.md).
 This is the same axis for person, household, regional-labour, and employment
 reconciliation cells; it is not the legacy runtime's seven regional markets.
 
@@ -515,7 +515,7 @@ The primary user setting should therefore be residents per agent, not raw agent
 counts:
 
 ```yaml
-baseline: PL-2026-Q2-v1
+baseline: PL-2025-Q4-v1
 representation:
   residentsPerAgent: 1000
   enterprisePolicy: stratified
@@ -854,7 +854,7 @@ indexes, views, and the data-oriented implementation boundary.
 
 | ID | Decision | First-target resolution | State |
 | --- | --- | --- | --- |
-| P-01 | Baseline identity and vintage | `PL-2026-Q2-v1`; end-`2026-Q2` reference-state boundary, which is the Q2 close in source statistics and the opening state for July simulation; one researcher-facing identity, immutable version and content digest, and per-source temporal provenance inside the bundle. Better reconciliation of the same quarter becomes v2. | Accepted, 2026-07-20 |
+| P-01 | Baseline identity and vintage | `PL-2025-Q4-v1`; end-`2025-Q4` reference-state boundary, which is the Q4 close in source statistics and the opening state for January simulation; one researcher-facing identity, immutable version and content digest, and per-source temporal provenance inside the bundle. Better reconciliation of the same quarter becomes v2. | Accepted, 2026-07-24 |
 | P-02 | Labor-control convention | All-age usual-resident population; BAEL/EU-LFS labor definitions, with employment ages 15-89, unemployment ages 15-74, under-15 `NotApplicable`, and a declared 90+ non-BAEL residual. | Accepted, 2026-07-20 |
 | P-03 | Minimum person-household controls | Reconciled person, household, membership, labor-status, and region-sector employment tables defined above; no mandatory full cross-product of every attribute. | Accepted, 2026-07-20 |
 | P-04 | Rare and systemic enterprises | Preserve every nonzero hard-control stratum with adaptive weights; preserve a named non-bank enterprise at weight one only by explicit baseline declaration. | Accepted, 2026-07-20 |
